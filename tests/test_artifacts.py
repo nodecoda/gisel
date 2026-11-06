@@ -4,6 +4,7 @@ M0 gate: the .td (TableGen compatibility backend).
 M1 gate: the .inc (-gen-legalizer), byte for byte, with no llvm-tblgen run.
 """
 
+import hashlib
 import json
 import os
 import re
@@ -314,6 +315,21 @@ class EvaluatorCorpus(unittest.TestCase):
             ev, str(cases / "a64_ref_dump.jsonl"))
         self.assertEqual(total, 9632)
         self.assertEqual((disagree, errors), (0, 0), first)
+
+
+class ArtifactIntegrity(unittest.TestCase):
+    """The frozen artifacts are the oracle; bytes must not drift silently."""
+
+    def test_sha256_manifest_matches_the_checked_in_bytes(self):
+        lines = (TESTS / "artifacts" / "SHA256").read_text().splitlines()
+        seen = 0
+        for line in lines:
+            digest, path = line.split()
+            p = TESTS / "artifacts" / Path(path).name
+            self.assertEqual(hashlib.sha256(p.read_bytes()).hexdigest(),
+                             digest, p.name)
+            seen += 1
+        self.assertEqual(seen, 8)
 
 
 class ShimCoverage(unittest.TestCase):

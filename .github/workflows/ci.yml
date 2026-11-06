@@ -1,0 +1,35 @@
+name: ci
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.10", "3.11", "3.12"]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python }}
+      - name: unit tests
+        run: python3 -m unittest discover -v -s tests
+      - name: every backend without llvm-tblgen
+        run: |
+          set -eu
+          shim=$(mktemp -d)
+          printf '#!/bin/sh\necho "llvm-tblgen is not part of this toolchain" >&2\nexit 1\n' > "$shim/llvm-tblgen"
+          chmod +x "$shim/llvm-tblgen"
+          export PATH="$shim:$PATH"
+          out=$(mktemp -d)
+          for target in X86 AArch64; do
+            for emit in td inc check table core; do
+              python3 -m gisel.cli gen "tests/corpus/${target}LegalizerInfo.gisel" \
+                --emit="$emit" --out "$out/$target.$emit"
+            done
+          done
+          test -s "$out/AArch64.core" -a -s "$out/X86.core"
