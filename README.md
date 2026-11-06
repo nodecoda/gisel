@@ -16,8 +16,8 @@ gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=td  --out X86LegalizerInf
 | M0 | `--emit=td` | byte-identical to the generated `.td` | done |
 | M1 | `--emit=inc` | byte-identical to `-gen-legalizer` | done |
 | M2 | `--emit=check` | the `-gen-legalizer-check` JSON | planned |
-| M3 | `--emit=table` | the `-gen-legalizer-table` fragment | planned |
-| M4 | `--emit=core`, `eval` | core JSON / 9632-point differential | planned |
+| M3 | `--emit=table` | the `-gen-legalizer-table` fragment | done |
+| M4 | `--emit=core`, `eval` | core JSON / 9632-point differential | scoped (`spec/m4-scope.md`) |
 
 `tests/artifacts/` holds the eight frozen artifacts and their `SHA256`;
 `tests/artifacts/SHA256` is the oracle every backend is measured against.
