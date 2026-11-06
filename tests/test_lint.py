@@ -109,6 +109,32 @@ class NegativeControl(unittest.TestCase):
             dsl._tc({"kind": "bogus"}, 1, [])
 
 
+class KindCoverage(unittest.TestCase):
+    """Every node kind the corpus uses must have a sort rule."""
+
+    def test_all_57_kinds_are_understood(self):
+        samples = {}
+
+        def walk(x):
+            if isinstance(x, dict):
+                k = x.get("kind")
+                if k and k not in samples:
+                    samples[k] = x
+                for v in x.values():
+                    walk(v)
+            elif isinstance(x, list):
+                for v in x:
+                    walk(v)
+
+        for name in ("x86", "aarch64"):
+            walk(json.loads((ROOT / "tests" / "artifacts" /
+                             f"{name}.core.json").read_text()))
+        self.assertEqual(len(samples), 57)
+        for kind, node in samples.items():
+            with self.subTest(kind=kind):
+                dsl._tc(node, 10 ** 9, [])
+
+
 class ArityTable(unittest.TestCase):
     """The table the checker trusts; the old regex got G_VECREDUCE_FADD wrong."""
 
