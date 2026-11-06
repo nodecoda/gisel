@@ -89,6 +89,34 @@ class GoldenInc(unittest.TestCase):
         self.assertEqual(total, 1078)
 
 
+class GoldenCheckJson(unittest.TestCase):
+    """M2: `gisel gen --emit=check` is byte-identical to -gen-legalizer-check."""
+
+    def test_generated_check_matches_golden(self):
+        for name, src in CORPORA:
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / f"{name}.check.json"
+                r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
+                        "--emit=check", "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(
+                    out.read_bytes(),
+                    (TESTS / "artifacts" / f"{name}.check.json").read_bytes(),
+                    f"{name}: check JSON differs from golden")
+
+    def test_coverage_sums_to_rules(self):
+        """rules == core_rules + legacy_rules + coverage (LoweringStats:55)."""
+        sys.path.insert(0, str(ROOT))
+        from gisel import td
+        from gisel.backend import check_json
+
+        for _, src in CORPORA:
+            gs = td.parse_gisel((TESTS / "corpus" / f"{src}.gisel").read_text())
+            c = check_json.counts(gs)
+            self.assertEqual(c["rules"],
+                             c["core_rules"] + c["legacy_rules"] + c["coverage"])
+
+
 class ShimCoverage(unittest.TestCase):
     """G1: every (operator, observation, target) triple has a C++ shim."""
 

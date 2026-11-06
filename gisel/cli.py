@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 from . import td
-from .backend import llvm_inc
+from .backend import check_json, llvm_inc
 
-BACKENDS = ("td", "inc")
+BACKENDS = ("td", "inc", "check")
 
 
 def _generate(gs, source, emit):
@@ -16,6 +16,8 @@ def _generate(gs, source, emit):
         return td.emit_td(gs, source)
     if emit == "inc":
         return llvm_inc.emit_inc(gs, source)
+    if emit == "check":
+        return check_json.emit_check(gs)
     raise ValueError(f"unknown backend {emit!r}")
 
 
@@ -28,7 +30,7 @@ def main(argv=None):
     g = sub.add_parser("gen", help="generate a backend artifact")
     g.add_argument("source")
     g.add_argument("--emit", default="td", choices=BACKENDS,
-                   help="backend: td (compatibility) or inc (-gen-legalizer)")
+                   help="backend: td, inc (-gen-legalizer), check (-gen-legalizer-check)")
     g.add_argument("--out", required=True)
 
     c = sub.add_parser("check", help="verify a generated artifact is up to date")
