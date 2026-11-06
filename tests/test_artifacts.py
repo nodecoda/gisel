@@ -317,6 +317,14 @@ class EvaluatorCorpus(unittest.TestCase):
         self.assertEqual((disagree, errors), (0, 0), first)
 
 
+class CliSurface(unittest.TestCase):
+    def test_module_entrypoint_and_version(self):
+        r = subprocess.run([sys.executable, "-m", "gisel", "--version"],
+                           cwd=ROOT, capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("gisel 0.1.0", r.stdout)
+
+
 class SourceErrors(unittest.TestCase):
     """A human-facing language must point at the file and the line it means."""
 
