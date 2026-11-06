@@ -30,7 +30,7 @@ against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (develop
 only — generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 40 gates, ~9 s
+python3 -m unittest discover -q -s tests      # 42 gates, ~9 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 

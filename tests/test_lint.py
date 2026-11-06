@@ -1,6 +1,7 @@
 """`gisel lint`: J1/J2b/J3a/J3b over a source file, no LLVM required."""
 
 import json
+import os
 import subprocess
 import sys
 import tempfile
@@ -53,6 +54,27 @@ class LintCorpus(unittest.TestCase):
         r = run("lint", str(CORPUS / "X86LegalizerInfo.gisel"), "--json")
         doc = json.loads(r.stdout)
         self.assertLessEqual(len(doc["warnings"]), 8)
+
+
+    def test_golden_diagnostics(self):
+        """Line numbers are part of the contract; drift must be explicit."""
+        r = run("lint", "tests/corpus/AArch64LegalizerInfo.gisel", "--json")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(r.stdout,
+                         (ROOT / "tests" / "golden" /
+                          "lint-aarch64.json").read_text())
+
+    def test_lint_needs_no_llvm_tblgen(self):
+        with tempfile.TemporaryDirectory() as d:
+            shim = Path(d) / "llvm-tblgen"
+            shim.write_text("#!/bin/sh\necho nope >&2\nexit 127\n")
+            shim.chmod(0o755)
+            env = dict(os.environ, PATH=f"{d}{os.pathsep}{os.environ['PATH']}")
+            r = subprocess.run([sys.executable, "-m", "gisel.cli", "lint",
+                                "tests/corpus/X86LegalizerInfo.gisel"],
+                               cwd=ROOT, env=env, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertNotIn("nope", r.stderr)
 
 
 class NegativeControl(unittest.TestCase):
