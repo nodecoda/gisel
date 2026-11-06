@@ -27,6 +27,10 @@ gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 
+`tools/import-inventory.py` answers "what would it cost to migrate target X?" by
+censusing a hand-written constructor (method histogram, chain shapes, guards);
+`docs/REPORT-riscv.md` is its output for the largest remaining target.
+
 `tests/artifacts/` holds the eight frozen artifacts and their `SHA256`; the
 corpus is derivable, not hand-tuned: `gisel bootstrap` reproduces both `.gisel`
 files byte for byte from the frozen `.td` + core JSON (asserted in the suite).

@@ -186,6 +186,26 @@ class KindCoverage(unittest.TestCase):
                 dsl._tc(node, 10 ** 9, [])
 
 
+class ImportInventory(unittest.TestCase):
+    """The census in docs/REPORT-riscv.md is the tool's output, not by hand."""
+
+    SRC = Path("/home/ubuntu/llvm/trees/explore/llvm/lib/Target/RISCV/GISel/"
+               "RISCVLegalizerInfo.cpp")
+
+    @unittest.skipUnless(SRC.exists(), "needs the explore tree")
+    def test_riscv_census_is_stable(self):
+        r = subprocess.run([sys.executable, str(ROOT / "tools" /
+                                                "import-inventory.py"),
+                            str(self.SRC)],
+                           capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        for line in ("| `getActionDefinitionsBuilder(...)` | 82 |",
+                     "| top-level statements | 143 |",
+                     "| chains extended later by name | 6 |",
+                     "| estimated core rules | 355 |"):
+            self.assertIn(line, r.stdout)
+
+
 class ArityTable(unittest.TestCase):
     """The table the checker trusts; the old regex got G_VECREDUCE_FADD wrong."""
 
