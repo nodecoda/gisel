@@ -33,3 +33,20 @@ jobs:
             done
           done
           test -s "$out/AArch64.core" -a -s "$out/X86.core"
+      - name: clean install, outside the checkout
+        run: |
+          set -eu
+          python3 -m venv /tmp/gisel-venv
+          /tmp/gisel-venv/bin/pip install -q .
+          work=$(mktemp -d)
+          cp tests/corpus/AArch64LegalizerInfo.gisel "$work/"
+          cd "$work"
+          /tmp/gisel-venv/bin/gisel --version
+          /tmp/gisel-venv/bin/gisel gen AArch64LegalizerInfo.gisel \
+            --emit=table --out a.table.inc
+          cmp a.table.inc "$GITHUB_WORKSPACE/tests/artifacts/aarch64.table.inc"
+          /tmp/gisel-venv/bin/gisel gen AArch64LegalizerInfo.gisel \
+            --emit=core --out a.core.json
+          /tmp/gisel-venv/bin/gisel eval --doc a.core.json \
+            --features "$GITHUB_WORKSPACE/tests/cases/features.json" \
+            --cases "$GITHUB_WORKSPACE/tests/cases/a64_ref_dump.jsonl"

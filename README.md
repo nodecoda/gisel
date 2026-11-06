@@ -4,6 +4,7 @@ A free-form language for GlobalISel legalizer rules, and the toolchain that
 turns it into LLVM artifacts **without `llvm-tblgen`**.
 
 ```sh
+python3 -m pip install .        # or: pip install -e .
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=td  --out X86LegalizerInfo.td
