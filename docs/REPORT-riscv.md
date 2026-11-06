@@ -182,3 +182,28 @@ TOTAL                                 340    402
 | memdesc 只比已知最小位宽 | `<vscale x 4 x s8>` 对 `mem s32 align 32` 被判 Legal（应 Custom），18 条 | 按 `TypePairAndMemDesc::isCompatible` 比 `TypeSize`（含 scalable 标志） |
 
 654 → 18 → 0。AArch64 9632、X86 5632 在修正前后都是 0 分歧。
+
+## 9 `.td` 回读（2026-11-07）
+
+把 `--emit=td` 的产物真的交给 `llvm-tblgen`：AArch64（743 core rules）与 X86（332）
+当场通过，RISCV 不行。逐个错误解下去，缺的是 core IR 的**回读**词汇，不是 RISCV 的
+规则：
+
+| 错误 | 缺的东西 |
+|---|---|
+| `Variable not defined: 'Imm'` | `LegalizerCore.td` 没有 `Imm` 节点（`imm(i)` 只有前端和 C++ 后端有） |
+| `a type set names LegalizeNamedType defs` | `[8, 16]` 是整型集合，checker 一律当类型集合 |
+| `Pow2Min operand must be an integer literal` | `(Pow2Min (CoreSelect Is64Bit 64 32))` 是常量 select，checker 只收字面量 |
+
+四处改动（含 JSON 的 `{"kind":"imm","index":N}` 与 `Query.Immediates[N]`）已在
+`llvm-dev/patches/core-ir-riscv-gaps.diff` 里验证：用重链的 `llvm-tblgen` 跑，
+`-gen-legalizer-check` 给出 **96 表 / 402 规则**，`-gen-legalizer-core` 的 JSON 复算
+**19512 / 0 / 0**；AArch64/X86 的 `.inc` 逐字节不变。树本轮冻结，补丁没落。
+
+**已知边界**：上游要求"一 opcode 一表"（`legalizer-info-duplicate.td` 固化了这条），
+而 RISCV 的构造函数对 `G_CTLZ` 写了两条链。按 opcode 拆表可以走通并复算 19512/0/0，
+但共享链会从 402 条复制成 738 条；是否在 gisel 里做这个规范化，留给下一轮。
+
+gisel 侧另外修了一个真 bug：`Core*If` 的 guard 参数是 `dag`，而 td 后端把
+`hasFeature` 叶渲染成裸 record（RISCV 27 处），产物是 `expected type dag`。
+现在 dag 位置写 `(Feature "...")`，`LegalizeSelectType` 的条件仍用 record。
