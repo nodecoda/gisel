@@ -1,5 +1,7 @@
 # gisel
 
+[![ci](https://github.com/nodecoda/gisel/actions/workflows/ci.yml/badge.svg)](https://github.com/nodecoda/gisel/actions/workflows/ci.yml)
+
 A free-form language for GlobalISel legalizer rules, and the toolchain that
 turns it into LLVM artifacts **without `llvm-tblgen`**.
 
