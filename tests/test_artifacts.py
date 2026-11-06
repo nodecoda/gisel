@@ -338,6 +338,17 @@ class SourceErrors(unittest.TestCase):
         self.assertNotIn("Traceback", r.stderr)
         self.assertIn(f"{src}:6: expected ,, got ID ('pow2')", r.stderr)
 
+    def test_check_errors_are_not_tracebacks(self):
+        r = run("check", str(TESTS / "corpus" / "X86LegalizerInfo.gisel"),
+                "--emit=inc", "--against", "/nonexistent/x.inc")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("No such file", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+        r = run("check", "/nonexistent/nope.gisel", "--emit=inc",
+                "--against", str(TESTS / "artifacts" / "x86.inc"))
+        self.assertEqual(r.returncode, 2)
+        self.assertNotIn("Traceback", r.stderr)
+
     def test_missing_source_is_not_a_traceback(self):
         r = run("gen", "/nonexistent/nope.gisel", "--emit=td", "--out", "/tmp/x.td")
         self.assertEqual(r.returncode, 2)

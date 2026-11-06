@@ -24,6 +24,14 @@ def _table_prefix(source, explicit):
     return stem[:-len("LegalizerInfo")] if stem.endswith("LegalizerInfo") else stem
 
 
+def _read_text(path):
+    try:
+        return Path(path).read_text()
+    except OSError as e:
+        print(f"{path}: {e.strerror}", file=sys.stderr)
+        return None
+
+
 def _source_error(source, exc):
     """`path:line: message`, the shape every editor understands."""
     msg = str(exc)
@@ -82,10 +90,8 @@ def main(argv=None):
 
     args = ap.parse_args(argv)
     if args.cmd == "gen":
-        try:
-            source_text = Path(args.source).read_text()
-        except OSError as e:
-            print(f"{args.source}: {e.strerror}", file=sys.stderr)
+        source_text = _read_text(args.source)
+        if source_text is None:
             return 2
         try:
             gs = td.parse_gisel(source_text)
@@ -104,12 +110,17 @@ def main(argv=None):
         want_path = args.against or args.td
         if not want_path:
             c.error("check needs --against <artifact>")
+        source_text = _read_text(args.source)
+        if source_text is None:
+            return 2
         try:
-            gs = td.parse_gisel(Path(args.source).read_text())
+            gs = td.parse_gisel(source_text)
             got = _generate(gs, args.source, args.emit)
         except ValueError as e:
             return _source_error(args.source, e)
-        want = Path(want_path).read_text()
+        want = _read_text(want_path)
+        if want is None:
+            return 2
         if args.emit == "core" and not args.strict_origin:
             got = core_json.strip_origin(got)
             want = core_json.strip_origin(want)
