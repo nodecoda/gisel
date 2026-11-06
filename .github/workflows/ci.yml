@@ -46,6 +46,7 @@ jobs:
           cp tests/corpus/AArch64LegalizerInfo.gisel "$work/"
           cd "$work"
           /tmp/gisel-venv/bin/gisel --version
+          /tmp/gisel-venv/bin/gisel lint AArch64LegalizerInfo.gisel
           /tmp/gisel-venv/bin/gisel gen AArch64LegalizerInfo.gisel \
             --emit=table --out a.table.inc
           cmp a.table.inc "$GITHUB_WORKSPACE/tests/artifacts/aarch64.table.inc"

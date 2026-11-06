@@ -21,3 +21,6 @@ gisel = "gisel.cli:main"
 
 [tool.setuptools.packages.find]
 include = ["gisel*"]
+
+[tool.setuptools.package-data]
+gisel = ["data/*.json"]
