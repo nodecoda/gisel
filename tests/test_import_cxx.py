@@ -49,6 +49,14 @@ class Fixture(unittest.TestCase):
                 'feature("ST.hasStdExtZbb()")', text)
             self.assertIn("lower true", text)
 
+    def test_predicate_first_mutations_are_gated(self):
+        # `minScalar(ST.hasStdExtZbb(), 0, sXLen)` in G_ABS: the leading
+        # predicate is a gate, not a no-op.  Dropping it would widen in the
+        # non-Zbb case too.
+        text = (CORPUS / "RISCVLegalizerInfo.gisel").read_text()
+        self.assertIn('widen(slot(0), ty(R_sXLen)) when '
+                      'feature("ST.hasStdExtZbb()")', text)
+
     def test_every_statement_is_either_emitted_or_refused(self):
         with tempfile.TemporaryDirectory() as d:
             out = Path(d) / "T.gisel"

@@ -448,16 +448,16 @@ ruleset R_G_SDIVREM: G_SDIVREM G_UDIVREM
 
 ruleset R_G_ABS: G_ABS
     custom (feature("ST.hasStdExtZbb()") and in(slot(0), [R_sXLen]))
-    widen(slot(0), ty(R_sXLen))
+    widen(slot(0), ty(R_sXLen)) when feature("ST.hasStdExtZbb()")
     lower true
 
 ruleset R_G_ABDS: G_ABDS G_ABDU
-    widen(slot(0), ty(R_sXLen))
+    widen(slot(0), ty(R_sXLen)) when feature("ST.hasStdExtZbb()")
     lower true
 
 ruleset R_G_UMAX: G_UMAX G_UMIN G_SMAX G_SMIN
     legal (feature("ST.hasStdExtZbb()") and in(slot(0), [R_sXLen]))
-    widen(slot(0), ty(R_sXLen))
+    widen(slot(0), ty(R_sXLen)) when feature("ST.hasStdExtZbb()")
     lower true
 
 ruleset R_G_SCMP: G_SCMP G_UCMP

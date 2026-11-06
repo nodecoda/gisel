@@ -707,6 +707,11 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
         out.append("bitcast(slot(0), %s)" % types(0, args[0]))
     else:
         raise Refuse("%s(...)" % method)
+    if pred_arg is not None and method in (
+            "minScalar", "maxScalar", "clampScalar", "widenScalarToNextPow2",
+            "widenScalarOrEltToNextPow2OrMinSize", "scalarSameSizeAs"):
+        g = tr.pred(pred_arg)
+        out = [l if " when " in l else l + " when " + g for l in out]
     STATS["calls"][method] = STATS["calls"].get(method, 0) + 1
     STATS["rules"][method] = STATS["rules"].get(method, 0) + len(out)
     return out
