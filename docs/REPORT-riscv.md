@@ -26,7 +26,7 @@
 | 事后续写的链 | 6（`LoadActions`/`StoreActions`/`ExtLoadActions`/`CTTZPoisonActions` 等） |
 | `if`/`for` 块 | 7 |
 | 守卫语句：纯谓词 / 含 subtarget 调用 | 9 / 10 |
-| 估算 core 规则 | 355 |
+| 估算 core 规则 | 355（builder 语句数；实际规则数 402，见 §7） |
 
 那 10 条含 subtarget 调用的守卫逐条看过：5 条是 `typeIsLegal*Vec`，3 条是
 `widenScalarIf` 的 lambda（`bits_of`/`size_of`/`in` 可拆），1 条是 `bitcastIf` 的
@@ -98,3 +98,73 @@ legal (not feature("Subtarget.enableUnalignedScalarMem()")
   `sizeIs(0,64) && immIs(0,32)`，写法与 WebAssembly 那条同构。
 - 估算 355 条规则里，`libcallFor` 33 + `customFor` 30 = 63 条是 terminal，
   不涉及类型构造，导入时最稳。
+
+## 7 导入器落地（2026-11-07）
+
+`tools/import-cxx.py RISCV RISCVLegalizerInfo.cpp` 现在跑通：
+
+```
+$ python3 tools/import-cxx.py RISCV .../RISCVLegalizerInfo.cpp --out R.gisel --stats
+R.gisel: 96 rulesets, 402 rules, 0 refused
+method                              calls  rules
+clampScalar                            41     82
+legalFor                               81     81
+libcallFor                             33     33
+customFor                              30     30
+lower                                  30     30
+scalarSameSizeAs                       11     22
+widenScalarToNextPow2                  24     24
+legalForTypesWithMemDesc               14     24
+...                                    --     --
+TOTAL                                 340    402
+```
+
+- **0 拒绝**：构造函数里 340 个 builder 调用全部转写。
+- **402 = 340 + 41 + 11 + 10**：`clampScalar`/`scalarSameSizeAs` 各展开成
+  `widen`+`narrow` 两条；`legalForTypesWithMemDesc` 里带 `getScalarMemAlign` 的表
+  按对齐变体拆开（14 个调用 → 24 条，见 §3-B）；`for` 循环体写两遍。
+- §2 的「估算 355」是 **builder 语句数**，不是规则数；差的那 62 条全部来自上面
+  三种机械展开，没有一条是"多写"或"漏写"。
+- 落地文件 `tests/corpus/RISCVLegalizerInfo.gisel`（402 条 / 96 个 ruleset）。
+
+验证链（全部可复跑）：
+
+| gate | command | result |
+|---|---|---|
+| lint | `gisel lint tests/corpus/RISCVLegalizerInfo.gisel` | 0 error / 3 warning（§8） |
+| inc | `gisel gen --emit=inc ...` | 96 rule sets / 402 rules |
+| **编译** | `g++ -std=c++17 -fsyntax-only` + 未修改的 `LegalizerInfo.h` | OK |
+| core | `gisel gen --emit=core ...` | 96 rule sets / 402 rules |
+| check | `gisel gen --emit=check ...` | 402 rules |
+| td | `gisel gen --emit=td ...` | 96 defs，无重名；`imm` 规则需 `CoreImm`（§8） |
+
+编译门用的桩：一个 `FakeST` 提供构造里出现的 21 个 `ST.x()`，`XLen = 64`，
+`STI` 绑定到 `ST`；`.inc` 作为一个 `LegalizerInfo` 派生类的成员函数体插入。
+
+### 7.1 导入器必须"会"的那些小事
+
+按踩坑顺序（每条都有对应代码，不是口头约定）：
+
+1. `else if` 链与无括号 `else`：`consume_one` 必须把 `if/for/while` 当一条语句，
+   否则 `else <stmt>` 会吞掉后面的整个构造函数（这条 bug 让 11 条向量 load 规则
+   错挂了 `not XLen==64` 的守卫）。
+2. 具名链续写 `A.method()`：`extend` 吃的是 `.method()`，不是 `A.method()`。
+3. 同一 opcode 多次 `getActionDefinitionsBuilder`（`G_CTLZ` 在 if/else 两侧各一次）
+   → 保留两个 ruleset（C++ 语义就是两张表按序匹配），但名字必须唯一
+   （`R_G_CTLZ` / `R_G_CTLZ_2`），否则 `--emit=td` 出重复 def。
+4. 谓词首参：`legalFor(pred, {...})`、`minScalar(pred, 0, sXLen)` 的门就是这个
+   谓词；`clampScalar` 的**固定 3 参**不能按"首参不是数字"来猜（`LitTyIdx` 会中招）。
+5. `typeIsLegal*Vec` 三个静态 helper：按 `static LegalityPredicate` 模板内联，
+   `Query.Types[i].getX()` → `bits_of/num_elems/size_of/elem_of(slot(i))`。
+6. 整型 subtarget 值不能当 `feature`（bool）：`size_of(...) < ST.getXLen()` 里的
+   `ST.getXLen()` 落成 `select(feature("XLen == 64"), 64, 32)`。
+7. 类型位置的 ternary（`(XLen == 64 || ST.hasStdExtD()) ? s64 : s32`）要提升成
+   命名 `pred` + `select`，因为 `select` 的条件只认名字。
+
+### 7.2 仍然欠的两件事
+
+1. **`CoreImm`**：`.td` 里 `G_SEXT_INREG` 那条用到 `(Imm 0)`，LLVM 的
+   `LegalizerCore.td` 还没有这个记录。RISCV 没有 `.td` 消费者，故仍未做。
+2. **语义 oracle**：`tests/riscv-oracle` 不存在，所以现在只证明了"能表达、能编译"，
+   没有证明"同一个查询给同一个答案"。要照 `tests/x86-oracle` 复制构造函数、桩掉
+   `RISCVSubtarget`，采点后跑 `gisel eval` 对拍。

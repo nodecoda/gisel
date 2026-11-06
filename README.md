@@ -26,10 +26,15 @@ gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 9632-point differential | done |
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
+| v0.4 | `import-cxx` | RISCV: 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
 
 `tools/import-inventory.py` answers "what would it cost to migrate target X?" by
 censusing a hand-written constructor (method histogram, chain shapes, guards);
-`docs/REPORT-riscv.md` is its output for the largest remaining target.
+`tools/import-cxx.py` does the migration itself: it parses a `*LegalizerInfo.cpp`
+constructor and writes `.gisel`, refusing (exit 1) any statement it cannot
+translate.  `docs/REPORT-riscv.md` records both for the largest remaining
+target: 340 builder calls → 402 rules, 0 refusals, and the generated `.inc`
+compiles against the unmodified `LegalizerInfo.h`.
 
 `tests/artifacts/` holds the eight frozen artifacts and their `SHA256`; the
 corpus is derivable, not hand-tuned: `gisel bootstrap` reproduces both `.gisel`
@@ -39,7 +44,7 @@ against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (develop
 only — generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 52 gates, ~6 s
+python3 -m unittest discover -q -s tests      # 57 gates, ~10 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 

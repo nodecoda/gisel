@@ -446,7 +446,7 @@ def translate_core_rule(rule, cxx):
     mut = ""
 
     if tr == "WidenVectorMinSize":
-        size = str(to["args"][0]["value"])
+        size = cxx.value(to["args"][0])
         cond = "(%s.isFixedVector() && %s.getSizeInBits() < %s)" % (v, v, size)
         mut = ("[](const LegalityQuery &Q) { const LLT VecTy = Q.Types[%s]; "
                "const unsigned NumElts = VecTy.getNumElements(); "
@@ -465,12 +465,12 @@ def translate_core_rule(rule, cxx):
         mut = "LegalizeMutations::changeElementSizeTo(%s, %s)" % (idx, ty)
     elif tr in ("ScalarPow2", "ScalarOrEltPow2"):
         kids = to.get("args") or []
-        minimum = str(kids[0]["value"]) if kids else "0"
+        minimum = cxx.value(kids[0]) if kids else "0"
         cond = ("sizeNotPow2(%s)(Q)" if tr == "ScalarPow2"
                 else "scalarOrEltSizeNotPow2(%s)(Q)") % idx
         mut = "LegalizeMutations::widenScalarOrEltToNextPow2(%s, %s)" % (idx, minimum)
     elif tr == "ScalarMultipleOf":
-        size = str(to["args"][0]["value"])
+        size = cxx.value(to["args"][0])
         cond = "(Q.Types[%s].getScalarSizeInBits() %% %s != 0)" % (idx, size)
         mut = "LegalizeMutations::widenScalarOrEltToNextMultipleOf(%s, %s)" % (idx, size)
     elif tr in ("MinScalar", "MaxScalar"):
@@ -485,7 +485,7 @@ def translate_core_rule(rule, cxx):
         cond = "%s(%s, (%s).getScalarSizeInBits())(Q)" % (pred, idx, ty)
         mut = "LegalizeMutations::changeElementSizeTo(%s, %s)" % (idx, ty)
     elif tr in ("MinScalarSameAs", "MaxScalarSameAs"):
-        other = str(to["args"][0]["value"])
+        other = cxx.value(to["args"][0])
         op = ">" if tr == "MinScalarSameAs" else "<"
         cond = ("(Q.Types[%s].getScalarSizeInBits() %s Q.Types[%s]"
                 ".getScalarSizeInBits())" % (other, op, idx))

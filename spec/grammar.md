@@ -5,7 +5,10 @@
 （778 + 1310 行，1075 条规则，有 `.td` 对照）；
 另有两份**无 `.td` 的探针语料** `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
 `WebAssemblyLegalizerInfo.gisel`（228 行 / 108 条），见 `docs/REPORT-wasm.md`。
-任何语法改动都必须让这四份语料 round-trip。
+另有导入器产物 `RISCVLegalizerInfo.gisel`（402 条规则 / 96 个 ruleset，由
+`tools/import-cxx.py` 从 C++ 构造函数生成，见 `docs/REPORT-riscv.md` §7）；
+它没有 `.td` 对照，只作为「语料是否可表达」的证据。
+任何语法改动都必须让这几份语料 round-trip。
 
 ## 1 词法
 
@@ -160,3 +163,13 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
   `CoreImm`（sort `Int`）并让 `CoreIn` 接受 Int 集合。
 - 多 opcode 的 ruleset 用 `min(arity)` 做 J3b（`dsl.py:check_rules`），这是
   保守下界，不是 per-opcode 精确检查。
+- 导入器（`tools/import-cxx.py`）的产物暴露了三条表达边界，均**不改语法**：
+  - 整型 subtarget 值（`ST.getXLen()`）不是 `feature`（bool）：用在比较右侧时
+    换成 `select(feature("XLen == 64"), 64, 32)`。`feature` 只有 Bool 一种 sort。
+  - `select` 的条件只认**名字**（`feature` 或 `pred` 记录，`td.py:_parse_sel`），
+    内联的 `feature("...")` 复合表达式要先落成 `pred`；类型位置的 ternary 同理。
+  - `in(slot(i), X)` 的第二参是类型或类型集，不是 `ty(...)` 表达式
+    （`dsl.py:313` `parse_set_or_type`）——`typeIs(i, T)` 要译成裸 `T`。
+- 同一 opcode 允许多个 `ruleset`（C++ 里多次 `getActionDefinitionsBuilder`），
+  按书写顺序匹配；但 `--emit=td` 的 def 名必须唯一，所以导入器会给重名的加
+  `_2` 后缀。core JSON 里它们仍是两个 ruleset，`eval` 按 `by_opcode` 的顺序遍历。

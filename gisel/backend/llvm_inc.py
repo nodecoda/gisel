@@ -446,7 +446,10 @@ class IncEmitter:
             return self._type_value(inner["value"])
         if to.get("kind") == "select":
             return self.value(to)
-        return str(to["args"][0]["value"])
+        inner = to.get("args", [None])[0]
+        if isinstance(inner, dict) and inner.get("kind") == "int":
+            return str(inner["value"])
+        return self.value(inner if inner is not None else to)
 
     # ---- whole file ------------------------------------------------------
 
