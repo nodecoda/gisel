@@ -5,11 +5,20 @@ a CI-built wheel/sdist, and a Trusted Publishing upload — no tokens.
 
 ## 0. Preconditions (once)
 
-- A git remote exists (`git remote -v`).  The repository currently has none,
-  so this is the first blocking step.
-- GitHub: Settings → Environments → `pypi` (no secrets; OIDC only).
-- PyPI: the project is registered as a Trusted Publisher for
-  `owner/repo` + workflow `publish.yml` + environment `pypi`.
+Done (2026-11-06):
+
+- remote `origin` = https://github.com/nodecoda/gisel (public).
+- GitHub environment `pypi` exists (no secrets; OIDC only).
+- `ci.yml` is green on 3.10 / 3.11 / 3.12.
+
+Still needed, in the PyPI account (name `gisel` is unregistered as of
+2026-11-06 — `https://pypi.org/pypi/gisel/json` returns 404):
+
+- PyPI → Account → Publishing → "Add a pending publisher":
+  PyPI project name `gisel`, owner `nodecoda`, repository `gisel`,
+  workflow `publish.yml`, environment `pypi`.
+
+With that in place, pushing a `v*` tag creates the project and uploads it.
 
 ## 1. Bump the version in both places
 
