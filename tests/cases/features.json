@@ -1,11 +1,101 @@
 {
-  "baseline": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": false, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": false},
-  "small-cm": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": false, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": true},
-  "fullfp16": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": true, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": false},
-  "sve": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": true, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": true, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": false},
-  "bf16": {"Subtarget.hasBF16()": true, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": false, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": false},
-  "cssc": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": true, "Subtarget.hasFullFP16()": false, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": false},
-  "rcpc3": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": false, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": true, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": false},
-  "lse": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": false, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false, "TM.getCodeModel() == CodeModel::Small": false},
-  "outline-atomics": {"Subtarget.hasBF16()": false, "Subtarget.hasCSSC()": false, "Subtarget.hasFullFP16()": false, "Subtarget.hasMOPS()": false, "Subtarget.hasRCPC3()": false, "Subtarget.hasSVE()": false, "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": true, "TM.getCodeModel() == CodeModel::Small": false}
+  "baseline": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": false,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": false
+  },
+  "bf16": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": true,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": false,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": false
+  },
+  "cssc": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": true,
+    "Subtarget.hasFullFP16()": false,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": false
+  },
+  "fullfp16": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": true,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": false
+  },
+  "lse": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": false,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": false
+  },
+  "outline-atomics": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": false,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": true,
+    "TM.getCodeModel() == CodeModel::Small": false
+  },
+  "rcpc3": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": false,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": true,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": false
+  },
+  "small-cm": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": false,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": false,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": true
+  },
+  "sve": {
+    "LLT::getUseExtended()": true,
+    "Subtarget.hasBF16()": false,
+    "Subtarget.hasCSSC()": false,
+    "Subtarget.hasFullFP16()": true,
+    "Subtarget.hasMOPS()": false,
+    "Subtarget.hasRCPC3()": false,
+    "Subtarget.hasSVE()": true,
+    "Subtarget.outlineAtomics() && !Subtarget.hasLSE()": false,
+    "TM.getCodeModel() == CodeModel::Small": false
+  }
 }

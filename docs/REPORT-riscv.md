@@ -165,6 +165,20 @@ TOTAL                                 340    402
 
 1. **`CoreImm`**：`.td` 里 `G_SEXT_INREG` 那条用到 `(Imm 0)`，LLVM 的
    `LegalizerCore.td` 还没有这个记录。RISCV 没有 `.td` 消费者，故仍未做。
-2. **语义 oracle**：`tests/riscv-oracle` 不存在，所以现在只证明了"能表达、能编译"，
-   没有证明"同一个查询给同一个答案"。要照 `tests/x86-oracle` 复制构造函数、桩掉
-   `RISCVSubtarget`，采点后跑 `gisel eval` 对拍。
+2. **语义 oracle**：已补齐，见 §8。
+
+## 8 语义 oracle（2026-11-07）
+
+`llvm-dev/tests/riscv-oracle/` 把**真实的** `RISCVLegalizerInfo` 构造函数连同 8 个
+真实 `RISCVSubtarget` 链接起来（不是桩），从 `RISCV.core.json` 的域采 2439 个点，
+导出 19512 行答案表。`gisel eval` 用我们的 core JSON 复算：**19512 / 0 分歧 / 0 error**
+（`tests/test_artifacts.py::EvaluatorCorpus::test_riscv_cases_agree`）。
+
+对拍抓到的两个真偏差（都不在 RISCV 的 .td 里，而在求值器对 LLVM 运行时的建模）：
+
+| 偏差 | 触发 | 修正 |
+|---|---|---|
+| extended-kind 开关被当成常量 | `f16` 在 RISCV 的 `changeElementSize(64)` 应为 `s64`，我们给 `f64` | feature 表加 `LLT::getUseExtended()` 行；`collapse_extended` 在关闭时把 `f16/i32/bf16` 折成 `sN` |
+| memdesc 只比已知最小位宽 | `<vscale x 4 x s8>` 对 `mem s32 align 32` 被判 Legal（应 Custom），18 条 | 按 `TypePairAndMemDesc::isCompatible` 比 `TypeSize`（含 scalable 标志） |
+
+654 → 18 → 0。AArch64 9632、X86 5632 在修正前后都是 0 分歧。

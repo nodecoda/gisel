@@ -329,41 +329,36 @@ class EvaluatorSchemaShapes(unittest.TestCase):
 
 
 class EvaluatorCorpus(unittest.TestCase):
-    """The 9632-point AArch64 differential, run against our own core JSON."""
+    """Differential runs: our core JSON vs the frozen target answers."""
+
+    def _check(self, corpus, features, dump, total):
+        sys.path.insert(0, str(ROOT))
+        from gisel import eval as E
+
+        cases = TESTS / "cases"
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "core.json"
+            r = run("gen", str(TESTS / "corpus" / corpus),
+                    "--emit=core", "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            ev = E.Evaluator(json.loads(out.read_text()),
+                             E.load_features(str(cases / features)))
+        got, disagree, errors, first, _ = E.run_cases(ev, str(cases / dump))
+        self.assertEqual(got, total)
+        self.assertEqual((disagree, errors), (0, 0), first)
 
     def test_aarch64_cases_agree(self):
-        sys.path.insert(0, str(ROOT))
-        from gisel import eval as E
-
-        cases = TESTS / "cases"
-        with tempfile.TemporaryDirectory() as d:
-            out = Path(d) / "aarch64.core.json"
-            r = run("gen", str(TESTS / "corpus" / "AArch64LegalizerInfo.gisel"),
-                    "--emit=core", "--out", str(out))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            ev = E.Evaluator(json.loads(out.read_text()),
-                             E.load_features(str(cases / "features.json")))
-        total, disagree, errors, first, _ = E.run_cases(
-            ev, str(cases / "a64_ref_dump.jsonl"))
-        self.assertEqual(total, 9632)
-        self.assertEqual((disagree, errors), (0, 0), first)
+        self._check("AArch64LegalizerInfo.gisel", "features.json",
+                    "a64_ref_dump.jsonl", 9632)
 
     def test_x86_cases_agree(self):
-        sys.path.insert(0, str(ROOT))
-        from gisel import eval as E
+        self._check("X86LegalizerInfo.gisel", "x86-features.json",
+                    "x86_ref_dump.jsonl", 5632)
 
-        cases = TESTS / "cases"
-        with tempfile.TemporaryDirectory() as d:
-            out = Path(d) / "x86.core.json"
-            r = run("gen", str(TESTS / "corpus" / "X86LegalizerInfo.gisel"),
-                    "--emit=core", "--out", str(out))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            ev = E.Evaluator(json.loads(out.read_text()),
-                             E.load_features(str(cases / "x86-features.json")))
-        total, disagree, errors, first, _ = E.run_cases(
-            ev, str(cases / "x86_ref_dump.jsonl"))
-        self.assertEqual(total, 5632)
-        self.assertEqual((disagree, errors), (0, 0), first)
+    def test_riscv_cases_agree(self):
+        """19512 = 2439 points x 8 configurations of the C++ constructor."""
+        self._check("RISCVLegalizerInfo.gisel", "riscv-features.json",
+                    "riscv_ref_dump.jsonl", 19512)
 
 
 class ProbeCorpus(unittest.TestCase):

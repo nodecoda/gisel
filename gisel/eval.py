@@ -204,8 +204,26 @@ def scalable_vector(lanes, elem):
     return ("vector", lanes, True, elem)
 
 
-def integer_type(bits):
-    return ("integer", bits)
+def integer_type(bits, extended=True):
+    return ("integer", bits) if extended else ("scalar", bits)
+
+
+def collapse_extended(t):
+    """The runtime view of an LLT spelling.
+
+    LLT stores INTEGER/FLOAT/bfloat16 as distinct kinds only when
+    LLT::getUseExtended() is on; that flag is set by the target machine
+    (AArch64, AMDGPU, WebAssembly), not by the IR.  With the flag off,
+    LLT::float16() is just LLT::scalar(16) and LLT::integer(32) is
+    LLT::scalar(32), so legality predicates and mutations see no difference.
+    """
+    if t[0] in ("integer", "float"):
+        return ("scalar", t[1])
+    if t[0] == "bf16":
+        return ("scalar", 16)
+    if t[0] == "vector":
+        return ("vector", t[1], t[2], collapse_extended(t[3]))
+    return t
 
 
 def pow2ceil(x):
@@ -260,21 +278,28 @@ def _parse_elem_spelling(s, oracle):
     raise EvalError("bad_llt", "cannot parse LLT element %r" % (s,))
 
 
-def parse_core_llt(s):
+def parse_core_llt(s, extended=True):
     """Canonical Core IR spelling: s32, i32, f32, bf16, p0:64, v4s32, nxv4s32."""
+    return _parse_core_llt(s, extended)
+
+
+def _parse_core_llt(s, extended):
     if s == "bf16":
-        return ("bf16",)
+        t = ("bf16",)
+        return t if extended else ("scalar", 16)
     m = _CORE_VEC_RE.match(s)
     if m:
         lanes = int(m.group(2))
         scalable = m.group(1) == "nxv"
         elem = _parse_elem_spelling(m.group(3), oracle=False)
-        return ("vector", lanes, scalable, elem)
+        t = ("vector", lanes, scalable, elem)
+        return t if extended else collapse_extended(t)
     m = _CORE_PTR_RE.match(s)
     if m:
         w = m.group(2)
         return ("pointer", int(m.group(1)), int(w) if w != "*" else "*")
-    return _parse_elem_spelling(s, oracle=False)
+    t = _parse_elem_spelling(s, oracle=False)
+    return t if extended else collapse_extended(t)
 
 
 def parse_oracle_llt(s):
@@ -460,6 +485,18 @@ class Evaluator:
             for op in rs["opcodes"]:
                 self.by_opcode.setdefault(op, []).append(rs_idx)
 
+    def extended(self, config):
+        """LLT::getUseExtended() for this configuration.
+
+        The per-config feature table names it explicitly; tables written
+        before the key existed are extended, which is what the only
+        extended-LLT targets (AArch64, AMDGPU, WebAssembly) use.
+        """
+        row = self.features.table.get(config)
+        if row is None:
+            raise EvalError("unknown_config", "no feature row for %r" % (config,))
+        return row.get("LLT::getUseExtended()", True)
+
     # -- value nodes -------------------------------------------------------
     def value(self, node, types, mems, config, imms=()):
         k = node["kind"]
@@ -517,7 +554,8 @@ class Evaluator:
         if k == "pow2Ceil":
             return pow2ceil(self.int_value(a[0], types, mems, config, imms))
         if k == "intOfSize":
-            return integer_type(self.int_value(a[0], types, mems, config, imms))
+            return integer_type(self.int_value(a[0], types, mems, config, imms),
+                                self.extended(config))
         if k == "vecOf":
             return fixed_vector(self.int_value(a[0], types, mems, config, imms),
                                 self.llt_value(a[1], types, mems, config, imms))
@@ -546,7 +584,7 @@ class Evaluator:
         the branch is resolved here, not in the document.
         """
         if isinstance(v, str):
-            return parse_core_llt(v)
+            return parse_core_llt(v, self.extended(config))
         sel = v["select"]
         if self.bool_value(sel["cond"], types, mems, config, imms):
             return self.type_value(sel["then"], types, mems, config, imms)
@@ -633,8 +671,11 @@ class Evaluator:
                 t1 = self.type_value(e[1], types, mems, config, imms)
                 mt = self.type_value(e[2], types, mems, config, imms)
                 align = e[3]
+                # TypePairAndMemDesc::isCompatible compares TypeSize, not
+                # the known-minimum bit count: `<vscale x 4 x s8>` is
+                # scalable-32 and does not equal the fixed-32 `s32`.
                 size_ok = (llt_eq(m.memory_ty, mt) if has_wildcard(mt)
-                           else size_in_bits(m.memory_ty)[0] == size_in_bits(mt)[0])
+                           else size_in_bits(m.memory_ty) == size_in_bits(mt))
                 if (llt_eq(types[i0], t0) and llt_eq(types[i1], t1)
                         and m.align >= align and size_ok):
                     return True
@@ -818,7 +859,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
                 return False, ("invalid",)
             return True, change_element_size(t, pow2ceil(ssz))
         if to_form == "pow2Min":
-            n = to_node["args"][0]["value"]
+            n = ev.int_value(to_node["args"][0], types, mems, config, imms)
             if on_form == "slot":
                 guard = is_scalar(t) and not is_pow2_32(size)
             else:
@@ -827,7 +868,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
                 return False, ("invalid",)
             return True, change_element_size(t, max(pow2ceil(ssz), n))
         if to_form == "multipleOf":
-            n = to_node["args"][0]["value"]
+            n = ev.int_value(to_node["args"][0], types, mems, config, imms)
             if on_form == "slot":
                 guard = is_scalar(t) and (size % n != 0)
             else:
@@ -960,10 +1001,16 @@ def run_cases(evaluator, cases_path):
                 continue
             q = json.loads(line)
             total += 1
-            types = [parse_case_llt(s) for s in q["types"]]
+            # The frozen dump spells types the way the target's LLT::print
+            # does; re-parse them through the same extended-kind view the
+            # document literals get.
+            ext = evaluator.extended(q["config"])
+            collapse = (lambda t: t) if ext else collapse_extended
+            types = [collapse(parse_case_llt(s)) for s in q["types"]]
             mems = []
             if q["mem"] is not None:
-                mems.append(MemDesc(parse_case_llt(q["mem"][0]), q["mem"][1]))
+                mems.append(MemDesc(collapse(parse_case_llt(q["mem"][0])),
+                                    q["mem"][1]))
             imms = q.get("imms") or []
             try:
                 action, type_idx, new_type = evaluate(
@@ -974,7 +1021,7 @@ def run_cases(evaluator, cases_path):
                     first_failure = "ERROR %s: %s" % (q, e)
                 continue
             new_type_str = fmt_oracle_llt(new_type) if new_type is not None else "LLT_invalid"
-            want_new = parse_case_llt(q["new_type"])
+            want_new = collapse(parse_case_llt(q["new_type"]))
             action_counts[action] = action_counts.get(action, 0) + 1
             if (action != q["action"] or type_idx != q["type_idx"]
                     or new_type != want_new):

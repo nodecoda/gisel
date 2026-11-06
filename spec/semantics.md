@@ -81,12 +81,13 @@ except 落成**更窄的谓词**（命名 `pred` 或内联 `and not ...`）。�
 `same_as`、`clamp`），不会回到更强的类型；11-01 §7 给出论证，`eval.py` 不做
 额外检查。**已知边界**：求值器不检测循环规则，也不验证"目标更弱"。
 
-## 8 语义差分（两个 target）
+## 8 语义差分（三个 target）
 
 | target | 答案表 | 规模 | 结果 |
 |---|---|---|---|
 | AArch64 | `tests/cases/a64_ref_dump.jsonl` | 9632 | 0 分歧 / 0 error |
 | X86 | `tests/cases/x86_ref_dump.jsonl` | 5632（1408 点 × 4 配置） | 0 分歧 / 0 error |
+| RISCV | `tests/cases/riscv_ref_dump.jsonl` | 19512（2439 点 × 8 配置） | 0 分歧 / 0 error |
 
 答案表从树内参考实现导出（`llvm-dev/tests/{aarch64,x86}-oracle/`），
 `gisel eval` 用我们的 core JSON 复算，由 `tests/test_artifacts.py::EvaluatorCorpus`
@@ -97,3 +98,22 @@ X86 表补上了 AArch64 语料从未触发的 schema 形状，并因此修掉�
 `{"kind":"nary","op":"all_of"}`、`{"kind":"not","arg":...}` 的 DAG 拼法、
 集合元素里的 `select` 类型（`p0:*, if Is64Bit then s64 else s32`）、
 以及 `p0:*` 通配指针（按地址空间匹配、不比较宽度）。
+
+RISCV 表来自真实 `RISCVLegalizerInfo` 构造函数链接出的 2439 个点，8 个配置
+（`rv64gc`/`rv32gc`/`rv64gcv`/`rv32gcv`/`rv64zbb`/`rv64zfh`/`ristretto`/`rv32zilsd`），
+由 `llvm-dev/tests/riscv-oracle/` 导出。它暴露了两条求值器与真实 LLT 的偏差：
+
+- **extended-kind 开关**。`LLT::float16()`、`LLT::integer(32)`、bfloat16 只有
+  在 `LLT::getUseExtended()` 打开时才是独立 kind；该开关由 target machine 设置，
+  只有 AArch64/AMDGPU/WebAssembly 打开（`AArch64TargetMachine.cpp:241`），
+  RISCV/X86 从未打开。所以 RISCV 里 `f16` 的运行值就是 `scalar(16)`，
+  `changeElementSize(64)` 给出 `s64` 而不是 `f64`。求值器按 feature 表的
+  `LLT::getUseExtended()` 行折叠（`collapse_extended`），AArch64 为 true，
+  X86/RISCV 为 false。
+- **memdesc 的 TypeSize 判等**。`TypePairAndMemDesc::isCompatible`
+  （`LegalizerInfo.h:176-184`）比较 `getSizeInBits()` 的 `TypeSize`，
+  scalable 与 fixed 不同值：`<vscale x 4 x s8>`（scalable 32）不匹配 `s32`
+  （fixed 32）。只比已知最小值会把 18 条向量 G_LOAD/G_STORE 误判成 Legal
+  （应为 Custom）。
+
+两类都先出现在 RISCV 语料；AArch64/X86 的 9632/5632 在修正前后均保持 0 分歧。
