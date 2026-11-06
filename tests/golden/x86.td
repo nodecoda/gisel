@@ -80,11 +80,11 @@ def X86_IMPLICIT_DEF : LegalizeRuleSet<["G_IMPLICIT_DEF", "G_PHI", "G_FREEZE", "
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_p0, X86_s1, X86_s8, X86_s16, X86_s32, X86_s64])>,
-    CoreLegal<(CoreAll UseX87, (CoreIn (Slot 0), X86_s80))>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s128))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreIn (Slot 0), X86_Vec128))>,
-    CoreLegal<(CoreAll HasAVX, (CoreIn (Slot 0), X86_Vec256))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreIn (Slot 0), X86_Vec512))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreIn (Slot 0), X86_s80))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s128))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreIn (Slot 0), X86_Vec128))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreIn (Slot 0), X86_Vec256))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreIn (Slot 0), X86_Vec512))>,
     CoreWiden<(ElemOf (Slot 0)), (Pow2Min 8)>,
     CoreWiden<(ElemOf (Slot 0)), (Ty X86_s8)>,
     CoreNarrow<(ElemOf (Slot 0)), (Ty X86_sMaxScalar)>,
@@ -97,7 +97,7 @@ def X86_IMPLICIT_DEF : LegalizeRuleSet<["G_IMPLICIT_DEF", "G_PHI", "G_FREEZE", "
     CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (NumElems (Ty X86_s32MaxVector)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreGt (NumElems (Slot 0)), (NumElems (Ty X86_s32MaxVector))))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf (NumElems (Ty X86_v2s64)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreLt (NumElems (Slot 0)), (NumElems (Ty X86_v2s64))))>,
     CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (NumElems (Ty X86_s64MaxVector)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreGt (NumElems (Slot 0)), (NumElems (Ty X86_s64MaxVector))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (CoreAll Is64Bit, HasAVX512), 8, (CoreSelect (CoreAll Is64Bit, HasAVX), 4, (CoreSelect Is64Bit, 2, (CoreSelect HasAVX512, 16, (CoreSelect HasAVX, 8, 4))))), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_p0)), (CoreGt (NumElems (Slot 0)), (CoreSelect (CoreAll Is64Bit, HasAVX512), 8, (CoreSelect (CoreAll Is64Bit, HasAVX), 4, (CoreSelect Is64Bit, 2, (CoreSelect HasAVX512, 16, (CoreSelect HasAVX, 8, 4)))))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (CoreAll (Feature "Subtarget.is64Bit()"), (Feature "Subtarget.hasAVX512()")), 8, (CoreSelect (CoreAll (Feature "Subtarget.is64Bit()"), (Feature "Subtarget.hasAVX()")), 4, (CoreSelect (Feature "Subtarget.is64Bit()"), 2, (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX()"), 8, 4))))), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_p0)), (CoreGt (NumElems (Slot 0)), (CoreSelect (CoreAll (Feature "Subtarget.is64Bit()"), (Feature "Subtarget.hasAVX512()")), 8, (CoreSelect (CoreAll (Feature "Subtarget.is64Bit()"), (Feature "Subtarget.hasAVX()")), 4, (CoreSelect (Feature "Subtarget.is64Bit()"), 2, (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX()"), 8, 4)))))))>,
     CoreScalarizeIf<(Slot 0), (CoreGt (BitsOf (Slot 0)), 64)>,
   ];
 }
@@ -105,7 +105,7 @@ def X86_IMPLICIT_DEF : LegalizeRuleSet<["G_IMPLICIT_DEF", "G_PHI", "G_FREEZE", "
 def X86_CONSTANT : LegalizeRuleSet<["G_CONSTANT"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_p0, X86_s8, X86_s16, X86_s32])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
     CoreWiden<(Slot 0), (Pow2Min 8)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -127,18 +127,18 @@ def X86_FCOS : LegalizeRuleSet<["G_FCOS", "G_FCOSH", "G_FACOS", "G_FSIN", "G_FSI
 
 def X86_FNEG : LegalizeRuleSet<["G_FNEG"]> {
   let Rules = [
-    CoreLegal<(CoreAll UseX87, (CoreNot HasSSE1), (CoreIn (Slot 0), X86_s32))>,
-    CoreLegal<(CoreAll UseX87, (CoreNot HasSSE2), (CoreIn (Slot 0), X86_s64))>,
-    CoreLegal<(CoreAll UseX87, (CoreIn (Slot 0), X86_s80))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreNot (Feature "Subtarget.hasSSE1()")), (CoreIn (Slot 0), X86_s32))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreNot (Feature "Subtarget.hasSSE2()")), (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreIn (Slot 0), X86_s80))>,
     CoreAlwaysLower,
   ];
 }
 
 def X86_FSQRT : LegalizeRuleSet<["G_FSQRT"]> {
   let Rules = [
-    CoreLegal<(CoreAll (CoreAny HasSSE1, UseX87), (CoreIn (Slot 0), X86_s32))>,
-    CoreLegal<(CoreAll (CoreAny HasSSE2, UseX87), (CoreIn (Slot 0), X86_s64))>,
-    CoreLegal<(CoreAll UseX87, (CoreIn (Slot 0), X86_s80))>,
+    CoreLegal<(CoreAll (CoreAny (Feature "Subtarget.hasSSE1()"), (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()")), (CoreIn (Slot 0), X86_s32))>,
+    CoreLegal<(CoreAll (CoreAny (Feature "Subtarget.hasSSE2()"), (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()")), (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreIn (Slot 0), X86_s80))>,
   ];
 }
 
@@ -181,19 +181,19 @@ def X86_ADD : LegalizeRuleSet<["G_ADD", "G_SUB"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s8, X86_s16, X86_s32])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreIn (Slot 0), X86_Vec128))>,
-    CoreLegal<(CoreAll HasAVX2, (CoreIn (Slot 0), X86_Vec256))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreIn (Slot 0), [X86_v16s32, X86_v8s64]))>,
-    CoreLegal<(CoreAll HasBWI, (CoreIn (Slot 0), [X86_v64s8, X86_v32s16]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreIn (Slot 0), X86_Vec128))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX2()"), (CoreIn (Slot 0), X86_Vec256))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreIn (Slot 0), [X86_v16s32, X86_v8s64]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), (CoreIn (Slot 0), [X86_v64s8, X86_v32s16]))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 16, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s8)), (CoreLt (NumElems (Slot 0)), 16))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 8, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreLt (NumElems (Slot 0)), 8))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 4, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreLt (NumElems (Slot 0)), 4))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 2, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreLt (NumElems (Slot 0)), 2))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasBWI, 64, (CoreSelect HasAVX2, 32, 16)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s8)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasBWI, 64, (CoreSelect HasAVX2, 32, 16))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasBWI, 32, (CoreSelect HasAVX2, 16, 8)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasBWI, 32, (CoreSelect HasAVX2, 16, 8))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasAVX512, 16, (CoreSelect HasAVX2, 8, 4)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasAVX512, 16, (CoreSelect HasAVX2, 8, 4))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasAVX512, 8, (CoreSelect HasAVX2, 4, 2)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasAVX512, 8, (CoreSelect HasAVX2, 4, 2))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), 64, (CoreSelect (Feature "Subtarget.hasAVX2()"), 32, 16)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s8)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), 64, (CoreSelect (Feature "Subtarget.hasAVX2()"), 32, 16))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), 32, (CoreSelect (Feature "Subtarget.hasAVX2()"), 16, 8)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), 32, (CoreSelect (Feature "Subtarget.hasAVX2()"), 16, 8))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX2()"), 8, 4)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX2()"), 8, 4))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512()"), 8, (CoreSelect (Feature "Subtarget.hasAVX2()"), 4, 2)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512()"), 8, (CoreSelect (Feature "Subtarget.hasAVX2()"), 4, 2))))>,
     CoreWiden<(Slot 0), (Pow2Min 32)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -204,7 +204,7 @@ def X86_ADD : LegalizeRuleSet<["G_ADD", "G_SUB"]> {
 def X86_UADDE : LegalizeRuleSet<["G_UADDE", "G_UADDO", "G_USUBE", "G_USUBO"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[X86_s8, X86_s8], [X86_s16, X86_s8], [X86_s32, X86_s8]])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s8]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s8]]))>,
     CoreWiden<(Slot 0), (Pow2Min 32)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -220,19 +220,19 @@ def X86_MUL : LegalizeRuleSet<["G_MUL"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s8, X86_s16, X86_s32])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreIn (Slot 0), X86_v8s16))>,
-    CoreLegal<(CoreAll HasSSE41, (CoreIn (Slot 0), X86_v4s32))>,
-    CoreLegal<(CoreAll HasAVX2, (CoreIn (Slot 0), [X86_v16s16, X86_v8s32]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreIn (Slot 0), X86_v16s32))>,
-    CoreLegal<(CoreAll HasDQI, (CoreIn (Slot 0), X86_v8s64))>,
-    CoreLegal<(CoreAll HasDQI, HasVLX, (CoreIn (Slot 0), [X86_v2s64, X86_v4s64]))>,
-    CoreLegal<(CoreAll HasBWI, (CoreIn (Slot 0), X86_v32s16))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreIn (Slot 0), X86_v8s16))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE41()"), (CoreIn (Slot 0), X86_v4s32))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX2()"), (CoreIn (Slot 0), [X86_v16s16, X86_v8s32]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreIn (Slot 0), X86_v16s32))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512() && Subtarget.hasDQI()"), (CoreIn (Slot 0), X86_v8s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512() && Subtarget.hasDQI()"), (Feature "Subtarget.hasVLX()"), (CoreIn (Slot 0), [X86_v2s64, X86_v4s64]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), (CoreIn (Slot 0), X86_v32s16))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 8, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreLt (NumElems (Slot 0)), 8))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 4, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreLt (NumElems (Slot 0)), 4))>,
-    CoreMoreIf<(Slot 0), (Replace (VecOf (CoreSelect HasVLX, 2, 8), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreLt (NumElems (Slot 0)), (CoreSelect HasVLX, 2, 8)))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasBWI, 32, (CoreSelect HasAVX2, 16, 8)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasBWI, 32, (CoreSelect HasAVX2, 16, 8))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasAVX512, 16, (CoreSelect HasAVX2, 8, 4)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasAVX512, 16, (CoreSelect HasAVX2, 8, 4))))>,
+    CoreMoreIf<(Slot 0), (Replace (VecOf (CoreSelect (Feature "Subtarget.hasVLX()"), 2, 8), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreLt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasVLX()"), 2, 8)))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), 32, (CoreSelect (Feature "Subtarget.hasAVX2()"), 16, 8)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512() && Subtarget.hasBWI()"), 32, (CoreSelect (Feature "Subtarget.hasAVX2()"), 16, 8))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX2()"), 8, 4)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX2()"), 8, 4))))>,
     CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf 8, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreGt (NumElems (Slot 0)), 8))>,
     CoreWiden<(Slot 0), (Pow2Min 32)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
@@ -244,7 +244,7 @@ def X86_MUL : LegalizeRuleSet<["G_MUL"]> {
 def X86_SMULH : LegalizeRuleSet<["G_SMULH", "G_UMULH"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s8, X86_s16, X86_s32])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
     CoreWiden<(Slot 0), (Pow2Min 32)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -258,7 +258,7 @@ def X86_SDIV : LegalizeRuleSet<["G_SDIV", "G_SREM", "G_UDIV", "G_UREM"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s8, X86_s16, X86_s32])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
     CoreLibcall<(CoreIn (Slot 0), X86_s64)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -271,7 +271,7 @@ def X86_SHL : LegalizeRuleSet<["G_SHL", "G_LSHR", "G_ASHR"]> {
   ];
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[X86_s8, X86_s8], [X86_s16, X86_s8], [X86_s32, X86_s8]])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s8]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s8]]))>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
     CoreWiden<(Slot 1), (Ty X86_s8)>,
@@ -285,10 +285,10 @@ def X86_AND : LegalizeRuleSet<["G_AND", "G_OR", "G_XOR"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s8, X86_s16, X86_s32])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreIn (Slot 0), X86_Vec128))>,
-    CoreLegal<(CoreAll HasAVX, (CoreIn (Slot 0), X86_Vec256))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreIn (Slot 0), X86_Vec512))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreIn (Slot 0), X86_Vec128))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreIn (Slot 0), X86_Vec256))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreIn (Slot 0), X86_Vec512))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf (NumElems (Ty X86_v16s8)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s8)), (CoreLt (NumElems (Slot 0)), (NumElems (Ty X86_v16s8))))>,
     CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (NumElems (Ty X86_s8MaxVector)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s8)), (CoreGt (NumElems (Slot 0)), (NumElems (Ty X86_s8MaxVector))))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf (NumElems (Ty X86_v8s16)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreLt (NumElems (Slot 0)), (NumElems (Ty X86_v8s16))))>,
@@ -306,8 +306,8 @@ def X86_AND : LegalizeRuleSet<["G_AND", "G_OR", "G_XOR"]> {
 
 def X86_ICMP : LegalizeRuleSet<["G_ICMP"]> {
   let Rules = [
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s8), (CoreIn (Slot 1), X86_IntTypes64))>,
-    CoreLegal<(CoreAll (CoreNot Is64Bit), (CoreIn (Slot 0), X86_s8), (CoreIn (Slot 1), X86_IntTypes32))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s8), (CoreIn (Slot 1), X86_IntTypes64))>,
+    CoreLegal<(CoreAll (CoreNot (Feature "Subtarget.is64Bit()")), (CoreIn (Slot 0), X86_s8), (CoreIn (Slot 1), X86_IntTypes32))>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_s8)>,
     CoreWiden<(Slot 1), (Pow2Min 8)>,
@@ -322,7 +322,7 @@ def X86_BSWAP : LegalizeRuleSet<["G_BSWAP"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), X86_s32)>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
     CoreWiden<(Slot 0), (Pow2Min 32)>,
     CoreWiden<(Slot 0), (Ty X86_s32)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -334,10 +334,10 @@ def X86_CTPOP : LegalizeRuleSet<["G_CTPOP"]> {
     "popcount",
   ];
   let Rules = [
-    CoreLegal<(CoreAll HasPOPCNT, (CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s16], [X86_s32, X86_s32]]))>,
-    CoreLegal<(CoreAll HasPOPCNT, Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
-    CoreLegal<(CoreAll HasVPOPCNTDQ, (CoreInPairs (Slot 0), (Slot 1), [[X86_v16s32, X86_v16s32], [X86_v8s64, X86_v8s64]]))>,
-    CoreLegal<(CoreAll HasVPOPCNTDQ, HasVLX, (CoreInPairs (Slot 0), (Slot 1), [[X86_v4s32, X86_v4s32], [X86_v8s32, X86_v8s32], [X86_v2s64, X86_v2s64], [X86_v4s64, X86_v4s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasPOPCNT()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s16], [X86_s32, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasPOPCNT()"), (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasVPOPCNTDQ()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v16s32, X86_v16s32], [X86_v8s64, X86_v8s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasVPOPCNTDQ()"), (Feature "Subtarget.hasVLX()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v4s32, X86_v4s32], [X86_v8s32, X86_v8s32], [X86_v2s64, X86_v2s64], [X86_v4s64, X86_v4s64]]))>,
     CoreWiden<(Slot 1), (Pow2Min 16)>,
     CoreWiden<(Slot 1), (Ty X86_s16)>,
     CoreNarrow<(Slot 1), (Ty X86_sMaxScalar)>,
@@ -351,8 +351,8 @@ def X86_CTLZ : LegalizeRuleSet<["G_CTLZ"]> {
     "count leading zeros (LZCNT)",
   ];
   let Rules = [
-    CoreLegal<(CoreAll HasLZCNT, (CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s16], [X86_s32, X86_s32]]))>,
-    CoreLegal<(CoreAll HasLZCNT, Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasLZCNT()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s16], [X86_s32, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasLZCNT()"), (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
     CoreWiden<(Slot 1), (Pow2Min 16)>,
     CoreWiden<(Slot 1), (Ty X86_s16)>,
     CoreNarrow<(Slot 1), (Ty X86_sMaxScalar)>,
@@ -367,7 +367,7 @@ def X86_CTTZ_ZERO_POISON : LegalizeRuleSet<["G_CTTZ_ZERO_POISON"]> {
   ];
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s16], [X86_s32, X86_s32]])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
     CoreWiden<(Slot 1), (Pow2Min 16)>,
     CoreWiden<(Slot 1), (Ty X86_s16)>,
     CoreNarrow<(Slot 1), (Ty X86_sMaxScalar)>,
@@ -378,8 +378,8 @@ def X86_CTTZ_ZERO_POISON : LegalizeRuleSet<["G_CTTZ_ZERO_POISON"]> {
 
 def X86_CTTZ : LegalizeRuleSet<["G_CTTZ"]> {
   let Rules = [
-    CoreLegal<(CoreAll HasBMI, (CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s16], [X86_s32, X86_s32]]))>,
-    CoreLegal<(CoreAll HasBMI, Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasBMI()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s16], [X86_s32, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasBMI()"), (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
     CoreWiden<(Slot 1), (Pow2Min 16)>,
     CoreWiden<(Slot 1), (Ty X86_s16)>,
     CoreNarrow<(Slot 1), (Ty X86_sMaxScalar)>,
@@ -402,8 +402,8 @@ def X86_BRCOND : LegalizeRuleSet<["G_BRCOND"]> {
 
 def X86_PTRTOINT : LegalizeRuleSet<["G_PTRTOINT"]> {
   let Rules = [
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_PtrTypes64), (CoreIn (Slot 1), X86_p0))>,
-    CoreLegal<(CoreAll (CoreNot Is64Bit), (CoreIn (Slot 0), X86_PtrTypes32), (CoreIn (Slot 1), X86_p0))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_PtrTypes64), (CoreIn (Slot 1), X86_p0))>,
+    CoreLegal<(CoreAll (CoreNot (Feature "Subtarget.is64Bit()")), (CoreIn (Slot 0), X86_PtrTypes32), (CoreIn (Slot 1), X86_p0))>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
     CoreWiden<(Slot 0), (Pow2Min 8)>,
   ];
@@ -424,7 +424,7 @@ def X86_CONSTANT_POOL : LegalizeRuleSet<["G_CONSTANT_POOL"]> {
 def X86_PTR_ADD : LegalizeRuleSet<["G_PTR_ADD"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[X86_p0, X86_s32]])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_p0, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_p0, X86_s64]]))>,
     CoreWiden<(Slot 1), (Pow2Min 32)>,
     CoreWiden<(Slot 1), (Ty X86_s32)>,
     CoreNarrow<(Slot 1), (Ty X86_sMaxScalar)>,
@@ -449,13 +449,13 @@ def X86_LOAD : LegalizeRuleSet<["G_LOAD"]> {
   ];
   let Rules = [
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s8, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s16, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s32, 1>, LegalizeMemDesc<X86_s80, X86_p0, X86_s80, 1>, LegalizeMemDesc<X86_p0, X86_p0, X86_p0, 1>, LegalizeMemDesc<X86_v4s8, X86_p0, X86_v4s8, 1>])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_v2s32, X86_p0, X86_v2s32, 1>]))>,
-    CoreLegal<(CoreAll HasSSE1, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v4s32, X86_p0, X86_v4s32, 1>]))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v16s8, X86_p0, X86_v16s8, 1>, LegalizeMemDesc<X86_v8s16, X86_p0, X86_v8s16, 1>, LegalizeMemDesc<X86_v2s64, X86_p0, X86_v2s64, 1>, LegalizeMemDesc<X86_v2p0, X86_p0, X86_v2p0, 1>]))>,
-    CoreLegal<(CoreAll HasAVX, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v32s8, X86_p0, X86_v32s8, 1>, LegalizeMemDesc<X86_v16s16, X86_p0, X86_v16s16, 1>, LegalizeMemDesc<X86_v8s32, X86_p0, X86_v8s32, 1>, LegalizeMemDesc<X86_v4s64, X86_p0, X86_v4s64, 1>, LegalizeMemDesc<X86_v4p0, X86_p0, X86_v4p0, 1>]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v64s8, X86_p0, X86_v64s8, 1>, LegalizeMemDesc<X86_v32s16, X86_p0, X86_v32s16, 1>, LegalizeMemDesc<X86_v16s32, X86_p0, X86_v16s32, 1>, LegalizeMemDesc<X86_v8s64, X86_p0, X86_v8s64, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_v2s32, X86_p0, X86_v2s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v4s32, X86_p0, X86_v4s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v16s8, X86_p0, X86_v16s8, 1>, LegalizeMemDesc<X86_v8s16, X86_p0, X86_v8s16, 1>, LegalizeMemDesc<X86_v2s64, X86_p0, X86_v2s64, 1>, LegalizeMemDesc<X86_v2p0, X86_p0, X86_v2p0, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v32s8, X86_p0, X86_v32s8, 1>, LegalizeMemDesc<X86_v16s16, X86_p0, X86_v16s16, 1>, LegalizeMemDesc<X86_v8s32, X86_p0, X86_v8s32, 1>, LegalizeMemDesc<X86_v4s64, X86_p0, X86_v4s64, 1>, LegalizeMemDesc<X86_v4p0, X86_p0, X86_v4p0, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v64s8, X86_p0, X86_v64s8, 1>, LegalizeMemDesc<X86_v32s16, X86_p0, X86_v32s16, 1>, LegalizeMemDesc<X86_v16s32, X86_p0, X86_v16s32, 1>, LegalizeMemDesc<X86_v8s64, X86_p0, X86_v8s64, 1>]))>,
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s8, X86_p0, X86_s1, 1>, LegalizeMemDesc<X86_s16, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s16, 1>])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
     CoreWiden<(Slot 0), (Pow2Min 8)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -466,11 +466,11 @@ def X86_LOAD : LegalizeRuleSet<["G_LOAD"]> {
 def X86_STORE : LegalizeRuleSet<["G_STORE"]> {
   let Rules = [
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s8, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s16, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s32, 1>, LegalizeMemDesc<X86_s80, X86_p0, X86_s80, 1>, LegalizeMemDesc<X86_p0, X86_p0, X86_p0, 1>, LegalizeMemDesc<X86_v4s8, X86_p0, X86_v4s8, 1>])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_v2s32, X86_p0, X86_v2s32, 1>]))>,
-    CoreLegal<(CoreAll HasSSE1, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v4s32, X86_p0, X86_v4s32, 1>]))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v16s8, X86_p0, X86_v16s8, 1>, LegalizeMemDesc<X86_v8s16, X86_p0, X86_v8s16, 1>, LegalizeMemDesc<X86_v2s64, X86_p0, X86_v2s64, 1>, LegalizeMemDesc<X86_v2p0, X86_p0, X86_v2p0, 1>]))>,
-    CoreLegal<(CoreAll HasAVX, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v32s8, X86_p0, X86_v32s8, 1>, LegalizeMemDesc<X86_v16s16, X86_p0, X86_v16s16, 1>, LegalizeMemDesc<X86_v8s32, X86_p0, X86_v8s32, 1>, LegalizeMemDesc<X86_v4s64, X86_p0, X86_v4s64, 1>, LegalizeMemDesc<X86_v4p0, X86_p0, X86_v4p0, 1>]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v64s8, X86_p0, X86_v64s8, 1>, LegalizeMemDesc<X86_v32s16, X86_p0, X86_v32s16, 1>, LegalizeMemDesc<X86_v16s32, X86_p0, X86_v16s32, 1>, LegalizeMemDesc<X86_v8s64, X86_p0, X86_v8s64, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_v2s32, X86_p0, X86_v2s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v4s32, X86_p0, X86_v4s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v16s8, X86_p0, X86_v16s8, 1>, LegalizeMemDesc<X86_v8s16, X86_p0, X86_v8s16, 1>, LegalizeMemDesc<X86_v2s64, X86_p0, X86_v2s64, 1>, LegalizeMemDesc<X86_v2p0, X86_p0, X86_v2p0, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v32s8, X86_p0, X86_v32s8, 1>, LegalizeMemDesc<X86_v16s16, X86_p0, X86_v16s16, 1>, LegalizeMemDesc<X86_v8s32, X86_p0, X86_v8s32, 1>, LegalizeMemDesc<X86_v4s64, X86_p0, X86_v4s64, 1>, LegalizeMemDesc<X86_v4p0, X86_p0, X86_v4p0, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_v64s8, X86_p0, X86_v64s8, 1>, LegalizeMemDesc<X86_v32s16, X86_p0, X86_v32s16, 1>, LegalizeMemDesc<X86_v16s32, X86_p0, X86_v16s32, 1>, LegalizeMemDesc<X86_v8s64, X86_p0, X86_v8s64, 1>]))>,
     CoreCustom<(CoreNe (Slot 0), (MemTy (MemSlot 0)))>,
     CoreWiden<(Slot 0), (Pow2Min 8)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
@@ -482,26 +482,26 @@ def X86_STORE : LegalizeRuleSet<["G_STORE"]> {
 def X86_SEXTLOAD : LegalizeRuleSet<["G_SEXTLOAD"]> {
   let Rules = [
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s16, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s16, 1>])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
   ];
 }
 
 def X86_ZEXTLOAD : LegalizeRuleSet<["G_ZEXTLOAD"]> {
   let Rules = [
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s16, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s32, X86_p0, X86_s16, 1>])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s64, X86_p0, X86_s8, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s16, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
   ];
 }
 
 def X86_FPEXTLOAD : LegalizeRuleSet<["G_FPEXTLOAD"]> {
   let Rules = [
-    CoreLegal<(CoreAll UseX87, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s80, X86_p0, X86_s32, 1>, LegalizeMemDesc<X86_s80, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s80, X86_p0, X86_s32, 1>, LegalizeMemDesc<X86_s80, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
   ];
 }
 
 def X86_FPTRUNCSTORE : LegalizeRuleSet<["G_FPTRUNCSTORE"]> {
   let Rules = [
-    CoreLegal<(CoreAll UseX87, (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s80, X86_p0, X86_s32, 1>, LegalizeMemDesc<X86_s80, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<X86_s80, X86_p0, X86_s32, 1>, LegalizeMemDesc<X86_s80, X86_p0, X86_s64, 1>, LegalizeMemDesc<X86_s64, X86_p0, X86_s32, 1>]))>,
   ];
 }
 
@@ -511,7 +511,7 @@ def X86_ANYEXT : LegalizeRuleSet<["G_ANYEXT"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s8, X86_s16, X86_s32, X86_s128])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
     CoreWiden<(Slot 0), (Pow2Min 8)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -525,7 +525,7 @@ def X86_ANYEXT : LegalizeRuleSet<["G_ANYEXT"]> {
 def X86_SEXT : LegalizeRuleSet<["G_SEXT", "G_ZEXT"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s8, X86_s16, X86_s32])>,
-    CoreLegal<(CoreAll Is64Bit, (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreIn (Slot 0), X86_s64))>,
     CoreWiden<(Slot 0), (Pow2Min 8)>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
@@ -554,7 +554,7 @@ def X86_FCONSTANT : LegalizeRuleSet<["G_FCONSTANT"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s32, X86_s64])>,
-    CoreLegal<(CoreAll UseX87, (CoreIn (Slot 0), X86_s80))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreIn (Slot 0), X86_s80))>,
   ];
 }
 
@@ -564,18 +564,18 @@ def X86_FADD : LegalizeRuleSet<["G_FADD", "G_FSUB", "G_FMUL", "G_FDIV"]> {
   ];
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), [X86_s32, X86_s64])>,
-    CoreLegal<(CoreAll HasSSE1, (CoreIn (Slot 0), X86_v4s32))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreIn (Slot 0), X86_v2s64))>,
-    CoreLegal<(CoreAll HasAVX, (CoreIn (Slot 0), [X86_v8s32, X86_v4s64]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreIn (Slot 0), [X86_v16s32, X86_v8s64]))>,
-    CoreLegal<(CoreAll UseX87, (CoreIn (Slot 0), X86_s80))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (CoreIn (Slot 0), X86_v4s32))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreIn (Slot 0), X86_v2s64))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreIn (Slot 0), [X86_v8s32, X86_v4s64]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreIn (Slot 0), [X86_v16s32, X86_v8s64]))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreIn (Slot 0), X86_s80))>,
   ];
 }
 
 def X86_FABS : LegalizeRuleSet<["G_FABS"]> {
   let Rules = [
-    CoreLegal<(CoreAll UseX87, (CoreIn (Slot 0), X86_s80))>,
-    CoreLegal<(CoreAll UseX87, (CoreNot Is64Bit), (CoreIn (Slot 0), X86_s64))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreIn (Slot 0), X86_s80))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreNot (Feature "Subtarget.is64Bit()")), (CoreIn (Slot 0), X86_s64))>,
     CoreAlwaysLower,
   ];
 }
@@ -585,9 +585,9 @@ def X86_FCMP : LegalizeRuleSet<["G_FCMP"]> {
     "fp comparison",
   ];
   let Rules = [
-    CoreLegal<(CoreAll (CoreAny HasSSE1, UseX87), (CoreIn (Slot 0), [X86_s8, X86_s32]))>,
-    CoreLegal<(CoreAll (CoreAny HasSSE2, UseX87), (CoreIn (Slot 0), [X86_s8, X86_s64]))>,
-    CoreLegal<(CoreAll UseX87, (CoreIn (Slot 0), [X86_s8, X86_s80]))>,
+    CoreLegal<(CoreAll (CoreAny (Feature "Subtarget.hasSSE1()"), (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()")), (CoreIn (Slot 0), [X86_s8, X86_s32]))>,
+    CoreLegal<(CoreAll (CoreAny (Feature "Subtarget.hasSSE2()"), (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()")), (CoreIn (Slot 0), [X86_s8, X86_s64]))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreIn (Slot 0), [X86_s8, X86_s80]))>,
     CoreWiden<(Slot 0), (Ty X86_s8)>,
     CoreNarrow<(Slot 0), (Ty X86_s8)>,
     CoreWiden<(Slot 1), (Ty X86_s32)>,
@@ -601,33 +601,33 @@ def X86_FPEXT : LegalizeRuleSet<["G_FPEXT"]> {
     "fp conversions",
   ];
   let Rules = [
-    CoreLegal<(CoreAll HasSSE2, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
-    CoreLegal<(CoreAll HasAVX, (CoreInPairs (Slot 0), (Slot 1), [[X86_v4s64, X86_v4s32]]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreInPairs (Slot 0), (Slot 1), [[X86_v8s64, X86_v8s32]]))>,
-    CoreLower<(CoreAll UseX87, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32], [X86_s80, X86_s32], [X86_s80, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v4s64, X86_v4s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v8s64, X86_v8s32]]))>,
+    CoreLower<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32], [X86_s80, X86_s32], [X86_s80, X86_s64]]))>,
     CoreAlwaysLibcall,
   ];
 }
 
 def X86_FPTRUNC : LegalizeRuleSet<["G_FPTRUNC"]> {
   let Rules = [
-    CoreLegal<(CoreAll HasSSE2, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64]]))>,
-    CoreLegal<(CoreAll HasAVX, (CoreInPairs (Slot 0), (Slot 1), [[X86_v4s32, X86_v4s64]]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreInPairs (Slot 0), (Slot 1), [[X86_v8s32, X86_v8s64]]))>,
-    CoreLower<(CoreAll UseX87, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64], [X86_s32, X86_s80], [X86_s64, X86_s80]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v4s32, X86_v4s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v8s32, X86_v8s64]]))>,
+    CoreLower<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64], [X86_s32, X86_s80], [X86_s64, X86_s80]]))>,
   ];
 }
 
 def X86_SITOFP : LegalizeRuleSet<["G_SITOFP"]> {
   let Rules = [
-    CoreLegal<(CoreAll HasSSE1, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32]]))>,
-    CoreLegal<(CoreAll HasSSE1, Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64]]))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
-    CoreLegal<(CoreAll HasSSE2, Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
     CoreWiden<(Slot 1), (Ty X86_X87OrS32)>,
     CoreNarrow<(Slot 1), (Ty X86_sMaxScalar)>,
     CoreWiden<(Slot 1), (Pow2)>,
-    CoreCustom<(CoreAll UseX87, (CoreAll (CoreIn (Slot 0), [X86_s32, X86_s64, X86_s80]), (CoreIn (Slot 1), [X86_s16, X86_s32, X86_s64])))>,
+    CoreCustom<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreAll (CoreIn (Slot 0), [X86_s32, X86_s64, X86_s80]), (CoreIn (Slot 1), [X86_s16, X86_s32, X86_s64])))>,
     CoreWiden<(Slot 0), (Ty X86_s32)>,
     CoreNarrow<(Slot 0), (Ty X86_s64OrS32)>,
     CoreWiden<(Slot 0), (Pow2)>,
@@ -636,14 +636,14 @@ def X86_SITOFP : LegalizeRuleSet<["G_SITOFP"]> {
 
 def X86_FPTOSI : LegalizeRuleSet<["G_FPTOSI"]> {
   let Rules = [
-    CoreLegal<(CoreAll HasSSE1, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32]]))>,
-    CoreLegal<(CoreAll HasSSE1, Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
-    CoreLegal<(CoreAll HasSSE2, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64]]))>,
-    CoreLegal<(CoreAll HasSSE2, Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE2()"), (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s64]]))>,
     CoreWiden<(Slot 0), (Ty X86_X87OrS32)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
     CoreWiden<(Slot 0), (Pow2)>,
-    CoreCustom<(CoreAll UseX87, (CoreAll (CoreIn (Slot 0), [X86_s16, X86_s32, X86_s64]), (CoreIn (Slot 1), [X86_s32, X86_s64, X86_s80])))>,
+    CoreCustom<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreAll (CoreIn (Slot 0), [X86_s16, X86_s32, X86_s64]), (CoreIn (Slot 1), [X86_s32, X86_s64, X86_s80])))>,
     CoreWiden<(Slot 1), (Ty X86_s32)>,
     CoreNarrow<(Slot 1), (Ty X86_s64OrS32)>,
     CoreWiden<(Slot 1), (Pow2)>,
@@ -662,9 +662,9 @@ def X86_UITOFP : LegalizeRuleSet<["G_UITOFP"]> {
     "to asm instructions.",
   ];
   let Rules = [
-    CoreLegal<(CoreAll HasAVX512, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32], [X86_s32, X86_s64], [X86_s64, X86_s32], [X86_s64, X86_s64]]))>,
-    CoreCustom<(CoreAll (CoreNot HasAVX512), (CoreAny (CoreAll HasSSE1, (CoreEq (Slot 0), (Ty X86_s32))), (CoreAll HasSSE2, (CoreEq (Slot 0), (Ty X86_s64)))), (CoreLt (BitsOf (Slot 1)), (CoreSelect Is64Bit, 64, 32)))>,
-    CoreLower<(CoreAll (CoreNot HasAVX512), (CoreAny (CoreAll HasSSE1, (CoreEq (Slot 0), (Ty X86_s32))), (CoreAll HasSSE2, (CoreEq (Slot 0), (Ty X86_s64)))), Is64Bit, (CoreEq (Slot 1), (Ty X86_s64)))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32], [X86_s32, X86_s64], [X86_s64, X86_s32], [X86_s64, X86_s64]]))>,
+    CoreCustom<(CoreAll (CoreNot (Feature "Subtarget.hasAVX512()")), (CoreAny (CoreAll (Feature "Subtarget.hasSSE1()"), (CoreEq (Slot 0), (Ty X86_s32))), (CoreAll (Feature "Subtarget.hasSSE2()"), (CoreEq (Slot 0), (Ty X86_s64)))), (CoreLt (BitsOf (Slot 1)), (CoreSelect (Feature "Subtarget.is64Bit()"), 64, 32)))>,
+    CoreLower<(CoreAll (CoreNot (Feature "Subtarget.hasAVX512()")), (CoreAny (CoreAll (Feature "Subtarget.hasSSE1()"), (CoreEq (Slot 0), (Ty X86_s32))), (CoreAll (Feature "Subtarget.hasSSE2()"), (CoreEq (Slot 0), (Ty X86_s64)))), (Feature "Subtarget.is64Bit()"), (CoreEq (Slot 1), (Ty X86_s64)))>,
     CoreWiden<(Slot 0), (Ty X86_s32)>,
     CoreNarrow<(Slot 0), (Ty X86_s64OrS32)>,
     CoreWiden<(Slot 0), (Pow2)>,
@@ -682,9 +682,9 @@ def X86_FPTOUI : LegalizeRuleSet<["G_FPTOUI"]> {
     "support of G_BUILD_VECTOR/G_INSERT_VECTOR_ELT is required beforehand.",
   ];
   let Rules = [
-    CoreLegal<(CoreAll HasAVX512, (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32], [X86_s32, X86_s64], [X86_s64, X86_s32], [X86_s64, X86_s64]]))>,
-    CoreCustom<(CoreAll (CoreNot HasAVX512), (CoreAny (CoreAll HasSSE1, (CoreEq (Slot 1), (Ty X86_s32))), (CoreAll HasSSE2, (CoreEq (Slot 1), (Ty X86_s64)))), (CoreLt (BitsOf (Slot 0)), (CoreSelect Is64Bit, 64, 32)))>,
-    CoreLower<(CoreAll (CoreNot HasAVX512), (CoreAny (CoreAll HasSSE1, (CoreEq (Slot 1), (Ty X86_s32))), (CoreAll HasSSE2, (CoreEq (Slot 1), (Ty X86_s64)))), Is64Bit, (CoreEq (Slot 0), (Ty X86_s64)))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s32, X86_s32], [X86_s32, X86_s64], [X86_s64, X86_s32], [X86_s64, X86_s64]]))>,
+    CoreCustom<(CoreAll (CoreNot (Feature "Subtarget.hasAVX512()")), (CoreAny (CoreAll (Feature "Subtarget.hasSSE1()"), (CoreEq (Slot 1), (Ty X86_s32))), (CoreAll (Feature "Subtarget.hasSSE2()"), (CoreEq (Slot 1), (Ty X86_s64)))), (CoreLt (BitsOf (Slot 0)), (CoreSelect (Feature "Subtarget.is64Bit()"), 64, 32)))>,
+    CoreLower<(CoreAll (CoreNot (Feature "Subtarget.hasAVX512()")), (CoreAny (CoreAll (Feature "Subtarget.hasSSE1()"), (CoreEq (Slot 1), (Ty X86_s32))), (CoreAll (Feature "Subtarget.hasSSE2()"), (CoreEq (Slot 1), (Ty X86_s64)))), (Feature "Subtarget.is64Bit()"), (CoreEq (Slot 0), (Ty X86_s64)))>,
     CoreWiden<(Slot 0), (Ty X86_s32)>,
     CoreNarrow<(Slot 0), (Ty X86_sMaxScalar)>,
     CoreWiden<(Slot 0), (Pow2)>,
@@ -706,26 +706,26 @@ def X86_BUILD_VECTOR : LegalizeRuleSet<["G_BUILD_VECTOR"]> {
     "Lowering non-constant narrow build vectors is tracked by #143099.",
   ];
   let Rules = [
-    CoreCustom<(CoreAny (CoreAll HasSSE1, (CoreEq (Slot 0), (Ty X86_v4s32))), (CoreAll HasSSE2, (CoreIn (Slot 0), [X86_v2s64, X86_v8s16, X86_v16s8])), (CoreAll HasAVX, (CoreIn (Slot 0), [X86_v4s64, X86_v8s32, X86_v16s16, X86_v32s8])), (CoreAll HasAVX512, (CoreIn (Slot 0), [X86_v8s64, X86_v16s32, X86_v32s16, X86_v64s8])))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasAVX512, 64, (CoreSelect HasAVX, 32, 16)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s8)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasAVX512, 64, (CoreSelect HasAVX, 32, 16))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasAVX512, 32, (CoreSelect HasAVX, 16, 8)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasAVX512, 32, (CoreSelect HasAVX, 16, 8))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasAVX512, 16, (CoreSelect HasAVX, 8, 4)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasAVX512, 16, (CoreSelect HasAVX, 8, 4))))>,
-    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect HasAVX512, 8, (CoreSelect HasAVX, 4, 2)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreGt (NumElems (Slot 0)), (CoreSelect HasAVX512, 8, (CoreSelect HasAVX, 4, 2))))>,
+    CoreCustom<(CoreAny (CoreAll (Feature "Subtarget.hasSSE1()"), (CoreEq (Slot 0), (Ty X86_v4s32))), (CoreAll (Feature "Subtarget.hasSSE2()"), (CoreIn (Slot 0), [X86_v2s64, X86_v8s16, X86_v16s8])), (CoreAll (Feature "Subtarget.hasAVX()"), (CoreIn (Slot 0), [X86_v4s64, X86_v8s32, X86_v16s16, X86_v32s8])), (CoreAll (Feature "Subtarget.hasAVX512()"), (CoreIn (Slot 0), [X86_v8s64, X86_v16s32, X86_v32s16, X86_v64s8])))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512()"), 64, (CoreSelect (Feature "Subtarget.hasAVX()"), 32, 16)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s8)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512()"), 64, (CoreSelect (Feature "Subtarget.hasAVX()"), 32, 16))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512()"), 32, (CoreSelect (Feature "Subtarget.hasAVX()"), 16, 8)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s16)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512()"), 32, (CoreSelect (Feature "Subtarget.hasAVX()"), 16, 8))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX()"), 8, 4)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s32)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512()"), 16, (CoreSelect (Feature "Subtarget.hasAVX()"), 8, 4))))>,
+    CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf (CoreSelect (Feature "Subtarget.hasAVX512()"), 8, (CoreSelect (Feature "Subtarget.hasAVX()"), 4, 2)), (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty X86_s64)), (CoreGt (NumElems (Slot 0)), (CoreSelect (Feature "Subtarget.hasAVX512()"), 8, (CoreSelect (Feature "Subtarget.hasAVX()"), 4, 2))))>,
   ];
 }
 
 def X86_EXTRACT : LegalizeRuleSet<["G_EXTRACT"]> {
   let Rules = [
-    CoreLegal<(CoreAll HasAVX, (CoreInPairs (Slot 0), (Slot 1), [[X86_v16s8, X86_v32s8], [X86_v8s16, X86_v16s16], [X86_v4s32, X86_v8s32], [X86_v2s64, X86_v4s64]]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreInPairs (Slot 0), (Slot 1), [[X86_v16s8, X86_v64s8], [X86_v32s8, X86_v64s8], [X86_v8s16, X86_v32s16], [X86_v16s16, X86_v32s16], [X86_v4s32, X86_v16s32], [X86_v8s32, X86_v16s32], [X86_v2s64, X86_v8s64], [X86_v4s64, X86_v8s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v16s8, X86_v32s8], [X86_v8s16, X86_v16s16], [X86_v4s32, X86_v8s32], [X86_v2s64, X86_v4s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v16s8, X86_v64s8], [X86_v32s8, X86_v64s8], [X86_v8s16, X86_v32s16], [X86_v16s16, X86_v32s16], [X86_v4s32, X86_v16s32], [X86_v8s32, X86_v16s32], [X86_v2s64, X86_v8s64], [X86_v4s64, X86_v8s64]]))>,
     CoreAlwaysUnsupported,
   ];
 }
 
 def X86_INSERT : LegalizeRuleSet<["G_INSERT"]> {
   let Rules = [
-    CoreLegal<(CoreAll HasAVX, (CoreInPairs (Slot 0), (Slot 1), [[X86_v32s8, X86_v16s8], [X86_v16s16, X86_v8s16], [X86_v8s32, X86_v4s32], [X86_v4s64, X86_v2s64]]))>,
-    CoreLegal<(CoreAll HasAVX512, (CoreInPairs (Slot 0), (Slot 1), [[X86_v64s8, X86_v16s8], [X86_v64s8, X86_v32s8], [X86_v32s16, X86_v8s16], [X86_v32s16, X86_v16s16], [X86_v16s32, X86_v4s32], [X86_v16s32, X86_v8s32], [X86_v8s64, X86_v2s64], [X86_v8s64, X86_v4s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v32s8, X86_v16s8], [X86_v16s16, X86_v8s16], [X86_v8s32, X86_v4s32], [X86_v4s64, X86_v2s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX512()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v64s8, X86_v16s8], [X86_v64s8, X86_v32s8], [X86_v32s16, X86_v8s16], [X86_v32s16, X86_v16s16], [X86_v16s32, X86_v4s32], [X86_v16s32, X86_v8s32], [X86_v8s64, X86_v2s64], [X86_v8s64, X86_v4s64]]))>,
     CoreAlwaysUnsupported,
   ];
 }
@@ -735,8 +735,8 @@ def X86_CONCAT_VECTORS : LegalizeRuleSet<["G_CONCAT_VECTORS"]> {
     "todo: only permit dst types up to max legal vector register size?",
   ];
   let Rules = [
-    CoreLegal<(CoreAll HasSSE1, (CoreInPairs (Slot 0), (Slot 1), [[X86_v32s8, X86_v16s8], [X86_v16s16, X86_v8s16], [X86_v8s32, X86_v4s32], [X86_v4s64, X86_v2s64]]))>,
-    CoreLegal<(CoreAll HasAVX, (CoreInPairs (Slot 0), (Slot 1), [[X86_v64s8, X86_v16s8], [X86_v64s8, X86_v32s8], [X86_v32s16, X86_v8s16], [X86_v32s16, X86_v16s16], [X86_v16s32, X86_v4s32], [X86_v16s32, X86_v8s32], [X86_v8s64, X86_v2s64], [X86_v8s64, X86_v4s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSSE1()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v32s8, X86_v16s8], [X86_v16s16, X86_v8s16], [X86_v8s32, X86_v4s32], [X86_v4s64, X86_v2s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasAVX()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_v64s8, X86_v16s8], [X86_v64s8, X86_v32s8], [X86_v32s16, X86_v8s16], [X86_v32s16, X86_v16s16], [X86_v16s32, X86_v4s32], [X86_v16s32, X86_v8s32], [X86_v8s64, X86_v2s64], [X86_v8s64, X86_v4s64]]))>,
   ];
 }
 
@@ -746,9 +746,9 @@ def X86_SELECT : LegalizeRuleSet<["G_SELECT"]> {
   ];
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[X86_s16, X86_s32], [X86_s32, X86_s32], [X86_p0, X86_s32]])>,
-    CoreLegal<(CoreAll (CoreNot HasCMOV), (CoreInPairs (Slot 0), (Slot 1), [[X86_s8, X86_s32]]))>,
-    CoreLegal<(CoreAll Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
-    CoreLegal<(CoreAll UseX87, (CoreInPairs (Slot 0), (Slot 1), [[X86_s80, X86_s32]]))>,
+    CoreLegal<(CoreAll (CoreNot (Feature "Subtarget.canUseCMOV()")), (CoreInPairs (Slot 0), (Slot 1), [[X86_s8, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s64, X86_s32]]))>,
+    CoreLegal<(CoreAll (Feature "!Subtarget.useSoftFloat() && Subtarget.hasX87()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s80, X86_s32]]))>,
     CoreWiden<(Slot 1), (Ty X86_s32)>,
     CoreNarrow<(Slot 1), (Ty X86_s32)>,
     CoreWiden<(Slot 0), (Pow2Min 8)>,
@@ -778,7 +778,7 @@ def X86_IS_FPCLASS : LegalizeRuleSet<["G_IS_FPCLASS"]> {
     "fpclass for i686 is disabled for llvm issue #171992",
   ];
   let Rules = [
-    CoreLower<(CoreAll Is64Bit, (CoreInPairs (Slot 0), (Slot 1), [[X86_s1, X86_s32], [X86_s1, X86_s64], [X86_s1, X86_s80]]))>,
+    CoreLower<(CoreAll (Feature "Subtarget.is64Bit()"), (CoreInPairs (Slot 0), (Slot 1), [[X86_s1, X86_s32], [X86_s1, X86_s64], [X86_s1, X86_s80]]))>,
   ];
 }
 

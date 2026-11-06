@@ -189,7 +189,7 @@ def AArch64_EXTRACT : LegalizeRuleSet<["G_EXTRACT"]> {
 def AArch64_ADD : LegalizeRuleSet<["G_ADD", "G_SUB", "G_AND", "G_OR", "G_XOR"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), AArch64_I32Or64OrIntVecSet)>,
-    CoreLegal<(CoreAll AArch64_HasSVE, (CoreIn (Slot 0), AArch64_SVEIntVecSet))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSVE()"), (CoreIn (Slot 0), AArch64_SVEIntVecSet))>,
     CoreWiden<(Slot 0), (Pow2)>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
     CoreNarrow<(Slot 0), (Ty AArch64_s64)>,
@@ -322,7 +322,7 @@ def AArch64_SMULFIX : LegalizeRuleSet<["G_SMULFIX", "G_UMULFIX", "G_SMULFIXSAT",
 def AArch64_SMIN : LegalizeRuleSet<["G_SMIN", "G_SMAX", "G_UMIN", "G_UMAX"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), AArch64_IntVecNoV2i64Set)>,
-    CoreLegal<(CoreAll AArch64_HasCSSC, (CoreIn (Slot 0), AArch64_I32OrI64Set))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasCSSC()"), (CoreIn (Slot 0), AArch64_I32OrI64Set))>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 8, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s8)), (CoreLt (NumElems (Slot 0)), 8))>,
     CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf 16, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s8)), (CoreGt (NumElems (Slot 0)), 16))>,
@@ -336,7 +336,7 @@ def AArch64_SMIN : LegalizeRuleSet<["G_SMIN", "G_SMAX", "G_UMIN", "G_UMAX"]> {
 
 def AArch64_ABS : LegalizeRuleSet<["G_ABS"]> {
   let Rules = [
-    CoreLegal<(CoreAll AArch64_HasCSSC, (CoreIn (Slot 0), AArch64_I32OrI64Set))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasCSSC()"), (CoreIn (Slot 0), AArch64_I32OrI64Set))>,
     CoreLegal<(CoreIn (Slot 0), AArch64_PackedVectorOrV2p0Set)>,
     CoreCustom<(CoreAll (CoreEq (SortOf (Slot 0)), KindScalar), (CoreLt (SizeOf (Slot 0)), 128))>,
     CoreWidenIf<(Slot 0), (Replace (Ty AArch64_v4i16)), (CoreEq (Slot 0), (Ty AArch64_v4s8))>,
@@ -402,9 +402,9 @@ def AArch64_SBFX : LegalizeRuleSet<["G_SBFX", "G_UBFX"]> {
 
 def AArch64_CTPOP : LegalizeRuleSet<["G_CTPOP"]> {
   let Rules = [
-    CoreLegal<(CoreAll AArch64_HasCSSC, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_i32], [AArch64_i64, AArch64_i64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasCSSC()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_i32], [AArch64_i64, AArch64_i64]]))>,
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_v8i8, AArch64_v8i8], [AArch64_v16i8, AArch64_v16i8]])>,
-    CoreCustom<(CoreAll (CoreNot AArch64_HasCSSC), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s32, AArch64_s32], [AArch64_s64, AArch64_s64]]))>,
+    CoreCustom<(CoreAll (CoreNot (Feature "Subtarget.hasCSSC()")), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s32, AArch64_s32], [AArch64_s64, AArch64_s64]]))>,
     CoreCustom<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_s128, AArch64_s128], [AArch64_v4s16, AArch64_v4s16], [AArch64_v8s16, AArch64_v8s16], [AArch64_v2s32, AArch64_v2s32], [AArch64_v4s32, AArch64_v4s32], [AArch64_v2s64, AArch64_v2s64]])>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
     CoreNarrow<(Slot 0), (Ty AArch64_s128)>,
@@ -465,8 +465,8 @@ def AArch64_CTTZ : LegalizeRuleSet<["G_CTTZ"]> {
     CoreNarrow<(Slot 1), (Ty AArch64_s64)>,
     CoreWiden<(Slot 0), (SameAs 1)>,
     CoreNarrow<(Slot 0), (SameAs 1)>,
-    CoreLegal<(CoreAll AArch64_HasCSSC, (CoreIn (Slot 0), AArch64_S32Or64Set))>,
-    CoreCustom<(CoreAll (CoreNot AArch64_HasCSSC), (CoreIn (Slot 0), AArch64_S32Or64Set))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasCSSC()"), (CoreIn (Slot 0), AArch64_S32Or64Set))>,
+    CoreCustom<(CoreAll (CoreNot (Feature "Subtarget.hasCSSC()")), (CoreIn (Slot 0), AArch64_S32Or64Set))>,
   ];
 }
 
@@ -522,7 +522,7 @@ def AArch64_BSWAP : LegalizeRuleSet<["G_BSWAP"]> {
 def AArch64_UADDSAT : LegalizeRuleSet<["G_UADDSAT", "G_SADDSAT", "G_USUBSAT", "G_SSUBSAT"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), AArch64_UaddsatTypesSet)>,
-    CoreLegal<(CoreAll AArch64_HasSVE, (CoreIn (Slot 0), AArch64_SVEIntVecSet))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSVE()"), (CoreIn (Slot 0), AArch64_SVEIntVecSet))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 8, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s8)), (CoreLt (NumElems (Slot 0)), 8))>,
     CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf 16, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s8)), (CoreGt (NumElems (Slot 0)), 16))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 4, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s16)), (CoreLt (NumElems (Slot 0)), 4))>,
@@ -539,10 +539,10 @@ def AArch64_UADDSAT : LegalizeRuleSet<["G_UADDSAT", "G_SADDSAT", "G_USUBSAT", "G
 def AArch64_FADD : LegalizeRuleSet<["G_FADD", "G_FSUB", "G_FMUL", "G_FDIV", "G_FMA", "G_FSQRT", "G_FMAXNUM", "G_FMINNUM", "G_FMAXIMUM", "G_FMINIMUM", "G_FCEIL", "G_FFLOOR", "G_FRINT", "G_FNEARBYINT", "G_INTRINSIC_TRUNC", "G_INTRINSIC_ROUND", "G_INTRINSIC_ROUNDEVEN"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), AArch64_FPScalarOrVecSet)>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreIn (Slot 0), AArch64_F16OrV4V8F16Set))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreIn (Slot 0), AArch64_F16OrV4V8F16Set))>,
     CoreLibcall<(CoreIn (Slot 0), AArch64_f128)>,
     CoreScalarizeIf<(Slot 0), (CoreGt (BitsOf (Slot 0)), 64)>,
-    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot AArch64_HasFP16), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
+    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot (Feature "Subtarget.hasFullFP16()")), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 4, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s16)), (CoreLt (NumElems (Slot 0)), 4))>,
     CoreFewerIf<(Slot 0), (Replace (ScalarOrVecOf 8, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s16)), (CoreGt (NumElems (Slot 0)), 8))>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 2, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s32)), (CoreLt (NumElems (Slot 0)), 2))>,
@@ -556,7 +556,7 @@ def AArch64_FADD : LegalizeRuleSet<["G_FADD", "G_FSUB", "G_FMUL", "G_FDIV", "G_F
 def AArch64_FABS : LegalizeRuleSet<["G_FABS", "G_FNEG"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), AArch64_FPScalarOrVecSet)>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreIn (Slot 0), AArch64_F16OrBF16VecSet))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreIn (Slot 0), AArch64_F16OrBF16VecSet))>,
     CoreScalarizeIf<(Slot 0), (CoreGt (BitsOf (Slot 0)), 64)>,
     CoreLower<(CoreGt (BitsOf (Slot 0)), 64)>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 4, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s16)), (CoreLt (NumElems (Slot 0)), 4))>,
@@ -589,7 +589,7 @@ def AArch64_FPOWI : LegalizeRuleSet<["G_FPOWI", "G_FLDEXP"]> {
 def AArch64_LROUND : LegalizeRuleSet<["G_LROUND", "G_INTRINSIC_LRINT"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f32], [AArch64_i32, AArch64_f64], [AArch64_i64, AArch64_f32], [AArch64_i64, AArch64_f64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f16], [AArch64_i64, AArch64_f16]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f16], [AArch64_i64, AArch64_f16]]))>,
     CoreWiden<(Slot 1), (Ty AArch64_s32)>,
     CoreLibcall<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_s64, AArch64_s128]])>,
     CoreAlwaysLower,
@@ -599,7 +599,7 @@ def AArch64_LROUND : LegalizeRuleSet<["G_LROUND", "G_INTRINSIC_LRINT"]> {
 def AArch64_LLROUND : LegalizeRuleSet<["G_LLROUND", "G_INTRINSIC_LLRINT"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_i64, AArch64_f32], [AArch64_i64, AArch64_f64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i64, AArch64_f16]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i64, AArch64_f16]]))>,
     CoreWiden<(Slot 0), (Ty AArch64_s64)>,
     CoreWiden<(Slot 1), (Ty AArch64_s32)>,
     CoreLibcall<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_s64, AArch64_s128]])>,
@@ -622,7 +622,7 @@ def AArch64_FMAD : LegalizeRuleSet<["G_FMAD"]> {
 
 def AArch64_LOAD : LegalizeRuleSet<["G_LOAD"]> {
   let Rules = [
-    CoreCustom<(CoreAll AArch64_HasRCPC3, (CoreEq (Slot 0), (Ty AArch64_s128)), (CoreEq (MemOrdering (MemSlot 0)), OrderingAcquire))>,
+    CoreCustom<(CoreAll (Feature "Subtarget.hasRCPC3()"), (CoreEq (Slot 0), (Ty AArch64_s128)), (CoreEq (MemOrdering (MemSlot 0)), OrderingAcquire))>,
     CoreCustom<(CoreAll (CoreEq (Slot 0), (Ty AArch64_s128)), (CoreGe (MemOrdering (MemSlot 0)), OrderingUnordered))>,
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<AArch64_s8, AArch64_p0, AArch64_s8, 8>, LegalizeMemDesc<AArch64_s16, AArch64_p0, AArch64_s16, 8>, LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s32, 8>, LegalizeMemDesc<AArch64_s64, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_p0, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_s128, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v8s8, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_v16s8, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v4s16, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_v8s16, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v2s32, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_v4s32, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v2s64, AArch64_p0, AArch64_s128, 8>])>,
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s8, 8>, LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s16, 8>, LegalizeMemDesc<AArch64_s64, AArch64_p0, AArch64_s32, 8>])>,
@@ -646,7 +646,7 @@ def AArch64_LOAD : LegalizeRuleSet<["G_LOAD"]> {
 
 def AArch64_STORE : LegalizeRuleSet<["G_STORE"]> {
   let Rules = [
-    CoreCustom<(CoreAll AArch64_HasRCPC3, (CoreEq (Slot 0), (Ty AArch64_s128)), (CoreEq (MemOrdering (MemSlot 0)), OrderingRelease))>,
+    CoreCustom<(CoreAll (Feature "Subtarget.hasRCPC3()"), (CoreEq (Slot 0), (Ty AArch64_s128)), (CoreEq (MemOrdering (MemSlot 0)), OrderingRelease))>,
     CoreCustom<(CoreAll (CoreEq (Slot 0), (Ty AArch64_s128)), (CoreGe (MemOrdering (MemSlot 0)), OrderingUnordered))>,
     CoreWidenIf<(Slot 0), (Ty AArch64_s32), (CoreGe (MemOrdering (MemSlot 0)), OrderingRelease)>,
     CoreLegal<(CoreInMemDesc (Slot 0), (Slot 1), (MemSlot 0), [LegalizeMemDesc<AArch64_s8, AArch64_p0, AArch64_s8, 8>, LegalizeMemDesc<AArch64_s16, AArch64_p0, AArch64_s8, 8>, LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s8, 8>, LegalizeMemDesc<AArch64_s64, AArch64_p0, AArch64_s8, 8>, LegalizeMemDesc<AArch64_s16, AArch64_p0, AArch64_s16, 8>, LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s16, 8>, LegalizeMemDesc<AArch64_s64, AArch64_p0, AArch64_s16, 8>, LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s8, 8>, LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s16, 8>, LegalizeMemDesc<AArch64_s32, AArch64_p0, AArch64_s32, 8>, LegalizeMemDesc<AArch64_s64, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_s64, AArch64_p0, AArch64_s32, 8>, LegalizeMemDesc<AArch64_p0, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_s128, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v16s8, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v8s8, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_v4s16, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_v8s16, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v2s32, AArch64_p0, AArch64_s64, 8>, LegalizeMemDesc<AArch64_v4s32, AArch64_p0, AArch64_s128, 8>, LegalizeMemDesc<AArch64_v2s64, AArch64_p0, AArch64_s128, 8>])>,
@@ -738,11 +738,11 @@ def AArch64_ICMP : LegalizeRuleSet<["G_ICMP"]> {
 def AArch64_FCMP : LegalizeRuleSet<["G_FCMP"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f32], [AArch64_i32, AArch64_f64], [AArch64_v4i32, AArch64_v4f32], [AArch64_v2i32, AArch64_v2f32], [AArch64_v2i64, AArch64_v2f64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f16], [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f16], [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))>,
     CoreWiden<(ElemOf (Slot 1)), (Pow2)>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
     CoreNarrow<(Slot 0), (Ty AArch64_s32)>,
-    CoreWidenIf<(Slot 1), (Replace (EltTypeTo (Slot 1), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot AArch64_HasFP16), (IsFloat16 (ScalarOf (Slot 1)))), (IsBFloat16 (ScalarOf (Slot 1))))>,
+    CoreWidenIf<(Slot 1), (Replace (EltTypeTo (Slot 1), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot (Feature "Subtarget.hasFullFP16()")), (IsFloat16 (ScalarOf (Slot 1)))), (IsBFloat16 (ScalarOf (Slot 1))))>,
     CoreScalarizeIf<(Slot 1), (CoreGt (BitsOf (Slot 1)), 64)>,
     CoreWidenIf<(Slot 0), (SameAs 1), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindPointerVector)), (CoreNe (ElemOf (Slot 0)), (ElemOf (Slot 1))))>,
     CoreMoreIf<(Slot 1), (Replace (VecOf 4, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s16)), (CoreLt (NumElems (Slot 1)), 4))>,
@@ -818,7 +818,7 @@ def AArch64_SEXT_INREG : LegalizeRuleSet<["G_SEXT_INREG"]> {
 def AArch64_FPTRUNC : LegalizeRuleSet<["G_FPTRUNC"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_f32], [AArch64_f16, AArch64_f64], [AArch64_f32, AArch64_f64], [AArch64_v4f16, AArch64_v4f32], [AArch64_v2f32, AArch64_v2f64]])>,
-    CoreLegal<(CoreAll AArch64_HasBF16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_bf16, AArch64_f32], [AArch64_v4bf16, AArch64_v4f32]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasBF16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_bf16, AArch64_f32], [AArch64_v4bf16, AArch64_v4f32]]))>,
     CoreLibcall<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_f128], [AArch64_f32, AArch64_f128], [AArch64_f64, AArch64_f128]])>,
     CoreMore<(Slot 1), (Pow2)>,
     CoreCustom<(CoreAll (CoreEq (BitsOf (Slot 1)), 64), (CoreEq (BitsOf (Slot 0)), 16))>,
@@ -848,14 +848,14 @@ def AArch64_FPEXT : LegalizeRuleSet<["G_FPEXT"]> {
 def AArch64_FPTOSI : LegalizeRuleSet<["G_FPTOSI", "G_FPTOUI"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f32], [AArch64_i64, AArch64_f32], [AArch64_i32, AArch64_f64], [AArch64_i64, AArch64_f64], [AArch64_v2i32, AArch64_v2f32], [AArch64_v4i32, AArch64_v4f32], [AArch64_v2i64, AArch64_v2f64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f16], [AArch64_i64, AArch64_f16], [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f16], [AArch64_i64, AArch64_f16], [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))>,
     CoreScalarizeIf<(Slot 0), (CoreGt (BitsOf (Slot 0)), 64)>,
     CoreScalarizeIf<(Slot 1), (CoreGt (BitsOf (Slot 1)), 64)>,
     CoreNarrowIf<(Slot 0), (Replace (Ty AArch64_i64)), (CoreAll (CoreEq (Slot 1), (Ty AArch64_f16)), (CoreGt (SizeOf (Slot 0)), 64))>,
     CoreMore<(Slot 0), (Pow2)>,
     CoreWiden<(ElemOf (Slot 0)), (Pow2)>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
-    CoreWidenIf<(Slot 1), (Replace (EltTypeTo (Slot 1), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot AArch64_HasFP16), (IsFloat16 (ScalarOf (Slot 1)))), (IsBFloat16 (ScalarOf (Slot 1))))>,
+    CoreWidenIf<(Slot 1), (Replace (EltTypeTo (Slot 1), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot (Feature "Subtarget.hasFullFP16()")), (IsFloat16 (ScalarOf (Slot 1)))), (IsBFloat16 (ScalarOf (Slot 1))))>,
     CoreWidenIf<(Slot 1), (SameAs 0), (CoreLe (BitsOf (Slot 0)), 64)>,
     CoreWidenIf<(Slot 0), (SameAs 1), (CoreLe (BitsOf (Slot 1)), 64)>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 4, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s16)), (CoreLt (NumElems (Slot 0)), 4))>,
@@ -870,7 +870,7 @@ def AArch64_FPTOSI : LegalizeRuleSet<["G_FPTOSI", "G_FPTOUI"]> {
 def AArch64_FPTOSI_SAT : LegalizeRuleSet<["G_FPTOSI_SAT", "G_FPTOUI_SAT"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_i32, AArch64_f32], [AArch64_i64, AArch64_f32], [AArch64_i32, AArch64_f64], [AArch64_i64, AArch64_f64], [AArch64_v2i32, AArch64_v2f32], [AArch64_v4i32, AArch64_v4f32], [AArch64_v2i64, AArch64_v2f64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i16, AArch64_f16], [AArch64_i32, AArch64_f16], [AArch64_i64, AArch64_f16], [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_i16, AArch64_f16], [AArch64_i32, AArch64_f16], [AArch64_i64, AArch64_f16], [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))>,
     CoreScalarizeIf<(Slot 0), (CoreGt (BitsOf (Slot 0)), 64)>,
     CoreScalarizeIf<(Slot 1), (CoreGt (BitsOf (Slot 1)), 64)>,
     CoreNarrowIf<(Slot 0), (Replace (Ty AArch64_i64)), (CoreAll (CoreEq (Slot 1), (Ty AArch64_f16)), (CoreGt (SizeOf (Slot 0)), 64))>,
@@ -878,7 +878,7 @@ def AArch64_FPTOSI_SAT : LegalizeRuleSet<["G_FPTOSI_SAT", "G_FPTOUI_SAT"]> {
     CoreMore<(Slot 0), (Pow2)>,
     CoreWiden<(Slot 0), (Pow2Min 32)>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
-    CoreWidenIf<(Slot 1), (Replace (EltTypeTo (Slot 1), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot AArch64_HasFP16), (IsFloat16 (ScalarOf (Slot 1)))), (IsBFloat16 (ScalarOf (Slot 1))))>,
+    CoreWidenIf<(Slot 1), (Replace (EltTypeTo (Slot 1), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot (Feature "Subtarget.hasFullFP16()")), (IsFloat16 (ScalarOf (Slot 1)))), (IsBFloat16 (ScalarOf (Slot 1))))>,
     CoreWidenIf<(Slot 1), (SameAs 0), (CoreAny (CoreEq (BitsOf (Slot 0)), 16), (CoreEq (BitsOf (Slot 0)), 32), (CoreEq (BitsOf (Slot 0)), 64))>,
     CoreWidenIf<(Slot 0), (SameAs 1), (CoreAny (CoreEq (BitsOf (Slot 1)), 16), (CoreEq (BitsOf (Slot 1)), 32), (CoreEq (BitsOf (Slot 1)), 64))>,
     CoreWiden<(ElemOf (Slot 0)), (Pow2)>,
@@ -893,7 +893,7 @@ def AArch64_FPTOSI_SAT : LegalizeRuleSet<["G_FPTOSI_SAT", "G_FPTOUI_SAT"]> {
 def AArch64_SITOFP : LegalizeRuleSet<["G_SITOFP", "G_UITOFP"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_f32, AArch64_i32], [AArch64_f64, AArch64_i32], [AArch64_f32, AArch64_i64], [AArch64_f64, AArch64_i64], [AArch64_v2f32, AArch64_v2i32], [AArch64_v4f32, AArch64_v4i32], [AArch64_v2f64, AArch64_v2i64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_i32], [AArch64_f16, AArch64_i64], [AArch64_v4f16, AArch64_v4i16], [AArch64_v8f16, AArch64_v8i16]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_i32], [AArch64_f16, AArch64_i64], [AArch64_v4f16, AArch64_v4i16], [AArch64_v8f16, AArch64_v8i16]]))>,
     CoreUnsupported<(IsBFloat16 (ScalarOf (Slot 0)))>,
     CoreScalarizeIf<(Slot 1), (CoreGt (BitsOf (Slot 1)), 64)>,
     CoreScalarizeIf<(Slot 0), (CoreGt (BitsOf (Slot 0)), 64)>,
@@ -901,7 +901,7 @@ def AArch64_SITOFP : LegalizeRuleSet<["G_SITOFP", "G_UITOFP"]> {
     CoreWiden<(ElemOf (Slot 1)), (Pow2)>,
     CoreWiden<(Slot 1), (Ty AArch64_f32)>,
     CoreLower<(CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreEq (BitsOf (Slot 1)), 64), (CoreEq (BitsOf (Slot 0)), 16))>,
-    CoreWiden<(Slot 0), (CoreSelect AArch64_HasFP16, 16, 32)>,
+    CoreWiden<(Slot 0), (CoreSelect (Feature "Subtarget.hasFullFP16()"), 16, 32)>,
     CoreScalarizeIf<(Slot 0), (CoreAll (CoreEq (BitsOf (Slot 0)), 32), (CoreEq (BitsOf (Slot 1)), 64))>,
     CoreWidenIf<(Slot 0), (SameAs 1), (CoreLe (BitsOf (Slot 1)), 64)>,
     CoreWidenIf<(Slot 1), (SameAs 0), (CoreLe (BitsOf (Slot 0)), 64)>,
@@ -956,8 +956,8 @@ def AArch64_FRAME_INDEX : LegalizeRuleSet<["G_FRAME_INDEX"]> {
 
 def AArch64_GLOBAL_VALUE : LegalizeRuleSet<["G_GLOBAL_VALUE"]> {
   let Rules = [
-    CoreCustom<(CoreAll AArch64_SmallCodeModel)>,
-    CoreLegal<(CoreNot AArch64_SmallCodeModel)>,
+    CoreCustom<(CoreAll (Feature "TM.getCodeModel() == CodeModel::Small"))>,
+    CoreLegal<(CoreNot (Feature "TM.getCodeModel() == CodeModel::Small"))>,
   ];
 }
 
@@ -1029,9 +1029,9 @@ def AArch64_ATOMIC_CMPXCHG_WITH_SUCCESS : LegalizeRuleSet<["G_ATOMIC_CMPXCHG_WIT
 
 def AArch64_ATOMIC_CMPXCHG : LegalizeRuleSet<["G_ATOMIC_CMPXCHG"]> {
   let Rules = [
-    CoreLegal<(CoreAll (CoreNot AArch64_UseOutlineAtomics), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))>,
-    CoreCustom<(CoreAll (CoreNot AArch64_UseOutlineAtomics), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s128, AArch64_p0]]))>,
-    CoreLibcall<(CoreAll AArch64_UseOutlineAtomics, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s8, AArch64_p0], [AArch64_s16, AArch64_p0], [AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0], [AArch64_s128, AArch64_p0]]))>,
+    CoreLegal<(CoreAll (CoreNot (Feature "Subtarget.outlineAtomics() && !Subtarget.hasLSE()")), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))>,
+    CoreCustom<(CoreAll (CoreNot (Feature "Subtarget.outlineAtomics() && !Subtarget.hasLSE()")), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s128, AArch64_p0]]))>,
+    CoreLibcall<(CoreAll (Feature "Subtarget.outlineAtomics() && !Subtarget.hasLSE()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s8, AArch64_p0], [AArch64_s16, AArch64_p0], [AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0], [AArch64_s128, AArch64_p0]]))>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
     CoreNarrow<(Slot 0), (Ty AArch64_s64)>,
   ];
@@ -1039,8 +1039,8 @@ def AArch64_ATOMIC_CMPXCHG : LegalizeRuleSet<["G_ATOMIC_CMPXCHG"]> {
 
 def AArch64_ATOMICRMW_XCHG : LegalizeRuleSet<["G_ATOMICRMW_XCHG", "G_ATOMICRMW_ADD", "G_ATOMICRMW_SUB", "G_ATOMICRMW_AND", "G_ATOMICRMW_OR", "G_ATOMICRMW_XOR"]> {
   let Rules = [
-    CoreLegal<(CoreAll (CoreNot AArch64_UseOutlineAtomics), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))>,
-    CoreLibcall<(CoreAll AArch64_UseOutlineAtomics, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s8, AArch64_p0], [AArch64_s16, AArch64_p0], [AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))>,
+    CoreLegal<(CoreAll (CoreNot (Feature "Subtarget.outlineAtomics() && !Subtarget.hasLSE()")), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))>,
+    CoreLibcall<(CoreAll (Feature "Subtarget.outlineAtomics() && !Subtarget.hasLSE()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_s8, AArch64_p0], [AArch64_s16, AArch64_p0], [AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))>,
     CoreWiden<(Slot 0), (Ty AArch64_s32)>,
     CoreNarrow<(Slot 0), (Ty AArch64_s64)>,
   ];
@@ -1062,7 +1062,7 @@ def AArch64_BLOCK_ADDR : LegalizeRuleSet<["G_BLOCK_ADDR"]> {
 
 def AArch64_EXTRACT_VECTOR_ELT : LegalizeRuleSet<["G_EXTRACT_VECTOR_ELT"]> {
   let Rules = [
-    CoreLegal<(CoreAll AArch64_HasSVE, (CoreInTriples (Slot 0), (Slot 1), (Slot 2), [[AArch64_s16, AArch64_nxv16s8, AArch64_s64], [AArch64_s16, AArch64_nxv8s16, AArch64_s64], [AArch64_s32, AArch64_nxv4s32, AArch64_s64], [AArch64_s64, AArch64_nxv2s64, AArch64_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSVE()"), (CoreInTriples (Slot 0), (Slot 1), (Slot 2), [[AArch64_s16, AArch64_nxv16s8, AArch64_s64], [AArch64_s16, AArch64_nxv8s16, AArch64_s64], [AArch64_s32, AArch64_nxv4s32, AArch64_s64], [AArch64_s64, AArch64_nxv2s64, AArch64_s64]]))>,
     CoreUnsupported<(CoreAll (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreNe (Slot 0), (ElemOf (Slot 1))))>,
     CoreWiden<(Slot 2), (Ty AArch64_s64)>,
     CoreCustom<(CoreIn (Slot 1), AArch64_PackedVectorOrV2s16Set)>,
@@ -1084,7 +1084,7 @@ def AArch64_EXTRACT_VECTOR_ELT : LegalizeRuleSet<["G_EXTRACT_VECTOR_ELT"]> {
 def AArch64_INSERT_VECTOR_ELT : LegalizeRuleSet<["G_INSERT_VECTOR_ELT"]> {
   let Rules = [
     CoreLegal<(CoreIn (Slot 0), AArch64_PackedVectorCoreSet)>,
-    CoreLegal<(CoreAll AArch64_HasSVE, (CoreInTriples (Slot 0), (Slot 1), (Slot 2), [[AArch64_nxv16s8, AArch64_s32, AArch64_s64], [AArch64_nxv8s16, AArch64_s32, AArch64_s64], [AArch64_nxv4s32, AArch64_s32, AArch64_s64], [AArch64_nxv2s64, AArch64_s64, AArch64_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSVE()"), (CoreInTriples (Slot 0), (Slot 1), (Slot 2), [[AArch64_nxv16s8, AArch64_s32, AArch64_s64], [AArch64_nxv8s16, AArch64_s32, AArch64_s64], [AArch64_nxv4s32, AArch64_s32, AArch64_s64], [AArch64_nxv2s64, AArch64_s64, AArch64_s64]]))>,
     CoreMore<(Slot 0), (Pow2)>,
     CoreWiden<(ElemOf (Slot 0)), (MinVectorSize 64)>,
     CoreMoreIf<(Slot 0), (Replace (VecOf 8, (ElemOf (Slot 0)))), (CoreAll (CoreEq (SortOf (Slot 0)), KindVector), (CoreNot (CoreEq (SortOf (Slot 0)), KindScalableVector)), (CoreEq (ElemOf (Slot 0)), (Ty AArch64_s8)), (CoreLt (NumElems (Slot 0)), 8))>,
@@ -1122,7 +1122,7 @@ def AArch64_BUILD_VECTOR_TRUNC : LegalizeRuleSet<["G_BUILD_VECTOR_TRUNC"]> {
 def AArch64_SPLAT_VECTOR : LegalizeRuleSet<["G_SPLAT_VECTOR"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_v8s8, AArch64_s8], [AArch64_v8s8, AArch64_s32], [AArch64_v16s8, AArch64_s8], [AArch64_v16s8, AArch64_s32], [AArch64_v4s16, AArch64_s16], [AArch64_v4s16, AArch64_s32], [AArch64_v8s16, AArch64_s16], [AArch64_v8s16, AArch64_s32], [AArch64_v2s32, AArch64_s32], [AArch64_v4s32, AArch64_s32], [AArch64_v2s64, AArch64_s64], [AArch64_v2p0, AArch64_p0]])>,
-    CoreLegal<(CoreAll AArch64_HasSVE, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_nxv4s32, AArch64_s32], [AArch64_nxv2s64, AArch64_s64]]))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasSVE()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_nxv4s32, AArch64_s32], [AArch64_nxv2s64, AArch64_s64]]))>,
   ];
 }
 
@@ -1204,46 +1204,46 @@ def AArch64_STACKSAVE : LegalizeRuleSet<["G_STACKSAVE", "G_STACKRESTORE"]> {
 
 def AArch64_BZERO : LegalizeRuleSet<["G_BZERO"]> {
   let Rules = [
-    CoreUnsupported<(CoreAll AArch64_HasMOPS)>,
-    CoreLibcall<(CoreNot AArch64_HasMOPS)>,
+    CoreUnsupported<(CoreAll (Feature "Subtarget.hasMOPS()"))>,
+    CoreLibcall<(CoreNot (Feature "Subtarget.hasMOPS()"))>,
   ];
 }
 
 def AArch64_MEMSET : LegalizeRuleSet<["G_MEMSET"]> {
   let Rules = [
-    CoreLegal<(CoreAll AArch64_HasMOPS, (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s64)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
-    CoreCustom<(CoreAll AArch64_HasMOPS, (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s8)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
-    CoreLibcall<(CoreNot AArch64_HasMOPS)>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasMOPS()"), (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s64)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
+    CoreCustom<(CoreAll (Feature "Subtarget.hasMOPS()"), (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s8)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
+    CoreLibcall<(CoreNot (Feature "Subtarget.hasMOPS()"))>,
     ImmIdx<0>,
   ];
 }
 
 def AArch64_MEMCPY : LegalizeRuleSet<["G_MEMCPY", "G_MEMMOVE"]> {
   let Rules = [
-    CoreLegal<(CoreAll AArch64_HasMOPS, (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_p0)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
-    CoreLibcall<(CoreNot AArch64_HasMOPS)>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasMOPS()"), (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_p0)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
+    CoreLibcall<(CoreNot (Feature "Subtarget.hasMOPS()"))>,
     ImmIdx<0>,
   ];
 }
 
 def AArch64_MEMCPY_INLINE : LegalizeRuleSet<["G_MEMCPY_INLINE"]> {
   let Rules = [
-    CoreLegal<(CoreAll AArch64_HasMOPS, (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_p0)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasMOPS()"), (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_p0)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
   ];
 }
 
 def AArch64_MEMSET_INLINE : LegalizeRuleSet<["G_MEMSET_INLINE"]> {
   let Rules = [
-    CoreLegal<(CoreAll AArch64_HasMOPS, (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s64)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
-    CoreCustom<(CoreAll AArch64_HasMOPS, (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s8)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasMOPS()"), (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s64)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
+    CoreCustom<(CoreAll (Feature "Subtarget.hasMOPS()"), (CoreEq (Slot 0), (Ty AArch64_p0)), (CoreEq (Slot 1), (Ty AArch64_s8)), (CoreEq (Slot 2), (Ty AArch64_s64)))>,
   ];
 }
 
 def AArch64_VECREDUCE_FADD : LegalizeRuleSet<["G_VECREDUCE_FADD"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_f32, AArch64_v2f32], [AArch64_f32, AArch64_v4f32], [AArch64_f64, AArch64_v2f64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_v4f16], [AArch64_f16, AArch64_v8f16]]))>,
-    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot AArch64_HasFP16), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_v4f16], [AArch64_f16, AArch64_v8f16]]))>,
+    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot (Feature "Subtarget.hasFullFP16()")), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 2, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s64)), (CoreGt (NumElems (Slot 1)), 2))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 4, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s32)), (CoreGt (NumElems (Slot 1)), 4))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 8, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s16)), (CoreGt (NumElems (Slot 1)), 8))>,
@@ -1255,7 +1255,7 @@ def AArch64_VECREDUCE_FADD : LegalizeRuleSet<["G_VECREDUCE_FADD"]> {
 
 def AArch64_VECREDUCE_FMUL : LegalizeRuleSet<["G_VECREDUCE_FMUL"]> {
   let Rules = [
-    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot AArch64_HasFP16), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
+    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot (Feature "Subtarget.hasFullFP16()")), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 2, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s64)), (CoreGt (NumElems (Slot 1)), 2))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 4, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s32)), (CoreGt (NumElems (Slot 1)), 4))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 8, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s16)), (CoreGt (NumElems (Slot 1)), 8))>,
@@ -1289,8 +1289,8 @@ def AArch64_VECREDUCE_ADD : LegalizeRuleSet<["G_VECREDUCE_ADD"]> {
 def AArch64_VECREDUCE_FMIN : LegalizeRuleSet<["G_VECREDUCE_FMIN", "G_VECREDUCE_FMAX", "G_VECREDUCE_FMINIMUM", "G_VECREDUCE_FMAXIMUM"]> {
   let Rules = [
     CoreLegal<(CoreInPairs (Slot 0), (Slot 1), [[AArch64_f32, AArch64_v2f32], [AArch64_f32, AArch64_v4f32], [AArch64_f64, AArch64_v2f64]])>,
-    CoreLegal<(CoreAll AArch64_HasFP16, (CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_v4f16], [AArch64_f16, AArch64_v8f16]]))>,
-    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot AArch64_HasFP16), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
+    CoreLegal<(CoreAll (Feature "Subtarget.hasFullFP16()"), (CoreInPairs (Slot 0), (Slot 1), [[AArch64_f16, AArch64_v4f16], [AArch64_f16, AArch64_v8f16]]))>,
+    CoreWidenIf<(Slot 0), (Replace (EltTypeTo (Slot 0), (Ty AArch64_f32))), (CoreAny (CoreAll (CoreNot (Feature "Subtarget.hasFullFP16()")), (IsFloat16 (ScalarOf (Slot 0)))), (IsBFloat16 (ScalarOf (Slot 0))))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 2, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s64)), (CoreGt (NumElems (Slot 1)), 2))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 4, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s32)), (CoreGt (NumElems (Slot 1)), 4))>,
     CoreFewerIf<(Slot 1), (Replace (ScalarOrVecOf 8, (ElemOf (Slot 1)))), (CoreAll (CoreEq (SortOf (Slot 1)), KindVector), (CoreNot (CoreEq (SortOf (Slot 1)), KindScalableVector)), (CoreEq (ElemOf (Slot 1)), (Ty AArch64_s16)), (CoreGt (NumElems (Slot 1)), 8))>,

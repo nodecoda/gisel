@@ -695,7 +695,12 @@ class TdEmitter:
             if n["name"] == "true":
                 return "(CoreTrue)"
             if n["name"] == "hasFeature":
-                return self._feat(n["args"][0])
+                # A dag position cannot take the bare LegalizeFeature record:
+                # class parameters (Core*If, CoreLegal) are declared `dag`, and
+                # a record is not implicitly converted at that level.  The
+                # Feature expression is the dag spelling of the same leaf.
+                return f'(Feature "{n["args"][0]}")'
+
             raise ValueError(n)
         if k == "set":
             return self._set(n)

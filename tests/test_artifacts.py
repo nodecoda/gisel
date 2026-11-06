@@ -361,6 +361,49 @@ class EvaluatorCorpus(unittest.TestCase):
                     "riscv_ref_dump.jsonl", 19512)
 
 
+class TdGuards(unittest.TestCase):
+    """A `dag` parameter cannot take a bare record.
+
+    `Core*If` and the terminal `Core*` classes declare their guard as `dag`.
+    The feature leaf has two spellings: the `LegalizeFeature` record (used by
+    `LegalizeSelectType`, whose argument is a list of records) and the
+    `(Feature "...")` expression (the dag spelling).  Emitting the record in a
+    dag position produces a .td that llvm-tblgen rejects with "expected type
+    dag"; it was never noticed because only AArch64/X86 goldens existed and
+    neither corpus guards a lattice rule with a single feature.
+    """
+
+    BARE_GUARD = re.compile(r"Core(?:Legal|Lower|Custom|Unsupported|Libcall)"
+                            r"<[A-Za-z_]\w*>")
+    # The last argument of a Core*If is the guard; a bare identifier there is
+    # a record, not a dag.  The type arguments are always parenthesised
+    # `(Ty R_x)`, so nothing legitimate ends the line this way.
+    BARE_TAIL = re.compile(r"Core\w+If<.*,\s*[A-Za-z_]\w*>(?=,?$)", re.M)
+
+    def test_no_bare_feature_record_in_a_dag_position(self):
+        for name in ("AArch64", "X86", "RISCV"):
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / "x.td"
+                r = run("gen", str(TESTS / "corpus" / f"{name}LegalizerInfo.gisel"),
+                        "--emit=td", "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                text = out.read_text()
+            self.assertIsNone(self.BARE_GUARD.search(text),
+                              f"{name}: bare record as a terminal guard")
+            self.assertIsNone(self.BARE_TAIL.search(text),
+                              f"{name}: bare record as a mutation guard")
+
+    def test_riscv_feature_guard_is_a_dag(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "r.td"
+            r = run("gen", str(TESTS / "corpus" / "RISCVLegalizerInfo.gisel"),
+                    "--emit=td", "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            text = out.read_text()
+        self.assertIn('(Feature "STI.hasStdExtZbb()")', text)
+        self.assertIn('(CoreNot (Feature "STI.hasStdExtZbb()"))', text)
+
+
 class ProbeCorpus(unittest.TestCase):
     """Targets with no .td yet: every backend must still accept the source.
 
