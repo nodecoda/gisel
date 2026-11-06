@@ -8,17 +8,18 @@ a CI-built wheel/sdist, and a Trusted Publishing upload — no tokens.
 Done (2026-11-06):
 
 - remote `origin` = https://github.com/nodecoda/gisel (public).
-- GitHub environment `pypi` exists (no secrets; OIDC only).
+- GitHub environment `pypi` exists.
 - `ci.yml` is green on 3.10 / 3.11 / 3.12.
+- **0.2.0 is on PyPI**: https://pypi.org/project/gisel/0.2.0/
+  (wheel + sdist), uploaded once with `twine` and then by the `v0.2.0`
+  tag pipeline; the repository secret `PYPI_API_TOKEN` authenticates it.
+  `skip-existing: true` makes the tag run a green no-op.
+- GitHub release: https://github.com/nodecoda/gisel/releases/tag/v0.2.0
 
-Still needed, in the PyPI account (name `gisel` is unregistered as of
-2026-11-06 — `https://pypi.org/pypi/gisel/json` returns 404):
-
-- PyPI → Account → Publishing → "Add a pending publisher":
-  PyPI project name `gisel`, owner `nodecoda`, repository `gisel`,
-  workflow `publish.yml`, environment `pypi`.
-
-With that in place, pushing a `v*` tag creates the project and uploads it.
+Optional, better long-term: add a pending trusted publisher on PyPI
+(owner `nodecoda`, repo `gisel`, workflow `publish.yml`, environment `pypi`)
+and delete `password:` from the publish job — the action then uses OIDC and
+the token secret can be revoked.
 
 ## 1. Bump the version in both places
 
