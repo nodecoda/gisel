@@ -317,6 +317,50 @@ class EvaluatorCorpus(unittest.TestCase):
         self.assertEqual((disagree, errors), (0, 0), first)
 
 
+class BootstrapRoundTrip(unittest.TestCase):
+    """The hand-written .td + core JSON regenerate the checked-in .gisel."""
+
+    def test_bootstrap_then_gen_is_lossless(self):
+        for name, src in CORPORA:
+            target = src[:-len("LegalizerInfo")]
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / f"{src}.gisel"
+                r = run("bootstrap",
+                        "--td", str(TESTS / "golden" / f"{name}.td"),
+                        "--core", str(TESTS / "artifacts" / f"{name}.core.json"),
+                        "--out", str(out), "--title", target)
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(out.read_text(),
+                                 (TESTS / "corpus" / f"{src}.gisel").read_text(),
+                                 f"{name}: bootstrap does not reproduce the corpus")
+                regen = Path(d) / "x.td"
+                r = run("gen", str(out), "--emit=td", "--out", str(regen))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(regen.read_text(),
+                                 (TESTS / "golden" / f"{name}.td").read_text())
+
+
+class SourceNameIndependence(unittest.TestCase):
+    """Renaming a source must not change what the backends emit."""
+
+    def test_artifacts_do_not_depend_on_the_file_name(self):
+        for name, src in CORPORA:
+            with tempfile.TemporaryDirectory() as d:
+                g = Path(d) / "scratch.gisel"
+                g.write_text((TESTS / "corpus" / f"{src}.gisel").read_text())
+                td = Path(d) / "x.td"
+                self.assertEqual(run("gen", str(g), "--emit=td", "--out", str(td)).returncode, 0)
+                self.assertEqual(td.read_text(),
+                                 (TESTS / "golden" / f"{name}.td").read_text(), name)
+                tbl = Path(d) / "x.table"
+                self.assertEqual(run("gen", str(g), "--emit=table", "--out", str(tbl)).returncode, 0)
+                self.assertEqual(tbl.read_text(),
+                                 (TESTS / "artifacts" / f"{name}.table.inc").read_text(), name)
+                r = run("check", str(g), "--emit=td",
+                        "--against", str(TESTS / "golden" / f"{name}.td"))
+                self.assertEqual(r.returncode, 0, r.stderr)
+
+
 class CliSurface(unittest.TestCase):
     def test_module_entrypoint_and_version(self):
         r = subprocess.run([sys.executable, "-m", "gisel", "--version"],

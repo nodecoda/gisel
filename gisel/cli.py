@@ -11,7 +11,7 @@ from .backend import check_json, core_json, llvm_inc, table
 BACKENDS = ("td", "inc", "check", "table", "core")
 
 
-def _table_prefix(source, explicit):
+def _table_prefix(source, explicit, gs=None):
     """-legalizer-table-prefix, defaulted from the source file name.
 
     tblgen's default is "X86", which is why the AArch64 lane has to pass
@@ -20,6 +20,10 @@ def _table_prefix(source, explicit):
     """
     if explicit:
         return explicit
+    if gs is not None:
+        for rs in gs.get("rulesets", []):
+            if "_" in rs["def"]:
+                return rs["def"].split("_", 1)[0]
     stem = Path(source).stem
     return stem[:-len("LegalizerInfo")] if stem.endswith("LegalizerInfo") else stem
 
@@ -49,7 +53,7 @@ def _generate(gs, source, emit, prefix=None):
     if emit == "check":
         return check_json.emit_check(gs)
     if emit == "table":
-        return table.emit_table(gs, _table_prefix(source, prefix))
+        return table.emit_table(gs, _table_prefix(source, prefix, gs))
     if emit == "core":
         return core_json.emit_core(gs, source, Path(source).read_text())
     raise ValueError(f"unknown backend {emit!r}")

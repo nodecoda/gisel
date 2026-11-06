@@ -817,10 +817,25 @@ def _emit_decl(kind, name, payload):
     return f"def {name} : LegalizeCoreTypeSet<[{', '.join(payload)}]>;"
 
 
+def target_name(gs, source_name):
+    """The target a source belongs to: the first rule set's def prefix.
+
+    Deriving it from the rule sets rather than the file name keeps generated
+    artifacts identical when a source is renamed or copied, and lets `check`
+    work on a scratch copy.  `X86_IMPLICIT_DEF` -> `X86`.
+    """
+    for rs in gs.get("rulesets", []):
+        d = rs["def"]
+        if "_" in d:
+            return d.split("_", 1)[0]
+    return Path(source_name).stem
+
+
 def emit_td(gs, source_name):
     names = build_names(gs["decls"])
     emitter = NamedTdEmitter(names)
-    out = ["//===- " + Path(source_name).stem + ".td - generated legalizer rules "
+    target = target_name(gs, source_name)
+    out = ["//===- " + target + "LegalizerInfo.td - generated legalizer rules "
            "-*- tablegen -*-===//",
            "//",
            "// Part of the LLVM Project, under the Apache License v2.0 with LLVM",
@@ -829,7 +844,7 @@ def emit_td(gs, source_name):
            "//",
            "//===----------------------------------------------------------------------===//",
            "//",
-           f"// Generated from {Path(source_name).name} by llvm-dev/tools/gisel_td.py.",
+           f"// Generated from {target}LegalizerInfo.gisel by llvm-dev/tools/gisel_td.py.",
            "// Do not edit: edit the source and re-run the generator.",
            "",
            "//===----------------------------------------------------------------------===//"]

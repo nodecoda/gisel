@@ -20,13 +20,15 @@ gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=td  --out X86LegalizerInf
 | M3 | `--emit=table` | the `-gen-legalizer-table` fragment | done |
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 9632-point differential | done |
 
-`tests/artifacts/` holds the eight frozen artifacts and their `SHA256`;
+`tests/artifacts/` holds the eight frozen artifacts and their `SHA256`; the
+corpus is derivable, not hand-tuned: `gisel bootstrap` reproduces both `.gisel`
+files byte for byte from the frozen `.td` + core JSON (asserted in the suite).
 `tests/artifacts/SHA256` (relative paths) is the oracle every backend is measured
 against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (development
 only — generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 20 gates, ~4 s
+python3 -m unittest discover -q -s tests      # 28 gates, ~4.5 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
