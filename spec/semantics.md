@@ -81,10 +81,19 @@ except 落成**更窄的谓词**（命名 `pred` 或内联 `and not ...`）。�
 `same_as`、`clamp`），不会回到更强的类型；11-01 §7 给出论证，`eval.py` 不做
 额外检查。**已知边界**：求值器不检测循环规则，也不验证"目标更弱"。
 
-## 8 9632 点差分
+## 8 语义差分（两个 target）
 
-`tests/cases/a64_ref_dump.jsonl` 是从树内参考实现导出的 9632 个查询
-（config/name/types/mem → action/type_idx/new_type）。`gisel eval` 用我们的
-core JSON 复算：`cases=9632 disagreements=0 errors=0`，由
-`tests/test_artifacts.py::EvaluatorCorpus` 固化。这条是本项目的语义门禁，
-比逐字节更接近"规则对不对"。
+| target | 答案表 | 规模 | 结果 |
+|---|---|---|---|
+| AArch64 | `tests/cases/a64_ref_dump.jsonl` | 9632 | 0 分歧 / 0 error |
+| X86 | `tests/cases/x86_ref_dump.jsonl` | 5632（1408 点 × 4 配置） | 0 分歧 / 0 error |
+
+答案表从树内参考实现导出（`llvm-dev/tests/{aarch64,x86}-oracle/`），
+`gisel eval` 用我们的 core JSON 复算，由 `tests/test_artifacts.py::EvaluatorCorpus`
+固化。X86 表用的是 Core 拼法（`p0:32`），因为 `LLT::print` 会丢掉指针宽度；
+求值器两种拼法都接受（`parse_case_llt`）。
+
+X86 表补上了 AArch64 语料从未触发的 schema 形状，并因此修掉四类真 bug：
+`{"kind":"nary","op":"all_of"}`、`{"kind":"not","arg":...}` 的 DAG 拼法、
+集合元素里的 `select` 类型（`p0:*, if Is64Bit then s64 else s32`）、
+以及 `p0:*` 通配指针（按地址空间匹配、不比较宽度）。

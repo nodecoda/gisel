@@ -232,7 +232,7 @@ def align_to(x, n):
 
 _CORE_VEC_RE = re.compile(r"^(nxv|v)(\d+)(.*)$")
 _CORE_SCALAR_RE = re.compile(r"^(s|i|f)(\d+)$")
-_CORE_PTR_RE = re.compile(r"^p(\d+):(\d+)$")
+_CORE_PTR_RE = re.compile(r"^p(\d+):(\d+|\*)$")
 _ORACLE_VEC_RE = re.compile(r"^<(\d+|vscale x \d+) x (.*)>$")
 
 
@@ -250,7 +250,8 @@ def _parse_elem_spelling(s, oracle):
     if not oracle:
         m = _CORE_PTR_RE.match(s)
         if m:
-            return ("pointer", int(m.group(1)), int(m.group(2)))
+            w = m.group(2)
+            return ("pointer", int(m.group(1)), int(w) if w != "*" else "*")
     else:
         m = re.match(r"^p(\d+)$", s)
         if m:
@@ -271,7 +272,8 @@ def parse_core_llt(s):
         return ("vector", lanes, scalable, elem)
     m = _CORE_PTR_RE.match(s)
     if m:
-        return ("pointer", int(m.group(1)), int(m.group(2)))
+        w = m.group(2)
+        return ("pointer", int(m.group(1)), int(w) if w != "*" else "*")
     return _parse_elem_spelling(s, oracle=False)
 
 
@@ -294,12 +296,38 @@ def parse_oracle_llt(s):
     return _parse_elem_spelling(s, oracle=True)
 
 
+def parse_case_llt(s):
+    """A frozen-case type: Core IR spelling or LLT::print spelling.
+
+    Our own oracle dumps write `p0:32`/`v4s32` (kind and pointer width are
+    explicit); the older AArch64 dump writes LLT::print (`<4 x s32>`, `p0`).
+    """
+    if s == "LLT_invalid":
+        return ("invalid",)
+    if s.startswith("<"):
+        return parse_oracle_llt(s)
+    try:
+        return parse_core_llt(s)
+    except EvalError:
+        return parse_oracle_llt(s)   # `p0`: LLT::print drops the pointer width
+
+
 def _is_scalar_like(t):
     """LLT::isScalar(): ANY_SCALAR, INTEGER and FLOAT are all 'scalar'."""
     return t[0] in ("scalar", "integer", "float", "bf16")
 
 
+def has_wildcard(t):
+    """A pointer whose width the configuration decides (`p0:*`)."""
+    if t[0] == "pointer":
+        return t[2] == "*"
+    if t[0] == "vector":
+        return has_wildcard(t[3])
+    return False
+
+
 def llt_eq(a, b):
+    """LLT equality; a `p<as>:*` element matches any width (see core JSON)."""
     """LLT operator==, including the ANY_SCALAR bag-of-bits rule.
 
     If either side is ANY_SCALAR the comparison is `isScalar() && same
@@ -308,6 +336,8 @@ def llt_eq(a, b):
     """
     if a == b:
         return True
+    if a[0] == "pointer" and b[0] == "pointer":
+        return a[1] == b[1] and (a[2] == "*" or b[2] == "*" or a[2] == b[2])
     if a[0] == "scalar" or b[0] == "scalar":
         return (_is_scalar_like(a) and _is_scalar_like(b)
                 and scalar_size(a) == scalar_size(b))
@@ -550,7 +580,19 @@ class Evaluator:
         if k == "any":
             return any(self.bool_value(c, types, mems, config) for c in a)
         if k == "not":
-            return not self.bool_value(a[0], types, mems, config)
+            # schema-0.4 writes `{"kind":"not","arg":...}` for a negated DAG
+            # predicate and `args` for a CoreNot node; accept both.
+            child = a[0] if a else node["arg"]
+            return not self.bool_value(child, types, mems, config)
+        if k == "nary":
+            # `{"kind":"nary","op":"all_of"|"any_of","args":[...]}`: the
+            # DAG-shaped spelling the emitter uses inside select guards.
+            op = node.get("op")
+            if op == "all_of":
+                return all(self.bool_value(c, types, mems, config) for c in a)
+            if op == "any_of":
+                return any(self.bool_value(c, types, mems, config) for c in a)
+            raise EvalError("unknown_nary", "nary op %r" % (op,))
         if k == "isPow2":
             return is_pow2_32(self.int_value(a[0], types, mems, config))
         if k == "isByteSized":
@@ -585,13 +627,14 @@ class Evaluator:
             m = mems[mnode["args"][0]["value"]]
             elems = a[3]["elems"]
             for e in elems:
-                t0 = parse_core_llt(e[0])
-                t1 = parse_core_llt(e[1])
-                mt = parse_core_llt(e[2])
+                t0 = self.type_value(e[0], types, mems, config)
+                t1 = self.type_value(e[1], types, mems, config)
+                mt = self.type_value(e[2], types, mems, config)
                 align = e[3]
+                size_ok = (llt_eq(m.memory_ty, mt) if has_wildcard(mt)
+                           else size_in_bits(m.memory_ty)[0] == size_in_bits(mt)[0])
                 if (llt_eq(types[i0], t0) and llt_eq(types[i1], t1)
-                        and m.align >= align
-                        and size_in_bits(m.memory_ty)[0] == size_in_bits(mt)[0]):
+                        and m.align >= align and size_ok):
                     return True
             return False
 
@@ -603,15 +646,16 @@ class Evaluator:
             i0 = self._slot_index(a[0]); i1 = self._slot_index(a[1])
             arity = rhs.get("arity", 2)
             for e in rhs["elems"]:
-                if llt_eq(types[i0], parse_core_llt(e[0])) and llt_eq(types[i1], parse_core_llt(e[1])):
+                if (llt_eq(types[i0], self.type_value(e[0], types, mems, config))
+                        and llt_eq(types[i1], self.type_value(e[1], types, mems, config))):
                     return True
             return False
         if k == "inTriples":
             i0 = self._slot_index(a[0]); i1 = self._slot_index(a[1]); i2 = self._slot_index(a[2])
             for e in rhs["elems"]:
-                if (llt_eq(types[i0], parse_core_llt(e[0]))
-                        and llt_eq(types[i1], parse_core_llt(e[1]))
-                        and llt_eq(types[i2], parse_core_llt(e[2]))):
+                if (llt_eq(types[i0], self.type_value(e[0], types, mems, config))
+                        and llt_eq(types[i1], self.type_value(e[1], types, mems, config))
+                        and llt_eq(types[i2], self.type_value(e[2], types, mems, config))):
                     return True
             return False
 
@@ -622,11 +666,12 @@ class Evaluator:
             hi = rhs["args"][1]["value"]
             return lo <= v <= hi
         if rhs.get("kind") == "type":
-            return llt_eq(self.llt_value(lhs, types, mems, config), parse_core_llt(rhs["value"]))
+            return llt_eq(self.llt_value(lhs, types, mems, config),
+                          self.type_value(rhs["value"], types, mems, config))
         if rhs.get("kind") == "set" and rhs.get("of") == "Type":
             v = self.llt_value(lhs, types, mems, config)
             for e in rhs["elems"]:
-                if llt_eq(v, parse_core_llt(e)):
+                if llt_eq(v, self.type_value(e, types, mems, config)):
                     return True
             return False
         if rhs.get("kind") == "set" and rhs.get("of") == "Kind":
@@ -908,10 +953,10 @@ def run_cases(evaluator, cases_path):
                 continue
             q = json.loads(line)
             total += 1
-            types = [parse_oracle_llt(s) for s in q["types"]]
+            types = [parse_case_llt(s) for s in q["types"]]
             mems = []
             if q["mem"] is not None:
-                mems.append(MemDesc(parse_oracle_llt(q["mem"][0]), q["mem"][1]))
+                mems.append(MemDesc(parse_case_llt(q["mem"][0]), q["mem"][1]))
             try:
                 action, type_idx, new_type = evaluate(
                     evaluator, q["config"], q["name"], types, mems)
@@ -921,9 +966,10 @@ def run_cases(evaluator, cases_path):
                     first_failure = "ERROR %s: %s" % (q, e)
                 continue
             new_type_str = fmt_oracle_llt(new_type) if new_type is not None else "LLT_invalid"
+            want_new = parse_case_llt(q["new_type"])
             action_counts[action] = action_counts.get(action, 0) + 1
             if (action != q["action"] or type_idx != q["type_idx"]
-                    or new_type_str != q["new_type"]):
+                    or new_type != want_new):
                 disagree += 1
                 if first_failure is None:
                     first_failure = (

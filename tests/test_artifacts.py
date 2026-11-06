@@ -296,6 +296,38 @@ def _arity(ruleset):
     return n
 
 
+class EvaluatorSchemaShapes(unittest.TestCase):
+    """Spellings the AArch64 corpus never exercised but the schema allows."""
+
+    def test_nary_and_singular_not(self):
+        sys.path.insert(0, str(ROOT))
+        from gisel import eval as E
+
+        ev = E.Evaluator({"rulesets": []},
+                         E.Features({"c": {"f": True, "g": False}}))
+        node = {"kind": "nary", "op": "all_of", "args": [
+            {"kind": "leaf", "name": "hasFeature", "args": ["f"]},
+            {"kind": "not", "arg": {"kind": "leaf", "name": "hasFeature",
+                                    "args": ["g"]}}]}
+        self.assertTrue(ev.bool_value(node, [], [], "c"))
+        node["args"][1] = {"kind": "not", "args": [
+            {"kind": "leaf", "name": "hasFeature", "args": ["f"]}]}
+        self.assertFalse(ev.bool_value(node, [], [], "c"))
+
+    def test_wildcard_pointer_matches_any_width(self):
+        sys.path.insert(0, str(ROOT))
+        from gisel import eval as E
+
+        self.assertTrue(E.llt_eq(E.parse_core_llt("p0:32"),
+                                 E.parse_core_llt("p0:*")))
+        self.assertTrue(E.llt_eq(E.parse_core_llt("v2p0:32"),
+                                 E.parse_core_llt("v2p0:*")))
+        self.assertFalse(E.llt_eq(E.parse_core_llt("p1:32"),
+                                  E.parse_core_llt("p0:*")))
+        self.assertFalse(E.llt_eq(E.parse_core_llt("s32"),
+                                  E.parse_core_llt("p0:*")))
+
+
 class EvaluatorCorpus(unittest.TestCase):
     """The 9632-point AArch64 differential, run against our own core JSON."""
 
@@ -314,6 +346,23 @@ class EvaluatorCorpus(unittest.TestCase):
         total, disagree, errors, first, _ = E.run_cases(
             ev, str(cases / "a64_ref_dump.jsonl"))
         self.assertEqual(total, 9632)
+        self.assertEqual((disagree, errors), (0, 0), first)
+
+    def test_x86_cases_agree(self):
+        sys.path.insert(0, str(ROOT))
+        from gisel import eval as E
+
+        cases = TESTS / "cases"
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "x86.core.json"
+            r = run("gen", str(TESTS / "corpus" / "X86LegalizerInfo.gisel"),
+                    "--emit=core", "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            ev = E.Evaluator(json.loads(out.read_text()),
+                             E.load_features(str(cases / "x86-features.json")))
+        total, disagree, errors, first, _ = E.run_cases(
+            ev, str(cases / "x86_ref_dump.jsonl"))
+        self.assertEqual(total, 5632)
         self.assertEqual((disagree, errors), (0, 0), first)
 
 

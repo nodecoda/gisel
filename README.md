@@ -28,7 +28,7 @@ against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (develop
 only — generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 28 gates, ~4.5 s
+python3 -m unittest discover -q -s tests      # 31 gates, ~5 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
@@ -49,6 +49,11 @@ gisel gen tests/corpus/AArch64LegalizerInfo.gisel --emit=core --out a.core.json
 gisel eval --doc a.core.json \
   --features tests/cases/features.json --cases tests/cases/a64_ref_dump.jsonl
 # cases=9632 disagreements=0 errors=0
+
+gisel gen tests/corpus/X86LegalizerInfo.gisel --emit=core --out x.core.json
+gisel eval --doc x.core.json \
+  --features tests/cases/x86-features.json --cases tests/cases/x86_ref_dump.jsonl
+# cases=5632 disagreements=0 errors=0
 ```
 
 `tests/cases/a64_ref_dump.jsonl` is the frozen AArch64 differential
