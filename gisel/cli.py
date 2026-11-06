@@ -82,6 +82,10 @@ def _lint(gs, source, manifest):
     """J1/J2b/J3a/J3b over every rule, with `.gisel` line numbers."""
     errors, warnings = [], []
     nrules = 0
+    # Every type a rule can name is declared above it: `type`, `select` and
+    # `type_set`.  Passing the set through is what turns "unknown type name"
+    # from a KeyError in the core backend into a diagnostic on the right line.
+    names = {d[1] for d in gs["decls"] if d[0] in ("type", "select", "type_set")}
     for rs in gs["rulesets"]:
         arities = [manifest.get(o) for o in rs["opcodes"]]
         known = [a for a in arities if a is not None]
@@ -93,7 +97,8 @@ def _lint(gs, source, manifest):
             line = rule.get("_line", 0)
             errs = []
             try:
-                dsl.check_rule(rule, arity if arity is not None else 10 ** 9, errs)
+                dsl.check_rule(rule, arity if arity is not None else 10 ** 9,
+                               errs, names)
             except (KeyError, IndexError, TypeError, ValueError) as e:
                 errs.append(f"malformed rule: {e}")
             for msg in errs:

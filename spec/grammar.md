@@ -100,6 +100,11 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 ```
 
 - `or`/`and`/`all_of`/`any_of` 都是 n 元、扁平（对应 `CoreAny`/`CoreAll`）。
+- 规则里的类型**必须是已声明的名字**：`type` / `select` / `type_set` 任一。
+  `in(slot(0), i32)` 里的 `i32` 是 LLT 字面拼写，不是名字，J1 报
+  `unknown type name 'i32'`。这条不是风格要求——三个发射后端都要把名字解析回
+  记录名（`core_json.type_name` / `td._type` / `llvm_inc._type`），字面拼写在
+  其中任何一处都没有对应的记录可指。`type` 声明的右侧才是 LLT 表达式。
 - `in(slot(i), S)` 的 `S` 可以是单类型、内联集合或命名 `type_set`；
   `in(imm(i), [8, 16])` 是立即数集合。集合是**同质**的：`in` 的左侧 sort 必须
   与集合元素 sort 一致（`Int` 集合配 `imm`，`Type` 集合配 `slot`），否则 J1 报

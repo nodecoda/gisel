@@ -135,7 +135,8 @@ class IncEmitter:
             return self.names.type[name]
         if name in self.names.records:
             return name
-        raise KeyError(f"unknown type name {name!r}")
+        raise ValueError(f"unknown type name {name!r}: rules name declared "
+                     f"`type`/`select`/`type_set` records, not LLT literals")
 
     def _type_value(self, v):
         if isinstance(v, str):

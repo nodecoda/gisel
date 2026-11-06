@@ -63,7 +63,11 @@ class CoreJson:
         """A record name -> its canonical LLT spelling (``s8``, ``p0:*``)."""
         expr = self.exprs.get(name)
         if expr is None:
-            raise KeyError("not a named type: %r" % name)
+            # ValueError, not KeyError: `gisel gen` maps ValueError to
+            # `path: message` + exit 2.  A KeyError escaped as a traceback.
+            raise ValueError("unknown type name %r: rules name declared "
+                             "`type`/`select`/`type_set` records, not LLT "
+                             "literals" % name)
         norm = T.normalize_llt(expr, self.exprs)
         if not norm:
             raise ValueError("cannot normalise type %r" % name)

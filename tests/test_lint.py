@@ -51,8 +51,10 @@ class LintCorpus(unittest.TestCase):
 
     def test_imm_axis(self):
         """`imm(i)` is an Int observation; `in` matches the set's sort."""
-        ok = ("ruleset X: G_SEXT_INREG\n"
-              "    legal (in(slot(0), i32) and (in(imm(0), [8, 16]) or imm(0) == 32))\n")
+        # A rule names types that are declared; `i32` alone is not a name.
+        ok = ("type X_i32 = LLT::scalar(32)\n"
+              "ruleset X: G_SEXT_INREG\n"
+              "    legal (in(slot(0), X_i32) and (in(imm(0), [8, 16]) or imm(0) == 32))\n")
         r = lint_source(ok)
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertIn("0 error(s)", r.stdout)
@@ -154,6 +156,37 @@ class NegativeControl(unittest.TestCase):
             r = run("gen", str(src), "--emit=inc", "--out", str(Path(d) / "x.inc"))
         self.assertEqual(r.returncode, 2)
         self.assertIn("undeclared feature expression", r.stderr)
+
+    def test_unknown_type_name_is_a_diagnostic(self):
+        """A type leaf must name a declared record, in both spellings.
+
+        `in(slot(0), [s8])` (a set) and `in(slot(0), s8)` (one type) both
+        reach the core backend, which used to raise KeyError from
+        `type_name` -- a traceback, not a diagnostic, and only after lint had
+        already said 0 error(s).
+        """
+        for rule in ("    legal in(slot(0), [s8])\n",
+                     "    legal in(slot(0), s8)\n"):
+            r = lint_source("ruleset R: G_ADD\n" + rule)
+            self.assertEqual(r.returncode, 1, r.stderr)
+            self.assertIn(":2:", r.stderr)
+            self.assertIn("unknown type name 's8'", r.stderr)
+
+    def test_declared_type_names_still_lint_clean(self):
+        r = lint_source("type X_s8 = LLT::scalar(8)\n"
+                        "ruleset R: G_ADD\n"
+                        "    legal in(slot(0), [X_s8])\n"
+                        "    legal in(slot(0), X_s8)\n")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_gen_refuses_an_unknown_type_without_a_traceback(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text("ruleset R: G_ADD\n    legal in(slot(0), [s8])\n")
+            r = run("gen", str(src), "--emit=core", "--out", str(Path(d) / "x.json"))
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("unknown type name", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
 
     def test_unknown_node_kind_is_rejected(self):
         with self.assertRaises(ValueError):

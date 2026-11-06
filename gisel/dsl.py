@@ -811,18 +811,34 @@ TARGET_SORTS = {"widen": {"Type", "Int"}, "narrow": {"Type", "Int"},
                 "more": {"Int", "Type"}, "fewer": {"Int", "Type"},
                 "bitcast": {"Type"}}
 
-def _tc(node, arity, errs):
+def _check_name(name, names, errs):
+    """A type leaf must name a declared record.  None disables the check."""
+    if names is None or not isinstance(name, str):
+        return
+    if name not in names:
+        errs.append(f"unknown type name {name!r}: no `type`, `select` or "
+                    f"`type_set` declares it")
+
+
+def _tc(node, arity, errs, names=None):
     """Type-check one normal-form node, return its sort (J1 / J2b).
 
     The sorts are the ones the evaluator distinguishes at run time
     (gisel/eval.py value()/bool_value()); MemDesc is the only one that never
     reaches a comparison.
+
+    `names` is the set of declared `type`/`select`/`type_set` records.  When
+    it is given, a type leaf that names nothing is reported here.  Without it
+    this check used to pass silently and the first reader to notice was
+    `core_json.type_name`, which raised a KeyError out of `gisel gen` -- a
+    traceback where the contract promises `path:line: message`.  None keeps
+    the old behaviour for callers that only have a rule node.
     """
     k = node["kind"]
     args = node.get("args", [])
 
     def tc(n):
-        return _tc(n, arity, errs)
+        return _tc(n, arity, errs, names)
 
     def need(i, sort):
         got = tc(args[i])
@@ -845,8 +861,15 @@ def _tc(node, arity, errs):
             errs.append(f"(Slot {node['index']}) out of range: opcode has {arity} slot(s)")
         return "Type"
     if k == "type":
+        _check_name(node.get("value"), names, errs)
         return "Type"
     if k == "set":
+        # `in(slot(0), [a, b])` keeps its members as plain strings; they are
+        # the other place a type name is spelled, and skipping them is how
+        # `[s8]` reached the core backend unchecked.
+        if node.get("of", "Type") == "Type":
+            for name in node.get("elems", []):
+                _check_name(name, names, errs)
         return "Set"
     if k == "imm":
         # There is no per-opcode immediate count to check against: the
@@ -949,6 +972,11 @@ def _tc(node, arity, errs):
     if k == "in":
         lhs = tc(args[0])
         rhs = args[1] if len(args) > 1 else {}
+        # The right-hand side was never visited: a single named type
+        # (`in(slot(0), X86_Vec128)`) and a set's members are only reachable
+        # through here, so `[s8]` with no `type s8 = ...` used to lint clean.
+        if isinstance(rhs, dict) and rhs.get("kind") in ("type", "set"):
+            tc(rhs)
         of = rhs.get("of", "Type") if isinstance(rhs, dict) else "Type"
         want = "Int" if of == "Int" else "Type"
         if lhs != want:
@@ -972,19 +1000,19 @@ def _tc(node, arity, errs):
         return "Bool"
     raise ValueError(f"typecheck: unknown node kind {k!r}")
 
-def check_rule(rule, arity, errs):
+def check_rule(rule, arity, errs, names=None):
     op = rule["op"]
     if op in ("legal", "lower", "custom", "unsupported", "libcall"):
-        if _tc(rule["predicate"], arity, errs) != "Bool":
+        if _tc(rule["predicate"], arity, errs, names) != "Bool":
             errs.append(f"{op}: guard must be Bool")
     elif op in TARGET_SORTS:
-        _tc(rule["on"], arity, errs)
-        ts = _tc(rule["to"], arity, errs)
+        _tc(rule["on"], arity, errs, names)
+        ts = _tc(rule["to"], arity, errs, names)
         if ts not in TARGET_SORTS[op]:
             errs.append(f"{op}: target sort {ts} not in action table")
-        _tc(rule["predicate"], arity, errs)
+        _tc(rule["predicate"], arity, errs, names)
     elif op == "scalarize":
-        _tc(rule["on"], arity, errs)
+        _tc(rule["on"], arity, errs, names)
     else:
         errs.append(f"unknown op {op!r}")
 
