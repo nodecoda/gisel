@@ -1,0 +1,90 @@
+# 规则语义（v0.1）
+
+状态: 描述性。可执行定义是 `gisel/eval.py`；本文每条都能指到函数或行号。
+上游的代数推导见 `llvm-dev/docs/dsl/2026-11-01-legalize-algebra.md` 与
+`2026-11-01-legalize-semantics.md`，本文只记录**落地后的口径**。
+
+## 1 域：LLT
+
+六种 kind：`invalid`、`scalar(s)`、`integer(i)`、`float(f)`、`bf16`、
+`pointer(as,w)`、`vector(lanes,scalable,elem)`（`eval.py:66-207`）。
+
+- 指针宽度是显式字段，`p0:64` 与 `p0:*` 只在 JSON 拼写上不同：集合内写通配，
+  domain 写具体宽度（`core_json.py:1-15`）。
+- 相等是 `llt_eq`（`eval.py:302`）：两边都是向量时逐元素比较；任一侧是
+  `scalar` 时按 `isScalar()` 的"同宽度即相等"规则（`s32 == i32 == f32`，
+  但 `i32 != f32`）。
+- 尺寸/对齐以位为单位（`size_in_bits:122`、`align_to:225`）。
+
+## 2 匹配：有序规则，首个命中
+
+`evaluate`（`eval.py:860`）：
+
+1. 按 opcode 找到所有 ruleset（`Evaluator.by_opcode`，保持文件顺序）；
+2. 按 ruleset 内规则顺序，取第一条 `predicate` 为真的规则；
+3. 该规则的 `on/to` 还要过**隐式 guard**（`shim_guard_and_newtype:718`），
+   guard 为假则继续下一条；
+4. 都不中则 `("Unsupported", 0, invalid)`（`:863`，对应
+   `LegalizerInfo::getAction` 的兜底）。
+
+因此 "legal" 不是点集，是**谓词的析取**：一条 `legal <pred>` 只声明
+"pred 为真的点在此处合法"，与后续规则的关系由顺序决定。这与 11-01 §3 的
+结论一致，只是落地为单步求值。
+
+## 3 类型槽与 mem 槽
+
+- `slot(i)` 读第 i 个类型（`value:441`）；`type_idx` 由 `on` 推导
+  （`dsl.py:445`），终端动作固定 0。
+- mem 是**独立槽**：`MemDesc(memory_ty, align, ordering, failure_ordering)`
+  （`eval.py:413`），`mem_slot(i)` 索引它（`value:443`），不占类型槽，也不能
+  出现在 `on`（`_slot_of:707` 只接受 `slot`）。
+- `in_mem_desc(slot(a), slot(b), mem_slot(i), [...])` 同时约束两个类型槽、
+  对齐（`>=`）和内存类型宽度（`membership:576`）。memdesc 规则不改写
+  mem 槽，只做分类。
+
+## 4 积 vs 对角
+
+- `in_pairs` / `in_triples` 枚举元组：积的子集，逐行比较（`membership:648-671`）。
+- 对角约束有两种写法：`same_as(k)` 直接返回 `types[k]`（`value:473`），
+  `eq(expr, expr)` 走 `values_equal → llt_eq`（`compare:645`）。二者都表达
+  "两个槽必须同型"，不是笛卡尔积。
+- `in_pairs(...)` 的 `pair` 行是**允许的元组表**；未列出的组合为假。
+
+## 5 动作
+
+| 动作 | 产生方式 | 结果 |
+|---|---|---|
+| `Legal/Lower/Custom/Unsupported/Libcall` | 终端规则 | 不改类型 |
+| `WidenScalar/NarrowScalar` | `widen/narrow` 或 `clamp_*` 的糖 | 改元素位宽 |
+| `MoreElements/FewerElements` | `more/fewer`、`scalarize`、`clamp_*` | 改 lane 数或标量化 |
+| `Bitcast` | `bitcast(on, to)` | 换整型 |
+
+每个 lattice 规则都带隐式 guard：目标"更弱"才触发（例如 `widen` 要求当前
+位宽 `<` 目标或不是 2 的幂，`shim_guard_and_newtype:718` 起）；guard 为假时
+这条规则**不**消费查询，继续往下匹配。`new_type = invalid` 表示"不变"。
+
+`clamp_min(i, elt, n)` / `clamp_max(...)` 在前端就展开成一条 `more`/`fewer`
+（四个 guard + `replace(vec_of/scalar_or_vec_of(...))`，`dsl.py:475-497`），
+所以 core JSON 里没有 clamp 节点。
+
+## 6 prefer / except
+
+自由格式源里没有独立的 `prefer`/`except` 构造：prefer 落成**更早的规则**，
+except 落成**更窄的谓词**（命名 `pred` 或内联 `and not ...`）。这是 11-02
+已经做出的选择，记录在 `llvm-dev/decisions/D-20261106-76-the-source-is-free-form.md`。
+代价是顺序敏感；收益是每个例外都在源码里看得见。
+
+## 7 终止性
+
+`evaluate` 只回答**一步**：查询 → 动作 + 新类型，不迭代。终止性因此是生成
+代码侧的性质：每条 lattice 的目标由构造子限制（`pow2_min`、`ty`、
+`same_as`、`clamp`），不会回到更强的类型；11-01 §7 给出论证，`eval.py` 不做
+额外检查。**已知边界**：求值器不检测循环规则，也不验证"目标更弱"。
+
+## 8 9632 点差分
+
+`tests/cases/a64_ref_dump.jsonl` 是从树内参考实现导出的 9632 个查询
+（config/name/types/mem → action/type_idx/new_type）。`gisel eval` 用我们的
+core JSON 复算：`cases=9632 disagreements=0 errors=0`，由
+`tests/test_artifacts.py::EvaluatorCorpus` 固化。这条是本项目的语义门禁，
+比逐字节更接近"规则对不对"。

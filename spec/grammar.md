@@ -1,0 +1,110 @@
+# `.gisel` grammar (v0.1)
+
+状态: 规范性。实现: `gisel/td.py:513`（`parse_gisel`，文件级）与
+`gisel/dsl.py:149`（`Parser`，规则级）。语料: `tests/corpus/*.gisel`
+（778 + 1310 行，1075 条规则），任何语法改动都必须让语料 round-trip。
+
+## 1 词法
+
+- 行注释 `// ...`；空行忽略（`td.py:520-524`）。
+- 缩进敏感：规则体用 Python 风格 `INDENT`/`DEDENT` 分组，只计前导空格
+  （`dsl.py:99-115`）。
+- 标识符 `[A-Za-z_][A-Za-z0-9_]*`；关键字就是这些标识符（无保留字表）。
+- 类型字面量（`dsl.py:84-85`）:
+  `[nx]v<lanes>` 可选前缀 + `s<bits> | i<bits> | f<bits> | bf16 | p<as>:<bits> | p<as>:*`。
+  例: `s32`、`i8`、`f16`、`bf16`、`p0:64`、`p0:*`、`v4s32`、`nxv16i8`、`v2p0:*`。
+- 整数、双引号字符串、标点 `( ) , [ ] :`、比较符 `== != <= >= < >`。
+- 长规则可在括号内换行续写；`_join_continuations`（`td.py:482`）按括号深度拼接。
+
+## 2 文件结构
+
+```
+program    := { toplevel }
+toplevel   := include | decl | ruleset
+include    := "include" STRING                     // 原样进 .td
+decl       := feature | named_type | select_type | predicate | type_set | type_list
+
+feature    := "feature" ID "=" <C++ bool expr>      // 余下整行原文
+named_type := "type"    ID "=" <C++ LLT expr>       // 例 LLT::scalar(32)
+select_type:= "select"  ID "= if" predicate "then" type "else" type
+predicate  := "pred"    ID "=" pred
+type_set   := "type_set"  ID "=" "[" type {"," type} "]" | ID ".Elems"
+type_list  := "type_list" ID "=" "[" type {"," type} "]"
+```
+
+`feature`/`type` 的右侧是**原文**，只有 `select`/`pred`/`type_set` 会被解析
+（`td.py:361-365` 的 `DECL_RE`）。名字区分大小写；生成 `.td` 时再解析回
+target 的记录名（`td.py:317` `build_names`）。
+
+## 3 规则集
+
+```
+ruleset    := "ruleset" ID ":" opcode { opcode } NEWLINE INDENT { statement } DEDENT
+statement  := "note" STRING | "imm_idx" "(" INT ")" | rule
+
+rule       := terminal | lattice | scalarize | clamp
+terminal   := ("legal"|"lower"|"custom"|"unsupported"|"libcall") pred
+lattice    := ("widen"|"narrow"|"more"|"fewer") "(" expr "," expr ")"
+              [ "when" pred ]
+bitcast    := "bitcast" "(" expr "," expr ")" [ "when" pred ]
+scalarize  := "scalarize" "(" expr ")" [ "when" pred ]
+clamp      := ("clamp_min"|"clamp_max") "(" INT "," type "," expr ")"
+```
+
+- 一个 `ruleset` 可以挂多个 opcode；规则按书写顺序匹配（`evaluate:860`）。
+- `note` 是注释的载体（进 `.td` 的 `Comments`）；`imm_idx(n)` 是覆盖标记，
+  不是 core 规则（`tests/test_artifacts.py:90` 计数 1078 = 1075 + 3）。
+- `clamp_min/max` 是**语法糖**，前端展开成一条 `more`/`fewer` 规则：四个 guard
+  （是向量、不是可伸缩向量、元素类型相等、lane 数越界）加
+  `replace(vec_of(n, elem_of(slot(i))))`（`dsl.py:478-497`）。
+
+## 4 表达式
+
+```
+expr   := INT | type | ID | call
+call   := ID "(" [ expr {"," expr} ] ")"
+```
+
+`ID` 三种含义：零元构造子（`pow2`、ordering 标签）、命名类型/谓词、函数调用。
+一元观察子与构造子见 `dsl.py:66-82`（`UNARY_CALL`、`BINARY_CALL`）；
+`slot(i)`、`mem_slot(i)` 是特例（`dsl.py:45`、`ZERO_ARG`）。
+
+## 5 谓词
+
+```
+pred       := conj { "or" conj }
+conj       := unary { "and" unary }
+unary      := "not" unary | primary
+primary    := "(" pred ")" | "true" | "feature" "(" STRING ")"
+            | membership | expr ("=="|"!="|"<"|"<="|">"|">=") expr
+            | expr                              // 布尔观察子可单独作谓词
+
+membership := "in" "(" expr "," (type | "[" type {"," type} "]") ")"
+            | "in_pairs"   "(" expr "," expr "," "[" pair {"," pair} "]" ")"
+            | "in_triples" "(" expr "," expr "," expr "," "[" triple {"," triple} "]" ")"
+            | "in_mem_desc" "(" expr "," expr "," expr "," "[" memrow {"," memrow} "]" ")"
+
+pair    := "[" type "," type "]"
+triple  := "[" type "," type "," type "]"
+memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
+```
+
+- `or`/`and`/`all_of`/`any_of` 都是 n 元、扁平（对应 `CoreAny`/`CoreAll`）。
+- `in(slot(i), S)` 的 `S` 可以是单类型、内联集合或命名 `type_set`。
+- 集合字面量只能作为 `in*` 的**最后一个**实参——这是文法结构，不是约定
+  （`dsl.py:285-311`）。
+- `mem_desc(t0, t1, mt, align)`：两槽类型 + 内存类型 + 对齐（位）。
+
+## 6 正常形（schema 0.4）
+
+`--emit=core` 输出的 JSON 是契约：`schema/version/config/escapes/domain/rulesets`，
+每条规则 `{predicate, op, on, to, action, type_idx?, origin}`。三处重拼
+（记录名→LLT、指针通配符、`select` 类型）见 `gisel/backend/core_json.py:1-15`
+与 `spec/m4-scope.md`。
+
+## 7 已知边界
+
+- 缩进只认空格；`\t` 不参与层级计算（语料全部用空格）。
+- `feature`/`type` 右侧不做语法检查，只有 TableGen 后端消费它们。
+- 顶层声明顺序即 `.td` 中的声明顺序；`include` 行原样保留，由 `--emit=td` 输出。
+- `type_set X = Y.Elems` 是引用，不是拷贝（`td.py:129-131`）。
