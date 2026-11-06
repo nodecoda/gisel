@@ -1,3 +1,28 @@
+# M3: `--emit=table` -- DONE
+
+Result (2026-11-06): `gisel gen --emit=table` reproduces both fragments byte
+for byte -- `x86.table.inc` 4982 lines, `aarch64.table.inc` 10765 lines -- from
+`gisel/backend/table.py` (one module, ~470 lines) with no `llvm-tblgen`.
+
+Two corrections to the plan below, both found while implementing:
+
+1. **The semantic gate is not ours to run.** The table-vs-chain differential
+   already lives in the tree's unit tests (`X86LegalizerInfoDifferentialTest`,
+   `AArch64LegalizerTableTest`), and it consumes the same generated fragment.
+   Ran now on the current tree:
+   - `AArch64Tests --gtest_filter=*Differential*`: **9632 compared, 0
+     disagreements**, 114/114 tables answer, 0 opaque.
+   - `X86Tests --gtest_filter=*Differential*`: 32 tests passed, corpus
+     manifest 825448 atoms.
+   Because the fragment is byte-identical, both hold for our output by
+   construction.  A separate Python table interpreter would be a second
+   implementation of the same semantics, not more evidence.
+2. **`endsUnconditional` never fires on a core rule** (:7090 returns false when
+   `isCoreRule(Last)`), so every evaluator ends with the `Unsupported` return.
+   That is 63 and 114 tail returns, not a special case per rule set.
+
+The reconnaissance below is what the implementation was built from.
+
 # M3 scope: `--emit=table`
 
 Reconnaissance for the largest remaining milestone. Everything below is read
@@ -35,7 +60,7 @@ this order:
 6. `runRuleIndex` — `-legalizer-table-rule-index` mode (default prefix "X86",
    :5048).
 
-## Gate
+## Gate (as scoped before implementation)
 
 - `x86.table.inc`, `aarch64.table.inc` byte-identical (SHA pinned in
   `tests/artifacts/SHA256`).

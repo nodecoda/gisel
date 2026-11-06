@@ -117,6 +117,37 @@ class GoldenCheckJson(unittest.TestCase):
                              c["core_rules"] + c["legacy_rules"] + c["coverage"])
 
 
+class GoldenTable(unittest.TestCase):
+    """M3: `gisel gen --emit=table` is byte-identical to -gen-legalizer-table."""
+
+    def test_generated_table_matches_golden(self):
+        for name, src in CORPORA:
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / f"{name}.table.inc"
+                r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
+                        "--emit=table", "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(
+                    out.read_bytes(),
+                    (TESTS / "artifacts" / f"{name}.table.inc").read_bytes(),
+                    f"{name}: table fragment differs from golden")
+
+    def test_translation_table_covers_every_shim(self):
+        sys.path.insert(0, str(ROOT))
+        from gisel.backend import llvm_inc as inc
+        from gisel.backend import table
+
+        self.assertEqual(set(table.TRANSLATION), set(inc.SHIM_TABLE))
+
+    def test_prefix_defaults_from_the_file_name(self):
+        """tblgen defaults to X86; deriving the prefix removes that footgun."""
+        from gisel.cli import _table_prefix
+
+        self.assertEqual(_table_prefix("X86LegalizerInfo.gisel", None), "X86")
+        self.assertEqual(_table_prefix("AArch64LegalizerInfo.gisel", None), "AArch64")
+        self.assertEqual(_table_prefix("X.gisel", "Custom"), "Custom")
+
+
 class ShimCoverage(unittest.TestCase):
     """G1: every (operator, observation, target) triple has a C++ shim."""
 

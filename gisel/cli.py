@@ -6,18 +6,33 @@ import sys
 from pathlib import Path
 
 from . import td
-from .backend import check_json, llvm_inc
+from .backend import check_json, llvm_inc, table
 
-BACKENDS = ("td", "inc", "check")
+BACKENDS = ("td", "inc", "check", "table")
 
 
-def _generate(gs, source, emit):
+def _table_prefix(source, explicit):
+    """-legalizer-table-prefix, defaulted from the source file name.
+
+    tblgen's default is "X86", which is why the AArch64 lane has to pass
+    -legalizer-table-prefix=AArch64.  Deriving it from `X86LegalizerInfo.gisel`
+    removes that footgun; --prefix still overrides.
+    """
+    if explicit:
+        return explicit
+    stem = Path(source).stem
+    return stem[:-len("LegalizerInfo")] if stem.endswith("LegalizerInfo") else stem
+
+
+def _generate(gs, source, emit, prefix=None):
     if emit == "td":
         return td.emit_td(gs, source)
     if emit == "inc":
         return llvm_inc.emit_inc(gs, source)
     if emit == "check":
         return check_json.emit_check(gs)
+    if emit == "table":
+        return table.emit_table(gs, _table_prefix(source, prefix))
     raise ValueError(f"unknown backend {emit!r}")
 
 
@@ -32,6 +47,7 @@ def main(argv=None):
     g.add_argument("--emit", default="td", choices=BACKENDS,
                    help="backend: td, inc (-gen-legalizer), check (-gen-legalizer-check)")
     g.add_argument("--out", required=True)
+    g.add_argument("--prefix", help="table prefix (default: from the file name)")
 
     c = sub.add_parser("check", help="verify a generated artifact is up to date")
     c.add_argument("source")
@@ -54,7 +70,7 @@ def main(argv=None):
     args = ap.parse_args(argv)
     if args.cmd == "gen":
         gs = td.parse_gisel(Path(args.source).read_text())
-        text = _generate(gs, args.source, args.emit)
+        text = _generate(gs, args.source, args.emit, getattr(args, "prefix", None))
         Path(args.out).write_text(text)
         print(f"{args.out}: {len(gs['rulesets'])} rule sets, "
               f"{sum(len(r['rules']) for r in gs['rulesets'])} rules")

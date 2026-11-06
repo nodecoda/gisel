@@ -119,8 +119,9 @@ CMP_OP = {"eq": "==", "ne": "!=", "lt": "<", "le": "<=", "gt": ">", "ge": ">="}
 
 
 class IncEmitter:
-    def __init__(self, gs):
+    def __init__(self, gs, qvar="Query"):
         self.gs = gs
+        self.qvar = qvar
         self.names = T.build_names(gs["decls"])
         self.feat_of = {n: p for k, n, p in gs["decls"] if k == "feature"}
         self.preds = {n: p for k, n, p in gs["decls"] if k == "pred"}
@@ -191,11 +192,11 @@ class IncEmitter:
         if k == "type":
             return self._type_value(n["value"])
         if k == "slot":
-            return "Query.Types[%d]" % n["index"]
+            return "%s.Types[%d]" % (self.qvar, n["index"])
         if k == "memSlot":
-            return "Query.MMODescrs[%d]" % n["args"][0]["value"]
+            return "%s.MMODescrs[%d]" % (self.qvar, n["args"][0]["value"])
         if k == "sameAs":
-            return "Query.Types[%d]" % n["args"][0]["value"]
+            return "%s.Types[%d]" % (self.qvar, n["args"][0]["value"])
         if k == "ty":
             return self.value(n["args"][0])
         if k == "replace":
@@ -312,7 +313,7 @@ class IncEmitter:
                 self._type_value(e[0]), self._type_value(e[1]),
                 self._type_value(e[2]), e[3]) for e in entries)
             return ("LegalityPredicates::typePairAndMemDescInSet(%d, %d, %d, {%s})"
-                    "(Query)" % (slots[0], slots[1], slots[2], rows))
+                    "(%s)" % (slots[0], slots[1], slots[2], rows, self.qvar))
 
         nslots = len(args) - 1
         rhs, lhs = args[-1], args[0]
@@ -322,7 +323,7 @@ class IncEmitter:
             rows = ", ".join("{%s}" % ", ".join(self._type_value(x) for x in e)
                              for e in entries)
             fn = "typeTupleInSet" if nslots == 3 else "typePairInSet"
-            return "LegalityPredicates::%s(%s, {%s})(Query)" % (fn, idx, rows)
+            return "LegalityPredicates::%s(%s, {%s})(%s)" % (fn, idx, rows, self.qvar)
         if rhs.get("kind") == "clamp":
             v = self.value(lhs)
             return "(%s >= %d && %s <= %d)" % (
