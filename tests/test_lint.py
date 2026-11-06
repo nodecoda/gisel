@@ -104,6 +104,29 @@ class NegativeControl(unittest.TestCase):
         self.assertEqual(r.returncode, 1)
         self.assertIn("target sort Kind not in action table", r.stderr)
 
+    def test_bad_llt_expression_is_rejected(self):
+        r = lint_source("\ntype X_s32 = LLT::scalar32(32)\n"
+                        "ruleset X_ADD: G_ADD\n"
+                        "    legal in(slot(0), [X_s32])\n")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn(":2:", r.stderr)
+        self.assertIn("cannot normalize LLT expression", r.stderr)
+
+    def test_nested_llt_is_accepted(self):
+        r = lint_source("type X_v = LLT::scalable_vector(4, LLT::integer(32))\n"
+                        "ruleset X_ADD: G_ADD\n"
+                        "    legal in(slot(0), [X_v])\n")
+        self.assertEqual(r.returncode, 0, r.stderr)
+
+    def test_undeclared_feature_is_a_diagnostic(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text("feature F = Subtarget.hasAVX()\n"
+                           "ruleset X_ADD: G_ADD\n    legal feature(F)\n")
+            r = run("gen", str(src), "--emit=inc", "--out", str(Path(d) / "x.inc"))
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("undeclared feature expression", r.stderr)
+
     def test_unknown_node_kind_is_rejected(self):
         with self.assertRaises(ValueError):
             dsl._tc({"kind": "bogus"}, 1, [])

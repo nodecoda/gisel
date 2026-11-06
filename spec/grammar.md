@@ -126,7 +126,14 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 ## 8 已知边界
 
 - 缩进只认空格；`\t` 不参与层级计算（语料全部用空格）。
-- `feature`/`type` 右侧不做语法检查，只有 TableGen 后端消费它们。
+- `type` 右侧做**形状检查**：只接受 `LLT::scalar/integer/pointer/`
+  `fixed_vector/scalable_vector/float*`，可嵌套；无法规范化时 `parse_gisel`
+  直接拒绝（exit 2）。任意 C++ 常量表达式（如 `LLT::scalar(8*4)`）会被拒——
+  这是刻意的：能规范化才能进 core JSON 与 `.td` 的 `LegalizeNamedType`。
+- `feature` 右侧**不检查**：它是 target 特定的任意 C++ bool 表达式，gisel
+  不持有 `Subtarget` 接口；错误只能由 C++ 编译期暴露。
+- 规则里的 `feature("...")` 必须与某个 `feature NAME = ...` 的表达式文本完全
+  一致，否则 `gen --emit=inc` 报 `undeclared feature expression`。
 - 顶层声明顺序即 `.td` 中的声明顺序；`include` 行原样保留，由 `--emit=td` 输出。
 - `type_set X = Y.Elems` 是引用，不是拷贝（`td.py:129-131`）。
 - 语法错误报 `path:line: message`（exit 2），行号是 `.gisel` 的物理行；

@@ -314,6 +314,23 @@ def collect_named_sets(decls):
     return out
 
 
+def _check_named_types(decls, lines=None):
+    """Reject LLT expressions the backends cannot normalize.
+
+    Without this, `type X = LLT::scalar32(32)` reached the `.td` backend as
+    `LegalizeNamedType<"LLT::scalar32(32)">` — valid TableGen naming a type
+    that can never match, so every rule using X silently died.
+    """
+    type_expr = {n: p for k, n, p in decls if k == "type"}
+    for name, expr in type_expr.items():
+        if not normalize_llt(expr, type_expr):
+            where = f"line {lines[name]}: " if lines and name in lines else ""
+            raise ValueError(
+                f"{where}cannot normalize LLT expression for {name}: {expr!r} "
+                f"(expected LLT::scalar/integer/pointer/fixed_vector/"
+                f"scalable_vector/float*)")
+
+
 def build_names(decls):
     """Resolve canonical names back to the target's record names."""
     names = Names()
@@ -324,9 +341,16 @@ def build_names(decls):
     canon_of = {}
     for name, expr in type_expr.items():
         canon = normalize_llt(expr, type_expr)
-        if canon:
-            names.type[canon] = name
-            canon_of[name] = canon
+        if not canon:
+            # An unrecognized LLT spelling used to fall through into
+            # `LegalizeNamedType<"<raw text>">`, which is valid TableGen but
+            # names a type that can never match: the rule silently dies.
+            raise ValueError(
+                f"cannot normalize LLT expression for {name}: {expr!r} "
+                f"(expected LLT::scalar/integer/pointer/fixed_vector/"
+                f"scalable_vector/float*)")
+        names.type[canon] = name
+        canon_of[name] = canon
     for name, cond in feat_of.items():
         names.feature[cond] = name
     names.records = set(type_expr) | set(feat_of) | set(dag_node) | {
@@ -517,6 +541,7 @@ def _wrap_statement(text, width=88, indent=8):
 
 def parse_gisel(text):
     includes, decls, rulesets = [], [], []
+    decl_lines = {}
     lines = text.splitlines()
     i = 0
     while i < len(lines):
@@ -531,6 +556,7 @@ def parse_gisel(text):
         m = DECL_RE.match(s)
         if m:
             kind, name, body = m.group(1), m.group(2), m.group(3).strip()
+            decl_lines[name] = i
             if kind == "select":
                 decls.append((kind, name, _parse_sel(body)))
             elif kind == "type_list":
@@ -577,6 +603,7 @@ def parse_gisel(text):
         compiled = D.compile_rulesets(ast)
         rulesets.append({"def": name, "opcodes": opcodes, "comments": comments,
                          "legacy": legacy, "rules": compiled})
+    _check_named_types(decls, decl_lines)
     return {"includes": includes, "decls": decls, "rulesets": rulesets}
 
 

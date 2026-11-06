@@ -148,7 +148,10 @@ class IncEmitter:
     def _feature(self, expr):
         name = self.names.feature.get(expr)
         if name is None:
-            raise KeyError(f"undeclared feature expression {expr!r}")
+            raise ValueError(
+                f"undeclared feature expression {expr!r}; declare it with "
+                f"`feature NAME = <expr>`, and pass the same expression text "
+                f"to feature(\"...\")")
         self.used_features.add(name)
         return name
 
