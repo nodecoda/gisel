@@ -43,7 +43,7 @@ print([n for n in z.namelist() if 'generic_opcodes' in n])"
 python -m venv /tmp/ci && /tmp/ci/bin/pip install dist/*.whl
 work=$(mktemp -d) && cp tests/corpus/AArch64LegalizerInfo.gisel "$work/"
 cd "$work"
-/usr/bin/env -S /tmp/ci/bin/gisel --version
+/tmp/ci/bin/gisel --version
 /tmp/ci/bin/gisel lint AArch64LegalizerInfo.gisel
 for e in td inc check table core; do
   /tmp/ci/bin/gisel gen AArch64LegalizerInfo.gisel --emit=$e --out "a.$e"
