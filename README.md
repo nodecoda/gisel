@@ -30,6 +30,13 @@ python3 -m unittest discover -q -s tests      # 20 gates, ~4 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
+Errors point at the source, not at a synthetic string:
+
+```
+$ gisel gen bad.gisel --emit=td --out x.td
+bad.gisel:6: expected ,, got ID ('pow2')      # exit 2
+```
+
 ## Evaluating without LLVM
 
 `--emit=core` produces the schema-0.4 normal form, and `gisel eval` answers

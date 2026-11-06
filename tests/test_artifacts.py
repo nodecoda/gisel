@@ -317,6 +317,45 @@ class EvaluatorCorpus(unittest.TestCase):
         self.assertEqual((disagree, errors), (0, 0), first)
 
 
+class SourceErrors(unittest.TestCase):
+    """A human-facing language must point at the file and the line it means."""
+
+    def _run_bad(self, text, source="bad.gisel"):
+        d = tempfile.mkdtemp()
+        src = Path(d) / source
+        src.write_text(text)
+        return run("gen", str(src), "--emit=td", "--out", str(Path(d) / "x.td")), src
+
+    def test_error_points_at_the_source_line(self):
+        body = ('include "llvm/Target/LegalizerInfo.td"\n'
+                'type X_s32 = LLT::scalar(32)\n'
+                '\n'
+                'ruleset X_A: G_ADD\n'
+                '    legal in(slot(0), [X_s32])\n'
+                '    widen(slot(0) pow2)\n')
+        r, src = self._run_bad(body)
+        self.assertEqual(r.returncode, 2)
+        self.assertNotIn("Traceback", r.stderr)
+        self.assertIn(f"{src}:6: expected ,, got ID ('pow2')", r.stderr)
+
+    def test_missing_source_is_not_a_traceback(self):
+        r = run("gen", "/nonexistent/nope.gisel", "--emit=td", "--out", "/tmp/x.td")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("No such file", r.stderr)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_wrapped_rule_reports_the_first_physical_line(self):
+        body = ('include "llvm/Target/LegalizerInfo.td"\n'
+                'type X_s32 = LLT::scalar(32)\n'
+                'ruleset X_A: G_ADD\n'
+                '    widen(slot(0),\n'
+                '          pow2\n'
+                '    legal in(slot(0), X_s32)\n')
+        r, src = self._run_bad(body)
+        self.assertEqual(r.returncode, 2)
+        self.assertIn(f"{src}:4:", r.stderr)
+
+
 class ArtifactIntegrity(unittest.TestCase):
     """The frozen artifacts are the oracle; bytes must not drift silently."""
 

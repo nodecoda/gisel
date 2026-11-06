@@ -91,19 +91,21 @@ class Tok:
     def __init__(self, t, v, line):
         self.t, self.v, self.line = t, v, line
 
-def tokenize(text):
+def tokenize(text, line_map=None):
     toks = []
     lines = text.splitlines()
     # indentation -> INDENT/DEDENT, Python-style
     stack = [0]
     for ln, raw in enumerate(lines, 1):
+        # line_map[k] is the .gisel line a snippet line came from
+        sl = line_map[ln - 1] if line_map and ln - 1 < len(line_map) else ln
         if not raw.strip():
             continue
         indent = len(raw) - len(raw.lstrip(" "))
         if indent > stack[-1]:
-            stack.append(indent); toks.append(Tok("INDENT", None, ln))
+            stack.append(indent); toks.append(Tok("INDENT", None, sl))
         while indent < stack[-1]:
-            stack.pop(); toks.append(Tok("DEDENT", None, ln))
+            stack.pop(); toks.append(Tok("DEDENT", None, sl))
         i = 0
         line = raw.strip()
         n = len(line)
@@ -112,33 +114,33 @@ def tokenize(text):
             if c.isspace():
                 i += 1; continue
             if line.startswith(("==", "!=", "<=", ">="), i):
-                toks.append(Tok("OP", line[i:i+2], ln)); i += 2; continue
+                toks.append(Tok("OP", line[i:i+2], sl)); i += 2; continue
             if c in "<>":
-                toks.append(Tok("OP", c, ln)); i += 1; continue
+                toks.append(Tok("OP", c, sl)); i += 1; continue
             if c in "(),[]:":
-                toks.append(Tok(c, c, ln)); i += 1; continue
+                toks.append(Tok(c, c, sl)); i += 1; continue
             if c == '"':
                 j = i + 1
                 while j < n and line[j] != '"':
                     j += 1
-                toks.append(Tok("STR", line[i+1:j], ln)); i = j + 1; continue
+                toks.append(Tok("STR", line[i+1:j], sl)); i = j + 1; continue
             if c.isdigit():
                 j = i
                 while j < n and line[j].isdigit():
                     j += 1
-                toks.append(Tok("INT", int(line[i:j]), ln)); i = j; continue
+                toks.append(Tok("INT", int(line[i:j]), sl)); i = j; continue
             if c.isalpha():
                 m = TYPE_TOKEN_RE.match(line, i)
                 if m and (m.end() == n or not (line[m.end()].isalnum()
                                                or line[m.end()] == "_")):
-                    toks.append(Tok("TYPE", m.group(), ln)); i = m.end(); continue
+                    toks.append(Tok("TYPE", m.group(), sl)); i = m.end(); continue
             if c.isalpha() or c == "_":
                 j = i
                 while j < n and (line[j].isalnum() or line[j] == "_"):
                     j += 1
-                toks.append(Tok("ID", line[i:j], ln)); i = j; continue
-            raise ValueError(f"line {ln}: bad char {c!r}")
-        toks.append(Tok("NEWLINE", None, ln))
+                toks.append(Tok("ID", line[i:j], sl)); i = j; continue
+            raise ValueError(f"line {sl}: bad char {c!r}")
+        toks.append(Tok("NEWLINE", None, sl))
     while len(stack) > 1:
         stack.pop(); toks.append(Tok("DEDENT", None, None))
     toks.append(Tok("EOF", None, None))
@@ -147,8 +149,8 @@ def tokenize(text):
 # ---- parser ---------------------------------------------------------------
 
 class Parser:
-    def __init__(self, text):
-        self.toks = tokenize(text)
+    def __init__(self, text, line_map=None):
+        self.toks = tokenize(text, line_map)
         self.p = 0
 
     def peek(self, t=None):

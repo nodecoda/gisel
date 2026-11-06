@@ -24,6 +24,15 @@ def _table_prefix(source, explicit):
     return stem[:-len("LegalizerInfo")] if stem.endswith("LegalizerInfo") else stem
 
 
+def _source_error(source, exc):
+    """`path:line: message`, the shape every editor understands."""
+    msg = str(exc)
+    if msg.startswith("line "):
+        msg = msg[len("line "):]
+    print(f"{source}:{msg}", file=sys.stderr)
+    return 2
+
+
 def _generate(gs, source, emit, prefix=None):
     if emit == "td":
         return td.emit_td(gs, source)
@@ -73,9 +82,21 @@ def main(argv=None):
 
     args = ap.parse_args(argv)
     if args.cmd == "gen":
-        gs = td.parse_gisel(Path(args.source).read_text())
-        text = _generate(gs, args.source, args.emit, getattr(args, "prefix", None))
-        Path(args.out).write_text(text)
+        try:
+            source_text = Path(args.source).read_text()
+        except OSError as e:
+            print(f"{args.source}: {e.strerror}", file=sys.stderr)
+            return 2
+        try:
+            gs = td.parse_gisel(source_text)
+            text = _generate(gs, args.source, args.emit, getattr(args, "prefix", None))
+        except ValueError as e:
+            return _source_error(args.source, e)
+        try:
+            Path(args.out).write_text(text)
+        except OSError as e:
+            print(f"{args.out}: {e.strerror}", file=sys.stderr)
+            return 2
         print(f"{args.out}: {len(gs['rulesets'])} rule sets, "
               f"{sum(len(r['rules']) for r in gs['rulesets'])} rules")
         return 0
@@ -83,8 +104,11 @@ def main(argv=None):
         want_path = args.against or args.td
         if not want_path:
             c.error("check needs --against <artifact>")
-        gs = td.parse_gisel(Path(args.source).read_text())
-        got = _generate(gs, args.source, args.emit)
+        try:
+            gs = td.parse_gisel(Path(args.source).read_text())
+            got = _generate(gs, args.source, args.emit)
+        except ValueError as e:
+            return _source_error(args.source, e)
         want = Path(want_path).read_text()
         if args.emit == "core" and not args.strict_origin:
             got = core_json.strip_origin(got)

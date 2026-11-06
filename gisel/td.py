@@ -480,19 +480,24 @@ def _bracket_depth(text):
 
 
 def _join_continuations(lines):
-    """Join a statement that a human wrapped inside brackets (free format)."""
-    out, buf = [], None
-    for raw in lines:
+    """Join a statement that a human wrapped inside brackets (free format).
+
+    `lines` are (source line, raw text); the result keeps the line the
+    statement started on, so a parse error inside a wrapped rule still points
+    at the first physical line of that rule.
+    """
+    out, buf, start = [], None, None
+    for ln, raw in lines:
         st = raw.strip()
         if buf is None:
-            buf = st
+            buf, start = st, ln
         else:
             buf += " " + st
         if _bracket_depth(buf) <= 0:
-            out.append(buf)
+            out.append((start, buf))
             buf = None
     if buf is not None:
-        out.append(buf)
+        out.append((start, buf))
     return out
 
 
@@ -545,6 +550,7 @@ def parse_gisel(text):
         if not m:
             raise ValueError(f"line {i}: unrecognized source line {s!r}")
         name, opcodes = m.group(1), m.group(2).split()
+        ruleset_line = i          # i is the 1-based line just consumed
         comments, body, legacy, raw_body = [], [], [], []
         while i < len(lines):
             raw = lines[i]
@@ -554,8 +560,8 @@ def parse_gisel(text):
             st = raw.strip()
             if not st or st.startswith("//"):
                 continue
-            raw_body.append(raw)
-        for st in _join_continuations(raw_body):
+            raw_body.append((i, raw))
+        for ln, st in _join_continuations(raw_body):
             nm = NOTE_RE.match(st)
             im = IMM_RE.match(st)
             if nm:
@@ -563,9 +569,11 @@ def parse_gisel(text):
             elif im:
                 legacy.append(int(im.group(1)))
             else:
-                body.append(st)
-        ast = D.Parser("rule " + " ".join(opcodes) + ":\n" +
-                       "\n".join("  " + b.strip() for b in body)).parse()
+                body.append((ln, st))
+        snippet = ["rule " + " ".join(opcodes) + ":"]
+        snippet += ["  " + b.strip() for _, b in body]
+        line_map = [ruleset_line] + [ln for ln, _ in body]
+        ast = D.Parser("\n".join(snippet), line_map=line_map).parse()
         compiled = D.compile_rulesets(ast)
         rulesets.append({"def": name, "opcodes": opcodes, "comments": comments,
                          "legacy": legacy, "rules": compiled})

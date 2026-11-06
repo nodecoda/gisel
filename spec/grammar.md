@@ -108,3 +108,5 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 - `feature`/`type` 右侧不做语法检查，只有 TableGen 后端消费它们。
 - 顶层声明顺序即 `.td` 中的声明顺序；`include` 行原样保留，由 `--emit=td` 输出。
 - `type_set X = Y.Elems` 是引用，不是拷贝（`td.py:129-131`）。
+- 语法错误报 `path:line: message`（exit 2），行号是 `.gisel` 的物理行；
+  被续行拆开的规则报该语句的起始行（`td.py:482` 的 line map）。
