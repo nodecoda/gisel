@@ -149,13 +149,27 @@ class NegativeControl(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
 
     def test_undeclared_feature_is_a_diagnostic(self):
+        """Every layer says it, not just the one that happened to build first.
+
+        `feature("...")` carries the C++ expression, not the declaration's
+        name.  The `.inc` backend checked it; `lint` and `--emit=td` did not,
+        so the same file was "0 error(s)" and a valid `.td` -- and the record
+        it produced named a feature TableGen had never seen.
+        """
+        text = ("feature F = Subtarget.hasAVX()\n"
+                "ruleset X_ADD: G_ADD\n"
+                "    legal feature(\"Subtarget.hasAVX2()\")\n")
         with tempfile.TemporaryDirectory() as d:
             src = Path(d) / "T.gisel"
-            src.write_text("feature F = Subtarget.hasAVX()\n"
-                           "ruleset X_ADD: G_ADD\n    legal feature(F)\n")
-            r = run("gen", str(src), "--emit=inc", "--out", str(Path(d) / "x.inc"))
-        self.assertEqual(r.returncode, 2)
-        self.assertIn("undeclared feature expression", r.stderr)
+            src.write_text(text)
+            r = run("lint", str(src))
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn(":3:", r.stderr)
+            for emit in ("td", "inc", "core"):
+                r = run("gen", str(src), f"--emit={emit}",
+                        "--out", str(Path(d) / f"x.{emit}"))
+                self.assertEqual(r.returncode, 2, f"{emit}: {r.stdout}{r.stderr}")
+                self.assertIn("undeclared feature expression", r.stderr)
 
     def test_unknown_type_name_is_a_diagnostic(self):
         """A type leaf must name a declared record, in both spellings.

@@ -1000,6 +1000,36 @@ def _tc(node, arity, errs, names=None):
         return "Bool"
     raise ValueError(f"typecheck: unknown node kind {k!r}")
 
+def undeclared_features(gs):
+    """[(line, ruleset, expr)] for every `feature("x")` with no declaration.
+
+    A feature is spelled as its C++ expression, not by the name of the
+    `feature NAME = <expr>` declaration.  The `.inc` backend checked the
+    spelling against the declarations; `lint` and `--emit=td` did not, so an
+    undeclared expression could pass both and only fail much later, when the
+    generated record named a feature TableGen had never seen.
+    """
+    declared = {d[2] for d in gs["decls"] if d[0] == "feature"}
+    out = []
+
+    def walk(node, line, ruleset):
+        if isinstance(node, dict):
+            if node.get("kind") == "leaf" and node.get("name") == "hasFeature":
+                expr = node.get("args", [None])[0]
+                if expr not in declared:
+                    out.append((line, ruleset, expr))
+            for value in node.values():
+                walk(value, line, ruleset)
+        elif isinstance(node, list):
+            for value in node:
+                walk(value, line, ruleset)
+
+    for rs in gs["rulesets"]:
+        for rule in rs["rules"]:
+            walk(rule, rule.get("_line", 0), rs["def"])
+    return out
+
+
 def check_rule(rule, arity, errs, names=None):
     op = rule["op"]
     if op in ("legal", "lower", "custom", "unsupported", "libcall"):

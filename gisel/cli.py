@@ -47,6 +47,14 @@ def _source_error(source, exc):
 
 
 def _generate(gs, source, emit, prefix=None):
+    # One gate for all five backends: a feature expression the file did not
+    # declare cannot be spelled by any of them (`core` and `inc` used to be
+    # the only two that noticed, and only at their own stage).
+    bad = dsl.undeclared_features(gs)
+    if bad:
+        line, _ruleset, expr = bad[0]
+        raise ValueError("line %d: undeclared feature expression %r; declare "
+                         "it with `feature NAME = <expr>`" % (line, expr))
     if emit == "td":
         return td.emit_td(gs, source)
     if emit == "inc":
@@ -112,6 +120,11 @@ def _lint(gs, source, manifest):
                              "ruleset": rs["def"],
                              "message": "arity unknown for %s; slot bounds not checked"
                                         % ", ".join(unknown)})
+    for line, ruleset, expr in dsl.undeclared_features(gs):
+        errors.append({"file": source, "line": line, "ruleset": ruleset,
+                       "rule": "-",
+                       "message": "undeclared feature expression %r; declare "
+                                  "it with `feature NAME = <expr>`" % expr})
     return errors, warnings, nrules
 
 
