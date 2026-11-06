@@ -6,9 +6,9 @@ import sys
 from pathlib import Path
 
 from . import td
-from .backend import check_json, llvm_inc, table
+from .backend import check_json, core_json, llvm_inc, table
 
-BACKENDS = ("td", "inc", "check", "table")
+BACKENDS = ("td", "inc", "check", "table", "core")
 
 
 def _table_prefix(source, explicit):
@@ -33,6 +33,8 @@ def _generate(gs, source, emit, prefix=None):
         return check_json.emit_check(gs)
     if emit == "table":
         return table.emit_table(gs, _table_prefix(source, prefix))
+    if emit == "core":
+        return core_json.emit_core(gs, source, Path(source).read_text())
     raise ValueError(f"unknown backend {emit!r}")
 
 
@@ -54,6 +56,8 @@ def main(argv=None):
     c.add_argument("--emit", default="td", choices=BACKENDS)
     c.add_argument("--against", help="artifact to compare against")
     c.add_argument("--td", help="compatibility alias for --against")
+    c.add_argument("--strict-origin", action="store_true",
+                   help="core: also compare the per-rule origin line numbers")
 
     b = sub.add_parser("bootstrap", help="build a .gisel from a hand-written .td")
     b.add_argument("--td", required=True)
@@ -82,6 +86,9 @@ def main(argv=None):
         gs = td.parse_gisel(Path(args.source).read_text())
         got = _generate(gs, args.source, args.emit)
         want = Path(want_path).read_text()
+        if args.emit == "core" and not args.strict_origin:
+            got = core_json.strip_origin(got)
+            want = core_json.strip_origin(want)
         if got == want:
             print(f"{want_path}: up to date")
             return 0
@@ -94,7 +101,8 @@ def main(argv=None):
         return td.main(["bootstrap", "--td", args.td, "--core", args.core,
                         "--out", args.out, "--title", args.title])
     from . import eval as evaluator
-    return evaluator.main()
+    # `eval` owns its own argument set; drop the subcommand word.
+    return evaluator.main(argv[1:])
 
 
 if __name__ == "__main__":

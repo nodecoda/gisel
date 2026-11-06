@@ -437,7 +437,7 @@ class Evaluator:
         if k == "int":
             return node["value"]
         if k == "type":
-            return parse_core_llt(node["value"])
+            return self.type_value(node["value"], types, mems, config)
         if k == "slot":
             return types[node["index"]]
         if k == "memSlot":
@@ -505,6 +505,20 @@ class Evaluator:
         if k == "replace":
             return self.value(a[0], types, mems, config)
         raise EvalError("unknown_value", "value node %r" % (k,))
+
+    def type_value(self, v, types, mems, config):
+        """A type-valued node: an LLT spelling, or a feature-selected pair.
+
+        The core JSON writes a subtarget-dependent type as
+        ``{"kind":"type","value":{"select":{...}}}`` (emitter ``coreTypeValue``);
+        the branch is resolved here, not in the document.
+        """
+        if isinstance(v, str):
+            return parse_core_llt(v)
+        sel = v["select"]
+        if self.bool_value(sel["cond"], types, mems, config):
+            return self.type_value(sel["then"], types, mems, config)
+        return self.type_value(sel["else"], types, mems, config)
 
     def int_value(self, node, types, mems, config):
         v = self.value(node, types, mems, config)
@@ -920,13 +934,13 @@ def run_cases(evaluator, cases_path):
     return total, disagree, errors, first_failure, action_counts
 
 
-def main():
+def main(argv=None):
     ap = argparse.ArgumentParser()
     ap.add_argument("--doc", required=True)
     ap.add_argument("--features", required=True)
     ap.add_argument("--cases", required=True)
     ap.add_argument("--verbose", action="store_true")
-    args = ap.parse_args()
+    args = ap.parse_args(argv)
 
     doc = load_doc(args.doc)
     features = load_features(args.features)

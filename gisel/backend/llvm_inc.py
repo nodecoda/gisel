@@ -126,38 +126,7 @@ class IncEmitter:
         self.feat_of = {n: p for k, n, p in gs["decls"] if k == "feature"}
         self.preds = {n: p for k, n, p in gs["decls"] if k == "pred"}
         self.used_features = set()
-        self.sets = self._collect_sets(gs["decls"])
-
-    @staticmethod
-    def _collect_sets(decls):
-        """Named type sets, expanded to their member record names.
-
-        `decodeCoreSet` in the C++ emitter expands a named set, so `in s64`
-        and `in [s64]` render identically.  The normal form keeps the name, so
-        this is where the two spellings converge again.
-        """
-        raw = {n: p for k, n, p in decls if k == "type_set"}
-        lists = {n: p for k, n, p in decls if k == "type_list"}
-        out = {}
-
-        def resolve(name, seen=()):
-            if name in out:
-                return out[name]
-            if name in lists:
-                out[name] = list(lists[name])
-                return out[name]
-            p = raw.get(name)
-            if p is None:
-                return None
-            if isinstance(p, tuple) and p[0] == "ref":
-                out[name] = list(resolve(p[1], seen + (name,)) or [])
-            else:
-                out[name] = list(p)
-            return out[name]
-
-        for name in raw:
-            resolve(name)
-        return out
+        self.sets = T.collect_named_sets(gs["decls"])
 
     # ---- names ----------------------------------------------------------
 

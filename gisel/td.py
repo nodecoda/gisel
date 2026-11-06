@@ -282,6 +282,38 @@ class Names:
         return self.select.get(json.dumps(value, sort_keys=True))
 
 
+def collect_named_sets(decls):
+    """Named type sets, expanded to their member record names.
+
+    `decodeCoreSet` in the C++ emitter expands a named set, so `in s64` and
+    `in [s64]` render identically.  The normal form keeps the name, so every
+    backend that emits a set has to expand it here rather than re-deriving the
+    expansion on its own.
+    """
+    raw = {n: p for k, n, p in decls if k == "type_set"}
+    lists = {n: p for k, n, p in decls if k == "type_list"}
+    out = {}
+
+    def resolve(name, seen=()):
+        if name in out:
+            return out[name]
+        if name in lists:
+            out[name] = list(lists[name])
+            return out[name]
+        p = raw.get(name)
+        if p is None:
+            return None
+        if isinstance(p, tuple) and p[0] == "ref":
+            out[name] = list(resolve(p[1], seen + (name,)) or [])
+        else:
+            out[name] = list(p)
+        return out[name]
+
+    for name in raw:
+        resolve(name)
+    return out
+
+
 def build_names(decls):
     """Resolve canonical names back to the target's record names."""
     names = Names()

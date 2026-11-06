@@ -4,6 +4,7 @@ M0 gate: the .td (TableGen compatibility backend).
 M1 gate: the .inc (-gen-legalizer), byte for byte, with no llvm-tblgen run.
 """
 
+import json
 import os
 import re
 import subprocess
@@ -146,6 +147,173 @@ class GoldenTable(unittest.TestCase):
         self.assertEqual(_table_prefix("X86LegalizerInfo.gisel", None), "X86")
         self.assertEqual(_table_prefix("AArch64LegalizerInfo.gisel", None), "AArch64")
         self.assertEqual(_table_prefix("X.gisel", "Custom"), "Custom")
+
+
+sys.path.insert(0, str(ROOT))
+from gisel.backend.core_json import strip_origin as _strip_origin  # noqa: E402
+
+
+class GoldenCoreJson(unittest.TestCase):
+    """M4: `--emit=core` reproduces the normal form, modulo origin."""
+
+    def test_generated_core_matches_golden(self):
+        for name, src in CORPORA:
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / f"{name}.core.json"
+                r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
+                        "--emit=core", "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(
+                    _strip_origin(out.read_text()),
+                    _strip_origin((TESTS / "artifacts" / f"{name}.core.json").read_text()),
+                    f"{name}: core JSON differs outside origin")
+
+    def test_check_against_the_baseline_ignores_origin(self):
+        for name, src in CORPORA:
+            r = run("check", str(TESTS / "corpus" / f"{src}.gisel"),
+                    "--emit=core",
+                    "--against", str(TESTS / "artifacts" / f"{name}.core.json"))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            r = run("check", str(TESTS / "corpus" / f"{src}.gisel"),
+                    "--emit=core", "--strict-origin",
+                    "--against", str(TESTS / "artifacts" / f"{name}.core.json"))
+            self.assertEqual(r.returncode, 1, "strict-origin must see the .gisel lines")
+
+    def test_origin_points_at_the_gisel_source(self):
+        sys.path.insert(0, str(ROOT))
+        from gisel import td
+        from gisel.backend import core_json
+
+        for _, src in CORPORA:
+            text = (TESTS / "corpus" / f"{src}.gisel").read_text()
+            gs = td.parse_gisel(text)
+            lines = core_json.stage_lines(text)
+            self.assertEqual(len(lines), len(gs["rulesets"]))
+            self.assertTrue(all(n > 0 for n in lines.values()))
+
+    def test_evaluator_answers_identically(self):
+        """Feed both documents to gisel.eval; every answer must agree."""
+        sys.path.insert(0, str(ROOT))
+        from gisel import eval as E
+
+        compared = 0
+        answered = 0
+        for name, src in CORPORA:
+            with tempfile.TemporaryDirectory() as d:
+                out = Path(d) / f"{name}.core.json"
+                r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
+                        "--emit=core", "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                mine = json.loads(out.read_text())
+                base = json.loads(
+                    (TESTS / "artifacts" / f"{name}.core.json").read_text())
+                self.assertEqual(mine["domain"], base["domain"])
+
+                feats = set()
+                def walk(o):
+                    if isinstance(o, dict):
+                        if o.get("name") == "hasFeature":
+                            feats.add(o["args"][0])
+                        for v in o.values():
+                            walk(v)
+                    elif isinstance(o, list):
+                        for v in o:
+                            walk(v)
+                walk(base)
+                table = {"default": {f: True for f in feats}}
+                features = E.Features(table)
+
+                docs = [E.Evaluator(mine, features), E.Evaluator(base, features)]
+                points = 0
+                for rs in mine["rulesets"]:
+                    arity = _arity(rs)
+                    for opcode in rs["opcodes"]:
+                        for t in mine["domain"]["types"]:
+                            # the domain is Core IR spelling (p0:64), not
+                            # LLT::print (p0) -- spec/m4-scope.md §1.
+                            types = [E.parse_core_llt(t)] * arity
+                            mems = [E.MemDesc(types[0], E.size_in_bits(types[0])[0])]
+                            answers = []
+                            for ev in docs:
+                                try:
+                                    answers.append(
+                                        E.evaluate(ev, "default", opcode, types, mems))
+                                except Exception as e:  # noqa: BLE001 - compare both sides
+                                    # Ill-typed synthetic points (e.g. elemOf on a
+                                    # scalar) must fail the same way on both docs.
+                                    answers.append(("error", type(e).__name__, str(e)))
+                            self.assertEqual(answers[0], answers[1],
+                                             f"{name} {opcode} {t}")
+                            compared += 1
+                            points += 1
+                            if answers[0][0] != "error":
+                                answered += 1
+                self.assertGreater(points, 0, name)
+                # A vacuous harness (everything errors) would prove nothing.
+                self.assertGreater(answered, points // 2, name)
+        self.assertGreater(compared, 1000)
+
+    def test_domain_types_are_core_llt(self):
+        """Every domain entry must parse as Core IR, including p0:<width>."""
+        sys.path.insert(0, str(ROOT))
+        from gisel import eval as E
+
+        for name, _ in CORPORA:
+            doc = json.loads((TESTS / "artifacts" / f"{name}.core.json").read_text())
+            for t in doc["domain"]["types"]:
+                try:
+                    E.parse_core_llt(t)
+                except E.EvalError as e:
+                    self.fail(f"{name}: domain type {t!r} is not Core IR: {e}")
+            self.assertIn("p0:64", doc["domain"]["types"], name)
+        self.assertEqual(E.parse_core_llt("p0:64"), ("pointer", 0, 64))
+
+
+def _max_index(node, kind):
+    """Largest slot/sameAs index appearing in a rule body."""
+    best = 0
+    if isinstance(node, dict):
+        if node.get("kind") == kind and isinstance(node.get("index"), int):
+            best = max(best, node["index"] + 1)
+        if node.get("kind") == kind and isinstance(node.get("value"), int):
+            best = max(best, node["value"] + 1)
+        for v in node.values():
+            best = max(best, _max_index(v, kind))
+    elif isinstance(node, list):
+        for v in node:
+            best = max(best, _max_index(v, kind))
+    return best
+
+
+def _arity(ruleset):
+    """Type slots a rule set can address: type_idx, sameAs and slot indices."""
+    n = 1
+    for r in ruleset["rules"]:
+        n = max(n, r.get("type_idx", 0) + 1)
+        for key in ("predicate", "op", "on", "to"):
+            n = max(n, _max_index(r.get(key), "slot"), _max_index(r.get(key), "sameAs"))
+    return n
+
+
+class EvaluatorCorpus(unittest.TestCase):
+    """The 9632-point AArch64 differential, run against our own core JSON."""
+
+    def test_aarch64_cases_agree(self):
+        sys.path.insert(0, str(ROOT))
+        from gisel import eval as E
+
+        cases = TESTS / "cases"
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "aarch64.core.json"
+            r = run("gen", str(TESTS / "corpus" / "AArch64LegalizerInfo.gisel"),
+                    "--emit=core", "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            ev = E.Evaluator(json.loads(out.read_text()),
+                             E.load_features(str(cases / "features.json")))
+        total, disagree, errors, first, _ = E.run_cases(
+            ev, str(cases / "a64_ref_dump.jsonl"))
+        self.assertEqual(total, 9632)
+        self.assertEqual((disagree, errors), (0, 0), first)
 
 
 class ShimCoverage(unittest.TestCase):
