@@ -415,7 +415,7 @@ class CliSurface(unittest.TestCase):
         r = subprocess.run([sys.executable, "-m", "gisel", "--version"],
                            cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("gisel 0.1.0", r.stdout)
+        self.assertIn("gisel 0.2.0", r.stdout)
 
 
 class SourceErrors(unittest.TestCase):
