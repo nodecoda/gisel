@@ -1,0 +1,948 @@
+#!/usr/bin/env python3
+"""Independent evaluator for the Core IR normal form (schema 0.4).
+
+This is the Phase 2 reference implementation.  It reads a
+`legalizer-spec-core` JSON document (the `-gen-legalizer-core` normal form),
+a per-configuration feature truth table, and a list of queries (one JSON
+object per line, the same shape as the frozen AArch64 oracle dump), and
+answers each query with the triple
+
+    (action, type_idx, new_type)
+
+exactly as the hand-written C++ builder chain does.  It does not import
+TableGen, does not read the emitter, and does not parse any generated `.inc`.
+
+Evaluation is first-match: rule sets in document order, rules inside a rule
+set in `rule_index` order, the first rule whose effective guard is true wins.
+
+The effective guard of a rule is `guard && shim_guard`, where `guard` is the
+serialised `predicate` and `shim_guard` is the implicit size/count/vector test
+the C++ shim adds for lattice operators (for example `widen slot pow2` only
+fires when the slot is a scalar whose size is not a power of two).  Terminal
+actions and whole-type `replace` mutations carry no implicit guard.
+
+An unknown feature string, predicate node, value node, target form, or action
+raises `EvalError` instead of guessing, matching the deliberate-no-defaults
+contract of the earlier 0.3 evaluator.
+
+Usage:
+  python tools/core_eval_04.py \
+      --doc ~/legalizer-baseline/aarch64.core.json \
+      --features tests/aarch64-oracle/features.json \
+      --cases tests/aarch64-oracle/a64_ref_dump.jsonl
+"""
+import argparse
+import json
+import re
+import sys
+
+NO_MUTATION_ACTIONS = {"Legal", "Lower", "Libcall", "Custom", "Unsupported"}
+SCALARIZE_ACTION = "FewerElements"  # scalarize projects to FewerElements
+
+
+class EvalError(Exception):
+    def __init__(self, code, detail):
+        Exception.__init__(self, "%s: %s" % (code, detail))
+        self.code = code
+        self.detail = detail
+
+
+# ---------------------------------------------------------------------------
+# LLT model
+#
+# LLTs are plain tuples; everything below is closed over this representation.
+#   ("scalar", bits)                          ANY_SCALAR
+#   ("integer", bits)                         INTEGER (extended LLT)
+#   ("float", bits)                           IEEE float, bits in {16,32,64,128}
+#   ("bf16",)                                 bfloat16
+#   ("pointer", addrspace, bits)              POINTER
+#   ("vector", lanes, scalable, elem)         fixed or scalable vector
+#   ("invalid",)                              LLT_invalid
+# ---------------------------------------------------------------------------
+
+_FLOAT_BITS = {16, 32, 64, 128}
+
+
+def is_scalar(t):
+    """LLT::isScalar(): ANY_SCALAR, INTEGER and FLOAT are all scalar."""
+    return t[0] in ("scalar", "integer", "float", "bf16")
+
+
+def is_integer(t):
+    return t[0] == "integer"
+
+
+def is_float(t):
+    return t[0] == "float" or t[0] == "bf16"
+
+
+def is_float_ieee(t):
+    return t[0] == "float"
+
+
+def is_bf16(t):
+    return t[0] == "bf16"
+
+
+def is_pointer(t):
+    return t[0] == "pointer"
+
+
+def is_vector(t):
+    return t[0] == "vector"
+
+
+def is_scalable(t):
+    return is_vector(t) and t[2]
+
+
+def is_fixed_vector(t):
+    return is_vector(t) and not t[2]
+
+
+def is_pointer_vector(t):
+    return is_vector(t) and t[3][0] == "pointer"
+
+
+def is_valid(t):
+    return t[0] != "invalid"
+
+
+def scalar_size(t):
+    """getScalarSizeInBits: element size for vectors, scalar/pointer width else."""
+    if t[0] == "vector":
+        return scalar_size(t[3])
+    if t[0] == "pointer":
+        return t[2]
+    if t[0] == "bf16":
+        return 16
+    return t[1]
+
+
+def size_in_bits(t):
+    """(known_min_bits, scalable) for getSizeInBits."""
+    if t[0] == "vector":
+        elt, scalable = size_in_bits(t[3])
+        return (elt * t[1], scalable or t[2])
+    if t[0] == "pointer":
+        return (t[2], False)
+    if t[0] == "bf16":
+        return (16, False)
+    return (t[1], False)
+
+
+def size_in_bytes(t):
+    """getSizeInBytes: (min + 7) // 8."""
+    bits, scalable = size_in_bits(t)
+    return ((bits + 7) // 8, scalable)
+
+
+def num_elems(t):
+    # In the NDEBUG build the oracle runs in, getElementCount()'s
+    # isVector() assert is compiled out and a scalar/pointer stores
+    # ElementCount::getFixed(0), so getNumElements() returns 0 there.
+    if is_vector(t):
+        return t[1]
+    return 0
+
+
+def get_scalar_type(t):
+    return t[3] if is_vector(t) else t
+
+
+def get_element_type(t):
+    assert is_vector(t)
+    return t[3]
+
+
+def get_address_space(t):
+    assert t[0] == "pointer" or (is_vector(t) and t[3][0] == "pointer")
+    if is_vector(t):
+        return t[3][2]
+    return t[1]
+
+
+def change_element_type(t, new_elt):
+    """changeElementType: vector keeps its lanes; scalar becomes new_elt."""
+    if is_vector(t):
+        return ("vector", t[1], t[2], new_elt)
+    return new_elt
+
+
+def change_element_size(t, new_size):
+    """changeElementSize: invalid for pointers, keeps vector lanes."""
+    assert t[0] != "pointer" and not is_pointer_vector(t)
+    if is_vector(t):
+        return ("vector", t[1], t[2], change_element_size(t[3], new_size))
+    if is_integer(t):
+        return ("integer", new_size)
+    if is_float_ieee(t):
+        return ("float", new_size)
+    # bf16 and ANY_SCALAR both degrade to a plain scalar here, matching
+    # LLT::changeElementSize (isFloatIEEE() is false for bf16).
+    return ("scalar", new_size)
+
+
+def scalar_or_vector(lanes, scalable, elem):
+    """LLT::scalarOrVector: one fixed lane is the element type itself."""
+    if lanes == 1 and not scalable:
+        return elem
+    return ("vector", lanes, scalable, elem)
+
+
+def change_element_count_div(t, n):
+    """divLanes: element count / n, keeping the scalable flag."""
+    assert is_vector(t)
+    return scalar_or_vector(t[1] // n, t[2], t[3])
+
+
+def fixed_vector(lanes, elem):
+    return ("vector", lanes, False, elem)
+
+
+def scalable_vector(lanes, elem):
+    return ("vector", lanes, True, elem)
+
+
+def integer_type(bits):
+    return ("integer", bits)
+
+
+def pow2ceil(x):
+    # LLVM PowerOf2Ceil: 1 << ceil(log2(x)); for 0 returns 1.
+    if x <= 1:
+        return 1
+    p = 1
+    while p < x:
+        p <<= 1
+    return p
+
+
+def is_pow2_32(x):
+    return x != 0 and (x & (x - 1)) == 0
+
+
+def align_to(x, n):
+    return ((x + n - 1) // n) * n
+
+
+# ---------------------------------------------------------------------------
+# Parsers
+# ---------------------------------------------------------------------------
+
+_CORE_VEC_RE = re.compile(r"^(nxv|v)(\d+)(.*)$")
+_CORE_SCALAR_RE = re.compile(r"^(s|i|f)(\d+)$")
+_CORE_PTR_RE = re.compile(r"^p(\d+):(\d+)$")
+_ORACLE_VEC_RE = re.compile(r"^<(\d+|vscale x \d+) x (.*)>$")
+
+
+def _parse_elem_spelling(s, oracle):
+    if s == "bf16":
+        return ("bf16",)
+    m = _CORE_SCALAR_RE.match(s)
+    if m:
+        kind, bits = m.group(1), int(m.group(2))
+        if kind == "s":
+            return ("scalar", bits)
+        if kind == "i":
+            return ("integer", bits)
+        return ("float", bits)
+    if not oracle:
+        m = _CORE_PTR_RE.match(s)
+        if m:
+            return ("pointer", int(m.group(1)), int(m.group(2)))
+    else:
+        m = re.match(r"^p(\d+)$", s)
+        if m:
+            # The frozen oracle was produced with PointerBits=64.
+            return ("pointer", int(m.group(1)), 64)
+    raise EvalError("bad_llt", "cannot parse LLT element %r" % (s,))
+
+
+def parse_core_llt(s):
+    """Canonical Core IR spelling: s32, i32, f32, bf16, p0:64, v4s32, nxv4s32."""
+    if s == "bf16":
+        return ("bf16",)
+    m = _CORE_VEC_RE.match(s)
+    if m:
+        lanes = int(m.group(2))
+        scalable = m.group(1) == "nxv"
+        elem = _parse_elem_spelling(m.group(3), oracle=False)
+        return ("vector", lanes, scalable, elem)
+    m = _CORE_PTR_RE.match(s)
+    if m:
+        return ("pointer", int(m.group(1)), int(m.group(2)))
+    return _parse_elem_spelling(s, oracle=False)
+
+
+def parse_oracle_llt(s):
+    """LLT::print spelling: s32, i32, f32, bf16, p0, <4 x s32>, <vscale x 4 x s32>."""
+    if s == "LLT_invalid":
+        return ("invalid",)
+    if s == "bf16":
+        return ("bf16",)
+    m = _ORACLE_VEC_RE.match(s)
+    if m:
+        head, elem = m.group(1), m.group(2)
+        if head.startswith("vscale"):
+            lanes = int(head.split()[2])
+            scalable = True
+        else:
+            lanes = int(head)
+            scalable = False
+        return ("vector", lanes, scalable, _parse_elem_spelling(elem, oracle=True))
+    return _parse_elem_spelling(s, oracle=True)
+
+
+def _is_scalar_like(t):
+    """LLT::isScalar(): ANY_SCALAR, INTEGER and FLOAT are all 'scalar'."""
+    return t[0] in ("scalar", "integer", "float", "bf16")
+
+
+def llt_eq(a, b):
+    """LLT operator==, including the ANY_SCALAR bag-of-bits rule.
+
+    If either side is ANY_SCALAR the comparison is `isScalar() && same
+    scalar size`, so s32 == i32 == f32 while i32 != f32.  Vector equality
+    recurses through element types, so <8 x s8> == v8i8.
+    """
+    if a == b:
+        return True
+    if a[0] == "scalar" or b[0] == "scalar":
+        return (_is_scalar_like(a) and _is_scalar_like(b)
+                and scalar_size(a) == scalar_size(b))
+    if is_vector(a) and is_vector(b):
+        return (a[1] == b[1] and a[2] == b[2]
+                and llt_eq(a[3], b[3]))
+    return False
+
+
+def values_equal(a, b):
+    """Compare two Core IR values: LLTs use LLT operator==, rest use ==."""
+    if isinstance(a, tuple) and isinstance(b, tuple):
+        return llt_eq(a, b)
+    return a == b
+
+
+def fmt_oracle_llt(t):
+    if not is_valid(t):
+        return "LLT_invalid"
+    if is_vector(t):
+        if t[2]:
+            return "<vscale x %d x %s>" % (t[1], fmt_oracle_llt(t[3]))
+        return "<%d x %s>" % (t[1], fmt_oracle_llt(t[3]))
+    if t[0] == "pointer":
+        return "p%d" % t[1]
+    if t[0] == "bf16":
+        return "bf16"
+    if t[0] == "float":
+        return "f%d" % t[1]
+    if t[0] == "integer":
+        return "i%d" % t[1]
+    if t[0] == "scalar":
+        return "s%d" % t[1]
+    return "LLT_invalid"
+
+
+# ---------------------------------------------------------------------------
+# Atomic ordering lattice (matching llvm/Support/AtomicOrdering.h)
+# ---------------------------------------------------------------------------
+
+_ORDERING_INDEX = {
+    "NotAtomic": 0, "Unordered": 1, "Monotonic": 2, "Acquire": 4,
+    "Release": 5, "AcquireRelease": 6, "SequentiallyConsistent": 7,
+}
+_ORDERING_FROM_TAG = {
+    "orderingUnordered": "Unordered",
+    "orderingMonotonic": "Monotonic",
+    "orderingAcquire": "Acquire",
+    "orderingRelease": "Release",
+    "orderingAcquireRelease": "AcquireRelease",
+    "orderingSequentiallyConsistent": "SequentiallyConsistent",
+}
+
+_STRONGER = {
+    0: [False] * 8,
+    1: [True, False, False, False, False, False, False, False],
+    2: [True, True, False, False, False, False, False, False],
+    4: [True, True, True, True, False, False, False, False],
+    5: [True, True, True, False, False, False, False, False],
+    6: [True, True, True, True, True, True, False, False],
+    7: [True, True, True, True, True, True, True, False],
+}
+_AT_LEAST = {
+    0: [True, False, False, False, False, False, False, False],
+    1: [True, True, False, False, False, False, False, False],
+    2: [True, True, True, False, False, False, False, False],
+    4: [True, True, True, True, True, False, False, False],
+    5: [True, True, True, False, False, True, False, False],
+    6: [True, True, True, True, True, True, True, False],
+    7: [True] * 8,
+}
+
+
+def is_stronger_than(a, b):
+    return _STRONGER[a][b]
+
+
+def is_at_least_or_stronger_than(a, b):
+    return _AT_LEAST[a][b]
+
+
+# ---------------------------------------------------------------------------
+# Feature truth table
+# ---------------------------------------------------------------------------
+
+class Features:
+    def __init__(self, table):
+        self.table = table  # config -> {feature_string: bool}
+
+    def get(self, config, feat):
+        row = self.table.get(config)
+        if row is None:
+            raise EvalError("unknown_config", "no feature row for %r" % (config,))
+        if feat not in row:
+            raise EvalError("unknown_feature", "no truth value for %r in %r" % (feat, config))
+        return row[feat]
+
+
+# ---------------------------------------------------------------------------
+# Document / query model
+# ---------------------------------------------------------------------------
+
+class MemDesc:
+    __slots__ = ("memory_ty", "align", "ordering", "failure_ordering")
+
+    def __init__(self, memory_ty, align, ordering="NotAtomic",
+                 failure_ordering="NotAtomic"):
+        self.memory_ty = memory_ty
+        self.align = align
+        self.ordering = ordering
+        self.failure_ordering = failure_ordering
+
+
+class Evaluator:
+    def __init__(self, doc, features):
+        self.features = features
+        self.rulesets = doc["rulesets"]
+        self.by_opcode = {}
+        for rs_idx, rs in enumerate(self.rulesets):
+            for op in rs["opcodes"]:
+                self.by_opcode.setdefault(op, []).append(rs_idx)
+
+    # -- value nodes -------------------------------------------------------
+    def value(self, node, types, mems, config):
+        k = node["kind"]
+        a = node.get("args", [])
+        if k == "int":
+            return node["value"]
+        if k == "type":
+            return parse_core_llt(node["value"])
+        if k == "slot":
+            return types[node["index"]]
+        if k == "memSlot":
+            return mems[a[0]["value"]]
+        if k == "elemOf":
+            return get_element_type(self.value(a[0], types, mems, config))
+        if k == "scalarOf":
+            return get_scalar_type(self.value(a[0], types, mems, config))
+        if k == "numElems":
+            return num_elems(self.value(a[0], types, mems, config))
+        if k == "bitsOf":
+            return scalar_size(self.value(a[0], types, mems, config))
+        if k == "sizeOf":
+            arg = a[0]
+            if arg.get("kind") == "memSlot":
+                m = self.value(arg, types, mems, config)
+                return size_in_bits(m.memory_ty)[0]
+            return size_in_bits(self.value(arg, types, mems, config))[0]
+        if k == "sizeInBytesOf":
+            return size_in_bytes(self.value(a[0], types, mems, config))[0]
+        if k == "alignOf":
+            return self.value(a[0], types, mems, config).align
+        if k == "addrSpace":
+            return get_address_space(self.value(a[0], types, mems, config))
+        if k == "memTy":
+            return self.value(a[0], types, mems, config).memory_ty
+        if k == "memOrdering":
+            return self.value(a[0], types, mems, config).ordering
+        if k == "memFailureOrdering":
+            return self.value(a[0], types, mems, config).failure_ordering
+        if k == "ty":
+            return self.value(a[0], types, mems, config)
+        if k == "sameAs":
+            return types[a[0]["value"]]
+        if k == "select":
+            if self.bool_value(a[0], types, mems, config):
+                return self.value(a[1], types, mems, config)
+            return self.value(a[2], types, mems, config)
+        if k == "mul":
+            return self.int_value(a[0], types, mems, config) * self.int_value(a[1], types, mems, config)
+        if k == "urem":
+            return self.int_value(a[0], types, mems, config) % self.int_value(a[1], types, mems, config)
+        if k == "udiv":
+            return self.int_value(a[0], types, mems, config) // self.int_value(a[1], types, mems, config)
+        if k == "pow2Ceil":
+            return pow2ceil(self.int_value(a[0], types, mems, config))
+        if k == "intOfSize":
+            return integer_type(self.int_value(a[0], types, mems, config))
+        if k == "vecOf":
+            return fixed_vector(self.int_value(a[0], types, mems, config),
+                                self.llt_value(a[1], types, mems, config))
+        if k == "scalarOrVecOf":
+            return scalar_or_vector(self.int_value(a[0], types, mems, config),
+                                    False,
+                                    self.llt_value(a[1], types, mems, config))
+        if k == "eltTypeTo":
+            return change_element_type(self.llt_value(a[0], types, mems, config),
+                                       self.llt_value(a[1], types, mems, config))
+        if k == "eltSizeTo":
+            return change_element_size(self.llt_value(a[0], types, mems, config),
+                                       self.int_value(a[1], types, mems, config))
+        if k == "divLanes":
+            return change_element_count_div(self.llt_value(a[0], types, mems, config),
+                                            self.int_value(a[1], types, mems, config))
+        if k == "replace":
+            return self.value(a[0], types, mems, config)
+        raise EvalError("unknown_value", "value node %r" % (k,))
+
+    def int_value(self, node, types, mems, config):
+        v = self.value(node, types, mems, config)
+        if isinstance(v, bool) or not isinstance(v, int):
+            raise EvalError("bad_int", "node %r is not an Int" % (node.get("kind"),))
+        return v
+
+    def llt_value(self, node, types, mems, config):
+        v = self.value(node, types, mems, config)
+        if not isinstance(v, tuple):
+            raise EvalError("bad_llt", "node %r is not an LLT" % (node.get("kind"),))
+        return v
+
+    # -- boolean nodes -----------------------------------------------------
+    def bool_value(self, node, types, mems, config):
+        k = node["kind"]
+        a = node.get("args", [])
+        if k == "leaf":
+            name = node.get("name")
+            if name == "true":
+                return True
+            if name == "hasFeature":
+                return self.features.get(config, a[0])
+            raise EvalError("unknown_leaf", "leaf %r" % (name,))
+        if k == "true":
+            return True
+        if k == "all":
+            return all(self.bool_value(c, types, mems, config) for c in a)
+        if k == "any":
+            return any(self.bool_value(c, types, mems, config) for c in a)
+        if k == "not":
+            return not self.bool_value(a[0], types, mems, config)
+        if k == "isPow2":
+            return is_pow2_32(self.int_value(a[0], types, mems, config))
+        if k == "isByteSized":
+            bits, _ = size_in_bits(self.llt_value(a[0], types, mems, config))
+            return bits % 8 == 0
+        if k == "isBFloat16":
+            return is_bf16(self.llt_value(a[0], types, mems, config))
+        if k == "isFloat16":
+            t = self.llt_value(a[0], types, mems, config)
+            return t[0] == "float" and t[1] == 16
+        if k in ("in", "inPairs", "inTriples", "inMemDesc"):
+            return self.membership(node, types, mems, config)
+        if k in ("eq", "ne", "lt", "le", "gt", "ge"):
+            return self.compare(node, types, mems, config)
+        raise EvalError("unknown_bool", "bool node %r" % (k,))
+
+    # -- membership --------------------------------------------------------
+    def _slot_index(self, node):
+        if node.get("kind") == "slot":
+            return node["index"]
+        raise EvalError("bad_slot", "tuple membership needs a literal slot")
+
+    def membership(self, node, types, mems, config):
+        k = node["kind"]
+        a = node["args"]
+        if k == "inMemDesc":
+            i0 = self._slot_index(a[0])
+            i1 = self._slot_index(a[1])
+            mnode = a[2]
+            if mnode.get("kind") != "memSlot":
+                raise EvalError("bad_memslot", "inMemDesc third operand")
+            m = mems[mnode["args"][0]["value"]]
+            elems = a[3]["elems"]
+            for e in elems:
+                t0 = parse_core_llt(e[0])
+                t1 = parse_core_llt(e[1])
+                mt = parse_core_llt(e[2])
+                align = e[3]
+                if (llt_eq(types[i0], t0) and llt_eq(types[i1], t1)
+                        and m.align >= align
+                        and size_in_bits(m.memory_ty)[0] == size_in_bits(mt)[0]):
+                    return True
+            return False
+
+        lhs = a[0]
+        rhs = a[-1]
+        nslots = len(a) - 1
+
+        if k == "inPairs":
+            i0 = self._slot_index(a[0]); i1 = self._slot_index(a[1])
+            arity = rhs.get("arity", 2)
+            for e in rhs["elems"]:
+                if llt_eq(types[i0], parse_core_llt(e[0])) and llt_eq(types[i1], parse_core_llt(e[1])):
+                    return True
+            return False
+        if k == "inTriples":
+            i0 = self._slot_index(a[0]); i1 = self._slot_index(a[1]); i2 = self._slot_index(a[2])
+            for e in rhs["elems"]:
+                if (llt_eq(types[i0], parse_core_llt(e[0]))
+                        and llt_eq(types[i1], parse_core_llt(e[1]))
+                        and llt_eq(types[i2], parse_core_llt(e[2]))):
+                    return True
+            return False
+
+        # one-slot `in`
+        if rhs.get("kind") == "clamp":
+            v = self.int_value(lhs, types, mems, config)
+            lo = rhs["args"][0]["value"]
+            hi = rhs["args"][1]["value"]
+            return lo <= v <= hi
+        if rhs.get("kind") == "type":
+            return llt_eq(self.llt_value(lhs, types, mems, config), parse_core_llt(rhs["value"]))
+        if rhs.get("kind") == "set" and rhs.get("of") == "Type":
+            v = self.llt_value(lhs, types, mems, config)
+            for e in rhs["elems"]:
+                if llt_eq(v, parse_core_llt(e)):
+                    return True
+            return False
+        if rhs.get("kind") == "set" and rhs.get("of") == "Kind":
+            # Lhs must be SortOf; the emitter lowers it to a disjunction of
+            # kind predicates over the SortOf operand.
+            if lhs.get("kind") != "sortOf":
+                raise EvalError("bad_kind_set", "Kind set can only test SortOf")
+            t = self.llt_value(lhs["args"][0], types, mems, config)
+            for e in rhs["elems"]:
+                if _kind_predicate(e, t):
+                    return True
+            return False
+        raise EvalError("unknown_set", "set %r" % (rhs.get("kind"),))
+
+    # -- comparisons -------------------------------------------------------
+    def compare(self, node, types, mems, config):
+        k = node["kind"]
+        lhs = node["args"][0]
+        rhs = node["args"][1]
+        if lhs.get("kind") == "sortOf":
+            t = self.llt_value(lhs["args"][0], types, mems, config)
+            pred = _kind_predicate(rhs.get("kind"), t)
+            return (not pred) if k == "ne" else pred
+        if lhs.get("kind") in ("memOrdering", "memFailureOrdering"):
+            v = self.value(lhs, types, mems, config)
+            o = _ORDERING_FROM_TAG.get(rhs.get("kind"))
+            if o is None:
+                raise EvalError("bad_ordering", "not an ordering tag: %r" % (rhs.get("kind"),))
+            vi = _ORDERING_INDEX[v]
+            oi = _ORDERING_INDEX[o]
+            if k == "eq":
+                return vi == oi
+            if k == "ne":
+                return vi != oi
+            if k == "ge":
+                return is_at_least_or_stronger_than(vi, oi)
+            if k == "gt":
+                return is_stronger_than(vi, oi)
+            if k == "le":
+                return not is_stronger_than(vi, oi)
+            if k == "lt":
+                return not is_at_least_or_stronger_than(vi, oi)
+            raise EvalError("bad_ordering_cmp", k)
+        lv = self.value(lhs, types, mems, config)
+        rv = self.value(rhs, types, mems, config)
+        if k == "eq":
+            return values_equal(lv, rv)
+        if k == "ne":
+            return not values_equal(lv, rv)
+        if k == "lt":
+            return lv < rv
+        if k == "le":
+            return lv <= rv
+        if k == "gt":
+            return lv > rv
+        return lv >= rv
+
+
+def _kind_predicate(tag, t):
+    """SortOf tag -> LLT kind predicate."""
+    if tag == "kindScalar":
+        return is_scalar(t)
+    if tag == "kindVector":
+        return is_vector(t)
+    if tag == "kindScalableVector":
+        return is_scalable(t)
+    if tag == "kindPointer":
+        return is_pointer(t)
+    if tag == "kindPointerVector":
+        return is_pointer_vector(t)
+    raise EvalError("bad_kind", "kind tag %r" % (tag,))
+
+
+# ---------------------------------------------------------------------------
+# Shim: implicit guard + new_type for (op, on-form, to-form)
+# ---------------------------------------------------------------------------
+
+def _slot_of(on_node):
+    if on_node.get("kind") == "slot":
+        return on_node["index"]
+    if on_node.get("kind") == "elemOf":
+        inner = on_node["args"][0]
+        if inner.get("kind") != "slot":
+            raise EvalError("bad_on", "nested ElemOf has no type-index projection")
+        return inner["index"]
+    raise EvalError("bad_on", "observation is not a slot/elemOf")
+
+
+def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
+    """Return (implicit_guard, new_type) for a matched rule.
+
+    `new_type` is an LLT tuple; ("invalid",) means "not mutated".  When the
+    implicit guard is false the mutation is deliberately not computed, exactly
+    as the C++ shim's `actionIf` skips the mutation lambda for a query that
+    fails its size/count test.
+    """
+    if on_node is None:
+        # Terminal action: guard is the whole rule.
+        return True, ("invalid",)
+    idx = _slot_of(on_node)
+    on_form = "elem" if on_node.get("kind") == "elemOf" else "slot"
+
+    if to_node is None:
+        # scalarize
+        t = types[idx]
+        if not is_vector(t):
+            return False, ("invalid",)
+        return True, get_element_type(t)
+
+    if to_node.get("kind") == "int":
+        to_form = "int"
+        to_int = to_node["value"]
+    else:
+        to_form = to_node["kind"]
+
+    t = types[idx]
+    ssz = scalar_size(t)
+    size, _ = size_in_bits(t)
+
+    # Whole-type mutation: the target is the rule's own type expression.
+    if to_form == "replace":
+        return True, ev.llt_value(to_node["args"][0], types, mems, config)
+
+    if op == "widen":
+        if on_form == "slot" and to_form in ("select", "int"):
+            minsz = ev.int_value(to_node, types, mems, config)
+            guard = (ssz < minsz) or (not is_pow2_32(ssz))
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, max(pow2ceil(ssz), minsz))
+        if to_form == "pow2":
+            if on_form == "slot":
+                guard = is_scalar(t) and not is_pow2_32(size)
+            else:
+                guard = not is_pow2_32(ssz)
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, pow2ceil(ssz))
+        if to_form == "pow2Min":
+            n = to_node["args"][0]["value"]
+            if on_form == "slot":
+                guard = is_scalar(t) and not is_pow2_32(size)
+            else:
+                guard = not is_pow2_32(ssz)
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, max(pow2ceil(ssz), n))
+        if to_form == "multipleOf":
+            n = to_node["args"][0]["value"]
+            if on_form == "slot":
+                guard = is_scalar(t) and (size % n != 0)
+            else:
+                guard = ssz % n != 0
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, align_to(ssz, n))
+        if to_form == "ty":
+            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            tsz = scalar_size(target)
+            if on_form == "slot":
+                guard = is_scalar(t) and size < tsz
+            else:
+                guard = ssz < tsz
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, tsz)
+        if to_form == "sameAs":
+            k = to_node["args"][0]["value"]
+            other = scalar_size(types[k])
+            guard = other > ssz
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, other)
+        if to_form == "minVectorSize":
+            n = to_node["args"][0]["value"]
+            if not (is_fixed_vector(t) and size < n):
+                return False, ("invalid",)
+            num = num_elems(t)
+            new_elt = change_element_size(get_element_type(t), n // num)
+            return True, fixed_vector(num, new_elt)
+        raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
+
+    if op == "narrow":
+        if to_form == "ty":
+            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            tsz = scalar_size(target)
+            if on_form == "slot":
+                guard = is_scalar(t) and size > tsz
+            else:
+                guard = ssz > tsz
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, tsz)
+        if to_form == "sameAs":
+            k = to_node["args"][0]["value"]
+            other = scalar_size(types[k])
+            guard = other < ssz
+            if not guard:
+                return False, ("invalid",)
+            return True, change_element_size(t, other)
+        raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
+
+    if op == "more":
+        if to_form == "pow2":
+            if not (is_fixed_vector(t) and not is_pow2_32(num_elems(t))):
+                return False, ("invalid",)
+            return True, fixed_vector(pow2ceil(num_elems(t)), get_element_type(t))
+        raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
+
+    if op == "fewer":
+        if to_form == "ty":
+            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            tsize, _ = size_in_bits(target)
+            if not (is_vector(t) and size > tsize):
+                return False, ("invalid",)
+            return True, change_element_type(t, target)
+        raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
+
+    if op == "bitcast":
+        if to_form == "ty":
+            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            return True, change_element_type(t, target)
+        raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
+
+    raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
+
+# ---------------------------------------------------------------------------
+# Query evaluation
+# ---------------------------------------------------------------------------
+
+def evaluate(evaluator, config, opcode, types, mems):
+    idxs = evaluator.by_opcode.get(opcode)
+    if idxs is None:
+        raise EvalError("no_rules", "opcode %r has no rule sets" % (opcode,))
+    for rs_idx in idxs:
+        rs = evaluator.rulesets[rs_idx]
+        for rule in rs["rules"]:
+            if not evaluator.bool_value(rule["predicate"], types, mems, config):
+                continue
+            guard, new_type = shim_guard_and_newtype(
+                rule.get("op"), rule.get("on"), rule.get("to"),
+                types, mems, evaluator, config)
+            if not guard:
+                continue
+            action = rule["action"]
+            type_idx = rule.get("type_idx", 0)
+            return action, type_idx, new_type
+    # LegalizerInfo::getAction falls back to Unsupported when no rule fires.
+    return "Unsupported", 0, ("invalid",)
+
+
+# ---------------------------------------------------------------------------
+# Runner
+# ---------------------------------------------------------------------------
+
+def load_doc(path):
+    with open(path) as f:
+        doc = json.load(f)
+    if doc.get("version") != "0.4":
+        raise EvalError("bad_version", "expected schema 0.4, got %r" % (doc.get("version"),))
+    return doc
+
+
+def load_features(path):
+    with open(path) as f:
+        return Features(json.load(f))
+
+
+def run_cases(evaluator, cases_path):
+    total = 0
+    disagree = 0
+    errors = 0
+    first_failure = None
+    action_counts = {}
+    with open(cases_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            q = json.loads(line)
+            total += 1
+            types = [parse_oracle_llt(s) for s in q["types"]]
+            mems = []
+            if q["mem"] is not None:
+                mems.append(MemDesc(parse_oracle_llt(q["mem"][0]), q["mem"][1]))
+            try:
+                action, type_idx, new_type = evaluate(
+                    evaluator, q["config"], q["name"], types, mems)
+            except EvalError as e:
+                errors += 1
+                if first_failure is None:
+                    first_failure = "ERROR %s: %s" % (q, e)
+                continue
+            new_type_str = fmt_oracle_llt(new_type) if new_type is not None else "LLT_invalid"
+            action_counts[action] = action_counts.get(action, 0) + 1
+            if (action != q["action"] or type_idx != q["type_idx"]
+                    or new_type_str != q["new_type"]):
+                disagree += 1
+                if first_failure is None:
+                    first_failure = (
+                        "%s %s %s mem=%s: got (%s,%d,%s) want (%s,%d,%s)"
+                        % (q["config"], q["name"], q["types"], q["mem"],
+                           action, type_idx, new_type_str,
+                           q["action"], q["type_idx"], q["new_type"]))
+    return total, disagree, errors, first_failure, action_counts
+
+
+def main():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--doc", required=True)
+    ap.add_argument("--features", required=True)
+    ap.add_argument("--cases", required=True)
+    ap.add_argument("--verbose", action="store_true")
+    args = ap.parse_args()
+
+    doc = load_doc(args.doc)
+    features = load_features(args.features)
+    evaluator = Evaluator(doc, features)
+
+    total, disagree, errors, first_failure, counts = run_cases(
+        evaluator, args.cases)
+
+    print("cases=%d disagreements=%d errors=%d" % (total, disagree, errors))
+    print("actions:", json.dumps(counts, sort_keys=True))
+    if first_failure is not None:
+        print("first failure:", first_failure)
+    if disagree or errors:
+        sys.exit(1)
+    print("OK")
+
+
+if __name__ == "__main__":
+    main()
