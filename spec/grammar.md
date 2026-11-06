@@ -102,7 +102,28 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 （记录名→LLT、指针通配符、`select` 类型）见 `gisel/backend/core_json.py:1-15`
 与 `spec/m4-scope.md`。
 
-## 7 已知边界
+## 7 静态诊断（`gisel lint`）
+
+`gisel lint SOURCE [--manifest PATH] [--json] [--max-errors N]` 在不调用
+LLVM 的前提下检查每条规则：
+
+| 检查 | 内容 | 实现 |
+|---|---|---|
+| J1 | 表达式/谓词的 sort（Type/Int/Bool/Kind/Set/Ordering/MemDesc） | `dsl.py:_tc` |
+| J2b | 比较两侧 sort 相同且可比较；`select` 分支同 sort | 同上 |
+| J3a | action 的 `(operator, target-sort)` 全函数 | `TARGET_SORTS` |
+| J3b | `slot(i)` 的 `i < arity` | `check_rule` |
+
+诊断格式 `path:line: RULESET: message`；`--json` 输出
+`{source, errors[], warnings[], rules}`。退出码：0 无 error，1 有 error，
+2 源/IO/解析错误。
+
+arity 来自随包分发的 `gisel/data/generic_opcodes.json`（283 条，从
+`GenericOpcodes.td` 的 `def`/`class` 继承链重建；`tools/gen-opcode-table.py`
+仅开发期重算）。10 条变参指令（`G_PHI`、`G_INTRINSIC*` 等）没有固定 arity：
+lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默通过。
+
+## 8 已知边界
 
 - 缩进只认空格；`\t` 不参与层级计算（语料全部用空格）。
 - `feature`/`type` 右侧不做语法检查，只有 TableGen 后端消费它们。
@@ -110,3 +131,6 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 - `type_set X = Y.Elems` 是引用，不是拷贝（`td.py:129-131`）。
 - 语法错误报 `path:line: message`（exit 2），行号是 `.gisel` 的物理行；
   被续行拆开的规则报该语句的起始行（`td.py:482` 的 line map）。
+- `lint` 只做单步静态检查，不求值、不检查终止性；求值见 `gisel eval`。
+- 多 opcode 的 ruleset 用 `min(arity)` 做 J3b（`dsl.py:check_rules`），这是
+  保守下界，不是 per-opcode 精确检查。

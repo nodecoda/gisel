@@ -8,6 +8,7 @@ python3 -m pip install .        # or: python3 -m gisel (no install)
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=td  --out X86LegalizerInfo.td
+gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
 ```
 
 ## Status
@@ -19,6 +20,7 @@ gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=td  --out X86LegalizerInf
 | M2 | `--emit=check` | the `-gen-legalizer-check` JSON | done |
 | M3 | `--emit=table` | the `-gen-legalizer-table` fragment | done |
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 9632-point differential | done |
+| v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 
 `tests/artifacts/` holds the eight frozen artifacts and their `SHA256`; the
 corpus is derivable, not hand-tuned: `gisel bootstrap` reproduces both `.gisel`
@@ -28,9 +30,13 @@ against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (develop
 only — generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 31 gates, ~5 s
+python3 -m unittest discover -q -s tests      # 40 gates, ~9 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
+
+`gisel lint` runs the J1/J2b/J3a/J3b checks over the normal form and prints
+`path:line: RULESET: message` (exit 1 on errors, 2 on parse/IO).  It needs no
+LLVM source tree: the opcode arity table ships in `gisel/data/`.
 
 Errors point at the source, not at a synthetic string:
 

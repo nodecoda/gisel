@@ -195,9 +195,10 @@ class Parser:
         kw = self.next()
         assert kw.t == "ID", kw
         k = kw.v
+        line = kw.line
         if k in ("legal", "lower", "custom", "unsupported", "libcall"):
             pred = self.parse_pred()
-            return {"op": k, "pred": pred}
+            return {"op": k, "pred": pred, "_line": line}
         if k in ("widen", "narrow", "more", "fewer", "bitcast"):
             self.expect("(")
             on = self.parse_expr()
@@ -207,7 +208,7 @@ class Parser:
             pred = None
             if self.peek() and self.peek().t == "ID" and self.peek().v == "when":
                 self.next(); pred = self.parse_pred()
-            return {"op": k, "on": on, "to": to, "pred": pred}
+            return {"op": k, "on": on, "to": to, "pred": pred, "_line": line}
         if k == "scalarize":
             self.expect("(")
             on = self.parse_expr()
@@ -215,14 +216,15 @@ class Parser:
             pred = None
             if self.peek() and self.peek().t == "ID" and self.peek().v == "when":
                 self.next(); pred = self.parse_pred()
-            return {"op": k, "on": on, "to": None, "pred": pred}
+            return {"op": k, "on": on, "to": None, "pred": pred, "_line": line}
         if k in ("clamp_min", "clamp_max"):
             self.expect("(")
             idx = self.next().v; self.expect(",")
             elt = self.next().v; self.expect(",")
             lanes = self.parse_expr()
             self.expect(")")
-            return {"op": k, "idx": idx, "elt": elt, "lanes": lanes}
+            return {"op": k, "idx": idx, "elt": elt, "lanes": lanes,
+                    "_line": line}
         raise ValueError(f"line {kw.line}: unknown statement {k!r}")
 
     # predicate grammar: or -> and -> not -> primary
@@ -267,7 +269,8 @@ class Parser:
         # comparison
         left = self.parse_expr()
         tok = self.next()
-        assert tok.t == "OP", f"line {tok.line}: expected comparison, got {tok.v!r}"
+        if tok.t != "OP":
+            raise ValueError(f"line {tok.line}: expected comparison, got {tok.v!r}")
         right = self.parse_expr()
         return call2({"==": "eq", "!=": "ne", "<": "lt", "<=": "le",
                       ">": "gt", ">=": "ge"}[tok.v], left, right)
@@ -426,10 +429,12 @@ class Parser:
                 self.next()
         self.expect(")")
         if name in UNARY_CALL:
-            assert len(args) == 1, (name, args)
+            if len(args) != 1:
+                raise ValueError(f"{name}: expects 1 argument, got {len(args)}")
             return call1(UNARY_CALL[name], args[0])
         if name in BINARY_CALL:
-            assert len(args) == 2, (name, args)
+            if len(args) != 2:
+                raise ValueError(f"{name}: expects 2 arguments, got {len(args)}")
             return call2(BINARY_CALL[name], args[0], args[1])
         raise ValueError(f"line {self.toks[self.p-2].line}: unknown constructor "
                          f"{name!r}")
@@ -441,7 +446,10 @@ def compile_rulesets(ast):
     out = []
     for rs in ast:
         for st in rs["stmts"]:
-            out.append(compile_stmt(st))
+            rule = compile_stmt(st)
+            if "_line" in st:
+                rule["_line"] = st["_line"]
+            out.append(rule)
     return out
 
 def type_idx_of(on):
@@ -497,7 +505,7 @@ def compile_stmt(st):
 
 # ---- compare against real -gen-legalizer-core output ----------------------
 
-STRIP_KEYS = {"schema", "ruleset", "rule_index", "origin", "def"}
+STRIP_KEYS = {"schema", "ruleset", "rule_index", "origin", "def", "_line"}
 
 def strip(rule):
     return {k: v for k, v in rule.items() if k not in STRIP_KEYS}
@@ -773,36 +781,64 @@ class TdEmitter:
 # ---- static checks (J1 sort / J2b compare / J3a action / J3b slot bound) --
 
 COMPARE_SORTS = {"Int", "Kind", "Ordering", "Type"}
+KIND_ORDERING = {"orderingUnordered", "orderingMonotonic", "orderingAcquire",
+                 "orderingRelease", "orderingAcquireRelease",
+                 "orderingSequentiallyConsistent"}
 # admissible target sorts per lattice operator (action table, J3a)
 TARGET_SORTS = {"widen": {"Type", "Int"}, "narrow": {"Type", "Int"},
                 "more": {"Int", "Type"}, "fewer": {"Int", "Type"},
                 "bitcast": {"Type"}}
 
 def _tc(node, arity, errs):
-    """Type-check one normal-form node, return its sort (J1 / J2b)."""
+    """Type-check one normal-form node, return its sort (J1 / J2b).
+
+    The sorts are the ones the evaluator distinguishes at run time
+    (gisel/eval.py value()/bool_value()); MemDesc is the only one that never
+    reaches a comparison.
+    """
     k = node["kind"]
     args = node.get("args", [])
 
+    def tc(n):
+        return _tc(n, arity, errs)
+
     def need(i, sort):
-        got = _tc(args[i], arity, errs)
+        got = tc(args[i])
         if got != sort:
             errs.append(f"{k}: arg {i} sort mismatch (got {got}, want {sort})")
         return got
 
+    def need_any(i, sorts):
+        got = tc(args[i])
+        if got not in sorts:
+            errs.append(f"{k}: arg {i} sort mismatch (got {got}, want {sorts})")
+        return got
+
     if k == "int":
         return "Int"
+    if k == "true":
+        return "Bool"
     if k == "slot":
         if node["index"] >= arity:
             errs.append(f"(Slot {node['index']}) out of range: opcode has {arity} slot(s)")
         return "Type"
     if k == "type":
         return "Type"
-    if k in ("kindVector", "kindScalableVector", "kindScalar", "kindPointer"):
-        return "Kind"
-    if k == "leaf":
-        return "Bool"
     if k == "set":
         return "Set"
+    if k == "leaf":
+        return "Bool"
+    if k in ("kindVector", "kindScalableVector", "kindScalar", "kindPointer",
+             "kindPointerVector"):
+        return "Kind"
+    if k in KIND_ORDERING:
+        return "Ordering"
+    if k == "memSlot":
+        need(0, "Int")
+        return "MemDesc"
+    if k == "sameAs":
+        need(0, "Int")
+        return "Type"
     if k in ("elemOf", "scalarOf", "replace", "ty"):
         need(0, "Type")
         return "Type"
@@ -812,8 +848,44 @@ def _tc(node, arity, errs):
     if k in ("numElems", "bitsOf"):
         need(0, "Type")
         return "Int"
+    if k == "sizeOf":
+        need_any(0, {"Type", "MemDesc"})
+        return "Int"
+    if k == "sizeInBytesOf":
+        need(0, "Type")
+        return "Int"
+    if k == "alignOf":
+        need(0, "MemDesc")
+        return "Int"
+    if k == "addrSpace":
+        need(0, "Type")
+        return "Int"
+    if k == "memTy":
+        need(0, "MemDesc")
+        return "Type"
+    if k in ("memOrdering", "memFailureOrdering"):
+        need(0, "MemDesc")
+        return "Ordering"
+    if k in ("mul", "urem", "udiv"):
+        need(0, "Int"); need(1, "Int")
+        return "Int"
+    if k == "pow2Ceil":
+        need(0, "Int")
+        return "Int"
+    if k == "intOfSize":
+        need(0, "Int")
+        return "Type"
+    if k == "minVectorSize":
+        need(0, "Int")
+        return "Int"
     if k in ("vecOf", "scalarOrVecOf"):
         need(0, "Int"); need(1, "Type")
+        return "Type"
+    if k == "eltTypeTo":
+        need(0, "Type"); need(1, "Type")
+        return "Type"
+    if k in ("eltSizeTo", "divLanes"):
+        need(0, "Type"); need(1, "Int")
         return "Type"
     if k == "pow2":
         return "Int"
@@ -821,27 +893,51 @@ def _tc(node, arity, errs):
         need(0, "Int")
         return "Int"
     if k == "select":
-        need(0, "Bool"); need(1, "Int"); need(2, "Int")
-        return "Int"
-    if k == "not":
         need(0, "Bool")
+        a, b = tc(args[1]), tc(args[2])
+        if a != b:
+            errs.append(f"select: branch sorts differ ({a} vs {b})")
+        elif a not in ("Int", "Type"):
+            errs.append(f"select: unsupported branch sort {a}")
+        return a
+    if k == "not":
+        sub = node.get("arg", args[0] if args else None)
+        if sub is None:
+            errs.append("not: missing operand")
+        elif tc(sub) != "Bool":
+            errs.append("not: operand must be Bool")
         return "Bool"
-    if k in ("all", "any"):
-        if len(args) < 1:
-            errs.append(f"{k}: variadic needs >=1 arg")
-        for a in args:
-            _tc(a, arity, errs)
+    if k in ("all", "any", "nary"):
+        if k == "nary" and node.get("op") not in ("all_of", "any_of"):
+            errs.append(f"nary: unknown op {node.get('op')!r}")
+        for i in range(len(args)):
+            need(i, "Bool")
         return "Bool"
     if k in ("eq", "ne", "lt", "le", "gt", "ge"):
-        a = _tc(args[0], arity, errs); b = _tc(args[1], arity, errs)
+        a = tc(args[0]); b = tc(args[1])
         if a != b:
             errs.append(f"{k}: operand sorts differ ({a} vs {b})")
         elif a not in COMPARE_SORTS:
             errs.append(f"{k}: comparison over unsupported sort {a}")
         return "Bool"
     if k == "in":
-        if _tc(args[0], arity, errs) != "Type":
-            errs.append(f"in: left operand must be Type")
+        if tc(args[0]) != "Type":
+            errs.append("in: left operand must be Type")
+        return "Bool"
+    if k == "inPairs":
+        need(0, "Type"); need(1, "Type"); need(2, "Set")
+        return "Bool"
+    if k == "inTriples":
+        for i in range(3):
+            need(i, "Type")
+        need(3, "Set")
+        return "Bool"
+    if k == "inMemDesc":
+        need(0, "Type"); need(1, "Type"); need(2, "MemDesc"); need(3, "Set")
+        return "Bool"
+    if k in ("isPow2", "isBFloat16", "isFloat16", "isByteSized"):
+        # A type predicate: isBFloat16 takes a type, isPow2 a byte count.
+        need_any(0, {"Type", "Int"})
         return "Bool"
     raise ValueError(f"typecheck: unknown node kind {k!r}")
 
@@ -861,34 +957,130 @@ def check_rule(rule, arity, errs):
     else:
         errs.append(f"unknown op {op!r}")
 
-def build_arity_manifest(generic_td_path):
-    """Per-opcode type-slot count from GenericOpcodes.td (inline typeN/ptypeN).
+_TYPE_INDEX_RE = re.compile(r"\b(?:ptype|type)(\d+)\b")
+_DECL_RE = re.compile(r"\b(class|def)\s+([A-Za-z_]\w*)\s*(?::\s*([^{;]*))?([;{])")
 
-    Handles `def G_X : GenericInstruction { ... }` with the operand lists
-    written inline.  Opcodes whose lists are inherited through a class leave
-    no typeN in the body and are recorded as None (cannot check J3b).
+
+def _strip_td_comments(text):
+    """Drop // comments, keeping string literals intact."""
+    out = []
+    i, n = 0, len(text)
+    in_str = False
+    while i < n:
+        c = text[i]
+        if in_str:
+            out.append(c)
+            if c == "\\" and i + 1 < n:
+                out.append(text[i + 1])
+                i += 2
+                continue
+            if c == '"':
+                in_str = False
+            i += 1
+            continue
+        if c == '"':
+            in_str = True
+            out.append(c)
+            i += 1
+            continue
+        if text.startswith("//", i):
+            j = text.find("\n", i)
+            i = n if j < 0 else j
+            continue
+        out.append(c)
+        i += 1
+    return "".join(out)
+
+
+def _parse_td_defs(text):
+    """name -> (bases, highest type operand index or None, variadic)."""
+    text = _strip_td_comments(text)
+    recs = {}
+    pos = 0
+    while True:
+        m = _DECL_RE.search(text, pos)
+        if not m:
+            break
+        kind, name = m.group(1), m.group(2)
+        bases, term = m.group(3) or "", m.group(4)
+        body = ""
+        end = m.end()
+        if term == "{":
+            depth, j = 0, m.end() - 1
+            while j < len(text):
+                if text[j] == "{":
+                    depth += 1
+                elif text[j] == "}":
+                    depth -= 1
+                    if depth == 0:
+                        break
+                j += 1
+            body = text[m.end():j]
+            end = j + 1
+        prev = recs.get(name, ("class", (), None, False))
+        idx = [int(x) for x in _TYPE_INDEX_RE.findall(body)]
+        own = max(idx) if idx else prev[2]
+        recs[name] = (kind, tuple(b.strip() for b in bases.split(",") if b.strip()),
+                      own, "variable_ops" in body or prev[3])
+        pos = end
+    return recs
+
+
+def _max_type_index(recs, name, seen=None):
+    """Highest type-operand index for `name`, or None when unknowable.
+
+    A base class defined outside this file (GenericInstruction, ...) carries
+    no type operands; a variadic instruction has no fixed arity.
     """
-    text = open(generic_td_path).read()
-    manifest = {}
-    for m in re.finditer(r"def\s+(G_\w+)\s*:[^{]*\{", text):
-        name = m.group(1)
-        i = m.end() - 1
-        depth, j = 0, i
-        while j < len(text):
-            c = text[j]
-            if c == "{":
-                depth += 1
-            elif c == "}":
-                depth -= 1
-                if depth == 0:
-                    break
-            j += 1
-        body = text[i:j + 1]
-        maxn = max((int(t.group(1))
-                    for t in re.finditer(r"\b(?:type|ptype)(\d+)\b", body)),
-                   default=-1)
-        manifest[name] = maxn + 1 if maxn >= 0 else None
-    return manifest
+    seen = set() if seen is None else seen
+    if name in seen:
+        return None
+    seen.add(name)
+    rec = recs.get(name)
+    if rec is None:
+        return -1                      # external base: no type operands
+    _kind, bases, own, variadic = rec
+    if variadic:
+        return None
+    best = own
+    for b in bases:
+        got = _max_type_index(recs, b, seen)
+        if got is None:
+            return None
+        if best is None or got > best:
+            best = got
+    return -1 if best is None else best
+
+
+def build_arity_manifest(generic_td_path):
+    """Per-opcode type-slot count from GenericOpcodes.td.
+
+    Handles both `def G_X : Class { ... }` and `def G_X : Class;`, walking the
+    class chain (`class VectorReduction { type0, type1 }`).  `None` means the
+    count is not fixed (variadic intrinsics).
+
+    The previous regex silently attached the *next* def's body to `def X :
+    Class;`; e.g. G_VECREDUCE_FADD inherited G_MEMCPY's type2 and was recorded
+    as arity 3 instead of 2.
+    """
+    with open(generic_td_path) as f:
+        recs = _parse_td_defs(f.read())
+    out = {}
+    for name, (kind, _, _, _) in recs.items():
+        if kind != "def" or not name.startswith("G_"):
+            continue
+        idx = _max_type_index(recs, name)
+        out[name] = None if idx is None else idx + 1
+    return out
+
+
+def load_arity_manifest():
+    """The bundled opcode table: lint works without an LLVM source tree."""
+    path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                        "data", "generic_opcodes.json")
+    with open(path) as f:
+        return json.load(f)["opcodes"]
+
 
 def check_rules(compiled, opcodes, manifest, errs):
     arities = [manifest.get(o) for o in opcodes]
