@@ -2,7 +2,10 @@
 
 状态: 规范性。实现: `gisel/td.py:513`（`parse_gisel`，文件级）与
 `gisel/dsl.py:149`（`Parser`，规则级）。语料: `tests/corpus/*.gisel`
-（778 + 1310 行，1075 条规则），任何语法改动都必须让语料 round-trip。
+（778 + 1310 行，1075 条规则，有 `.td` 对照）；
+另有两份**无 `.td` 的探针语料** `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
+`WebAssemblyLegalizerInfo.gisel`（228 行 / 108 条），见 `docs/REPORT-wasm.md`。
+任何语法改动都必须让这四份语料 round-trip。
 
 ## 1 词法
 
@@ -139,5 +142,11 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 - 语法错误报 `path:line: message`（exit 2），行号是 `.gisel` 的物理行；
   被续行拆开的规则报该语句的起始行（`td.py:482` 的 line map）。
 - `lint` 只做单步静态检查，不求值、不检查终止性；求值见 `gisel eval`。
+- **没有 imm 轴**：`in(slot(0), [8, 16])` 报 `expected a type, got INT 8`。
+  `immInSet(i, S)` / `immIs(i, v)` 这一列（正常形 `domain.imms` 有字段）目前没有
+  观察子能读到，所以 `legalIf(all(typeInSet(...), immInSet(...)))` 这类规则无法
+  表达。语料证据：`tests/corpus/WebAssemblyLegalizerInfo.gisel` 的
+  `G_SEXT_INREG`（`WebAssemblyLegalizerInfo.cpp:103-108`），见
+  `docs/REPORT-wasm.md` §4。
 - 多 opcode 的 ruleset 用 `min(arity)` 做 J3b（`dsl.py:check_rules`），这是
   保守下界，不是 per-opcode 精确检查。

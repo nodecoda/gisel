@@ -1,0 +1,44 @@
+//===- M68kLegalizerInfo.gisel - free-form legalizer rules --*- gisel -*-===//
+//
+// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
+// See https://llvm.org/LICENSE.txt for license information.
+// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+//
+//===----------------------------------------------------------------------===//
+//
+// Hand-transcribed from llvm/lib/Target/M68k/GISel/M68kLegalizerInfo.cpp.
+// There is no .td for this target yet, so this file is a coverage probe, not
+// a generated artifact: it tests whether the free-form DSL can express the
+// builder chains the C++ target uses.
+//
+//===----------------------------------------------------------------------===//
+
+type M68k_s8 = LLT::scalar(8)
+type M68k_s16 = LLT::scalar(16)
+type M68k_s32 = LLT::scalar(32)
+type M68k_p0 = LLT::pointer(0, 32)
+
+ruleset M68k_ARITH: G_ADD G_SUB G_MUL G_UDIV G_AND
+    legal in(slot(0), [M68k_s8, M68k_s16, M68k_s32])
+    widen(slot(0), ty(M68k_s8))
+    narrow(slot(0), ty(M68k_s32))
+    widen(slot(0), pow2_min(8))
+
+ruleset M68k_CONSTANT: G_CONSTANT
+    legal in(slot(0), [M68k_s32, M68k_p0])
+    widen(slot(0), ty(M68k_s32))
+    narrow(slot(0), ty(M68k_s32))
+
+ruleset M68k_ADDR: G_FRAME_INDEX G_GLOBAL_VALUE
+    legal in(slot(0), M68k_p0)
+
+ruleset M68k_MEM: G_STORE G_LOAD
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(M68k_s32, M68k_p0, M68k_s32, 4), mem_desc(M68k_s32, M68k_p0, M68k_s16, 4), mem_desc(M68k_s32, M68k_p0, M68k_s8, 4), mem_desc(M68k_s16, M68k_p0, M68k_s16, 2), mem_desc(M68k_s8, M68k_p0, M68k_s8, 1), mem_desc(M68k_p0, M68k_p0, M68k_s32, 4)])
+    widen(slot(0), ty(M68k_s8))
+    narrow(slot(0), ty(M68k_s32))
+
+ruleset M68k_PTR_ADD: G_PTR_ADD
+    legal in_pairs(slot(0), slot(1), [[M68k_p0, M68k_s32]])
+
+ruleset M68k_TRUNC: G_TRUNC
+    legal true

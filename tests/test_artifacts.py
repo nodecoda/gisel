@@ -366,6 +366,49 @@ class EvaluatorCorpus(unittest.TestCase):
         self.assertEqual((disagree, errors), (0, 0), first)
 
 
+class ProbeCorpus(unittest.TestCase):
+    """Targets with no .td yet: every backend must still accept the source.
+
+    M68k and WebAssembly are transcribed by hand from their C++, so there is
+    no golden artifact to compare against; what is checked is that the source
+    survives every backend and lands in the canonical form intact.
+    """
+
+    PROBES = (("M68kLegalizerInfo", 6, 13), ("WebAssemblyLegalizerInfo", 29, 108))
+
+    def test_all_backends_accept_the_probe(self):
+        for name, _, nrules in self.PROBES:
+            for emit in ("td", "inc", "check", "table", "core"):
+                with tempfile.TemporaryDirectory() as d:
+                    out = Path(d) / "probe"
+                    r = run("gen", "--emit=" + emit, "--out", str(out),
+                            str(TESTS / "corpus" / f"{name}.gisel"))
+                    self.assertEqual(r.returncode, 0, (name, emit, r.stderr))
+                    self.assertIn(f"{nrules} rules", r.stdout)
+
+    def test_wasm_core_json_is_closed(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "w.core.json"
+            r = run("gen", "--emit=core", "--out", str(out),
+                    str(TESTS / "corpus" / "WebAssemblyLegalizerInfo.gisel"))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            doc = json.loads(out.read_text())
+        self.assertEqual(len(doc["rulesets"]), 29)
+        self.assertEqual(sum(len(rs["rules"]) for rs in doc["rulesets"]), 108)
+        self.assertEqual(doc["escapes"], [])
+        # i8/i16 are named but only used through mem_desc; p0 is a wildcard in
+        # sets and p0:64 in the domain.
+        self.assertEqual(doc["domain"]["types"],
+                         ["f32", "f64", "i16", "i32", "i64", "i8", "p0:64",
+                          "s32", "s64"])
+        # The one rule the language cannot express: an imm predicate.
+        self.assertEqual(doc["domain"]["imms"], [])
+        sext = [rs for rs in doc["rulesets"] if rs["opcodes"] == ["G_SEXT_INREG"]]
+        self.assertEqual(len(sext), 1)
+        self.assertEqual([r["op"] for r in sext[0]["rules"]],
+                         ["widen", "narrow", "lower"])
+
+
 class BootstrapRoundTrip(unittest.TestCase):
     """The hand-written .td + core JSON regenerate the checked-in .gisel."""
 
