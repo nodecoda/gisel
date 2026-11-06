@@ -374,7 +374,7 @@ class ProbeCorpus(unittest.TestCase):
     survives every backend and lands in the canonical form intact.
     """
 
-    PROBES = (("M68kLegalizerInfo", 6, 13), ("WebAssemblyLegalizerInfo", 29, 108))
+    PROBES = (("M68kLegalizerInfo", 6, 13), ("WebAssemblyLegalizerInfo", 29, 109))
 
     def test_all_backends_accept_the_probe(self):
         for name, _, nrules in self.PROBES:
@@ -386,6 +386,37 @@ class ProbeCorpus(unittest.TestCase):
                     self.assertEqual(r.returncode, 0, (name, emit, r.stderr))
                     self.assertIn(f"{nrules} rules", r.stdout)
 
+    def test_imm_predicate_is_evaluated(self):
+        """`imm(0)` reaches the evaluator, not just the C++ emitter.
+
+        hasSignExt = true; 8 and 16 are legal for both widths, 32 only for
+        i64, and everything else falls through to `lower`.
+        """
+        the_case = ('{"config":"signext","name":"G_SEXT_INREG","types":%s,'
+                    '"imms":%s,"mem":null,"action":"%s","type_idx":0,'
+                    '"new_type":"LLT_invalid"}')
+        rows = [the_case % ('["i32"]', "[8]", "Legal"),
+                the_case % ('["i32"]', "[16]", "Legal"),
+                the_case % ('["i32"]', "[32]", "Lower"),
+                the_case % ('["i64"]', "[32]", "Legal"),
+                the_case % ('["i64"]', "[8]", "Legal")]
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            core = d / "w.core.json"
+            r = run("gen", "--emit=core", "--out", str(core),
+                    str(TESTS / "corpus" / "WebAssemblyLegalizerInfo.gisel"))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            feats = d / "f.json"
+            feats.write_text(json.dumps({"signext": {
+                "Subtarget.hasSignExt()": True,
+                "Subtarget.hasAddr64()": True}}))
+            cases = d / "c.jsonl"
+            cases.write_text("\n".join(rows) + "\n")
+            r = run("eval", "--doc", str(core), "--features", str(feats),
+                    "--cases", str(cases))
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertIn("cases=5 disagreements=0 errors=0", r.stdout)
+
     def test_wasm_core_json_is_closed(self):
         with tempfile.TemporaryDirectory() as d:
             out = Path(d) / "w.core.json"
@@ -394,19 +425,23 @@ class ProbeCorpus(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             doc = json.loads(out.read_text())
         self.assertEqual(len(doc["rulesets"]), 29)
-        self.assertEqual(sum(len(rs["rules"]) for rs in doc["rulesets"]), 108)
+        self.assertEqual(sum(len(rs["rules"]) for rs in doc["rulesets"]), 109)
         self.assertEqual(doc["escapes"], [])
         # i8/i16 are named but only used through mem_desc; p0 is a wildcard in
         # sets and p0:64 in the domain.
         self.assertEqual(doc["domain"]["types"],
                          ["f32", "f64", "i16", "i32", "i64", "i8", "p0:64",
                           "s32", "s64"])
-        # The one rule the language cannot express: an imm predicate.
-        self.assertEqual(doc["domain"]["imms"], [])
+        # The immediate axis: one rule reads imm 0, and the domain says so.
+        self.assertEqual(doc["domain"]["imms"], [0])
         sext = [rs for rs in doc["rulesets"] if rs["opcodes"] == ["G_SEXT_INREG"]]
         self.assertEqual(len(sext), 1)
         self.assertEqual([r["op"] for r in sext[0]["rules"]],
-                         ["widen", "narrow", "lower"])
+                         ["legal", "widen", "narrow", "lower"])
+        legal = sext[0]["rules"][0]["predicate"]
+        blob = json.dumps(legal)
+        self.assertIn('"kind": "imm"', blob)
+        self.assertIn('"of": "Int"', blob)
 
 
 class BootstrapRoundTrip(unittest.TestCase):
@@ -430,6 +465,31 @@ class BootstrapRoundTrip(unittest.TestCase):
                 self.assertEqual(r.returncode, 0, r.stderr)
                 self.assertEqual(regen.read_text(),
                                  (TESTS / "golden" / f"{name}.td").read_text())
+
+
+class ImmRoundTrip(unittest.TestCase):
+    """The imm axis round-trips: parse -> render -> parse, same predicate.
+
+    There is no .td to bootstrap a probe corpus from, so the round-trip is
+    checked one level down, on the renderer the bootstrap path uses.
+    """
+
+    SRC = ("type I32 = LLT::integer(32)\n"
+           "ruleset X: G_SEXT_INREG\n"
+           "    legal (in(slot(0), I32) and (in(imm(0), [8, 16]) or imm(0) == 32))\n")
+
+    def _pred(self, text):
+        from gisel import td as T
+        gs = T.parse_gisel(text)
+        return gs["rulesets"][0]["rules"][0]["predicate"]
+
+    def test_render_then_parse_is_stable(self):
+        from gisel import dsl
+        first = self._pred(self.SRC)
+        rendered = dsl.render_pred(first)
+        self.assertIn("imm(0)", rendered)
+        again = self._pred("ruleset X: G_SEXT_INREG\n    legal %s\n" % rendered)
+        self.assertEqual(first, again)
 
 
 class SourceNameIndependence(unittest.TestCase):
@@ -458,7 +518,7 @@ class CliSurface(unittest.TestCase):
         r = subprocess.run([sys.executable, "-m", "gisel", "--version"],
                            cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("gisel 0.2.0", r.stdout)
+        self.assertIn("gisel 0.3.0", r.stdout)
 
 
 class SourceErrors(unittest.TestCase):

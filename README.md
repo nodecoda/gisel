@@ -25,6 +25,7 @@ gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
 | M3 | `--emit=table` | the `-gen-legalizer-table` fragment | done |
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 9632-point differential | done |
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
+| v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 
 `tests/artifacts/` holds the eight frozen artifacts and their `SHA256`; the
 corpus is derivable, not hand-tuned: `gisel bootstrap` reproduces both `.gisel`
@@ -34,7 +35,7 @@ against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (develop
 only — generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 43 gates, ~9 s
+python3 -m unittest discover -q -s tests      # 52 gates, ~6 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 

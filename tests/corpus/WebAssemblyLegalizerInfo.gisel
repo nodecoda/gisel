@@ -26,19 +26,10 @@
 //   clampScalar(i, lo, hi)  -> widen(i, ty(lo)) + narrow(i, ty(hi)); the shim
 //                              coreMinScalar/coreMaxScalar is the same pair.
 //
-// KNOWN GAP (not expressible, see docs/REPORT-wasm.md):
-//
-//   G_SEXT_INREG's legal rule is the first rule in the corpus that reads an
-//   immediate:
-//
-//     Builder.legalIf(all(typeInSet(0, {i32, i64}),
-//                         any(immInSet(0, {8, 16}),
-//                             all(typeIs(0, i64), immIs(0, 32)))));
-//
-//   The core IR has no `Imms` observer (LegalizerCore.td's sort list is
-//   Type/Int/Bool/MemDesc/Kind/Ordering/String), so the rule is omitted and
-//   the two rules after it are transcribed.  `in(slot(0), [8, 16])` is
-//   rejected with "expected a type, got INT 8".
+// This is also the corpus that pins the immediate axis: G_SEXT_INREG's legal
+// rule reads imm 0, and it is the only rule here that does.  `imm(i)` is the
+// observation (`Query.Immediates[i]`), `in(imm(0), [8, 16])` is `immInSet`
+// and `imm(0) == 32` is `immIs`.  See docs/REPORT-wasm.md and D-20261107-80.
 //
 //===----------------------------------------------------------------------===//
 include "llvm/Target/LegalizerInfo.td"
@@ -133,9 +124,8 @@ ruleset Wasm_TRUNC: G_TRUNC
     widen(slot(1), ty(Wasm_s64))
     narrow(slot(1), ty(Wasm_s64))
 
-// The legal rule reads imm 0 and is not expressible; see the file header.
 ruleset Wasm_SEXT_INREG: G_SEXT_INREG
-    note "legal is (HasSignExt && in(i32,i64) && (imm in {8,16} || (i64 && imm == 32)))"
+    legal (feature("Subtarget.hasSignExt()") and in(slot(0), [Wasm_i32, Wasm_i64]) and (in(imm(0), [8, 16]) or (in(slot(0), Wasm_i64) and imm(0) == 32)))
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
     lower true

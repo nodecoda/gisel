@@ -112,15 +112,43 @@ class CoreJson:
             if k == "value" and n.get("kind") == "type":
                 out[k] = self.type_value(v) if isinstance(v, str) else self.node(v)
             elif k == "elems" and n.get("kind") == "set":
-                out[k] = [self.type_value(row) if isinstance(row, str)
-                          else [self.type_value(x) if isinstance(x, str) else x
-                                for x in row]
-                          for row in v]
+                if n.get("of") == "Int":
+                    # An immediate set is a flat list of integers, not type
+                    # spellings; there is nothing to normalize.
+                    out[k] = list(v)
+                else:
+                    out[k] = [self.type_value(row) if isinstance(row, str)
+                              else [self.type_value(x) if isinstance(x, str) else x
+                                    for x in row]
+                              for row in v]
             else:
                 out[k] = self.node(v)
         return out
 
     # ---- document --------------------------------------------------------
+
+    def imms(self):
+        """The immediate slots any predicate reads, sorted.
+
+        ``domain.types`` is the set of type spellings in scope; ``domain.imms``
+        is the set of immediate *indices* a rule can look at.  There is no
+        immediate-count declaration to take it from, so it is read off the
+        document, the way ``mems``/``orderings`` would be.
+        """
+        found = set()
+
+        def walk(x):
+            if isinstance(x, list):
+                for v in x:
+                    walk(v)
+            elif isinstance(x, dict):
+                if x.get("kind") == "imm":
+                    found.add(x["index"])
+                for v in x.values():
+                    walk(v)
+
+        walk(self.gs["rulesets"])
+        return sorted(found)
 
     def domain(self):
         types = []
@@ -155,9 +183,10 @@ class CoreJson:
                '  "version": %s,' % _string(VERSION),
                '  "config": {"triple": "unspecified", "cpu": "unspecified", '
                '"features": [], "pointer_width": %d},' % POINTER_WIDTH,
-               '  "domain": {"types": [%s], "imms": [], "mems": [], '
+               '  "domain": {"types": [%s], "imms": [%s], "mems": [], '
                '"orderings": [], "q0": []},'
-               % ", ".join(_string(t) for t in self.domain()),
+               % (", ".join(_string(t) for t in self.domain()),
+                  ", ".join(str(i) for i in self.imms())),
                '  "rulesets": [']
         for si, rs in enumerate(self.gs["rulesets"]):
             origin = {"source": source_name,

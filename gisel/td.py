@@ -807,6 +807,9 @@ class NamedTdEmitter(D.TdEmitter):
     def _set(self, n):
         arity = n.get("arity", 1)
         elems = n["elems"]
+        if n.get("of") == "Int":
+            # An immediate set is integer literals, not named types.
+            return "[" + ", ".join(str(e) for e in elems) + "]"
         if arity == 1:
             recs = [self._type_value(e) for e in elems]
             # A named type set keeps the .td readable; the emitter expands it

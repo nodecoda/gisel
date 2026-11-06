@@ -113,7 +113,7 @@ def _lint(gs, source, manifest):
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
     ap = argparse.ArgumentParser(prog="gisel", description=__doc__)
-    ap.add_argument("--version", action="version", version="gisel 0.2.0")
+    ap.add_argument("--version", action="version", version="gisel 0.3.0")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     g = sub.add_parser("gen", help="generate a backend artifact")

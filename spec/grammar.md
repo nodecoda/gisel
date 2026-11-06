@@ -64,13 +64,17 @@ clamp      := ("clamp_min"|"clamp_max") "(" INT "," type "," expr ")"
 ## 4 表达式
 
 ```
-expr   := INT | type | ID | call
+expr   := INT | type | ID | call | "imm" "(" INT ")"
 call   := ID "(" [ expr {"," expr} ] ")"
 ```
 
 `ID` 三种含义：零元构造子（`pow2`、ordering 标签）、命名类型/谓词、函数调用。
 一元观察子与构造子见 `dsl.py:66-82`（`UNARY_CALL`、`BINARY_CALL`）；
-`slot(i)`、`mem_slot(i)` 是特例（`dsl.py:45`、`ZERO_ARG`）。
+`slot(i)`、`mem_slot(i)`、`imm(i)` 是特例（`dsl.py:45`、`ZERO_ARG`）。
+
+`imm(i)` 读 `Query.Immediates[i]`，sort 是 `Int`，只能出现在谓词里（不是类型，
+不能当 `widen` 的目标）。它没有 arity 可检查：`GenericOpcodes.td` 只描述类型槽，
+所以 `imm(9)` 不会被 J3b 拦下。
 
 ## 5 谓词
 
@@ -82,7 +86,7 @@ primary    := "(" pred ")" | "true" | "feature" "(" STRING ")"
             | membership | expr ("=="|"!="|"<"|"<="|">"|">=") expr
             | expr                              // 布尔观察子可单独作谓词
 
-membership := "in" "(" expr "," (type | "[" type {"," type} "]") ")"
+membership := "in" "(" expr "," (type | "[" (type | INT) {"," (type | INT)} "]") ")"
             | "in_pairs"   "(" expr "," expr "," "[" pair {"," pair} "]" ")"
             | "in_triples" "(" expr "," expr "," expr "," "[" triple {"," triple} "]" ")"
             | "in_mem_desc" "(" expr "," expr "," expr "," "[" memrow {"," memrow} "]" ")"
@@ -93,7 +97,12 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 ```
 
 - `or`/`and`/`all_of`/`any_of` 都是 n 元、扁平（对应 `CoreAny`/`CoreAll`）。
-- `in(slot(i), S)` 的 `S` 可以是单类型、内联集合或命名 `type_set`。
+- `in(slot(i), S)` 的 `S` 可以是单类型、内联集合或命名 `type_set`；
+  `in(imm(i), [8, 16])` 是立即数集合。集合是**同质**的：`in` 的左侧 sort 必须
+  与集合元素 sort 一致（`Int` 集合配 `imm`，`Type` 集合配 `slot`），否则 J1 报
+  `in: Int set cannot test Type (element sort mismatch)`。
+- 单个立即数写作比较：`imm(0) == 32`（`immIs`），不像类型那样有「单元素集合就是
+  类型本身」的退化写法。
 - 集合字面量只能作为 `in*` 的**最后一个**实参——这是文法结构，不是约定
   （`dsl.py:285-311`）。
 - `mem_desc(t0, t1, mt, align)`：两槽类型 + 内存类型 + 对齐（位）。
@@ -101,7 +110,9 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 ## 6 正常形（schema 0.4）
 
 `--emit=core` 输出的 JSON 是契约：`schema/version/config/escapes/domain/rulesets`，
-每条规则 `{predicate, op, on, to, action, type_idx?, origin}`。三处重拼
+每条规则 `{predicate, op, on, to, action, type_idx?, origin}`。
+`domain.imms` 是谓词里出现过的 `imm(i)` 的**下标**集合（升序去重），
+和 `domain.types` 并列；LLVM 侧的同名字段目前恒为 `[]`（`LegalizerInfoEmitter.cpp:4933`）。三处重拼
 （记录名→LLT、指针通配符、`select` 类型）见 `gisel/backend/core_json.py:1-15`
 与 `spec/m4-scope.md`。
 
@@ -142,11 +153,10 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 - 语法错误报 `path:line: message`（exit 2），行号是 `.gisel` 的物理行；
   被续行拆开的规则报该语句的起始行（`td.py:482` 的 line map）。
 - `lint` 只做单步静态检查，不求值、不检查终止性；求值见 `gisel eval`。
-- **没有 imm 轴**：`in(slot(0), [8, 16])` 报 `expected a type, got INT 8`。
-  `immInSet(i, S)` / `immIs(i, v)` 这一列（正常形 `domain.imms` 有字段）目前没有
-  观察子能读到，所以 `legalIf(all(typeInSet(...), immInSet(...)))` 这类规则无法
-  表达。语料证据：`tests/corpus/WebAssemblyLegalizerInfo.gisel` 的
-  `G_SEXT_INREG`（`WebAssemblyLegalizerInfo.cpp:103-108`），见
-  `docs/REPORT-wasm.md` §4。
+- `imm(i)` 没有下界检查（见 §4）：`imm(7)` 在只有 1 个立即数的指令上不会被 lint 拦下。
+- `--emit=td` 会把立即数规则写成 `(CoreIn (Imm 0), [8, 16])`，而 LLVM 侧的
+  `LegalizerCore.td` 还没有 `CoreImm`；AArch64/X86 不用 imm，所以现有 8 份产物不受
+  影响。要让生成的 `.td` 能被 `llvm-tblgen` 吃下，`LegalizerCore.td` 需补一个
+  `CoreImm`（sort `Int`）并让 `CoreIn` 接受 Int 集合。
 - 多 opcode 的 ruleset 用 `min(arity)` 做 J3b（`dsl.py:check_rules`），这是
   保守下界，不是 per-opcode 精确检查。

@@ -461,82 +461,84 @@ class Evaluator:
                 self.by_opcode.setdefault(op, []).append(rs_idx)
 
     # -- value nodes -------------------------------------------------------
-    def value(self, node, types, mems, config):
+    def value(self, node, types, mems, config, imms=()):
         k = node["kind"]
         a = node.get("args", [])
         if k == "int":
             return node["value"]
         if k == "type":
-            return self.type_value(node["value"], types, mems, config)
+            return self.type_value(node["value"], types, mems, config, imms)
         if k == "slot":
             return types[node["index"]]
+        if k == "imm":
+            return imms[node["index"]]
         if k == "memSlot":
             return mems[a[0]["value"]]
         if k == "elemOf":
-            return get_element_type(self.value(a[0], types, mems, config))
+            return get_element_type(self.value(a[0], types, mems, config, imms))
         if k == "scalarOf":
-            return get_scalar_type(self.value(a[0], types, mems, config))
+            return get_scalar_type(self.value(a[0], types, mems, config, imms))
         if k == "numElems":
-            return num_elems(self.value(a[0], types, mems, config))
+            return num_elems(self.value(a[0], types, mems, config, imms))
         if k == "bitsOf":
-            return scalar_size(self.value(a[0], types, mems, config))
+            return scalar_size(self.value(a[0], types, mems, config, imms))
         if k == "sizeOf":
             arg = a[0]
             if arg.get("kind") == "memSlot":
-                m = self.value(arg, types, mems, config)
+                m = self.value(arg, types, mems, config, imms)
                 return size_in_bits(m.memory_ty)[0]
-            return size_in_bits(self.value(arg, types, mems, config))[0]
+            return size_in_bits(self.value(arg, types, mems, config, imms))[0]
         if k == "sizeInBytesOf":
-            return size_in_bytes(self.value(a[0], types, mems, config))[0]
+            return size_in_bytes(self.value(a[0], types, mems, config, imms))[0]
         if k == "alignOf":
-            return self.value(a[0], types, mems, config).align
+            return self.value(a[0], types, mems, config, imms).align
         if k == "addrSpace":
-            return get_address_space(self.value(a[0], types, mems, config))
+            return get_address_space(self.value(a[0], types, mems, config, imms))
         if k == "memTy":
-            return self.value(a[0], types, mems, config).memory_ty
+            return self.value(a[0], types, mems, config, imms).memory_ty
         if k == "memOrdering":
-            return self.value(a[0], types, mems, config).ordering
+            return self.value(a[0], types, mems, config, imms).ordering
         if k == "memFailureOrdering":
-            return self.value(a[0], types, mems, config).failure_ordering
+            return self.value(a[0], types, mems, config, imms).failure_ordering
         if k == "ty":
-            return self.value(a[0], types, mems, config)
+            return self.value(a[0], types, mems, config, imms)
         if k == "sameAs":
             return types[a[0]["value"]]
         if k == "select":
-            if self.bool_value(a[0], types, mems, config):
-                return self.value(a[1], types, mems, config)
-            return self.value(a[2], types, mems, config)
+            if self.bool_value(a[0], types, mems, config, imms):
+                return self.value(a[1], types, mems, config, imms)
+            return self.value(a[2], types, mems, config, imms)
         if k == "mul":
-            return self.int_value(a[0], types, mems, config) * self.int_value(a[1], types, mems, config)
+            return self.int_value(a[0], types, mems, config, imms) * self.int_value(a[1], types, mems, config, imms)
         if k == "urem":
-            return self.int_value(a[0], types, mems, config) % self.int_value(a[1], types, mems, config)
+            return self.int_value(a[0], types, mems, config, imms) % self.int_value(a[1], types, mems, config, imms)
         if k == "udiv":
-            return self.int_value(a[0], types, mems, config) // self.int_value(a[1], types, mems, config)
+            return self.int_value(a[0], types, mems, config, imms) // self.int_value(a[1], types, mems, config, imms)
         if k == "pow2Ceil":
-            return pow2ceil(self.int_value(a[0], types, mems, config))
+            return pow2ceil(self.int_value(a[0], types, mems, config, imms))
         if k == "intOfSize":
-            return integer_type(self.int_value(a[0], types, mems, config))
+            return integer_type(self.int_value(a[0], types, mems, config, imms))
         if k == "vecOf":
-            return fixed_vector(self.int_value(a[0], types, mems, config),
-                                self.llt_value(a[1], types, mems, config))
+            return fixed_vector(self.int_value(a[0], types, mems, config, imms),
+                                self.llt_value(a[1], types, mems, config, imms))
         if k == "scalarOrVecOf":
-            return scalar_or_vector(self.int_value(a[0], types, mems, config),
+            return scalar_or_vector(self.int_value(a[0], types, mems, config, imms),
                                     False,
-                                    self.llt_value(a[1], types, mems, config))
+                                    self.llt_value(a[1], types, mems, config, imms))
         if k == "eltTypeTo":
-            return change_element_type(self.llt_value(a[0], types, mems, config),
-                                       self.llt_value(a[1], types, mems, config))
+            return change_element_type(self.llt_value(a[0], types, mems, config, imms),
+                                       self.llt_value(a[1], types, mems, config, imms))
         if k == "eltSizeTo":
-            return change_element_size(self.llt_value(a[0], types, mems, config),
-                                       self.int_value(a[1], types, mems, config))
+            return change_element_size(self.llt_value(a[0], types, mems, config, imms),
+                                       self.int_value(a[1], types, mems, config, imms))
         if k == "divLanes":
-            return change_element_count_div(self.llt_value(a[0], types, mems, config),
-                                            self.int_value(a[1], types, mems, config))
+            return change_element_count_div(self.llt_value(a[0], types, mems, config, imms),
+                                            self.int_value(a[1], types, mems, config, imms))
         if k == "replace":
-            return self.value(a[0], types, mems, config)
+            return self.value(a[0], types, mems, config, imms)
         raise EvalError("unknown_value", "value node %r" % (k,))
 
-    def type_value(self, v, types, mems, config):
+    def type_value(self, v, types, mems, config, imms=()):
         """A type-valued node: an LLT spelling, or a feature-selected pair.
 
         The core JSON writes a subtarget-dependent type as
@@ -546,24 +548,24 @@ class Evaluator:
         if isinstance(v, str):
             return parse_core_llt(v)
         sel = v["select"]
-        if self.bool_value(sel["cond"], types, mems, config):
-            return self.type_value(sel["then"], types, mems, config)
-        return self.type_value(sel["else"], types, mems, config)
+        if self.bool_value(sel["cond"], types, mems, config, imms):
+            return self.type_value(sel["then"], types, mems, config, imms)
+        return self.type_value(sel["else"], types, mems, config, imms)
 
-    def int_value(self, node, types, mems, config):
-        v = self.value(node, types, mems, config)
+    def int_value(self, node, types, mems, config, imms=()):
+        v = self.value(node, types, mems, config, imms)
         if isinstance(v, bool) or not isinstance(v, int):
             raise EvalError("bad_int", "node %r is not an Int" % (node.get("kind"),))
         return v
 
-    def llt_value(self, node, types, mems, config):
-        v = self.value(node, types, mems, config)
+    def llt_value(self, node, types, mems, config, imms=()):
+        v = self.value(node, types, mems, config, imms)
         if not isinstance(v, tuple):
             raise EvalError("bad_llt", "node %r is not an LLT" % (node.get("kind"),))
         return v
 
     # -- boolean nodes -----------------------------------------------------
-    def bool_value(self, node, types, mems, config):
+    def bool_value(self, node, types, mems, config, imms=()):
         k = node["kind"]
         a = node.get("args", [])
         if k == "leaf":
@@ -576,37 +578,37 @@ class Evaluator:
         if k == "true":
             return True
         if k == "all":
-            return all(self.bool_value(c, types, mems, config) for c in a)
+            return all(self.bool_value(c, types, mems, config, imms) for c in a)
         if k == "any":
-            return any(self.bool_value(c, types, mems, config) for c in a)
+            return any(self.bool_value(c, types, mems, config, imms) for c in a)
         if k == "not":
             # schema-0.4 writes `{"kind":"not","arg":...}` for a negated DAG
             # predicate and `args` for a CoreNot node; accept both.
             child = a[0] if a else node["arg"]
-            return not self.bool_value(child, types, mems, config)
+            return not self.bool_value(child, types, mems, config, imms)
         if k == "nary":
             # `{"kind":"nary","op":"all_of"|"any_of","args":[...]}`: the
             # DAG-shaped spelling the emitter uses inside select guards.
             op = node.get("op")
             if op == "all_of":
-                return all(self.bool_value(c, types, mems, config) for c in a)
+                return all(self.bool_value(c, types, mems, config, imms) for c in a)
             if op == "any_of":
-                return any(self.bool_value(c, types, mems, config) for c in a)
+                return any(self.bool_value(c, types, mems, config, imms) for c in a)
             raise EvalError("unknown_nary", "nary op %r" % (op,))
         if k == "isPow2":
-            return is_pow2_32(self.int_value(a[0], types, mems, config))
+            return is_pow2_32(self.int_value(a[0], types, mems, config, imms))
         if k == "isByteSized":
-            bits, _ = size_in_bits(self.llt_value(a[0], types, mems, config))
+            bits, _ = size_in_bits(self.llt_value(a[0], types, mems, config, imms))
             return bits % 8 == 0
         if k == "isBFloat16":
-            return is_bf16(self.llt_value(a[0], types, mems, config))
+            return is_bf16(self.llt_value(a[0], types, mems, config, imms))
         if k == "isFloat16":
-            t = self.llt_value(a[0], types, mems, config)
+            t = self.llt_value(a[0], types, mems, config, imms)
             return t[0] == "float" and t[1] == 16
         if k in ("in", "inPairs", "inTriples", "inMemDesc"):
-            return self.membership(node, types, mems, config)
+            return self.membership(node, types, mems, config, imms)
         if k in ("eq", "ne", "lt", "le", "gt", "ge"):
-            return self.compare(node, types, mems, config)
+            return self.compare(node, types, mems, config, imms)
         raise EvalError("unknown_bool", "bool node %r" % (k,))
 
     # -- membership --------------------------------------------------------
@@ -615,7 +617,7 @@ class Evaluator:
             return node["index"]
         raise EvalError("bad_slot", "tuple membership needs a literal slot")
 
-    def membership(self, node, types, mems, config):
+    def membership(self, node, types, mems, config, imms=()):
         k = node["kind"]
         a = node["args"]
         if k == "inMemDesc":
@@ -627,9 +629,9 @@ class Evaluator:
             m = mems[mnode["args"][0]["value"]]
             elems = a[3]["elems"]
             for e in elems:
-                t0 = self.type_value(e[0], types, mems, config)
-                t1 = self.type_value(e[1], types, mems, config)
-                mt = self.type_value(e[2], types, mems, config)
+                t0 = self.type_value(e[0], types, mems, config, imms)
+                t1 = self.type_value(e[1], types, mems, config, imms)
+                mt = self.type_value(e[2], types, mems, config, imms)
                 align = e[3]
                 size_ok = (llt_eq(m.memory_ty, mt) if has_wildcard(mt)
                            else size_in_bits(m.memory_ty)[0] == size_in_bits(mt)[0])
@@ -646,32 +648,36 @@ class Evaluator:
             i0 = self._slot_index(a[0]); i1 = self._slot_index(a[1])
             arity = rhs.get("arity", 2)
             for e in rhs["elems"]:
-                if (llt_eq(types[i0], self.type_value(e[0], types, mems, config))
-                        and llt_eq(types[i1], self.type_value(e[1], types, mems, config))):
+                if (llt_eq(types[i0], self.type_value(e[0], types, mems, config, imms))
+                        and llt_eq(types[i1], self.type_value(e[1], types, mems, config, imms))):
                     return True
             return False
         if k == "inTriples":
             i0 = self._slot_index(a[0]); i1 = self._slot_index(a[1]); i2 = self._slot_index(a[2])
             for e in rhs["elems"]:
-                if (llt_eq(types[i0], self.type_value(e[0], types, mems, config))
-                        and llt_eq(types[i1], self.type_value(e[1], types, mems, config))
-                        and llt_eq(types[i2], self.type_value(e[2], types, mems, config))):
+                if (llt_eq(types[i0], self.type_value(e[0], types, mems, config, imms))
+                        and llt_eq(types[i1], self.type_value(e[1], types, mems, config, imms))
+                        and llt_eq(types[i2], self.type_value(e[2], types, mems, config, imms))):
                     return True
             return False
 
         # one-slot `in`
+        if rhs.get("kind") == "set" and rhs.get("of") == "Int":
+            if lhs.get("kind") != "imm":
+                raise EvalError("bad_int_set", "an Int set can only test an imm")
+            return imms[lhs["index"]] in rhs["elems"]
         if rhs.get("kind") == "clamp":
-            v = self.int_value(lhs, types, mems, config)
+            v = self.int_value(lhs, types, mems, config, imms)
             lo = rhs["args"][0]["value"]
             hi = rhs["args"][1]["value"]
             return lo <= v <= hi
         if rhs.get("kind") == "type":
-            return llt_eq(self.llt_value(lhs, types, mems, config),
-                          self.type_value(rhs["value"], types, mems, config))
+            return llt_eq(self.llt_value(lhs, types, mems, config, imms),
+                          self.type_value(rhs["value"], types, mems, config, imms))
         if rhs.get("kind") == "set" and rhs.get("of") == "Type":
-            v = self.llt_value(lhs, types, mems, config)
+            v = self.llt_value(lhs, types, mems, config, imms)
             for e in rhs["elems"]:
-                if llt_eq(v, self.type_value(e, types, mems, config)):
+                if llt_eq(v, self.type_value(e, types, mems, config, imms)):
                     return True
             return False
         if rhs.get("kind") == "set" and rhs.get("of") == "Kind":
@@ -679,7 +685,7 @@ class Evaluator:
             # kind predicates over the SortOf operand.
             if lhs.get("kind") != "sortOf":
                 raise EvalError("bad_kind_set", "Kind set can only test SortOf")
-            t = self.llt_value(lhs["args"][0], types, mems, config)
+            t = self.llt_value(lhs["args"][0], types, mems, config, imms)
             for e in rhs["elems"]:
                 if _kind_predicate(e, t):
                     return True
@@ -687,16 +693,16 @@ class Evaluator:
         raise EvalError("unknown_set", "set %r" % (rhs.get("kind"),))
 
     # -- comparisons -------------------------------------------------------
-    def compare(self, node, types, mems, config):
+    def compare(self, node, types, mems, config, imms=()):
         k = node["kind"]
         lhs = node["args"][0]
         rhs = node["args"][1]
         if lhs.get("kind") == "sortOf":
-            t = self.llt_value(lhs["args"][0], types, mems, config)
+            t = self.llt_value(lhs["args"][0], types, mems, config, imms)
             pred = _kind_predicate(rhs.get("kind"), t)
             return (not pred) if k == "ne" else pred
         if lhs.get("kind") in ("memOrdering", "memFailureOrdering"):
-            v = self.value(lhs, types, mems, config)
+            v = self.value(lhs, types, mems, config, imms)
             o = _ORDERING_FROM_TAG.get(rhs.get("kind"))
             if o is None:
                 raise EvalError("bad_ordering", "not an ordering tag: %r" % (rhs.get("kind"),))
@@ -715,8 +721,8 @@ class Evaluator:
             if k == "lt":
                 return not is_at_least_or_stronger_than(vi, oi)
             raise EvalError("bad_ordering_cmp", k)
-        lv = self.value(lhs, types, mems, config)
-        rv = self.value(rhs, types, mems, config)
+        lv = self.value(lhs, types, mems, config, imms)
+        rv = self.value(rhs, types, mems, config, imms)
         if k == "eq":
             return values_equal(lv, rv)
         if k == "ne":
@@ -760,7 +766,8 @@ def _slot_of(on_node):
     raise EvalError("bad_on", "observation is not a slot/elemOf")
 
 
-def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
+def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
+                           imms=()):
     """Return (implicit_guard, new_type) for a matched rule.
 
     `new_type` is an LLT tuple; ("invalid",) means "not mutated".  When the
@@ -793,11 +800,11 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
 
     # Whole-type mutation: the target is the rule's own type expression.
     if to_form == "replace":
-        return True, ev.llt_value(to_node["args"][0], types, mems, config)
+        return True, ev.llt_value(to_node["args"][0], types, mems, config, imms)
 
     if op == "widen":
         if on_form == "slot" and to_form in ("select", "int"):
-            minsz = ev.int_value(to_node, types, mems, config)
+            minsz = ev.int_value(to_node, types, mems, config, imms)
             guard = (ssz < minsz) or (not is_pow2_32(ssz))
             if not guard:
                 return False, ("invalid",)
@@ -829,7 +836,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
                 return False, ("invalid",)
             return True, change_element_size(t, align_to(ssz, n))
         if to_form == "ty":
-            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             tsz = scalar_size(target)
             if on_form == "slot":
                 guard = is_scalar(t) and size < tsz
@@ -856,7 +863,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
 
     if op == "narrow":
         if to_form == "ty":
-            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             tsz = scalar_size(target)
             if on_form == "slot":
                 guard = is_scalar(t) and size > tsz
@@ -883,7 +890,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
 
     if op == "fewer":
         if to_form == "ty":
-            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             tsize, _ = size_in_bits(target)
             if not (is_vector(t) and size > tsize):
                 return False, ("invalid",)
@@ -892,7 +899,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
 
     if op == "bitcast":
         if to_form == "ty":
-            target = ev.llt_value(to_node["args"][0], types, mems, config)
+            target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             return True, change_element_type(t, target)
         raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
 
@@ -902,18 +909,18 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config):
 # Query evaluation
 # ---------------------------------------------------------------------------
 
-def evaluate(evaluator, config, opcode, types, mems):
+def evaluate(evaluator, config, opcode, types, mems, imms=()):
     idxs = evaluator.by_opcode.get(opcode)
     if idxs is None:
         raise EvalError("no_rules", "opcode %r has no rule sets" % (opcode,))
     for rs_idx in idxs:
         rs = evaluator.rulesets[rs_idx]
         for rule in rs["rules"]:
-            if not evaluator.bool_value(rule["predicate"], types, mems, config):
+            if not evaluator.bool_value(rule["predicate"], types, mems, config, imms):
                 continue
             guard, new_type = shim_guard_and_newtype(
                 rule.get("op"), rule.get("on"), rule.get("to"),
-                types, mems, evaluator, config)
+                types, mems, evaluator, config, imms)
             if not guard:
                 continue
             action = rule["action"]
@@ -957,9 +964,10 @@ def run_cases(evaluator, cases_path):
             mems = []
             if q["mem"] is not None:
                 mems.append(MemDesc(parse_case_llt(q["mem"][0]), q["mem"][1]))
+            imms = q.get("imms") or []
             try:
                 action, type_idx, new_type = evaluate(
-                    evaluator, q["config"], q["name"], types, mems)
+                    evaluator, q["config"], q["name"], types, mems, imms)
             except EvalError as e:
                 errors += 1
                 if first_failure is None:

@@ -9,8 +9,9 @@
   X86 已有 `.td`+`.gisel`（1075 条），其余 5 个没有。
 - 取最小的 M68k（52 行）和中等且换了一组 API 的 WebAssembly（234 行）各压一遍：
   - **M68k: 13/13 条可表达，0 缺口。**
-  - **WebAssembly: 108/109 条可表达，1 条不可表达**——`G_SEXT_INREG` 的 legal
-    规则读 imm 0。这是 core IR 缺 `Imms` 轴，不是拼写问题。
+  - **WebAssembly: 109/109 条可表达。** 第一轮压出 1 条缺口（`G_SEXT_INREG` 的
+    legal 规则读 imm 0），当天补上 imm 轴（`imm(i)` 观察子 + 同质集合），
+    现在 109 条全部可表达。
 - 两份 `.gisel` 的 `--emit=inc` 片段都用**未修改的** LLVM 头文件编译通过
   （`-fsyntax-only`，反例见 §6），也就是说除了那一条，C++ 侧没有 shim 缺口。
 
@@ -60,16 +61,36 @@ Builder.legalIf(all(typeInSet(0, {i32, i64}),
                         all(typeIs(0, i64), immIs(0, 32)))));
 ```
 
-`.gisel` 里写 `in(slot(0), [8, 16])` 会被拒：`expected a type, got INT 8`
-（`gisel lint` exit 2）。core IR 的 sort 表只有
-`Type/Int/Bool/MemDesc/Kind/Ordering/String`，观察子里没有 `Imm`
-（`LegalizerCore.td:27-47`），所以**这不是介质税，是语言缺一条轴**。
+第一轮压测时这条写不出来：`in(slot(0), [8, 16])` 报 `expected a type, got INT 8`。
+core IR 的 sort 表只有 `Type/Int/Bool/MemDesc/Kind/Ordering/String`，观察子里没有
+`Imm`（`LegalizerCore.td:27`），所以**这不是介质税，是语言缺一条轴**。
+
+现在写作：
+
+```
+legal (feature("Subtarget.hasSignExt()") and in(slot(0), [Wasm_i32, Wasm_i64])
+       and (in(imm(0), [8, 16]) or (in(slot(0), Wasm_i64) and imm(0) == 32)))
+```
+
+落成 `.inc`：
+
+```cpp
+.coreLegalIf([=](const LegalityQuery &Query) {
+  return (Wasm_HasSignExt) && ((Query.Types[0] == Wasm_i32 || ...))
+      && ((LegalityPredicates::immInSet(0, {8, 16})(Query))
+          || ((Query.Types[0] == Wasm_i64) && (Query.Immediates[0] == 32)));
+})
+```
+
+`imm(i)` 读 `Query.Immediates[i]`（`LegalizerInfo.h:126`）；`in(imm(i), [...])`
+是 `immInSet`，`imm(i) == v` 是 `immIs` 的表达式写法。集合是同质的：`Int` 集合
+只能配 `imm`，`Type` 集合只能配 `slot`，混写在 lint 就是一条 error。
 
 ## 5 缺口表
 
 | C++ | core IR | 结论 | 成本 |
 |---|---|---|---|
-| `immInSet(i, S)` / `immIs(i, v)` | 无 | **必须加**：加 `Imm(i)` 观察子（SortInt）+ `in` 支持 Int 集合，domain JSON 的 `imms` 已有字段可填 | 中：`LegalizerCore.td` + emitter 的 sort 检查 + 4 个解释器 + eval；受影响 target：WebAssembly、RISCV |
+| `immInSet(i, S)` / `immIs(i, v)` | `imm(i)` + Int 集合 | **已补**（D-20261107-80）：`imm(i)` 观察子（SortInt）+ `in` 接受 Int 集合，`domain.imms` 填下标；5 个后端 + eval 全覆盖 | 已完成；LLVM 侧 `.td` 还差 `CoreImm`，只影响「生成的 .td 再喂 llvm-tblgen」 |
 | `LLT::floatIEEE(n)` | 无（只认 `float32()`） | 前端可消除：`normalize_llt` 加一行 | 极低；无测试受影响 |
 | `LLT::integer(<任意 C++ 表达式>)` | 只能整数字面量 | 保留：`select` 已覆盖「按特征选类型」；按特征选**整数**（bit 数）目前无人用 | 0（无用到） |
 | `lowerIfMemSizeNotByteSizePow2()` | 可合成 | 不需要改；C++ 侧已验证编译（`TypeSize` 有隐式 `operator uint64_t`，`TypeSize.h:384`） | 0 |
@@ -85,30 +106,38 @@ Builder.legalIf(all(typeInSet(0, {i32, i64}),
 $ python3 -m gisel lint tests/corpus/M68kLegalizerInfo.gisel
 M68kLegalizerInfo.gisel: 0 error(s), 0 warning(s), 13 rule(s)
 $ python3 -m gisel lint tests/corpus/WebAssemblyLegalizerInfo.gisel
-WebAssemblyLegalizerInfo.gisel: 0 error(s), 0 warning(s), 108 rule(s)
+WebAssemblyLegalizerInfo.gisel: 0 error(s), 0 warning(s), 109 rule(s)
 $ python3 -m gisel gen --emit={td,inc,check,table,core} ...   # 五个后端全部 exit 0
 $ python3 -m unittest discover -q -s tests
-Ran 49 tests ... OK
+Ran 52 tests ... OK
 ```
 
 编译门（`inc` 片段 + 未修改的 `LegalizerInfo.h`）：
 
 ```
 $ g++ -std=c++17 -fsyntax-only -I llvm/include -I build/include wasmtu.cpp
-status=0                      # 108 条规则
+status=0                      # 109 条规则
 $ sed 's/\.coreMinScalar(/.coreMinScalarBogus(/' wasm.inc > bad.inc
 $ g++ ... badtu.cpp
 error: 'class llvm::LegalizeRuleSet' has no member named 'coreMinScalarBogus'
 status=2                      # 反例证明片段真的被编译
 ```
 
-`wasm.core` 的不变量：29 个 ruleset、108 条规则、`escapes: []`、
+`wasm.core` 的不变量：29 个 ruleset、109 条规则、`escapes: []`、
 `domain.types = [f32, f64, i16, i32, i64, i8, p0:64, s32, s64]`、
-`domain.imms = []`（就是 §4 那条缺口）。
+`domain.imms = [0]`（唯一读立即数的那条规则）。
+
+`gisel eval` 对 imm 的端到端检查（`tests/test_artifacts.py` 里同样有）：
+```json
+{"config":"signext","name":"G_SEXT_INREG","types":["i32"],"imms":[8], ...}
+```
+5 个点：i32/8 合法、i32/16 合法、i32/32 落到 lower、i64/32 合法、i64/8 合法，
+`cases=5 disagreements=0 errors=0`。
 
 ## 7 对迁移顺序的意义
 
 - 两个新 target 都没有要求新的语法糖：5 处差异全是既有构造子/既有 shim 的新组合。
   说明 1075 条语料推出来的词汇表对「别的 target 怎么写」是够用的。
 - 唯一的缺口落在 **imm 轴**，而它恰好是 core IR 从 `.td` 迁过来时被丢掉的一列
-  （`(Opcode, Types, MMODescs, Imms)` 里的最后一列）。RISCV 迁移前必须先补。
+  （`(Opcode, Types, MMODescs, Imms)` 里的最后一列）。**已补**（D-20261107-80），
+  RISCV 迁移的前置条件不再缺这一块。

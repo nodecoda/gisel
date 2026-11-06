@@ -317,6 +317,15 @@ class Parser:
 
     def parse_set(self):
         self.expect("[")
+        if self.peek().t == "INT":
+            elems = []
+            while True:
+                elems.append(self.next().v)
+                if not self.peek(","):
+                    break
+                self.next()
+            self.expect("]")
+            return _node("set", of="Int", arity=1, elems=elems)
         if self.peek("["):
             rows = []
             while True:
@@ -420,6 +429,10 @@ class Parser:
             i = self.next().v
             self.expect(")")
             return slot(i)
+        if name == "imm":
+            i = self.next().v
+            self.expect(")")
+            return _node("imm", index=i)
         args = []
         if not self.peek(")"):
             while True:
@@ -652,6 +665,8 @@ class TdEmitter:
         if not elems:
             raise ValueError("empty set literal")
         if arity == 1:
+            if n.get("of") == "Int":
+                return "[" + ", ".join(str(e) for e in elems) + "]"
             return "[" + ", ".join(self._type_value(e) for e in elems) + "]"
         # memdesc: {Type0, Type1, MemTy, Align}; arity counts the type slots (2).
         if arity == 2 and len(elems[0]) == 4:
@@ -668,6 +683,8 @@ class TdEmitter:
             return str(n["value"])
         if k == "slot":
             return f"(Slot {n['index']})"
+        if k == "imm":
+            return f"(Imm {n['index']})"
         if k == "type":
             return self._type_value(n["value"])
         if k in self._KIND:
@@ -826,6 +843,10 @@ def _tc(node, arity, errs):
         return "Type"
     if k == "set":
         return "Set"
+    if k == "imm":
+        # There is no per-opcode immediate count to check against: the
+        # GenericOpcodes table describes type slots only.
+        return "Int"
     if k == "leaf":
         return "Bool"
     if k in ("kindVector", "kindScalableVector", "kindScalar", "kindPointer",
@@ -921,8 +942,13 @@ def _tc(node, arity, errs):
             errs.append(f"{k}: comparison over unsupported sort {a}")
         return "Bool"
     if k == "in":
-        if tc(args[0]) != "Type":
-            errs.append("in: left operand must be Type")
+        lhs = tc(args[0])
+        rhs = args[1] if len(args) > 1 else {}
+        of = rhs.get("of", "Type") if isinstance(rhs, dict) else "Type"
+        want = "Int" if of == "Int" else "Type"
+        if lhs != want:
+            errs.append(f"in: {of} set cannot test {lhs} "
+                        f"(element sort mismatch)")
         return "Bool"
     if k == "inPairs":
         need(0, "Type"); need(1, "Type"); need(2, "Set")
@@ -1189,6 +1215,8 @@ def render_set(n):
     arity = n.get("arity", 1)
     elems = n["elems"]
     if arity == 1:
+        if n.get("of") == "Int":
+            return "[" + ", ".join(str(e) for e in elems) + "]"
         return "[" + ", ".join(render_type_value(e) for e in elems) + "]"
     if arity == 2 and len(elems[0]) == 4:
         return ("[" + ", ".join(
@@ -1205,6 +1233,8 @@ def render_expr(n):
         return str(n["value"])
     if k == "slot":
         return f"slot({n['index']})"
+    if k == "imm":
+        return f"imm({n['index']})"
     if k == "type":
         return render_type_value(n["value"])
     if k in KIND_FROM:

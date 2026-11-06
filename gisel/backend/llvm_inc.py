@@ -165,6 +165,8 @@ class IncEmitter:
             return self._type_value(n["value"])
         if k == "slot":
             return "%s.Types[%d]" % (self.qvar, n["index"])
+        if k == "imm":
+            return "%s.Immediates[%d]" % (self.qvar, n["index"])
         if k == "memSlot":
             return "%s.MMODescrs[%d]" % (self.qvar, n["args"][0]["value"])
         if k == "sameAs":
@@ -296,6 +298,12 @@ class IncEmitter:
                              for e in entries)
             fn = "typeTupleInSet" if nslots == 3 else "typePairInSet"
             return "LegalityPredicates::%s(%s, {%s})(%s)" % (fn, idx, rows, self.qvar)
+        if rhs.get("kind") == "set" and rhs.get("of") == "Int":
+            if lhs.get("kind") != "imm":
+                raise ValueError("an Int set can only test an imm slot")
+            return ("LegalityPredicates::immInSet(%d, {%s})(%s)"
+                    % (lhs["index"],
+                       ", ".join(str(e) for e in rhs["elems"]), self.qvar))
         if rhs.get("kind") == "clamp":
             v = self.value(lhs)
             return "(%s >= %d && %s <= %d)" % (

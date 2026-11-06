@@ -43,11 +43,29 @@ class LintCorpus(unittest.TestCase):
         # Targets that have no .td yet: the .gisel is the only artifact, so a
         # silent change in what the front end accepts shows up here first.
         for name, nrules in (("M68kLegalizerInfo", 13),
-                             ("WebAssemblyLegalizerInfo", 108)):
+                             ("WebAssemblyLegalizerInfo", 109)):
             r = run("lint", str(CORPUS / f"{name}.gisel"))
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("0 error(s)", r.stdout)
             self.assertIn(f"{nrules} rule(s)", r.stdout)
+
+    def test_imm_axis(self):
+        """`imm(i)` is an Int observation; `in` matches the set's sort."""
+        ok = ("ruleset X: G_SEXT_INREG\n"
+              "    legal (in(slot(0), i32) and (in(imm(0), [8, 16]) or imm(0) == 32))\n")
+        r = lint_source(ok)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("0 error(s)", r.stdout)
+
+        # An immediate set cannot test a type slot, and a type set cannot test
+        # an immediate: `in` is homogeneous in the set's element sort.
+        for bad, msg in ((("ruleset X: G_ADD\n"
+                           "    legal in(slot(0), [8, 16])\n"), "Int set"),
+                         (("ruleset X: G_ADD\n"
+                           "    legal in(imm(0), [s32])\n"), "Type set")):
+            r = lint_source(bad)
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn(msg, r.stderr)
 
     def test_json_is_machine_readable(self):
         r = run("lint", str(CORPUS / "AArch64LegalizerInfo.gisel"), "--json")
