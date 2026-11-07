@@ -32,7 +32,7 @@ type I64 = LLT::scalar(64)
 
 ruleset X_ADD: G_ADD
     legal in(slot(0), I32)
-    legal (feature("Subtarget.is64Bit()") and in(slot(0), I64))
+    legal (Is64Bit and in(slot(0), I64))
     widen(slot(0), pow2_min(32))
     scalarize(slot(0))
 EOF
@@ -120,7 +120,7 @@ bootstrap reader was removed.
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 | v0.4 | `import-cxx` | RISCV: 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
-| v0.5 | `cases` | equivalence/boundary/outside; X86 365, AArch64 663 oracle-covered, 0 disagreements | done |
+| v0.5 | `cases` | equivalence/boundary/outside; X86 3,278 cases (375 oracle-covered), AArch64 10,920 cases (645 oracle-covered), 0 disagreements | done |
 
 `tools/import-inventory.py` answers "what would it cost to migrate target X?" by
 censusing a hand-written constructor (method histogram, chain shapes, guards);
@@ -138,7 +138,7 @@ re-derive the C++/JSON oracle from a built LLVM tree (development only —
 generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 78 tests, ~11 s
+python3 -m unittest discover -q -s tests      # 90 tests, ~12 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
