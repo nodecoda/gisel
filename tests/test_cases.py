@@ -1,5 +1,6 @@
 """Case generation: equivalence classes, boundaries, outside points."""
 
+import json
 import tempfile
 import unittest
 from pathlib import Path
@@ -132,6 +133,29 @@ class FrozenDifferential(unittest.TestCase):
         self.assertGreater(diff.covered, 0)
         self.assertEqual(diff.disagree, 0, diff.first)
         self.assertEqual(diff.errors, 0, diff.first)
+
+
+class FullRunCompression(unittest.TestCase):
+    def test_query_oracle_mode_requires_complete_answers(self):
+        with tempfile.TemporaryDirectory() as d:
+            source = write(d, FIXTURE)
+            doc = cases.document(source)
+            features = cases.derive_features(doc)
+            queries = Path(d) / "queries.jsonl"
+            oracle = Path(d) / "answers.jsonl"
+            q1 = {"config": "none", "name": "G_ADD", "types": ["s32"],
+                  "mem": None, "imms": []}
+            q2 = dict(q1, types=["s64"])
+            queries.write_text(json.dumps(q1) + "\n" + json.dumps(q2) + "\n")
+            a1 = dict(q1, action="Legal", type_idx=0,
+                      new_type="LLT_invalid")
+            a2 = dict(q2, status="unanswerable", reason="asserted")
+            oracle.write_text(json.dumps(a1) + "\n" + json.dumps(a2) + "\n")
+            gen = cases.generate_from_queries(doc, features, queries, oracle)
+        self.assertEqual(gen.stats["oracle_missing"], 0)
+        self.assertEqual(gen.stats["oracle_unanswerable"], 1)
+        self.assertEqual(gen.stats["evaluator_errors"], 0)
+        self.assertTrue(any(c.kind == "equivalence" for c in gen.cases))
 
 
 if __name__ == "__main__":

@@ -87,4 +87,26 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 - outside 是查询形状，不保证是合法 MIR 指令。
 - 生成文件是“查询”，不是 oracle；`gisel eval --cases` 需要
   `action/type_idx/new_type` 三列，所以不能直接吃这种文件。对拍入口是
-  `gisel cases --against`。
+  `gisel diff`；`gisel cases --queries --oracle` 只负责压缩已完成的全量结果。
+
+## 6 全量端到端 A/B（2026-11-07）
+
+X86 的无答案域由 `gisel domain` 生成：C0/C3 使用 32 位指针，C1/C2 使用
+64 位指针，每个配置 26,097 条，共 104,388 条。官方生成的
+`X86LegalizerInfo.inc` 先运行一次，再替换为 gisel 生成的 `.inc` 并重编
+`X86CodeGen`，两次都读取同一个 JSONL 文件。
+
+结果：`ref=104388 ours=104388 matched=104388 agree=104388`，
+`disagree=0 missing_ref=0 missing_ours=0 errors=0`。其中 1,152 条查询在
+两边都触发 LLVM 断言，输出为对称的 `unanswerable`，单独计数，不混入答案差异。
+
+全量答案随后压缩成 8,922 条回归用例；`oracle_missing=0`、`oracle_errors=0`、
+`evaluator_errors=0`。这些答案来自端到端 runner；Python evaluator 只负责给
+压缩后的用例标注规则，不作为 A/B 结论。
+
+AArch64 使用同一套端到端流程，但题目生成算法固定为 LLVM 的 1,190 个
+`AArch64LegalizerTablePointsForTest.inc` 点：按九个固定配置过滤不可表示的
+类型，规范化 LLT，按完整查询键去重，并把 9,591 作为硬校验值。结果为：
+`ref=9591 ours=9591 matched=9591 agree=9591`，`disagree=0`，缺失和错误均为
+0。压缩得到 4,168 条回归查询，其中 equivalence 3,159、boundary 656、
+outside 353，`oracle_missing=0`、`evaluator_errors=0`。

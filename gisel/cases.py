@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import ast as A
+from . import diff as full_diff
 from . import eval as E
 from .backend import core_json
 
@@ -74,6 +75,21 @@ def llt_text(t) -> str:
     return {"scalar": "s", "integer": "i", "float": "f"}[t[0]] + str(t[1])
 
 
+_KIND_ORDER = {"scalar": 0, "integer": 0, "float": 0, "bf16": 0,
+               "vector": 1, "pointer": 2, "invalid": 3}
+
+
+def _candidate_key(t):
+    """Prefer the ordinary spelling of a rule's own predicate.
+
+    A `bits_of(slot) == 64` rule is satisfied by both `s64` and `p0:64`; the
+    scalar is the natural witness, and using the pointer here would make the
+    boundary pass mutate the pointer width.  Pointers stay available after
+    scalars, so `typeIs(slot, p0)` rules still get a pointer witness.
+    """
+    return (_KIND_ORDER.get(t[0], 9), llt_text(t))
+
+
 def _scalar_bits(t):
     if t[0] in ("scalar", "integer", "float"):
         return t[1]
@@ -88,6 +104,12 @@ def _lanes(t):
     return t[1] if t[0] == "vector" else None
 
 
+# LLVM pointers have a target-chosen width; 63/65 are spellable LLTs but not
+# widths a subtarget can have.  Mutating into them would emit a boundary the
+# configuration space cannot contain.
+_POINTER_BITS = (16, 32, 64, 128)
+
+
 def _resize_bits(t, bits):
     """Same shape, scalar/element/pointer width set to ``bits``."""
     if bits is None or bits <= 0:
@@ -97,6 +119,8 @@ def _resize_bits(t, bits):
     if t[0] == "float":
         return ("float", bits)
     if t[0] == "pointer":
+        if bits not in _POINTER_BITS:
+            return None
         return ("pointer", t[1], bits)
     if t[0] == "vector":
         elem = _resize_bits(t[3], bits)
@@ -133,6 +157,10 @@ def _neighbours(t):
         if lanes > 1:
             out.add(_relane(t, lanes - 1))
         out.add(_relane(t, lanes + 1))
+        # Lane-count predicates compare against small powers of two; the +-1
+        # neighbours alone miss v4s8 when the literal is v16s8.
+        for n in (1, 2, 4, 8, 16, 32, 64):
+            out.add(_relane(t, n))
         out.add((t[0], t[1], not t[2], t[3]))
     if t[0] == "bf16":
         out.add(("float", 16))
@@ -386,8 +414,8 @@ def _try_fire(evaluator, case):
         return "error"
 
 
-def _candidates(infos, nslots, cap):
-    """Per-slot candidate values: literals, their neighbours, sentinels."""
+def _candidates(infos, nslots, cap, domain):
+    """Per-slot candidates: literals, domain types, neighbours, sentinels."""
     per = []
     for i in range(nslots):
         lit = set()
@@ -396,15 +424,14 @@ def _candidates(infos, nslots, cap):
         if not lit and not any(i in info.slots for info in infos):
             per.append([E.parse_case_llt("s32")])
             continue
-        cand = set(lit)
-        for t in lit:
-            cand |= _neighbours(t)
-        cand |= set(_SENTINEL_LLTS)
-        ordered = sorted(lit, key=llt_text)
-        ordered += [t for t in sorted({x for t in lit for x in _neighbours(t)},
-                                      key=llt_text) if t not in ordered]
+        neigh = {x for t in lit for x in _neighbours(t)}
+        ordered = sorted(lit, key=_candidate_key)
+        ordered += [t for t in sorted(domain, key=_candidate_key)
+                    if t not in ordered]
+        ordered += [t for t in sorted(neigh, key=_candidate_key)
+                    if t not in ordered]
         ordered += [t for t in _SENTINEL_LLTS if t not in ordered]
-        per.append(ordered[:max(cap, len(lit))])
+        per.append(ordered[:max(cap, len(lit))] if cap > 0 else ordered)
     # Keep the cartesian product bounded without dropping any literal.
     while _product_size(per) > 20000:
         widest = max(range(len(per)), key=lambda i: len(per[i]))
@@ -450,13 +477,23 @@ def _pad(types, nslots, default):
 
 
 def _queries(per, default, mem_entries, uses_mem):
-    """Base queries: every sampled type tuple, plus one per memory descriptor."""
+    """Base queries: sampled type tuples, plus memory-descriptor queries.
+
+    The matched descriptor (the row's own t0/t1) is what ``inMemDesc`` asks
+    for.  A descriptor is also crossed with a few unrelated type tuples: some
+    rules compare the slot against ``memTy`` (X86_STORE's mismatch rule), and
+    that edge only exists when the two are not taken from the same row.
+    """
     out = []
     if uses_mem:
         for t0, t1, mty, align in mem_entries:
             types = _pad([E.parse_case_llt(x) for x in (t0, t1)], len(per),
                          default)
             out.append((types, (mty, int(align))))
+        cross = list(itertools.islice(itertools.product(*per), 4))
+        for _, _, mty, align in mem_entries[:8]:
+            for types in cross:
+                out.append((types, (mty, int(align))))
     out.extend((types, None) for types in itertools.product(*per))
     return out
 
@@ -486,7 +523,8 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
             continue
         opcode = rs["opcodes"][0]
         nslots, infos = inspect_ruleset(rs)
-        per = _candidates(infos, nslots, max_slot_values)
+        domain = [E.parse_case_llt(t) for t in doc["domain"]["types"]]
+        per = _candidates(infos, nslots, max_slot_values, domain)
         default = _defaults(per)
         mem_entries = _mem_candidates(infos)
         uses_mem = any(info.uses_mem for info in infos)
@@ -610,6 +648,120 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                     emitted += 1
                 if emitted >= max_outside:
                     break
+
+    stats["cases"] = len(cases)
+    return Generation(cases, stats)
+
+
+def generate_from_queries(doc, features, queries_path, oracle_path,
+                          *, max_outside=2, max_boundary=24,
+                          max_witnesses=4):
+    """Compress a complete query/answer run into a regression case set.
+
+    The query file fixes the test population.  The oracle is only used to
+    prove that every population member has an answer and to find answer
+    transitions; the evaluator supplies rule names for human-readable case
+    metadata.  This keeps case compression downstream of the end-to-end A/B
+    run instead of making it the equivalence proof.
+    """
+    evaluator = E.Evaluator(doc, features)
+    oracle, oracle_errors = full_diff._load(oracle_path)
+    records = []
+    missing = 0
+    unanswerable = 0
+    evaluator_errors = 0
+    with open(queries_path) as f:
+        for lineno, line in enumerate(f, 1):
+            if not line.strip():
+                continue
+            try:
+                q = json.loads(line)
+                key = full_diff._key(q)
+            except (ValueError, KeyError, TypeError, E.EvalError) as exc:
+                print("%s:%d: %s" % (queries_path, lineno, exc),
+                      file=sys.stderr)
+                evaluator_errors += 1
+                continue
+            answer = oracle.get(key)
+            if answer is None:
+                missing += 1
+                continue
+            if answer[0] == "unanswerable":
+                unanswerable += 1
+                continue
+            mem = (q["mem"][0], int(q["mem"][1])) if q.get("mem") else None
+            case = Case(q["config"], q["name"], tuple(q.get("types", [])),
+                        mem, "", "", None, "")
+            fired = _try_fire(evaluator, case)
+            if fired == "error":
+                evaluator_errors += 1
+                continue
+            records.append((q, answer, case, fired))
+
+    cases, seen = [], set()
+    stats = {"configs": sorted(features.table), "rulesets": len(doc["rulesets"]),
+             "opcodes": len({q["name"] for q, _, _, _ in records}),
+             "rules": sum(len(rs["rules"]) for rs in doc["rulesets"]),
+             "witnessed": 0, "shadowed": 0, "unexercised": 0,
+             "equivalence": 0, "boundary": 0, "outside": 0,
+             "oracle_missing": missing, "oracle_errors": oracle_errors,
+             "evaluator_errors": evaluator_errors,
+             "oracle_unanswerable": unanswerable, "unwitnessed": []}
+
+    def emit(case):
+        if case.key() in seen:
+            return False
+        seen.add(case.key())
+        cases.append(case)
+        stats[case.kind] += 1
+        return True
+
+    witnesses = {}
+    outside = {}
+    for q, answer, case, fired in records:
+        if fired is None:
+            outside.setdefault((case.config, case.opcode), 0)
+            if outside[(case.config, case.opcode)] < max_outside:
+                outside[(case.config, case.opcode)] += 1
+                emit(Case(case.config, case.opcode, case.types, case.mem,
+                          "outside", "", None, "no rule fires"))
+            continue
+        rs_idx, rule_idx = fired[:2]
+        rs_name = evaluator.rulesets[rs_idx]["def"]
+        key = (case.config, rs_name, rule_idx)
+        if len(witnesses.get(key, [])) < max_witnesses:
+            witnesses.setdefault(key, []).append(case)
+            emit(Case(case.config, case.opcode, case.types, case.mem,
+                      "equivalence", rs_name, rule_idx,
+                      "first match for rule %d" % rule_idx))
+
+    stats["witnessed"] = len(witnesses)
+    all_rules = {(c, rs["def"], ri)
+                 for c in features.table for rs in doc["rulesets"]
+                 for ri in range(len(rs["rules"]))}
+    absent = sorted(all_rules - set(witnesses), key=repr)
+    stats["unexercised"] = len(absent)
+    stats["unwitnessed"] = ["%s#%d: unexercised" % (key[1], key[2])
+                             for key in absent[:40]]
+
+    groups = {}
+    for q, answer, case, fired in records:
+        if fired == "error":
+            continue
+        mem = tuple(case.mem) if case.mem else None
+        groups.setdefault((case.config, case.opcode, repr(mem)), []).append(
+            (case, answer))
+    for group in groups.values():
+        group.sort(key=lambda x: repr(x[0].types))
+        emitted = 0
+        for (left, left_answer), (right, right_answer) in zip(group, group[1:]):
+            if left_answer == right_answer:
+                continue
+            if emit(Case(right.config, right.opcode, right.types, right.mem,
+                         "boundary", "", None, "oracle answer transition")):
+                emitted += 1
+            if emitted >= max_boundary:
+                break
 
     stats["cases"] = len(cases)
     return Generation(cases, stats)
@@ -783,6 +935,8 @@ def main(argv=None):
     ap.add_argument("--config", action="append", dest="configs",
                     help="limit to configs from --features (repeatable)")
     ap.add_argument("--against", help="oracle JSONL to differ against")
+    ap.add_argument("--queries", help="complete answerless query JSONL")
+    ap.add_argument("--oracle", help="answers for --queries JSONL")
     ap.add_argument("--max-outside", type=int, default=2)
     ap.add_argument("--json", action="store_true", help="print stats as JSON")
     args = ap.parse_args(argv)
@@ -793,9 +947,19 @@ def main(argv=None):
     if not features.table:
         print("cases: no configurations selected", file=sys.stderr)
         return 2
-    generation = generate(doc, features, configs=sorted(features.table),
-                          max_outside=args.max_outside)
+    if bool(args.queries) != bool(args.oracle):
+        print("cases: --queries and --oracle must be provided together",
+              file=sys.stderr)
+        return 2
+    if args.queries:
+        generation = generate_from_queries(
+            doc, features, args.queries, args.oracle,
+            max_outside=args.max_outside)
+    else:
+        generation = generate(doc, features, configs=sorted(features.table),
+                              max_outside=args.max_outside)
 
+    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:
         for case in generation.cases:
             f.write(json.dumps(case.query(), sort_keys=True) + "\n")
@@ -823,6 +987,9 @@ def main(argv=None):
               "spellings", file=sys.stderr)
         return 2
     if args.against and (stats["diff"]["disagree"] or stats["diff"]["errors"]):
+        return 1
+    if args.queries and (stats["oracle_missing"] or stats["oracle_errors"]
+                         or stats["evaluator_errors"]):
         return 1
     return 0
 

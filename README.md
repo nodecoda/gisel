@@ -1,5 +1,7 @@
 # gisel
 
+设计论证：[文章链接](https://zhuanlan.zhihu.com/p/2102431370098298974)
+
 [![ci](https://github.com/nodecoda/gisel/actions/workflows/ci.yml/badge.svg)](https://github.com/nodecoda/gisel/actions/workflows/ci.yml)
 
 A free-form language for GlobalISel legalizer rules, and the toolchain that
@@ -83,6 +85,23 @@ memory size and alignment), and outside probes that fall through to
 `Unsupported`.  `--against` compares only the overlap with an oracle dump;
 `uncovered` is reported separately and is never counted as a pass.
 `spec/cases.md` is the contract, `docs/REPORT-cases.md` the evidence.
+
+For the end-to-end X86 check, first freeze an answerless JSONL query set, then
+run the official build and the build containing the generated `.inc` on that
+same file. The query file is the test set; it does not expand into thousands
+of `.ll` or `.mir` files. `tools/ab/` contains the snapshot, replacement,
+runner, and diff scripts. `run-end-to-end.sh` captures official answers before
+replacing the shared library, then captures ours and runs the full diff. Queries
+that assert in both builds remain in the stream as symmetric `unanswerable`
+results.
+
+For AArch64, the fixed domain comes from LLVM's generated
+`AArch64LegalizerTablePointsForTest.inc`, not from a Cartesian product. The
+algorithm filters each of its 1,190 points by the nine fixed configurations,
+serializes LLTs canonically, removes duplicate
+`(config, opcode, types, mem, imms)` keys, and requires the resulting 9,591
+queries. A changed count stops the run for review. Both answerers then consume
+that saved JSONL file.
 
 What it does not do: it does not generate the upstream `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than

@@ -84,12 +84,30 @@ uncovered 生成集里 oracle 没有对应点的数量
 ```
 gisel cases SOURCE --out FILE
              [--features FILE] [--config NAME ...]
-             [--against ORACLE] [--max-outside N] [--json]
+             [--against ORACLE] [--queries Q --oracle A]
+             [--max-outside N] [--json]
 ```
 
 退出码：0 成功；1 对拍分歧或求值错误；2 参数/IO/config 错误。
 输出是 JSONL，每行一条查询；`gisel eval --cases` 不消费这种文件（它要求
 `action/type_idx/new_type` 三列，那是 oracle 的格式）。
+
+### 4.1 从全量 A/B 结果压缩
+
+`--queries Q --oracle A` 是全量对拍之后的回归集入口。`Q` 是不带答案的固定
+查询集，`A` 是同一批查询的答案流。工具要求每个 Q 都在 A 中出现；缺失计为
+`oracle_missing` 并以失败退出。双方都断言的查询保留为 `oracle_unanswerable`，
+不拿它们冒充答案差异。
+
+全量对拍使用独立命令：
+
+```sh
+gisel diff official.answers.jsonl ours.answers.jsonl
+```
+
+它对完整 key 集合做 join，缺一条或答案不同都失败。主体对拍粒度是
+`(config, opcode, types, mem, imms) -> (action, type_idx, new_type)`，不需要
+生成一堆 `.ll`/`.mir`。
 
 ## 5 已知边界
 
