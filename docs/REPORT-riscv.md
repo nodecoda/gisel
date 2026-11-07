@@ -200,9 +200,19 @@ TOTAL                                 340    402
 `-gen-legalizer-check` 给出 **96 表 / 402 规则**，`-gen-legalizer-core` 的 JSON 复算
 **19512 / 0 / 0**；AArch64/X86 的 `.inc` 逐字节不变。树本轮冻结，补丁没落。
 
-**已知边界**：上游要求"一 opcode 一表"（`legalizer-info-duplicate.td` 固化了这条），
-而 RISCV 的构造函数对 `G_CTLZ` 写了两条链。按 opcode 拆表可以走通并复算 19512/0/0，
-但共享链会从 402 条复制成 738 条；是否在 gisel 里做这个规范化，留给下一轮。
+**已决**：上游要求"一 opcode 一表"（`legalizer-info-duplicate.td` 固化了这条），
+而 RISCV 的构造函数对 `G_CTLZ` 写了两条链。选择在 gisel 侧规范化，不动上游那条
+诊断：按 opcode 拼接（`dsl.canonicalize_rulesets`），序列相同的仍在共享。
+RISCV 从 **96 表 / 402 条** 变成 **91 表 / 413 条**（只复制一次 Zbb 链，不是 738），
+复算仍 19512 / 0 / 0；AArch64/X86 没有重复 opcode，是恒等变换，golden 逐字节不变。
+
+规范化后的 `.td` 交给打了 `llvm-dev/patches/core-ir-riscv-gaps.diff` 的 tblgen：
+
+```
+-gen-legalizer-check  91 rule sets / 413 rules / 413 core rules
+-gen-legalizer        413 rules，.inc 用未修改的 LegalizerInfo.h 编过（0 error）
+-gen-legalizer-core   JSON → gisel eval 19512 / 0 / 0
+```
 
 gisel 侧另外修了一个真 bug：`Core*If` 的 guard 参数是 `dag`，而 td 后端把
 `hasFeature` 叶渲染成裸 record（RISCV 27 处），产物是 `expected type dag`。

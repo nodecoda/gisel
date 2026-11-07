@@ -360,6 +360,29 @@ class EvaluatorCorpus(unittest.TestCase):
         self._check("RISCVLegalizerInfo.gisel", "riscv-features.json",
                     "riscv_ref_dump.jsonl", 19512)
 
+    def test_riscv_core_is_one_table_per_opcode(self):
+        """The artifact has one rule set per opcode, as llvm-tblgen requires.
+
+        RISCV builds G_CTLZ twice (Zbb and non-Zbb chains).  A LegalizeRuleSet
+        record is (opcodes, rules), so the emitted artifact concatenates the
+        chains per opcode; that duplicates the shared Zbb rules once
+        (402 -> 413) and drops the empty second block (96 -> 91).
+        """
+        sys.path.insert(0, str(ROOT))
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "r.core.json"
+            r = run("gen", str(TESTS / "corpus" / "RISCVLegalizerInfo.gisel"),
+                    "--emit=core", "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            doc = json.loads(out.read_text())
+        count = {}
+        for rs in doc["rulesets"]:
+            for op in rs["opcodes"]:
+                count[op] = count.get(op, 0) + 1
+        self.assertEqual([op for op, n in count.items() if n > 1], [])
+        self.assertEqual(len(doc["rulesets"]), 91)
+        self.assertEqual(sum(len(rs["rules"]) for rs in doc["rulesets"]), 413)
+
 
 class TdGuards(unittest.TestCase):
     """A `dag` parameter cannot take a bare record.

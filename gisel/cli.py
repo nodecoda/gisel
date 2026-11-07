@@ -55,6 +55,11 @@ def _generate(gs, source, emit, prefix=None):
         line, _ruleset, expr = bad[0]
         raise ValueError("line %d: undeclared feature expression %r; declare "
                          "it with `feature NAME = <expr>`" % (line, expr))
+    # One table per opcode: a legalizer may build the same opcode twice (the
+    # second chain only answers what the first did not), but a LegalizeRuleSet
+    # record cannot express that, so the artifact is canonicalized first.
+    gs = dict(gs)
+    gs["rulesets"] = dsl.canonicalize_rulesets(gs["rulesets"])
     if emit == "td":
         return td.emit_td(gs, source)
     if emit == "inc":

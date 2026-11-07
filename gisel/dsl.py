@@ -454,6 +454,65 @@ class Parser:
 
 # ---- compiler: AST -> normal form ----------------------------------------
 
+def canonicalize_rulesets(rulesets):
+    """One rule set per opcode: the artifact TableGen can read back.
+
+    `getActionDefinitionsBuilder(Op)` appends a table every time it is called,
+    and `getAction` walks the tables in order, so a second table only answers
+    the queries the first one did not.  The `.td` form has no such pairing --
+    one `LegalizeRuleSet` record is (opcodes, rules) -- and llvm-tblgen
+    rejects an opcode covered twice
+    (`test/TableGen/legalizer-info-duplicate.td`).
+
+    Concatenating an opcode's tables in document order keeps the first-match
+    order, so every answer is unchanged.  Opcodes whose rule sequences still
+    coincide share one table; only the opcodes that were described twice pay
+    for a copy.  AArch64 and X86 have no duplicate opcode, so this is the
+    identity for them.
+    """
+    seen = {}
+    for rs in rulesets:
+        for op in rs["opcodes"]:
+            seen[op] = seen.get(op, 0) + 1
+    if all(n == 1 for n in seen.values()):
+        # Nothing to consolidate; keep the artifact byte-identical.
+        return list(rulesets)
+    seq = {}
+    first_def = {}
+    for rs in rulesets:
+        for op in rs["opcodes"]:
+            first_def.setdefault(op, rs["def"])
+            seq.setdefault(op, []).extend(rs["rules"])
+    groups = {}
+    order = []
+    for op, rules in seq.items():
+        key = json.dumps(rules, sort_keys=True)
+        if key not in groups:
+            # Keep the other keys a source block carries (comments, source
+            # lines); only the (opcodes, rules) split is ours.
+            g = dict(rs)
+            g["def"], g["opcodes"], g["rules"] = first_def[op], [], rules
+            groups[key] = g
+            order.append(key)
+        g = groups[key]
+        g["opcodes"].append(op)
+        if "legacy" in rs:
+            g["legacy"] = sorted(set(g.get("legacy", ())) | set(rs["legacy"]))
+    out = []
+    used = set()
+    for key in order:
+        g = groups[key]
+        name, n = g["def"], 2
+        while name in used:
+            name = "%s_%d" % (g["def"], n)
+            n += 1
+        used.add(name)
+        g = dict(g)
+        g["def"] = name
+        out.append(g)
+    return out
+
+
 def compile_rulesets(ast):
     """Return list of rule dicts in schema-0.4 normal form (semantic fields)."""
     out = []

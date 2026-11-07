@@ -117,3 +117,19 @@ RISCV 表来自真实 `RISCVLegalizerInfo` 构造函数链接出的 2439 个点�
   （应为 Custom）。
 
 两类都先出现在 RISCV 语料；AArch64/X86 的 9632/5632 在修正前后均保持 0 分歧。
+
+## 9 规范形的表粒度
+
+C++ 的 `getActionDefinitionsBuilder(Op)` 每调用一次就追加一张表，`getAction`
+按表序、表内按规则序取第一条命中的，所以"一个 opcode 两张表"是合法 C++：第二张
+只回答第一张没回答的查询。`.td` 侧没有这个配对——一个 `LegalizeRuleSet` 记录就是
+`(opcodes, rules)`——而且 `llvm-tblgen` 拒绝一个 opcode 被描述两次
+（`test/TableGen/legalizer-info-duplicate.td`）。
+
+所以发射前做一次规范化（`dsl.canonicalize_rulesets`）：对每个 opcode，把它出现的
+所有表按书写顺序拼接；规则序列仍相同的 opcode 继续共享一张表。首命中顺序不变，
+答案不变。
+
+- AArch64（114 表 / 743 条）、X86（63 / 332）没有重复 opcode → 恒等变换，golden 不变。
+- RISCV 有 11 个重复 opcode（`G_CTLZ` 的 Zbb / 非 Zbb 两条链）→ **96 表 / 402 条
+  变成 91 表 / 413 条**（共享的 Zbb 规则只复制一次）；`19512 / 0 / 0` 不变。
