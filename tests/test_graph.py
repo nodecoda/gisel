@@ -43,6 +43,16 @@ ruleset G_ADD: G_ADD
 """
 
 
+GUARDED = """\
+type S3 = LLT::scalar(3)
+type S32 = LLT::scalar(32)
+
+ruleset G_UMIN: G_UMIN
+    widen(slot(0), pow2_min(32))
+    lower true
+"""
+
+
 class GraphFixture(unittest.TestCase):
     def build(self, text=FIXTURE, **kwargs):
         with tempfile.TemporaryDirectory() as directory:
@@ -67,6 +77,22 @@ class GraphFixture(unittest.TestCase):
         checked = self.build(OUTSIDE, check_closure=True)
         self.assertFalse(checked.closure["ok"])
         self.assertTrue(checked.closure["violations"])
+
+    def test_implicit_guard_takes_part_in_the_class(self):
+        # X86_UMIN spells the widen rule with a bare `true` predicate; only
+        # the shim's `is_scalar && !is_pow2` guard separates s3 from s32.
+        # Ignoring that guard merges them and turns s3 -> s32 into a
+        # self-loop (a false cycle).
+        report = self.build(GUARDED, check_closure=True)
+        public = report.public()
+        self.assertEqual(public["cycles"], 0)
+        self.assertTrue(report.closure["ok"], report.closure)
+        classes = [{cases.llt_text(member[0][0]) for member in state["members"]}
+                   for state in report.states.values()]
+        self.assertTrue(any("s3" in group for group in classes), classes)
+        self.assertTrue(any("s32" in group for group in classes), classes)
+        self.assertFalse(any({"s3", "s32"} <= group for group in classes),
+                         classes)
 
     def test_opaque_is_a_separate_outcome(self):
         text = ('feature F = Subtarget.hasF()\n'

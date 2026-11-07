@@ -889,6 +889,9 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
         if to_form == "sameAs":
             k = to_node["args"][0]["value"]
             other = scalar_size(types[k])
+            if not isinstance(other, int):
+                raise EvalError("unknown_width",
+                                "same_as(%d) has no known scalar width" % k)
             guard = other > ssz
             if not guard:
                 return False, ("invalid",)
@@ -916,6 +919,9 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
         if to_form == "sameAs":
             k = to_node["args"][0]["value"]
             other = scalar_size(types[k])
+            if not isinstance(other, int):
+                raise EvalError("unknown_width",
+                                "same_as(%d) has no known scalar width" % k)
             guard = other < ssz
             if not guard:
                 return False, ("invalid",)
@@ -996,6 +1002,28 @@ def evaluate_with_rule(evaluator, config, opcode, types, mems, imms=()):
             return (rule["action"], rule.get("type_idx", 0), new_type,
                     (rs_idx, rule_idx))
     return "Unsupported", 0, ("invalid",), None
+
+
+def rule_matches(evaluator, config, rule, types, mems, imms=()):
+    """Three-valued match test for one rule, including the shim guard.
+
+    ``evaluate_with_rule`` only reports the winner.  Building the quotient
+    graph needs to know whether *each* rule matches, because the implicit
+    guard (``is_pow2``/``is_scalar``/element count) narrows a rule beyond its
+    explicit predicate and therefore takes part in the observation.  ``None``
+    means an opaque leaf; it is not ``False``.
+    """
+    try:
+        if evaluator.bool_value(rule["predicate"], types, mems,
+                                config, imms) is not True:
+            return False
+        guard, _new_type = shim_guard_and_newtype(
+            rule.get("op"), rule.get("on"), rule.get("to"),
+            types, mems, evaluator, config, imms)
+        return bool(guard)
+    except (EvalError, IndexError, KeyError, TypeError, ValueError,
+            ZeroDivisionError, AssertionError):
+        return None
 
 
 # ---------------------------------------------------------------------------

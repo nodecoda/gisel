@@ -1,6 +1,6 @@
 # `gisel graph` 设计
 
-状态：待确认。本文只定义第一版实现，不改变 `.gisel` 语法和四个既有出口。
+状态：已确认并落地（2026-11-07）。本文定义第一版实现，不改变 `.gisel` 语法和四个既有出口。
 
 ## 目标和入口
 
@@ -24,10 +24,14 @@
    `cases` 的候选值逻辑补齐 `N-1/N/N+1`、精确 lane 值和必要的类型邻居；不使用
    固定的笛卡尔积凑数，也不把 `next_pow2` 当作 clamp 的切点。候选集合排序固定，
    以便类 id 和报告可复现。
-3. 一个槽的类由该 ruleset 中所有原子谓词的三值结果向量决定。遍历谓词树时，
-   `all`/`any`/`not` 只是结构，其他谓词节点按稳定的前序编号；对每个候选类型
-   调用 eval 得到 `True`、`False` 或 `None`。相同向量归为同一类，类 id 按
-   `(向量, 代表类型)` 排序。`None` 是 opaque，不能折叠成 `False`。
+3. 一个槽的类由该 ruleset 中所有原子谓词的三值结果向量，加上每条带变异规则
+   的隐式 shim guard 结果决定。遍历谓词树时，`all`/`any`/`not` 只是结构，
+   其他谓词节点按稳定的前序编号；对每个候选类型调用 eval 得到 `True`、
+   `False` 或 `None`。相同向量归为同一类，类 id 按 `(向量, 代表类型)` 排序。
+   `None` 是 opaque，不能折叠成 `False`。隐式 guard（`is_scalar`、
+   `is_pow2`、lane 数等）由 `eval.shim_guard_and_newtype` 计算，也是 evaluator
+   实际读取的谓词，必须进入观测向量；否则 `s3` 和 `s32` 会被并类，
+   `s3 -> s32` 会退化成假自环（见 REPORT-graph 的更正一节）。
 4. 若 ruleset 读 memory（递归看到 `memSlot`、`inMemDesc`、`memTy`、
    ordering 等观察），memory 也建立同样的原子结果类。状态键始终包含
    `(opcode, type_class_0, ..., type_class_n, mem_class)`；不读 memory 的
@@ -71,8 +75,13 @@
 3. 使用与代表点相同的 action、type index 和 mutation。
 
 若同一源类得到两个不同目标类，打印源成员、mutation、两个目标类及对应类型，
-并返回 1。默认不自动细化；第一版不实现 `--refine`，因此不会改变第 2 篇定义的
-原子分区。
+并返回 1。审计扫描全部状态，输出只截断样例。默认不自动细化；第一版不实现
+`--refine`，因此不会改变第 2 篇定义的原子分区。
+
+这留下一个已知缺口：widen 的目标是 `pow2ceil(具体位宽)`，同一 guard 类里的
+`s3` 和 `s33` 会分别落到 `s32` 和 `s64`。完整 X86 C1 因这类 mutation 粒度
+产生 3,465 条 `multiple target classes`。在这些状态上“后继是类函数”不成立，
+`cycles=0` 只覆盖代表点后继；补齐需要按 mutation 目标做定点细化的 `--refine`。
 
 ## Oracle 检查和退出码
 

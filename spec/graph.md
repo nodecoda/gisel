@@ -34,11 +34,19 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，
 来自 `in_mem_desc` 的行，并保存 memory type 和 alignment；不读内存的 ruleset
 不携带这个轴。
 
-一个类型类是该 ruleset 所有**原子谓词节点**的三值观察向量相同的类型集合。
+一个类型类是该 ruleset 所有**原子谓词节点**的三值观察向量，加上每条带变异的
+规则**隐式 shim guard** 的取值向量，两者都相同的类型集合。
 `all`、`any`、`not`、`nary` 只负责遍历，`leaf`、比较、membership 和类型观察
 节点是原子。原子值严格保留 `True`、`False`、`None`；`None` 表示 evaluator
 遇到了无法解释的 feature 或逃逸节点，不能折叠为 `False`。跨多个类型槽的原子
 无法用一个槽的 unary 类表达，相关槽保留具体类型，以免错误合并关系。
+
+隐式 guard 同样是谓词：`widen(slot, pow2_min(n))` 只在
+`is_scalar && !is_pow2(size)` 成立时命中，`scalarize` 只在向量上命中，等等。
+这些 guard 由 `eval.shim_guard_and_newtype` 计算，不在显式谓词 DAG 里。只看
+显式谓词会把 X86 `G_SMAX` 的 `s3` 和 `s32` 并成一类，使 `s3 -> s32` 落回
+同一个类而退化成自环；把 guard 并入观测向量后两者分开，`s32` 正确落到
+`lower`。这是补全 evaluator 实际读取的谓词，不是为凑数而细化分区。
 
 类 id 只在当前 ruleset/轴内有意义，按向量稳定排序。默认绝不自动细化这个
 分区；`--check-closure` 发现不封闭时报告反例并失败。
@@ -69,8 +77,12 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，
 
 `--check-closure` 对每个有变异的状态枚举该状态的全部成员。每个成员必须使用
 同一条规则并映射到同一个目标状态类；变异推出有限域、规则变化、stuck 或得到
-多个目标类，都会打印成员和原因并返回 1。该选项不改变类划分，也不实现默认
-细化；因此它是对“后继是状态函数”前提的审计。
+多个目标类，都会打印成员和原因并返回 1。审计扫描全部状态，输出最多保留 20
+条样例，`count` 记录真实违规总数；不会因为样例满额而提前停止。该选项不改变
+类划分，也不实现默认细化；因此它是对“后继是状态函数”前提的审计。完整 X86
+语料仍有 `multiple target classes` 违规，因为 widen 的新类型依赖具体位宽
+（`pow2ceil`），同一个 guard 类里的 `s3` 和 `s33` 会分别落到 `s32` 和 `s64`；
+在 `--refine` 实现之前，这类状态的“0 环”只覆盖代表点后继。
 
 ## Oracle 和退出码
 

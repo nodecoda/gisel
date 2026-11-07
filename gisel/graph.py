@@ -97,6 +97,29 @@ def _dependencies(node):
     return slots, mem
 
 
+def _mutation_slots(node):
+    """Slots a mutation expression reads, including ``same_as(k)`` indices."""
+    slots = set()
+
+    def walk(value):
+        if isinstance(value, dict):
+            kind = value.get("kind")
+            if kind == "slot":
+                slots.add(value["index"])
+            elif kind == "sameAs":
+                args = value.get("args", ())
+                if args and args[0].get("kind") == "int":
+                    slots.add(int(args[0]["value"]))
+            for child in value.values():
+                walk(child)
+        elif isinstance(value, (list, tuple)):
+            for child in value:
+                walk(child)
+
+    walk(node)
+    return slots
+
+
 def _collapse(t, extended):
     return t if extended else E.collapse_extended(t)
 
@@ -181,7 +204,7 @@ def _atom_value(evaluator, atom, types, mem, config):
             return None
         return bool(value)
     except (E.EvalError, IndexError, KeyError, TypeError, ValueError,
-            AssertionError):
+            ZeroDivisionError, AssertionError):
         return None
 
 
@@ -193,9 +216,11 @@ class AxisClasses:
     signatures: dict
 
 
-def _make_classes(values, axis, atoms, axes, mem_values, evaluator, config):
+def _make_classes(values, axis, atoms, rules, axes, mem_values,
+                  evaluator, config):
     baseline = [items[0] for items in axes]
     base_mem = mem_values[0] if mem_values else None
+    base_mems = _mem_desc(base_mem, evaluator.extended(config))
     signatures = {}
     for value in values:
         types = list(baseline)
@@ -211,6 +236,21 @@ def _make_classes(values, axis, atoms, axes, mem_values, evaluator, config):
             else:
                 signature.append(_atom_value(evaluator, atom, tuple(types),
                                               base_mem, config))
+        # The explicit predicate alone is not the whole observation: a rule
+        # also carries an implicit shim guard (widen only fires on a
+        # non-power-of-two size, scalarize only on a vector, ...).  Two types
+        # that differ only in that guard have different successors, so the
+        # class must record it or the quotient stops being a function.
+        for rule in rules:
+            if rule.get("on") is None:
+                continue
+            slots, has_mem = _dependencies(rule.get("predicate"))
+            to_slots = _mutation_slots(rule.get("to"))
+            if (slots - {axis}) or has_mem or (to_slots - {axis}):
+                signature.append(["raw-guard", _type_text(value)])
+            else:
+                signature.append(E.rule_matches(
+                    evaluator, config, rule, tuple(types), base_mems))
         signatures[value] = tuple(signature)
 
     groups = collections.defaultdict(list)
@@ -365,7 +405,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             mem_values = _memory_values(infos, domain_mems, pointer_width,
                                         extended, extra_mems)
             mem_values = mem_values if any(info.uses_mem for info in infos) else [None]
-            type_classes = [_make_classes(axes[i], i, atoms, axes,
+            type_classes = [_make_classes(axes[i], i, atoms, rs["rules"], axes,
                                           mem_values if mem_values != [None] else [],
                                           evaluator, config)
                             for i in range(n)]
@@ -414,7 +454,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             action, type_idx, new_type, rule = E.evaluate_with_rule(
                 evaluator, config, opcode, list(types), _mem_desc(mem, extended))
         except (E.EvalError, IndexError, KeyError, TypeError, ValueError,
-                AssertionError):
+                ZeroDivisionError, AssertionError):
             state["outcome"] = "opaque"
             continue
         state.update({"action": action, "type_idx": type_idx, "rule": rule})
@@ -442,12 +482,21 @@ def build(source, config, features, *, pointer_width=64, slots=None,
         }))
 
     closure = {"checked": bool(check_closure), "ok": True,
-               "violations": []}
+               "violations": [], "count": 0}
     if check_closure:
-        for key, state in states.items():
+        limit = 20
+
+        def record(entry):
+            closure["count"] += 1
+            closure["ok"] = False
+            if len(closure["violations"]) < limit:
+                closure["violations"].append(entry)
+
+        # Scan every state; the stored samples are capped, the audit is not.
+        for key in sorted(states, key=_node_text):
+            state = states[key]
             if state["outcome"] == "outside":
-                closure["ok"] = False
-                closure["violations"].append({
+                record({
                     "state": _node_text(key), "reason": "outside",
                     "member": [_type_text(x) for x in state["types"]],
                 })
@@ -461,15 +510,14 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                         evaluator, config, key[0], list(types),
                         _mem_desc(mem, extended))
                 except Exception as exc:
-                    closure["ok"] = False
-                    closure["violations"].append({
-                        "state": _node_text(key), "member": [_type_text(x) for x in types],
+                    record({
+                        "state": _node_text(key),
+                        "member": [_type_text(x) for x in types],
                         "reason": "opaque: %s" % exc,
                     })
                     continue
                 if rule != state["rule"] or action != state["action"]:
-                    closure["ok"] = False
-                    closure["violations"].append({
+                    record({
                         "state": _node_text(key),
                         "member": [_type_text(x) for x in types],
                         "reason": "different rule",
@@ -478,31 +526,29 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                     continue
                 target = list(types)
                 if type_idx >= len(target) or new_type == target[type_idx]:
-                    closure["ok"] = False
-                    closure["violations"].append({
-                        "state": _node_text(key), "member": [_type_text(x) for x in types],
+                    record({
+                        "state": _node_text(key),
+                        "member": [_type_text(x) for x in types],
                         "reason": "stuck mutation",
                     })
                     continue
                 target[type_idx] = new_type
-                target_key = _lookup_key(member_index, key[0], tuple(target), mem)
+                target_key = _lookup_key(member_index, key[0], tuple(target),
+                                         mem)
                 if target_key is None:
-                    closure["ok"] = False
-                    closure["violations"].append({
-                        "state": _node_text(key), "member": [_type_text(x) for x in types],
+                    record({
+                        "state": _node_text(key),
+                        "member": [_type_text(x) for x in types],
                         "reason": "outside", "mutation": _type_text(new_type),
                     })
                     continue
                 targets.add(target_key)
             if len(targets) > 1:
-                closure["ok"] = False
-                closure["violations"].append({
+                record({
                     "state": _node_text(key),
                     "reason": "multiple target classes",
                     "targets": [_node_text(x) for x in sorted(targets, key=_node_text)],
                 })
-            if len(closure["violations"]) >= 20:
-                break
 
     injected = None
     if inject_edge:
