@@ -6,7 +6,7 @@ import json
 import sys
 from pathlib import Path
 
-from . import dsl, td
+from . import ast as A, dsl, td
 from .backend import check_json, core_json, llvm_inc, table
 
 BACKENDS = ("td", "inc", "check", "table", "core")
@@ -22,9 +22,9 @@ def _table_prefix(source, explicit, gs=None):
     if explicit:
         return explicit
     if gs is not None:
-        for rs in gs.get("rulesets", []):
-            if "_" in rs["def"]:
-                return rs["def"].split("_", 1)[0]
+        for rs in gs.rulesets:
+            if "_" in rs.name:
+                return rs.name.split("_", 1)[0]
     stem = Path(source).stem
     return stem[:-len("LegalizerInfo")] if stem.endswith("LegalizerInfo") else stem
 
@@ -50,7 +50,7 @@ def _generate(gs, source, emit, prefix=None):
     # One gate for all five backends: a feature expression the file did not
     # declare cannot be spelled by any of them (`core` and `inc` used to be
     # the only two that noticed, and only at their own stage).
-    bad = dsl.undeclared_features(gs)
+    bad = A.undeclared_features(gs)
     if bad:
         line, _ruleset, expr = bad[0]
         raise ValueError("line %d: undeclared feature expression %r; declare "
@@ -58,8 +58,10 @@ def _generate(gs, source, emit, prefix=None):
     # One table per opcode: a legalizer may build the same opcode twice (the
     # second chain only answers what the first did not), but a LegalizeRuleSet
     # record cannot express that, so the artifact is canonicalized first.
-    gs = dict(gs)
-    gs["rulesets"] = dsl.canonicalize_rulesets(gs["rulesets"])
+    gs = A.Program(gs.includes, gs.decls,
+                   A.canonicalize_rulesets(gs.rulesets),
+                   gs.features, gs.preds, gs.named_types, gs.selects,
+                   gs.setlike)
     if emit == "td":
         return td.emit_td(gs, source)
     if emit == "inc":
@@ -82,11 +84,13 @@ def _load_manifest(path):
 
 
 def _has_slot(node):
+    if isinstance(node, A.Rule):
+        return any(_has_slot(v) for v in (node.on, node.to, node.predicate))
     if isinstance(node, dict):
         if node.get("kind") == "slot":
             return True
         return any(_has_slot(v) for v in node.values())
-    if isinstance(node, list):
+    if isinstance(node, (list, tuple)):
         return any(_has_slot(v) for v in node)
     return False
 
@@ -98,16 +102,20 @@ def _lint(gs, source, manifest):
     # Every type a rule can name is declared above it: `type`, `select` and
     # `type_set`.  Passing the set through is what turns "unknown type name"
     # from a KeyError in the core backend into a diagnostic on the right line.
-    names = {d[1] for d in gs["decls"] if d[0] in ("type", "select", "type_set")}
-    for rs in gs["rulesets"]:
-        arities = [manifest.get(o) for o in rs["opcodes"]]
+    names = {d.name for d in gs.decls
+             if isinstance(d, (A.NamedType, A.SelectType, A.TypeSet))}
+    for rs in gs.rulesets:
+        opcodes = rs.opcodes
+        rs_name = rs.name
+        rules = rs.rules
+        arities = [manifest.get(o) for o in opcodes]
         known = [a for a in arities if a is not None]
         arity = min(known) if known else None
-        unknown = [o for o, a in zip(rs["opcodes"], arities) if a is None]
+        unknown = [o for o, a in zip(opcodes, arities) if a is None]
         first_slot_line = None
-        for rule in rs["rules"]:
+        for rule in rules:
             nrules += 1
-            line = rule.get("_line", 0)
+            line = rule.line
             errs = []
             try:
                 dsl.check_rule(rule, arity if arity is not None else 10 ** 9,
@@ -116,16 +124,16 @@ def _lint(gs, source, manifest):
                 errs.append(f"malformed rule: {e}")
             for msg in errs:
                 errors.append({"file": source, "line": line,
-                               "ruleset": rs["def"], "rule": rule["op"],
+                               "ruleset": rs_name, "rule": rule["op"],
                                "message": msg})
             if unknown and first_slot_line is None and _has_slot(rule):
                 first_slot_line = line
         if first_slot_line is not None:
             warnings.append({"file": source, "line": first_slot_line,
-                             "ruleset": rs["def"],
+                             "ruleset": rs_name,
                              "message": "arity unknown for %s; slot bounds not checked"
                                         % ", ".join(unknown)})
-    for line, ruleset, expr in dsl.undeclared_features(gs):
+    for line, ruleset, expr in A.undeclared_features(gs):
         errors.append({"file": source, "line": line, "ruleset": ruleset,
                        "rule": "-",
                        "message": "undeclared feature expression %r; declare "
@@ -158,7 +166,7 @@ def main(argv=None):
     b.add_argument("--td", required=True)
     b.add_argument("--core", required=True)
     b.add_argument("--out", required=True)
-    b.add_argument("--title", default="Target")
+    b.add_argument("--title")
 
     l = sub.add_parser("lint", help="static checks over a source file (no LLVM)")
     l.add_argument("source")
@@ -180,7 +188,7 @@ def main(argv=None):
         if source_text is None:
             return 2
         try:
-            gs = td.parse_gisel(source_text)
+            gs = A.parse_program(source_text)
             text = _generate(gs, args.source, args.emit, getattr(args, "prefix", None))
         except ValueError as e:
             return _source_error(args.source, e)
@@ -189,8 +197,8 @@ def main(argv=None):
         except OSError as e:
             print(f"{args.out}: {e.strerror}", file=sys.stderr)
             return 2
-        print(f"{args.out}: {len(gs['rulesets'])} rule sets, "
-              f"{sum(len(r['rules']) for r in gs['rulesets'])} rules")
+        print(f"{args.out}: {len(gs.rulesets)} rule sets, "
+              f"{sum(len(r.rules) for r in gs.rulesets)} rules")
         return 0
     if args.cmd == "check":
         want_path = args.against or args.td
@@ -200,7 +208,7 @@ def main(argv=None):
         if source_text is None:
             return 2
         try:
-            gs = td.parse_gisel(source_text)
+            gs = A.parse_program(source_text)
             got = _generate(gs, args.source, args.emit)
         except ValueError as e:
             return _source_error(args.source, e)
@@ -223,7 +231,7 @@ def main(argv=None):
         if text is None:
             return 2
         try:
-            gs = td.parse_gisel(text)
+            gs = A.parse_program(text)
         except ValueError as e:
             return _source_error(args.source, e)
         try:
@@ -250,8 +258,11 @@ def main(argv=None):
                   f"warning(s), {nrules} rule(s)")
         return 1 if errors else 0
     if args.cmd == "bootstrap":
-        return td.main(["bootstrap", "--td", args.td, "--core", args.core,
-                        "--out", args.out, "--title", args.title])
+        argv = ["bootstrap", "--td", args.td, "--core", args.core,
+                "--out", args.out]
+        if args.title:
+            argv += ["--title", args.title]
+        return td.main(argv)
     from . import eval as evaluator
     # `eval` owns its own argument set; drop the subcommand word.
     return evaluator.main(argv[1:])

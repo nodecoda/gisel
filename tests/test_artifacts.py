@@ -109,11 +109,11 @@ class GoldenCheckJson(unittest.TestCase):
     def test_coverage_sums_to_rules(self):
         """rules == core_rules + legacy_rules + coverage (LoweringStats:55)."""
         sys.path.insert(0, str(ROOT))
-        from gisel import td
+        from gisel import ast as A
         from gisel.backend import check_json
 
         for _, src in CORPORA:
-            gs = td.parse_gisel((TESTS / "corpus" / f"{src}.gisel").read_text())
+            gs = A.parse_program((TESTS / "corpus" / f"{src}.gisel").read_text())
             c = check_json.counts(gs)
             self.assertEqual(c["rules"],
                              c["core_rules"] + c["legacy_rules"] + c["coverage"])
@@ -182,14 +182,14 @@ class GoldenCoreJson(unittest.TestCase):
 
     def test_origin_points_at_the_gisel_source(self):
         sys.path.insert(0, str(ROOT))
-        from gisel import td
+        from gisel import ast as A
         from gisel.backend import core_json
 
         for _, src in CORPORA:
             text = (TESTS / "corpus" / f"{src}.gisel").read_text()
-            gs = td.parse_gisel(text)
+            gs = A.parse_program(text)
             lines = core_json.stage_lines(text)
-            self.assertEqual(len(lines), len(gs["rulesets"]))
+            self.assertEqual(len(lines), len(gs.rulesets))
             self.assertTrue(all(n > 0 for n in lines.values()))
 
     def test_evaluator_answers_identically(self):
@@ -540,9 +540,9 @@ class ImmRoundTrip(unittest.TestCase):
            "    legal (in(slot(0), I32) and (in(imm(0), [8, 16]) or imm(0) == 32))\n")
 
     def _pred(self, text):
-        from gisel import td as T
-        gs = T.parse_gisel(text)
-        return gs["rulesets"][0]["rules"][0]["predicate"]
+        from gisel import ast as A
+        model = A.to_record_model(A.parse_program(text))
+        return model["rulesets"][0]["rules"][0]["predicate"]
 
     def test_render_then_parse_is_stable(self):
         from gisel import dsl
@@ -652,19 +652,19 @@ class ShimCoverage(unittest.TestCase):
 
     def test_every_corpus_triple_has_a_shim(self):
         sys.path.insert(0, str(ROOT))
-        from gisel import td
+        from gisel import ast as A
         from gisel.backend import llvm_inc as inc
 
         seen = set()
         for _, src in CORPORA:
-            gs = td.parse_gisel((TESTS / "corpus" / f"{src}.gisel").read_text())
-            for rs in gs["rulesets"]:
-                for rule in rs["rules"]:
-                    on = rule.get("on")
+            gs = A.parse_program((TESTS / "corpus" / f"{src}.gisel").read_text())
+            for rs in gs.rulesets:
+                for rule in rs.rules:
+                    on = rule.on
                     on_form = (inc.ONSERVATION_FORM.get(on["kind"], on["kind"])
                                if on else "")
                     seen.add((rule["op"], on_form,
-                              rule["to"]["kind"] if rule.get("to") else ""))
+                              rule.to["kind"] if rule.to else ""))
         missing = sorted(t for t in seen if t not in inc.SHIM_TABLE)
         self.assertEqual(missing, [])
         self.assertEqual(len(seen), 25)

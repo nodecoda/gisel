@@ -22,7 +22,7 @@ Ported logic keeps the LLVM license header and names its source commit.
 
 from pathlib import Path
 
-from .. import td as T
+from .. import ast as A
 
 LICENSE_HEADER = """\
 /*===- TableGen'erated file -------------------------------------*- C++ -*-===*\\
@@ -120,31 +120,48 @@ CMP_OP = {"eq": "==", "ne": "!=", "lt": "<", "le": "<=", "gt": ">", "ge": ">="}
 
 class IncEmitter:
     def __init__(self, gs, qvar="Query"):
+        if not isinstance(gs, A.Program):
+            raise TypeError("IncEmitter needs the language AST, not a record model")
         self.gs = gs
         self.qvar = qvar
-        self.names = T.build_names(gs["decls"])
-        self.feat_of = {n: p for k, n, p in gs["decls"] if k == "feature"}
-        self.preds = {n: p for k, n, p in gs["decls"] if k == "pred"}
         self.used_features = set()
-        self.sets = T.collect_named_sets(gs["decls"])
+        self.names = A.NameTable(gs)
+        self.feat_of = {d.name: d.cxx for d in gs.decls
+                        if isinstance(d, A.Feature)}
+        self.preds = {d.name: d.pred for d in gs.decls
+                      if isinstance(d, A.PredicateDecl)}
+        # canonical LLT spelling -> record name (last declaration wins).
+        self._canonical = {}
+        for d in gs.decls:
+            if isinstance(d, A.NamedType):
+                self._canonical[A.llt_text(d.llt)] = d.name
+        self.sets = {}
+        for d in gs.decls:
+            if isinstance(d, (A.TypeSet, A.TypeList)):
+                value = d.value
+                if isinstance(value, A.SetValue) and value.arity == 1:
+                    self.sets[d.name] = tuple(
+                        self.names.value_name(e) for e in value.elems)
+                else:
+                    self.sets[d.name] = tuple(d.members)
 
     # ---- names ----------------------------------------------------------
 
     def _type(self, name):
-        if name in self.names.type:
-            return self.names.type[name]
+        # `parse_program` leaves a bare string only for a token no
+        # declaration named; a canonical spelling still maps to the target
+        # record the old `Names.type` map would have chosen.
+        if name in self._canonical:
+            return self._canonical[name]
         if name in self.names.records:
             return name
         raise ValueError(f"unknown type name {name!r}: rules name declared "
-                     f"`type`/`select`/`type_set` records, not LLT literals")
+                         f"`type`/`select`/`type_set` records, not LLT literals")
 
     def _type_value(self, v):
         if isinstance(v, str):
             return self._type(v)
-        name = self.names.select_value(v)
-        if name is None:
-            raise KeyError(f"no named select for {v!r}")
-        return name
+        return self.names.value_name(v)
 
     def _feature(self, expr):
         name = self.names.feature.get(expr)
@@ -266,11 +283,15 @@ class IncEmitter:
     def _set_entries(self, n):
         """Normal-form set literal -> list of [Type0, Type1, MemTy, Align]."""
         if n.get("kind") == "type":
-            # A named set, or a one-member set spelled as the type itself
-            # (coreSetJson, :2820).
-            if n["value"] in self.sets:
-                return [[m] for m in self.sets[n["value"]]]
-            return [[self._type_value(n["value"])]]
+            value = n["value"]
+            if isinstance(value, A.SetValue):
+                # A named set (or a type-list expansion).  The AST has
+                # already resolved its members.
+                if value.arity == 1:
+                    return [[self._type_value(e)] for e in value.elems]
+                return [[self._type_value(x) for x in row]
+                        for row in value.elems]
+            return [[self._type_value(value)]]
         elems = n["elems"]
         arity = n.get("arity", 1)
         if arity == 1:
@@ -353,21 +374,19 @@ class IncEmitter:
 
     # ---- prologue --------------------------------------------------------
 
-    def _select_text(self, payload):
-        conds, types, otherwise = payload
-        expr = otherwise
-        for i in range(len(conds) - 1, -1, -1):
-            expr = "(%s ? %s : %s)" % (self._pred_cxx(conds[i]), types[i], expr)
+    def _select_text(self, decl):
+        value = decl.value
+        expr = self._type_value(value.otherwise)
+        for cond, then in reversed(value.arms):
+            expr = "(%s ? %s : %s)" % (
+                self._pred_node(cond), self._type_value(then), expr)
         return expr
 
-    def _pred_cxx(self, name):
-        """A select guard: a feature record name or a predicate-dag expression."""
-        if name in self.feat_of:
-            return self._feature(self.feat_of[name])
-        if name in self.preds:
-            return self._bool_dag_cxx(T._bool_node(T.parse_bool(self.preds[name]),
-                                                   self.feat_of))
-        raise KeyError(f"unknown select guard {name!r}")
+    def _pred_node(self, cond):
+        """A resolved select guard (a feature leaf or a predicate tree)."""
+        if cond.get("kind") == "leaf" and cond.get("name") == "hasFeature":
+            return self._feature(cond["args"][0])
+        return self._bool_dag_cxx(cond)
 
     def _bool_dag_cxx(self, node, paren=False):
         """Mirror emitPredicateDag(ParenIfBinOp=false)."""
@@ -456,23 +475,25 @@ class IncEmitter:
 
     def emit(self):
         body = []
-        for rs in self.gs["rulesets"]:
+        for rs in self.gs.rulesets:
             body += self._ruleset(rs)
 
         types = []
-        for kind, name, payload in self.gs["decls"]:
-            if kind == "type":
-                types.append("  const LLT %s = %s;" % (name, payload))
-            elif kind == "select":
-                types.append("  const LLT %s = %s;" % (name, self._select_text(payload)))
+        for d in self.gs.decls:
+            if isinstance(d, A.NamedType):
+                types.append("  const LLT %s = %s;" % (d.name, d.source))
+            elif isinstance(d, A.SelectType):
+                types.append("  const LLT %s = %s;"
+                             % (d.name, self._select_text(d)))
         lists = []
-        for kind, name, payload in self.gs["decls"]:
-            if kind == "type_list":
+        for d in self.gs.decls:
+            if isinstance(d, A.TypeList):
                 lists.append("  const std::initializer_list<LLT> %s = {%s};"
-                             % (name, ", ".join(payload)))
-
-        features = ["  bool %s = %s;" % (n, p) for k, n, p in self.gs["decls"]
-                    if k == "feature" and n in self.used_features]
+                             % (d.name, ", ".join(d.members)))
+        features = ["  bool %s = %s;" % (d.name, d.cxx)
+                    for d in self.gs.decls
+                    if isinstance(d, A.Feature)
+                    and d.name in self.used_features]
 
         out = [LICENSE_HEADER.rstrip("\n"), ""]
         if features:
@@ -497,7 +518,7 @@ def main(argv):
     ap.add_argument("gisel")
     ap.add_argument("--out", required=True)
     args = ap.parse_args(argv)
-    gs = T.parse_gisel(Path(args.gisel).read_text())
+    gs = A.parse_program(Path(args.gisel).read_text())
     text = emit_inc(gs, args.gisel)
     Path(args.out).write_text(text)
     print(f"{args.out}: {len(text.splitlines())} lines")

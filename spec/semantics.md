@@ -126,9 +126,14 @@ C++ 的 `getActionDefinitionsBuilder(Op)` 每调用一次就追加一张表，`g
 `(opcodes, rules)`——而且 `llvm-tblgen` 拒绝一个 opcode 被描述两次
 （`test/TableGen/legalizer-info-duplicate.td`）。
 
-所以发射前做一次规范化（`dsl.canonicalize_rulesets`）：对每个 opcode，把它出现的
+所以发射前做一次规范化（`ast.canonicalize_rulesets`）：对每个 opcode，把它出现的
 所有表按书写顺序拼接；规则序列仍相同的 opcode 继续共享一张表。首命中顺序不变，
 答案不变。
+
+这是**介质约束，不是语言约束**：`.gisel` 的 `ruleset` 可以自由地重复 opcode，
+模型（`Program`）也保留原样；只有 `--emit=td/.inc`（以及为了维持既有 normal-form
+契约的 `--emit=core`）需要一 opcode 一表。`canonicalize_rulesets` 因此是 AST 上
+的一个显式变换，注释里写明了它为什么存在。
 
 - AArch64（114 表 / 743 条）、X86（63 / 332）没有重复 opcode → 恒等变换，golden 不变。
 - RISCV 有 11 个重复 opcode（`G_CTLZ` 的 Zbb / 非 Zbb 两条链）→ **96 表 / 402 条

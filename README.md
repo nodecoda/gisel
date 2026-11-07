@@ -62,6 +62,19 @@ The generated `.inc` is the C++ chain, one call per rule:
 `--emit=td`, `--emit=check`, `--emit=table` and `--emit=core` give the other four
 shapes from the same source.
 
+## Architecture
+
+The front end (`gisel/ast.py`) parses `.gisel` into one model: a `Program` of
+declarations, rule sets and rules.  Types are structured (`Scalar(32)`,
+`Pointer(0, None)`, `Vector(...)`), rule type positions hold those values, and
+a rule set is `(name, opcodes, rules)`.  Record names such as `X86_s32`,
+`LegalizeFeature<...>` and `LegalizeRuleSet<...>` are not part of the model:
+the `.td`/`.inc` renderers compute them at their exit through `NameTable`, and
+`core`/`check`/`table` never see them.  `ast.canonicalize_rulesets` is the one
+AST transform before emission; it exists because a TableGen record cannot
+express "two tables for one opcode", not because the language forbids it.
+`docs/REPORT-ast.md` records what was removed and what boundaries remain.
+
 What it does not do: it is not the build path for upstream LLVM (the `.td` is
 still what the tree consumes), `import-cxx` refuses any statement it cannot
 translate rather than guessing, and none of the five corpora is an independent
@@ -96,7 +109,7 @@ against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (develop
 only — generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 57 gates, ~10 s
+python3 -m unittest discover -q -s tests      # 70 tests, ~11 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
@@ -135,13 +148,15 @@ is the subtarget truth table it was recorded with.
 ## Layout
 
 ```
-gisel/dsl.py            lexer, parser, core-IR normal form
+gisel/ast.py            Program / declarations / rule sets / structured LLT
+gisel/dsl.py            lexer, rule parser, core-IR normal form
 gisel/td.py             .gisel -> .td (M0, compatibility backend)
-gisel/backend/llvm_inc.py  normal form -> .inc (M1)
+gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / table.py / core_json.py   M2 / M3 / M4
 gisel/eval.py           standalone evaluator (9632 points, 0 disagreements)
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
-spec/grammar.md         the .gisel grammar, normative
+spec/grammar.md         the .gisel grammar and AST, normative
+docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
 spec/semantics.md       what a rule means (and what the evaluator does)
 ```
 

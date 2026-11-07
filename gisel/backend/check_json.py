@@ -16,15 +16,17 @@ Two kinds of number appear in that JSON, and they must not be confused:
   property of the DSL; a target cannot change them.
 """
 
-from .. import td as T
+from .. import ast as A
 from ..vocab import BUILDER_VOCABULARY, CORE_OPERATORS
 
 
 def counts(gs):
     """Per-target counters, in the shape ``LoweringStats`` uses."""
-    rule_sets = len(gs["rulesets"])
-    core = sum(len(rs["rules"]) for rs in gs["rulesets"])
-    imm = sum(len(rs.get("legacy", [])) for rs in gs["rulesets"])
+    if not isinstance(gs, A.Program):
+        raise TypeError("counts needs the language AST")
+    rule_sets = len(gs.rulesets)
+    core = sum(len(rs.rules) for rs in gs.rulesets)
+    imm = sum(len(rs.coverage) for rs in gs.rulesets)
     return {
         "rule_sets": rule_sets,
         "rules": core + imm,

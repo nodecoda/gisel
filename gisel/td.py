@@ -21,6 +21,7 @@ import re
 import sys
 from pathlib import Path
 
+from . import ast as A
 from . import dsl as D
 
 
@@ -179,42 +180,6 @@ def _defm_meta(name, body):
 
 # ---- canonical type / predicate reconstruction ----------------------------
 
-def normalize_llt(expr, named_exprs):
-    """Port of normalizeLlt() in LegalizerInfoEmitter.cpp."""
-    t = expr.strip()
-    if not any(c in t for c in "(){} \t\n") and t in named_exprs:
-        return normalize_llt(named_exprs[t], named_exprs)
-    m = re.fullmatch(r"LLT::scalar\((\d+)\)", t)
-    if m:
-        return "s" + m.group(1)
-    m = re.fullmatch(r"LLT::integer\((\d+)\)", t)
-    if m:
-        return "i" + m.group(1)
-    kinds = {"LLT::bfloat16()": "bf16", "LLT::float16()": "f16",
-             "LLT::float32()": "f32", "LLT::float64()": "f64",
-             "LLT::float128()": "f128"}
-    if t in kinds:
-        return kinds[t]
-    m = re.fullmatch(r"LLT::pointer\((\d+),\s*(.+)\)", t, re.S)
-    if m:
-        as_, bits = m.group(1), m.group(2).strip()
-        return f"p{as_}:{bits}" if bits.isdigit() else f"p{as_}:*"
-    for head, prefix in (("LLT::fixed_vector(", "v"),
-                         ("LLT::scalable_vector(", "nxv")):
-        if t.startswith(head) and t.endswith(")"):
-            inner = t[len(head):-1]
-            comma = inner.find(",")
-            if comma < 0:
-                return ""
-            lanes = inner[:comma].strip()
-            elem = inner[comma + 1:].strip()
-            elem = ("s" + elem) if elem.isdigit() else normalize_llt(elem, named_exprs)
-            if not lanes.isdigit() or not elem:
-                return ""
-            return prefix + lanes + elem
-    return ""
-
-
 def _parse_pred_dag(dag, feat_names):
     """TableGen predicate dag -> legacy predicateJson node."""
     def walk(s):
@@ -268,101 +233,54 @@ def _pred_dsl(node, feat_of):
     raise ValueError(f"unsupported predicate node {node!r}")
 
 
-# ---- names: canonical -> original record name -----------------------------
+# ---- names for the bootstrap renderer ------------------------------------
 
-class Names:
-    def __init__(self):
-        self.feature = {}       # C++ cond string -> record name
-        self.type = {}          # canonical type -> record name
-        self.select = {}        # canonical select JSON -> record name
-        self.type_set = {}      # tuple of record names -> set record name
-        self.records = set()    # every declared record name
-
-    def select_value(self, value):
-        return self.select.get(json.dumps(value, sort_keys=True))
-
-
-def collect_named_sets(decls):
-    """Named type sets, expanded to their member record names.
-
-    `decodeCoreSet` in the C++ emitter expands a named set, so `in s64` and
-    `in [s64]` render identically.  The normal form keeps the name, so every
-    backend that emits a set has to expand it here rather than re-deriving the
-    expansion on its own.
-    """
-    raw = {n: p for k, n, p in decls if k == "type_set"}
-    lists = {n: p for k, n, p in decls if k == "type_list"}
+def _type_set_lists(decls):
+    """name -> element list, resolving `X = Y.Elems` references."""
+    raw = {n: p for k, n, p in decls if k in ("type_set", "type_list")}
     out = {}
 
-    def resolve(name, seen=()):
+    def resolve(name, stack=()):
         if name in out:
             return out[name]
-        if name in lists:
-            out[name] = list(lists[name])
-            return out[name]
-        p = raw.get(name)
-        if p is None:
-            return None
-        if isinstance(p, tuple) and p[0] == "ref":
-            out[name] = list(resolve(p[1], seen + (name,)) or [])
-        else:
-            out[name] = list(p)
+        if name in stack or name not in raw:
+            raise ValueError(f"unresolved type-set ref {name!r}")
+        p = raw[name]
+        out[name] = resolve(p[1], stack + (name,)) if isinstance(p, tuple) else p
         return out[name]
 
-    for name in raw:
-        resolve(name)
+    for n in raw:
+        resolve(n)
     return out
 
 
-def _check_named_types(decls, lines=None):
-    """Reject LLT expressions the backends cannot normalize.
+class _ScaffoldNames:
+    """Renderer-local names for `bootstrap`: canonical value -> record name.
 
-    Without this, `type X = LLT::scalar32(32)` reached the `.td` backend as
-    `LegalizeNamedType<"LLT::scalar32(32)">` — valid TableGen naming a type
-    that can never match, so every rule using X silently died.
+    `bootstrap` reads a hand-written .td and a core JSON document and has to
+    spell the core rules back with the target's record names.  This is the
+    reverse renderer's exit computation, not a front-end model: the normal
+    front end never builds one.
     """
-    type_expr = {n: p for k, n, p in decls if k == "type"}
-    for name, expr in type_expr.items():
-        if not normalize_llt(expr, type_expr):
-            where = f"line {lines[name]}: " if lines and name in lines else ""
-            raise ValueError(
-                f"{where}cannot normalize LLT expression for {name}: {expr!r} "
-                f"(expected LLT::scalar/integer/pointer/fixed_vector/"
-                f"scalable_vector/float*)")
 
+    def __init__(self, decls):
+        self.type = {}       # canonical LLT -> record name
+        self.select = {}     # canonical select JSON -> record name
+        self.type_set = {}   # member record-name tuple -> set record name
+        self.records = {name for _, name, _ in decls}
+        type_expr = {n: p for k, n, p in decls if k == "type"}
+        feat_of = {n: p for k, n, p in decls if k == "feature"}
+        dag_node = {n: _parse_pred_dag(p, feat_of) for k, n, p in decls
+                    if k == "pred"}
 
-def build_names(decls):
-    """Resolve canonical names back to the target's record names."""
-    names = Names()
-    type_expr = {n: p for k, n, p in decls if k == "type"}
-    feat_of = {n: p for k, n, p in decls if k == "feature"}
-    dag_node = {n: _bool_node(parse_bool(p), feat_of) for k, n, p in decls
-                if k == "pred"}
-    canon_of = {}
-    for name, expr in type_expr.items():
-        canon = normalize_llt(expr, type_expr)
-        if not canon:
-            # An unrecognized LLT spelling used to fall through into
-            # `LegalizeNamedType<"<raw text>">`, which is valid TableGen but
-            # names a type that can never match: the rule silently dies.
-            raise ValueError(
-                f"cannot normalize LLT expression for {name}: {expr!r} "
-                f"(expected LLT::scalar/integer/pointer/fixed_vector/"
-                f"scalable_vector/float*)")
-        names.type[canon] = name
-        canon_of[name] = canon
-    for name, cond in feat_of.items():
-        names.feature[cond] = name
-    names.records = set(type_expr) | set(feat_of) | set(dag_node) | {
-        n for k, n, _ in decls}
-    resolved_sets = _type_set_lists(decls)
-    for k, name, payload in decls:
-        if k == "type_set":
-            names.type_set[tuple(resolved_sets[name])] = name
-    for k, name, payload in decls:
-        if k != "select":
-            continue
-        conds, types, otherwise = payload
+        def parse(name, stack=()):
+            return A._parse_llt(type_expr[name], type_expr, parse, stack)
+
+        canon_of = {}
+        for name, expr in type_expr.items():
+            canon = A.llt_text(A._parse_llt(expr, type_expr, parse))
+            self.type[canon] = name
+            canon_of[name] = canon
 
         def cond_node(rec):
             if rec in feat_of:
@@ -372,12 +290,23 @@ def build_names(decls):
                 return dag_node[rec]
             raise ValueError("unknown select cond %r" % rec)
 
-        acc = canon_of[otherwise]
-        for i in range(len(conds) - 1, -1, -1):
-            acc = {"select": {"cond": cond_node(conds[i]),
-                              "then": canon_of[types[i]], "else": acc}}
-        names.select[json.dumps(acc, sort_keys=True)] = name
-    return names
+        for k, name, payload in decls:
+            if k != "select":
+                continue
+            conds, types, otherwise = payload
+            acc = canon_of[otherwise]
+            for i in range(len(conds) - 1, -1, -1):
+                acc = {"select": {"cond": cond_node(conds[i]),
+                                  "then": canon_of[types[i]], "else": acc}}
+            self.select[json.dumps(acc, sort_keys=True)] = name
+
+        resolved = _type_set_lists(decls)
+        for k, name, payload in decls:
+            if k == "type_set":
+                self.type_set[tuple(resolved[name])] = name
+
+    def select_value(self, value):
+        return self.select.get(json.dumps(value, sort_keys=True))
 
 
 # ---- .gisel: parse --------------------------------------------------------
@@ -539,74 +468,6 @@ def _wrap_statement(text, width=88, indent=8):
     return out
 
 
-def parse_gisel(text):
-    includes, decls, rulesets = [], [], []
-    decl_lines = {}
-    lines = text.splitlines()
-    i = 0
-    while i < len(lines):
-        line = lines[i].rstrip()
-        i += 1
-        s = line.strip()
-        if not s or s.startswith("//"):
-            continue
-        if s.startswith("include "):
-            includes.append(s)
-            continue
-        m = DECL_RE.match(s)
-        if m:
-            kind, name, body = m.group(1), m.group(2), m.group(3).strip()
-            decl_lines[name] = i
-            if kind == "select":
-                decls.append((kind, name, _parse_sel(body)))
-            elif kind == "type_list":
-                decls.append((kind, name,
-                              re.findall(r"[A-Za-z0-9_]+", body)))
-            elif kind == "type_set":
-                ref = re.fullmatch(r"([A-Za-z_][A-Za-z0-9_]*)\.Elems", body)
-                if ref:
-                    decls.append((kind, name, ("ref", ref.group(1))))
-                else:
-                    decls.append((kind, name,
-                                  re.findall(r"[A-Za-z0-9_]+", body)))
-            else:
-                decls.append((kind, name, body))
-            continue
-        m = RULESET_RE.match(s)
-        if not m:
-            raise ValueError(f"line {i}: unrecognized source line {s!r}")
-        name, opcodes = m.group(1), m.group(2).split()
-        ruleset_line = i          # i is the 1-based line just consumed
-        comments, body, legacy, raw_body = [], [], [], []
-        while i < len(lines):
-            raw = lines[i]
-            if raw.strip() and not raw.startswith((" ", "\t")):
-                break
-            i += 1
-            st = raw.strip()
-            if not st or st.startswith("//"):
-                continue
-            raw_body.append((i, raw))
-        for ln, st in _join_continuations(raw_body):
-            nm = NOTE_RE.match(st)
-            im = IMM_RE.match(st)
-            if nm:
-                comments.append(nm.group(1))
-            elif im:
-                legacy.append(int(im.group(1)))
-            else:
-                body.append((ln, st))
-        snippet = ["rule " + " ".join(opcodes) + ":"]
-        snippet += ["  " + b.strip() for _, b in body]
-        line_map = [ruleset_line] + [ln for ln, _ in body]
-        ast = D.Parser("\n".join(snippet), line_map=line_map).parse()
-        compiled = D.compile_rulesets(ast)
-        rulesets.append({"def": name, "opcodes": opcodes, "comments": comments,
-                         "legacy": legacy, "rules": compiled})
-    _check_named_types(decls, decl_lines)
-    return {"includes": includes, "decls": decls, "rulesets": rulesets}
-
-
 GISE_HEADER = """\
 //===- {target}LegalizerInfo.gisel - free-form legalizer rules --*- gisel -*-===//
 //
@@ -657,8 +518,17 @@ GISE_HEADER = """\
 
 # ---- .gisel: bootstrap from a hand-written .td + core JSON ----------------
 
-def bootstrap(td_path, core_path, title):
+def bootstrap(td_path, core_path, title=None):
     scaf = parse_scaffolding(td_path)
+    if title is None:
+        # The hand-written .td names its records X86_ADD, AArch64_ADD, ...
+        # Prefer that prefix over the file stem (`x86.td` is lowercase).
+        title = next((name.split("_", 1)[0] for name, *_ in scaf["rulesets"]
+                      if "_" in name), None)
+        if title is None:
+            stem = Path(td_path).stem
+            title = (stem[:-len("LegalizerInfo")]
+                     if stem.endswith("LegalizerInfo") else stem)
     core = json.loads(Path(core_path).read_text())
     meta = {name: (opcodes, comments, legacy)
             for name, opcodes, comments, legacy in scaf["rulesets"]}
@@ -692,7 +562,7 @@ def bootstrap(td_path, core_path, title):
         else:
             out.append(f"type_set {name} = [" + ", ".join(payload) + "]")
     out.append("")
-    names = build_names(gdecls)
+    names = _ScaffoldNames(scaf["decls"])
     _orig_type_value = D.render_type_value
     _orig_set = D.render_set
 
@@ -727,6 +597,14 @@ def bootstrap(td_path, core_path, title):
             out.append(f"    imm_idx({idx})")
         out.append("")
     return "\n".join(out).rstrip() + "\n"
+
+
+_STRIP_KEYS = {"schema", "ruleset", "rule_index", "origin", "def", "_line"}
+
+
+def _strip_normal(rule):
+    """Rule equality without the per-rule bookkeeping keys."""
+    return {k: v for k, v in rule.items() if k not in _STRIP_KEYS}
 
 
 def _clamp_sugar(r):
@@ -769,7 +647,7 @@ def _clamp_sugar(r):
     op = "clamp_min" if r["op"] == "more" else "clamp_max"
     expected = D.compile_stmt({"op": op, "idx": idx,
                               "elt": elt["args"][0]["value"], "lanes": lanes})
-    if D.strip(expected) != D.strip(r):
+    if _strip_normal(expected) != _strip_normal(r):
         return None
     return (f"{op}({idx}, {D.render_type_value(elt['args'][0]['value'])}, "
             f"{D.render_expr(lanes)})")
@@ -778,15 +656,27 @@ def _clamp_sugar(r):
 # ---- .gitd: emit ----------------------------------------------------------
 
 class NamedTdEmitter(D.TdEmitter):
-    """TdEmitter that reuses the target's original record names."""
+    """TdEmitter that reuses the target's original record names.
+
+    With an ``ast.NameTable`` the type positions arrive as structured values
+    and are named here, at the renderer's exit.  The legacy ``Names`` path
+    stays for the bootstrap/dev harness until Phase 3 removes it.
+    """
 
     def __init__(self, names):
         self.names = names
 
     def _feat(self, s):
+        if isinstance(self.names, A.NameTable):
+            return self.names.feature_name(s)
         return self.names.feature[s]
 
     def _type(self, name):
+        if isinstance(self.names, A.NameTable):
+            if name in self.names.records:
+                return name
+            raise ValueError(f"unknown type name {name!r}: rules name declared "
+                             f"`type`/`select`/`type_set` records, not LLT literals")
         if name in self.names.type:
             return self.names.type[name]
         if name in self.names.records:
@@ -795,6 +685,10 @@ class NamedTdEmitter(D.TdEmitter):
                      f"`type`/`select`/`type_set` records, not LLT literals")
 
     def _type_value(self, v):
+        if isinstance(self.names, A.NameTable):
+            if isinstance(v, str):
+                return self._type(v)
+            return self.names.value_name(v)
         if isinstance(v, str):
             return self._type(v)
         name = self.names.select_value(v)
@@ -815,9 +709,12 @@ class NamedTdEmitter(D.TdEmitter):
             recs = [self._type_value(e) for e in elems]
             # A named type set keeps the .td readable; the emitter expands it
             # either way, so the artifact is the same.
-            key = tuple(recs)
-            if key in self.names.type_set:
-                return self.names.type_set[key]
+            if isinstance(self.names, A.NameTable):
+                named = self.names.set_name_td(elems)
+            else:
+                named = self.names.type_set.get(tuple(recs))
+            if named is not None:
+                return named
             return "[" + ", ".join(recs) + "]"
         if arity == 2 and len(elems[0]) == 4:
             return ("[" + ", ".join(
@@ -829,23 +726,34 @@ class NamedTdEmitter(D.TdEmitter):
             for e in elems) + "]")
 
 
-def _emit_decl(kind, name, payload):
-    if kind == "feature":
-        return f'def {name} : LegalizeFeature<"{payload}">;'
-    if kind == "pred":
-        dag = _bool_dag_text(parse_bool(payload))
-        return f"def {name} : LegalizePredicateDag<{dag}>;"
-    if kind == "type":
-        return f'def {name} : LegalizeNamedType<"{payload}">;'
-    if kind == "type_list":
-        return f"def {name} : LegalizeNamedTypeList<[{', '.join(payload)}]>;"
-    if kind == "select":
-        conds, types, els = payload
-        return (f"def {name} : LegalizeSelectType<"
-                f"[{', '.join(conds)}], [{', '.join(types)}], {els}>;")
-    if isinstance(payload, tuple):
-        return f"def {name} : LegalizeCoreTypeSet<{payload[1]}.Elems>;"
-    return f"def {name} : LegalizeCoreTypeSet<[{', '.join(payload)}]>;"
+def _emit_ast_decl(d):
+    """AST declaration -> the same TableGen line the record payload produced."""
+    if isinstance(d, A.Feature):
+        return f'def {d.name} : LegalizeFeature<"{d.cxx}">;'
+    if isinstance(d, A.PredicateDecl):
+        dag = _bool_dag_text(parse_bool(d.source))
+        return f"def {d.name} : LegalizePredicateDag<{dag}>;"
+    if isinstance(d, A.NamedType):
+        return f'def {d.name} : LegalizeNamedType<"{d.source}">;'
+    if isinstance(d, A.TypeList):
+        return f"def {d.name} : LegalizeNamedTypeList<[{', '.join(d.members)}]>;"
+    if isinstance(d, A.SelectType):
+        conds = [c for c, _ in d.arms]
+        types = [t for _, t in d.arms]
+        return (f"def {d.name} : LegalizeSelectType<"
+                f"[{', '.join(conds)}], [{', '.join(types)}], {d.otherwise}>;")
+    if isinstance(d, A.TypeSet):
+        if d.source_ref:
+            return f"def {d.name} : LegalizeCoreTypeSet<{d.source_ref}.Elems>;"
+        return f"def {d.name} : LegalizeCoreTypeSet<[{', '.join(d.members)}]>;"
+    raise TypeError(d)
+
+
+def _rule_sets_view(gs):
+    """The renderer's rule-set view (comments/coverage/rules)."""
+    return [{"def": rs.name, "opcodes": rs.opcodes,
+             "comments": rs.comments, "legacy": rs.coverage,
+             "rules": rs.rules} for rs in gs.rulesets]
 
 
 def target_name(gs, source_name):
@@ -853,17 +761,21 @@ def target_name(gs, source_name):
 
     Deriving it from the rule sets rather than the file name keeps generated
     artifacts identical when a source is renamed or copied, and lets `check`
-    work on a scratch copy.  `X86_IMPLICIT_DEF` -> `X86`.
+    work on a scratch copy.  `Tgt_IMPLICIT_DEF` -> `Tgt`.
     """
-    for rs in gs.get("rulesets", []):
-        d = rs["def"]
-        if "_" in d:
-            return d.split("_", 1)[0]
+    for rs in gs.rulesets:
+        if "_" in rs.name:
+            return rs.name.split("_", 1)[0]
     return Path(source_name).stem
 
 
 def emit_td(gs, source_name):
-    names = build_names(gs["decls"])
+    if not isinstance(gs, A.Program):
+        raise TypeError("emit_td needs the language AST, not a record model")
+    names = A.NameTable(gs)
+    decls = [_emit_ast_decl(d) for d in gs.decls]
+    includes = ['include "%s"' % i.path for i in gs.includes]
+    rulesets = _rule_sets_view(gs)
     emitter = NamedTdEmitter(names)
     target = target_name(gs, source_name)
     out = ["//===- " + target + "LegalizerInfo.td - generated legalizer rules "
@@ -879,12 +791,11 @@ def emit_td(gs, source_name):
            "// Do not edit: edit the source and re-run the generator.",
            "",
            "//===----------------------------------------------------------------------===//"]
-    out += gs["includes"]
+    out += includes
     out += ["//===----------------------------------------------------------------------===//", ""]
-    for kind, name, payload in gs["decls"]:
-        out.append(_emit_decl(kind, name, payload))
+    out += decls
     out.append("")
-    for rs in gs["rulesets"]:
+    for rs in rulesets:
         opcodes = ", ".join(json.dumps(o) for o in rs["opcodes"])
         out.append(f"def {rs['def']} : LegalizeRuleSet<[{opcodes}]> {{")
         if rs["comments"]:
@@ -910,7 +821,7 @@ def main(argv):
     b.add_argument("--td", required=True)
     b.add_argument("--core", required=True)
     b.add_argument("--out", required=True)
-    b.add_argument("--title", default="Target")
+    b.add_argument("--title", default=None)
     g = sub.add_parser("gen")
     g.add_argument("gisel")
     g.add_argument("--out", required=True)
@@ -924,12 +835,12 @@ def main(argv):
         print(f"{args.out}: {len(text.splitlines())} lines")
         return 0
     if args.cmd == "gen":
-        gs = parse_gisel(Path(args.gisel).read_text())
+        gs = A.parse_program(Path(args.gisel).read_text())
         Path(args.out).write_text(emit_td(gs, args.gisel))
-        print(f"{args.out}: {len(gs['rulesets'])} rule sets, "
-              f"{sum(len(r['rules']) for r in gs['rulesets'])} rules")
+        print(f"{args.out}: {len(gs.rulesets)} rule sets, "
+              f"{sum(len(r.rules) for r in gs.rulesets)} rules")
         return 0
-    gs = parse_gisel(Path(args.gisel).read_text())
+    gs = A.parse_program(Path(args.gisel).read_text())
     got = emit_td(gs, args.gisel)
     want = Path(args.td).read_text()
     if got == want:

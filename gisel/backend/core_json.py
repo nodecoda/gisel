@@ -6,7 +6,7 @@ Mirrors ``LegalizerInfoEmitter::runCore`` (LegalizerInfoEmitter.cpp:4816),
 The rule body is already the normal form; three things are re-spelled on the
 way out:
 
-* a type is named by its LLT, not by its record (``X86_s8`` -> ``s8``), and a
+* a type is named by its LLT, not by its record (``Target_s8`` -> ``s8``), and a
   pointer whose width the configuration decides is written as a wildcard
   (``p0:*``) inside a set but with its width (``p0:64``) in the domain;
 * a select type becomes a nested ``{"select": {...}}`` value, because the
@@ -21,7 +21,7 @@ the gate compares documents after dropping it (plan AC5).
 import json
 import re
 
-from .. import td as T
+from .. import ast as A
 
 SCHEMA = "legalizer-spec-core"
 VERSION = "0.4"
@@ -50,95 +50,111 @@ def _string(s):
     return json.dumps(s, ensure_ascii=False)
 
 
+def stage_lines(text):
+    """`ruleset Name:` -> line number, for origin.  Cheap and side-effect free."""
+    out = {}
+    for i, line in enumerate(text.splitlines(), 1):
+        s = line.strip()
+        if s.startswith("ruleset "):
+            rest = s[len("ruleset "):]
+            name = rest.split(":", 1)[0].strip()
+            out.setdefault(name, i)
+    return out
+
+
+
+
+# ---- AST path ------------------------------------------------------------
+
 class CoreJson:
-    def __init__(self, gs):
-        self.gs = gs
-        self.exprs = {n: p for k, n, p in gs["decls"] if k == "type"}
-        self.selects = {n: p for k, n, p in gs["decls"] if k == "select"}
-        self.sets = T.collect_named_sets(gs["decls"])
+    """The same normal form, read directly from ``gisel.ast.Program``."""
 
-    # ---- types -----------------------------------------------------------
+    def __init__(self, program):
+        self.program = program
 
-    def type_name(self, name):
-        """A record name -> its canonical LLT spelling (``s8``, ``p0:*``)."""
-        expr = self.exprs.get(name)
-        if expr is None:
-            # ValueError, not KeyError: `gisel gen` maps ValueError to
-            # `path: message` + exit 2.  A KeyError escaped as a traceback.
+    # ---- values ----------------------------------------------------------
+
+    def type_json(self, v):
+        if isinstance(v, str):
+            # parse_program only leaves a string here when no declaration
+            # named the token; the record backend rejected it the same way.
             raise ValueError("unknown type name %r: rules name declared "
                              "`type`/`select`/`type_set` records, not LLT "
-                             "literals" % name)
-        norm = T.normalize_llt(expr, self.exprs)
-        if not norm:
-            raise ValueError("cannot normalise type %r" % name)
-        return norm
+                             "literals" % v)
+        if isinstance(v, (A.Scalar, A.Integer, A.Float, A.BFloat16,
+                          A.Pointer, A.Vector)):
+            return A.llt_text(v)
+        if isinstance(v, A.SelectValue):
+            expr = self.type_json(v.otherwise)
+            for cond, then in reversed(v.arms):
+                guard = self.legacy_dag(cond) if v.legacy_guard else self.node(cond)
+                expr = {"select": {"cond": guard,
+                                   "then": self.type_json(then),
+                                   "else": expr}}
+            return expr
+        if isinstance(v, A.SetValue):
+            if v.of == "Int":
+                return {"kind": "set", "of": "Int", "arity": v.arity,
+                        "elems": list(v.elems)}
+            rows = []
+            for e in v.elems:
+                if isinstance(e, tuple):
+                    rows.append([self.type_json(x) for x in e])
+                else:
+                    rows.append(self.type_json(e))
+            out = {"kind": "set", "of": "Type"}
+            if v.arity != 1:
+                out["arity"] = v.arity
+            out["elems"] = rows
+            return out
+        raise TypeError(v)
 
-    def type_value(self, name):
-        """A value in a rule: a string, or a nested select object."""
-        if name in self.selects:
-            return self.select_json(name)
-        return self.type_name(name)
-
-    def select_json(self, name):
-        conds, types, otherwise = self.selects[name]
-        value = self.type_value(otherwise)
-        for i in range(len(conds) - 1, -1, -1):
-            cond = self.pred_name(conds[i])
-            value = {"select": {"cond": cond, "then": self.type_value(types[i]),
-                                "else": value}}
-        return value
-
-    def pred_name(self, name):
-        """A select guard: a feature leaf, or an inline predicate dag."""
-        feats = {n: p for k, n, p in self.gs["decls"] if k == "feature"}
-        if name in feats:
-            return {"kind": "leaf", "name": "hasFeature", "args": [feats[name]]}
-        preds = {n: p for k, n, p in self.gs["decls"] if k == "pred"}
-        if name in preds:
-            return T._bool_node(T.parse_bool(preds[name]), feats)
-        raise KeyError("unknown select guard %r" % name)
-
-    # ---- nodes -----------------------------------------------------------
+    def legacy_dag(self, node):
+        """Rule-guard semantics in the predicate-dag spelling old core used."""
+        k = node.get("kind")
+        if k == "leaf":
+            return dict(node)
+        if k == "not":
+            inner = node.get("arg") or node.get("args", [None])[0]
+            return {"kind": "not", "arg": self.legacy_dag(inner)}
+        if k in ("all", "any", "nary"):
+            op = node.get("op", "all_of" if k == "all" else "any_of")
+            return {"kind": "nary", "op": op,
+                    "args": [self.legacy_dag(a) for a in node.get("args", [])]}
+        return self.node(node)
 
     def node(self, n):
         if isinstance(n, list):
             return [self.node(v) for v in n]
         if not isinstance(n, dict):
             return n
-        out = {}
-        for k, v in n.items():
-            if k == "value" and n.get("kind") == "type" and isinstance(v, str) \
-                    and v in self.sets:
-                # A named set stays one object, expanded: one spelling, one
-                # normal form.
-                return {"kind": "set", "of": "Type",
-                        "elems": [self.type_value(m) for m in self.sets[v]]}
-            if k == "value" and n.get("kind") == "type":
-                out[k] = self.type_value(v) if isinstance(v, str) else self.node(v)
-            elif k == "elems" and n.get("kind") == "set":
-                if n.get("of") == "Int":
-                    # An immediate set is a flat list of integers, not type
-                    # spellings; there is nothing to normalize.
-                    out[k] = list(v)
-                else:
-                    out[k] = [self.type_value(row) if isinstance(row, str)
-                              else [self.type_value(x) if isinstance(x, str) else x
-                                    for x in row]
-                              for row in v]
+        k = n.get("kind")
+        if k == "type":
+            v = n["value"]
+            if isinstance(v, A.SetValue):
+                return self.type_json(v)
+            return {"kind": "type", "value": self.type_json(v)}
+        if k == "set":
+            out = dict(n)
+            if n.get("of", "Type") == "Int":
+                out["elems"] = list(n.get("elems", []))
             else:
-                out[k] = self.node(v)
-        return out
+                rows = []
+                for e in n.get("elems", []):
+                    if isinstance(e, list):
+                        if len(e) == 4 and isinstance(e[3], int):
+                            rows.append([self.type_json(x) for x in e[:3]] + [e[3]])
+                        else:
+                            rows.append([self.type_json(x) for x in e])
+                    else:
+                        rows.append(self.type_json(e))
+                out["elems"] = rows
+            return out
+        return {key: self.node(v) for key, v in n.items()}
 
     # ---- document --------------------------------------------------------
 
     def imms(self):
-        """The immediate slots any predicate reads, sorted.
-
-        ``domain.types`` is the set of type spellings in scope; ``domain.imms``
-        is the set of immediate *indices* a rule can look at.  There is no
-        immediate-count declaration to take it from, so it is read off the
-        document, the way ``mems``/``orderings`` would be.
-        """
         found = set()
 
         def walk(x):
@@ -151,30 +167,34 @@ class CoreJson:
                 for v in x.values():
                     walk(v)
 
-        walk(self.gs["rulesets"])
+        for rs in self.program.rulesets:
+            for rule in rs.rules:
+                walk(rule.predicate)
+                walk(rule.on)
+                walk(rule.to)
         return sorted(found)
 
     def domain(self):
         types = []
-        for k, name, expr in self.gs["decls"]:
-            if k != "type":
+        for d in self.program.decls:
+            if not isinstance(d, A.NamedType):
                 continue
-            norm = T.normalize_llt(expr, self.exprs)
-            if norm and ":*" not in norm:
+            norm = A.llt_text(d.llt)
+            if ":*" not in norm:
                 types.append(norm)
         types.append("p0:%d" % POINTER_WIDTH)
         return sorted(set(types))
 
     def rule(self, rule, ruleset, index, origin):
-        parts = ['"action":%s' % _string(rule["action"]),
-                 '"type_idx":%d' % rule["type_idx"],
-                 '"predicate":%s' % _compact(self.node(rule["predicate"])),
+        parts = ['"action":%s' % _string(rule.action),
+                 '"type_idx":%d' % rule.type_idx,
+                 '"predicate":%s' % _compact(self.node(rule.predicate)),
                  '"schema": "0.4"',
-                 '"op": %s' % _string(rule["op"])]
-        if rule.get("on") is not None:
-            parts.append('"on": %s' % _compact(self.node(rule["on"])))
-        if rule.get("to") is not None:
-            parts.append('"to": %s' % _compact(self.node(rule["to"])))
+                 '"op": %s' % _string(rule.op)]
+        if rule.on is not None:
+            parts.append('"on": %s' % _compact(self.node(rule.on)))
+        if rule.to is not None:
+            parts.append('"to": %s' % _compact(self.node(rule.to)))
         parts += ['"ruleset": %s' % _string(ruleset),
                   '"rule_index": %d' % index,
                   '"origin": %s' % _compact(origin)]
@@ -192,34 +212,23 @@ class CoreJson:
                % (", ".join(_string(t) for t in self.domain()),
                   ", ".join(str(i) for i in self.imms())),
                '  "rulesets": [']
-        for si, rs in enumerate(self.gs["rulesets"]):
-            origin = {"source": source_name,
-                      "line": lines.get(rs["def"], 0)}
+        for si, rs in enumerate(self.program.rulesets):
+            origin = {"source": source_name, "line": lines.get(rs.name, 0)}
             out.append('    {"def": %s, "origin": %s,'
-                       % (_string(rs["def"]), _compact(origin)))
+                       % (_string(rs.name), _compact(origin)))
             out.append('     "opcodes": [%s],'
-                       % ", ".join(_string(o) for o in rs["opcodes"]))
+                       % ", ".join(_string(o) for o in rs.opcodes))
             out.append('     "rules": [')
-            for ri, rule in enumerate(rs["rules"]):
-                text = self.rule(rule, rs["def"], ri, origin)
-                out.append("        " + text + ("," if ri + 1 < len(rs["rules"]) else ""))
-            out.append("     ]}" + ("," if si + 1 < len(self.gs["rulesets"]) else ""))
+            for ri, rule in enumerate(rs.rules):
+                text = self.rule(rule, rs.name, ri, origin)
+                out.append("        " + text + ("," if ri + 1 < len(rs.rules) else ""))
+            out.append("     ]}" + ("," if si + 1 < len(self.program.rulesets) else ""))
         out += ["  ],", '  "escapes": []', "}"]
         return "\n".join(out) + "\n"
 
 
-def stage_lines(text):
-    """`ruleset Name:` -> line number, for origin.  Cheap and side-effect free."""
-    out = {}
-    for i, line in enumerate(text.splitlines(), 1):
-        s = line.strip()
-        if s.startswith("ruleset "):
-            rest = s[len("ruleset "):]
-            name = rest.split(":", 1)[0].strip()
-            out.setdefault(name, i)
-    return out
-
-
 def emit_core(gs, source_name, source_text=None):
+    if not isinstance(gs, A.Program):
+        raise TypeError("emit_core needs the language AST, not a record model")
     lines = stage_lines(source_text) if source_text else {}
     return CoreJson(gs).emit(source_name, lines)

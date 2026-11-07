@@ -9,10 +9,12 @@ is written.
 Classes are keyed by ``(kind, element bits, lanes)`` and ordered by
 ``lessTypeClass``: kind rank, then element bits, then lanes.  The ``root`` of a
 class is the first named type (in declaration order) that produced it, which
-is what the generated ``// X86_s16`` comments record.
+is what the generated ``// Target_s16`` comments record.
 """
 
 from collections import namedtuple
+
+from .. import ast as A
 
 TableType = namedtuple("TableType", "kind bits lanes root")
 
@@ -42,130 +44,31 @@ KIND_NAME = {
     "ScalablePtrVector": "Kind_ScalablePtrVector",
 }
 
-SCALARS = ("Scalar", "Integer", "Float", "BFloat")
-
-
-def strip_parens(s):
-    s = s.strip()
-    while s.startswith("(") and s.endswith(")"):
-        depth = 0
-        for i, ch in enumerate(s):
-            if ch == "(":
-                depth += 1
-            elif ch == ")":
-                depth -= 1
-                if depth == 0 and i != len(s) - 1:
-                    return s  # the leading '(' closes before the end
-        s = s[1:-1].strip()
-    return s
-
-
-def split_conditional(s):
-    """`Cond ? Then : Else` at depth 0 -> (Then, Else), else None."""
-    depth = 0
-    q = -1
-    for i, ch in enumerate(s):
-        if ch in "([":
-            depth += 1
-        elif ch in ")]":
-            depth -= 1
-        elif ch == "?" and depth == 0:
-            q = i
-            break
-    if q < 0:
-        return None
-    depth = 0
-    for i in range(q + 1, len(s)):
-        ch = s[i]
-        if ch in "([":
-            depth += 1
-        elif ch in ")]":
-            depth -= 1
-        elif ch == ":" and depth == 0:
-            return s[q + 1:i].strip(), s[i + 1:].strip()
-    return None
-
-
-def _arg_of(expr, prefix):
-    if expr.startswith(prefix) and expr.endswith(")"):
-        return expr[len(prefix):-1].strip()
-    return None
-
-
-def _split_lanes(arg):
-    depth = 0
-    for i, ch in enumerate(arg):
-        if ch in "([":
-            depth += 1
-        elif ch in ")]":
-            depth -= 1
-        elif ch == "," and depth == 0:
-            return arg[:i].strip(), arg[i + 1:].strip()
-    return None, None
-
-
-class Resolver:
-    def __init__(self, gs):
-        # A select type names a condition, not a class; its branches are
-        # named types in their own right and are collected when reached.
-        self.named = {n: p for k, n, p in gs["decls"] if k == "type"}
-
-    def resolve(self, expr, root, depth=0):
-        expr = strip_parens(expr)
-        if depth > 16:
-            raise ValueError("type expression nests too deep: %r" % expr)
-
-        split = split_conditional(expr)
-        if split:
-            return (self.resolve(split[0], root, depth) +
-                    self.resolve(split[1], root, depth))
-
-        arg = _arg_of(expr, "LLT::scalar(")
-        if arg is not None:
-            return [TableType("Scalar", int(arg), 1, root)]
-        if _arg_of(expr, "LLT::pointer(") is not None:
-            return [TableType("Pointer", 0, 1, root)]
-        arg = _arg_of(expr, "LLT::integer(")
-        if arg is not None:
-            return [TableType("Integer", int(arg), 1, root)]
-
-        for name, bits in (("float16", 16), ("float32", 32), ("float64", 64),
-                           ("float128", 128)):
-            if expr == "LLT::%s()" % name:
-                return [TableType("Float", bits, 1, root)]
-        if expr == "LLT::bfloat16()":
-            return [TableType("BFloat", 16, 1, root)]
-
-        for prefix, kind, ptr_kind in (
-                ("LLT::scalable_vector(", "ScalableVector",
-                 "ScalablePtrVector"),
-                ("LLT::fixed_vector(", "Vector", "PtrVector")):
-            arg = _arg_of(expr, prefix)
-            if arg is None:
-                continue
-            lanes, elem = _split_lanes(arg)
-            if lanes is None:
-                raise ValueError("malformed vector type %r" % expr)
-            lanes = int(lanes)
-            if elem.isdigit():
-                return [TableType(kind, int(elem), lanes, root)]
-            out = []
-            for e in self.resolve(elem, root, depth + 1):
-                if e.kind in SCALARS:
-                    out.append(TableType(kind, e.bits, lanes, root))
-                elif e.kind == "Pointer":
-                    out.append(TableType(ptr_kind, 0, lanes, root))
-                else:
-                    raise ValueError("unsupported vector element in %r" % expr)
-            return out
-
-        if expr and (expr[0].isalpha() or expr[0] == "_") and \
-                all(c.isalnum() or c == "_" for c in expr):
-            if expr not in self.named:
-                raise ValueError("unknown named type %r" % expr)
-            return self.resolve(self.named[expr], root, depth + 1)
-
-        raise ValueError("cannot derive a table type class from %r" % expr)
+def table_types(llt, root):
+    """Structured LLT -> the type classes the table needs (Resolver, :5157)."""
+    if isinstance(llt, A.Scalar):
+        return [TableType("Scalar", llt.bits, 1, root)]
+    if isinstance(llt, A.Integer):
+        return [TableType("Integer", llt.bits, 1, root)]
+    if isinstance(llt, A.Float):
+        return [TableType("Float", llt.bits, 1, root)]
+    if isinstance(llt, A.BFloat16):
+        return [TableType("BFloat", 16, 1, root)]
+    if isinstance(llt, A.Pointer):
+        # The table class deliberately ignores the pointer width; that is
+        # the one axis the .td leaves to the subtarget (:126-127).
+        return [TableType("Pointer", 0, 1, root)]
+    if isinstance(llt, A.Vector):
+        kind = "ScalableVector" if llt.scalable else "Vector"
+        pkind = "ScalablePtrVector" if llt.scalable else "PtrVector"
+        elem = llt.elem
+        if isinstance(elem, A.Pointer):
+            return [TableType(pkind, 0, llt.lanes, root)]
+        if isinstance(elem, (A.Scalar, A.Integer, A.Float, A.BFloat16)):
+            bits = 16 if isinstance(elem, A.BFloat16) else elem.bits
+            return [TableType(kind, bits, llt.lanes, root)]
+        raise ValueError("unsupported vector element in %r" % (llt,))
+    raise ValueError("cannot derive a table type class from %r" % (llt,))
 
 
 def less_type_class(t):
@@ -173,11 +76,12 @@ def less_type_class(t):
 
 
 def collect_classes(gs):
-    r = Resolver(gs)
-    types = [(n, p) for k, n, p in gs["decls"] if k == "type"]
+    if not isinstance(gs, A.Program):
+        raise TypeError("collect_classes needs the language AST")
     seen, out = set(), []
-    for name, expr in types:
-        for t in r.resolve(expr, name):
+    for name, llt in [(d.name, d.llt) for d in gs.decls
+                      if isinstance(d, A.NamedType)]:
+        for t in table_types(llt, name):
             key = (t.kind, t.bits, t.lanes)
             if key in seen:
                 continue
@@ -190,12 +94,13 @@ def collect_classes(gs):
 
 
 def collect_mem_classes(gs, classes=None):
-    r = Resolver(gs)
+    if not isinstance(gs, A.Program):
+        raise TypeError("collect_mem_classes needs the language AST")
     classes = classes if classes is not None else collect_classes(gs)
-    types = [(n, p) for k, n, p in gs["decls"] if k == "type"]
     seen, out = set(), []
-    for name, expr in types:
-        for t in r.resolve(expr, name):
+    for name, llt in [(d.name, d.llt) for d in gs.decls
+                      if isinstance(d, A.NamedType)]:
+        for t in table_types(llt, name):
             key = (t.kind, t.bits, t.lanes)
             if key in seen:
                 continue
@@ -276,7 +181,7 @@ def needs_mem_desc(ruleset):
 
 def align_thresholds(gs):
     out = set()
-    for rs in gs["rulesets"]:
+    for rs in (gs.rulesets if isinstance(gs, A.Program) else gs["rulesets"]):
         if not needs_mem_desc(rs):
             continue
         for r in rs["rules"]:
@@ -285,7 +190,10 @@ def align_thresholds(gs):
 
 
 def emit_feature_signature(gs, P):
-    feats = [(n, p) for k, n, p in gs["decls"] if k == "feature"]
+    if isinstance(gs, A.Program):
+        feats = [(d.name, d.cxx) for d in gs.decls if isinstance(d, A.Feature)]
+    else:
+        feats = [(n, p) for k, n, p in gs["decls"] if k == "feature"]
     if len(feats) > 32:
         raise ValueError("feature signature needs more than 32 bits")
     out = ["// Environment signature: one bit per LegalizeFeature, in .td order.",
@@ -343,7 +251,7 @@ def emit_head(gs, P):
     out.append("// reads a memory descriptor adds the descriptor axis.  A rule set")
     out.append("// that needs anything else is not in this table (see the emitter).")
     out.append("static constexpr LegalizerTableDesc %sTables[] = {" % P)
-    for i, rs in enumerate(gs["rulesets"]):
+    for i, rs in enumerate(gs.rulesets if isinstance(gs, A.Program) else gs["rulesets"]):
         has_mem = needs_mem_desc(rs)
         out.append("  /*%d*/ {{0, 1}, {%d, %d}, %s, %s}, // %s"
                    % (i, len(classes), len(classes),
@@ -358,7 +266,7 @@ def emit_head(gs, P):
     lower = P[:1].lower() + P[1:]
     out.append("static inline int %sTableForOpcode(unsigned Opcode) {" % lower)
     out.append("  switch (Opcode) {")
-    for i, rs in enumerate(gs["rulesets"]):
+    for i, rs in enumerate(gs.rulesets if isinstance(gs, A.Program) else gs["rulesets"]):
         for op in rs["opcodes"]:
             out.append("  case TargetOpcode::%s: return %d;" % (op, i))
     out += ["  default: return -1;", "  }", "}", ""]
@@ -532,23 +440,40 @@ def translate_core_rule(rule, cxx):
 
 def emit_prologue(gs):
     """EmitPrologue(), :7560: every feature, type and type list, maybe_unused."""
-    out = []
-    for k, name, cond in gs["decls"]:
-        if k == "feature":
-            out.append("  [[maybe_unused]] const bool %s = %s;" % (name, cond))
-    cxx = None
     from .llvm_inc import IncEmitter
-    cxx = IncEmitter(gs, qvar="Q")
-    for k, name, payload in gs["decls"]:
-        if k == "type":
-            out.append("  [[maybe_unused]] const LLT %s = %s;" % (name, payload))
-        elif k == "select":
-            out.append("  [[maybe_unused]] const LLT %s = %s;"
-                       % (name, cxx._select_text(payload)))
-    for k, name, payload in gs["decls"]:
-        if k == "type_list":
-            out.append("  [[maybe_unused]] const std::initializer_list<LLT> %s = {%s};"
-                       % (name, ", ".join(payload)))
+    out = []
+    if isinstance(gs, A.Program):
+        for d in gs.decls:
+            if isinstance(d, A.Feature):
+                out.append("  [[maybe_unused]] const bool %s = %s;"
+                           % (d.name, d.cxx))
+        cxx = IncEmitter(gs, qvar="Q")
+        for d in gs.decls:
+            if isinstance(d, A.NamedType):
+                out.append("  [[maybe_unused]] const LLT %s = %s;"
+                           % (d.name, d.source))
+            elif isinstance(d, A.SelectType):
+                out.append("  [[maybe_unused]] const LLT %s = %s;"
+                           % (d.name, cxx._select_text(d)))
+        for d in gs.decls:
+            if isinstance(d, A.TypeList):
+                out.append("  [[maybe_unused]] const std::initializer_list<LLT> "
+                           "%s = {%s};" % (d.name, ", ".join(d.members)))
+    else:
+        for k, name, cond in gs["decls"]:
+            if k == "feature":
+                out.append("  [[maybe_unused]] const bool %s = %s;" % (name, cond))
+        cxx = IncEmitter(gs, qvar="Q")
+        for k, name, payload in gs["decls"]:
+            if k == "type":
+                out.append("  [[maybe_unused]] const LLT %s = %s;" % (name, payload))
+            elif k == "select":
+                out.append("  [[maybe_unused]] const LLT %s = %s;"
+                           % (name, cxx._select_text(payload)))
+        for k, name, payload in gs["decls"]:
+            if k == "type_list":
+                out.append("  [[maybe_unused]] const std::initializer_list<LLT> "
+                           "%s = {%s};" % (name, ", ".join(payload)))
     out.append("")
     return out
 
@@ -565,9 +490,10 @@ def emit_evaluators(gs, P):
     from .llvm_inc import IncEmitter
     cxx = IncEmitter(gs, qvar="Q")
     prologue = emit_prologue(gs)
+    rulesets = gs.rulesets if isinstance(gs, A.Program) else gs["rulesets"]
     out = list(EVAL_NOTE)
     opaque = []
-    for i, rs in enumerate(gs["rulesets"]):
+    for i, rs in enumerate(rulesets):
         out.append("")
         body, why = [], None
         for rule in rs["rules"]:
@@ -598,7 +524,7 @@ def emit_evaluators(gs, P):
                "const %sSubtarget &Subtarget," % (P, P))
     out.append("                         const LegalityQuery &Q) {")
     out.append("  switch (Table) {")
-    for i, rs in enumerate(gs["rulesets"]):
+    for i, rs in enumerate(rulesets):
         out.append("  case %d: // %s" % (i, rs["def"]))
         if opaque[i] is not None:
             out.append("    return std::nullopt;")

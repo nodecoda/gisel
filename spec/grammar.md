@@ -1,7 +1,7 @@
 # `.gisel` grammar (v0.1)
 
-状态: 规范性。实现: `gisel/td.py:513`（`parse_gisel`，文件级）与
-`gisel/dsl.py:149`（`Parser`，规则级）。语料: `tests/corpus/*.gisel`
+状态: 规范性。实现: `gisel/ast.py`（`parse_program`，文件级 AST）与
+`gisel/dsl.py`（`Parser`，规则体）。语料: `tests/corpus/*.gisel`
 （778 + 1310 行，1075 条规则，有 `.td` 对照）；
 另有两份**无 `.td` 的探针语料** `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
 `WebAssemblyLegalizerInfo.gisel`（228 行 / 108 条），见 `docs/REPORT-wasm.md`。
@@ -12,7 +12,7 @@
 
 ## 1 词法
 
-- 行注释 `// ...`；空行忽略（`td.py:520-524`）。
+- 行注释 `// ...`；空行忽略（`ast.parse_program`）。
 - 缩进敏感：规则体用 Python 风格 `INDENT`/`DEDENT` 分组，只计前导空格
   （`dsl.py:99-115`）。
 - 标识符 `[A-Za-z_][A-Za-z0-9_]*`；关键字就是这些标识符（无保留字表）。
@@ -20,7 +20,7 @@
   `[nx]v<lanes>` 可选前缀 + `s<bits> | i<bits> | f<bits> | bf16 | p<as>:<bits> | p<as>:*`。
   例: `s32`、`i8`、`f16`、`bf16`、`p0:64`、`p0:*`、`v4s32`、`nxv16i8`、`v2p0:*`。
 - 整数、双引号字符串、标点 `( ) , [ ] :`、比较符 `== != <= >= < >`。
-- 长规则可在括号内换行续写；`_join_continuations`（`td.py:482`）按括号深度拼接。
+- 长规则可在括号内换行续写；`ast._join_continuations` 按括号深度拼接。
 
 ## 2 文件结构
 
@@ -38,9 +38,44 @@ type_set   := "type_set"  ID "=" "[" type {"," type} "]" | ID ".Elems"
 type_list  := "type_list" ID "=" "[" type {"," type} "]"
 ```
 
-`feature`/`type` 的右侧是**原文**，只有 `select`/`pred`/`type_set` 会被解析
-（`td.py:361-365` 的 `DECL_RE`）。名字区分大小写；生成 `.td` 时再解析回
-target 的记录名（`td.py:317` `build_names`）。
+`feature`/`type` 的右侧保留**原文**（`Feature.cxx`、`NamedType.source`，
+供 `--emit=td/.inc` 渲染）；`select`/`pred`/`type_set` 被解析成语义值。
+名字区分大小写。`type` 右侧的 C++ LLT 表达式只在前端解析一次，落成结构化
+`LLT`（见 §2.1）；记录名不在 AST 里，只在 `.td`/`.inc` 的出口由
+`ast.NameTable` 计算。
+
+## 2.1 AST（规范形）
+
+前端只产出一种模型（`gisel/ast.py`），五个后端都消费它。记录名、`X86_`
+前缀、`LegalizeFeature<...>` 这些都是**渲染词汇**，不属于模型。
+
+```
+Program  := Include* Decl* RuleSet*
+Include  := { path, line }
+Decl     := Feature(name, cxx) | NamedType(name, LLT, source)
+          | PredicateDecl(name, pred, source)
+          | SelectType(name, arms, otherwise, value)
+          | TypeSet(name, members, source_ref, value)
+          | TypeList(name, members, value)
+RuleSet  := (name, opcodes: str+, rules: Rule*, comments, coverage, line)
+Rule     := { op, action, type_idx, on?, to?, predicate, line }
+LLT      := Scalar(bits) | Integer(bits) | Float(bits) | BFloat16
+          | Pointer(addrspace, bits|*) | Vector(lanes, scalable, elem)
+```
+
+- `LLT` 是结构化的：`p0:64` 与 `p0:*` 是 `Pointer(0, 64)` 与
+  `Pointer(0, None)`，不是字符串；`table.py` 不再解析 C++ 文本。
+- 规则类型位置的值是 `LLT | SelectValue | SetValue`。`SelectValue` 的
+  `arms` 是 `(predicate, TypeValue)`；`SetValue` 保留 `of/arity/elems`。
+- `NamedType.source` 是 `LLT::scalar(...)` 原文，只为渲染保留；语义字段是
+  `llt`。
+- `TypeSet.members` / `TypeList.members` 是源里的记录名（渲染用）；
+  `value` 是解析后的成员值。`source_ref` 记录 `X.Elems` 形式。
+- `RuleSet.name` 是 `ruleset` 的 `def` 名；它不参与语义，`eval`/`table`/
+  `core` 只把它当输出标签。
+- 规则体由 `dsl.Parser` 编译成 schema-0.4 节点后，`parse_program` 再把其中
+  的类型名解析成 `LLT`/`SelectValue`/`SetValue`。解析不到的名字保留为字符串，
+  由 J1 报 `unknown type name`；`gen` 在出口拒绝它。
 
 ## 3 规则集
 
@@ -149,17 +184,18 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 
 - 缩进只认空格；`\t` 不参与层级计算（语料全部用空格）。
 - `type` 右侧做**形状检查**：只接受 `LLT::scalar/integer/pointer/`
-  `fixed_vector/scalable_vector/float*`，可嵌套；无法规范化时 `parse_gisel`
-  直接拒绝（exit 2）。任意 C++ 常量表达式（如 `LLT::scalar(8*4)`）会被拒——
+  `fixed_vector/scalable_vector/float*`，可嵌套；无法规范化时
+  `ast._parse_llt` 直接拒绝（exit 2）。任意 C++ 常量表达式（如 `LLT::scalar(8*4)`）会被拒——
   这是刻意的：能规范化才能进 core JSON 与 `.td` 的 `LegalizeNamedType`。
 - `feature` 右侧**不检查**：它是 target 特定的任意 C++ bool 表达式，gisel
   不持有 `Subtarget` 接口；错误只能由 C++ 编译期暴露。
 - 规则里的 `feature("...")` 必须与某个 `feature NAME = ...` 的表达式文本完全
   一致，否则 `gen --emit=inc` 报 `undeclared feature expression`。
 - 顶层声明顺序即 `.td` 中的声明顺序；`include` 行原样保留，由 `--emit=td` 输出。
-- `type_set X = Y.Elems` 是引用，不是拷贝（`td.py:129-131`）。
+- `type_set X = Y.Elems` 是引用，不是拷贝（`ast.parse_program` 的
+  `resolve_setlike`）。
 - 语法错误报 `path:line: message`（exit 2），行号是 `.gisel` 的物理行；
-  被续行拆开的规则报该语句的起始行（`td.py:482` 的 line map）。
+  被续行拆开的规则报该语句的起始行（`ast.parse_program` 传入的 line map）。
 - `lint` 只做单步静态检查，不求值、不检查终止性；求值见 `gisel eval`。
 - `imm(i)` 没有下界检查（见 §4）：`imm(7)` 在只有 1 个立即数的指令上不会被 lint 拦下。
 - `--emit=td` 会把立即数规则写成 `(CoreIn (Imm 0), [8, 16])`，而 LLVM 侧的
@@ -171,7 +207,8 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 - 导入器（`tools/import-cxx.py`）的产物暴露了三条表达边界，均**不改语法**：
   - 整型 subtarget 值（`ST.getXLen()`）不是 `feature`（bool）：用在比较右侧时
     换成 `select(feature("XLen == 64"), 64, 32)`。`feature` 只有 Bool 一种 sort。
-  - `select` 的条件只认**名字**（`feature` 或 `pred` 记录，`td.py:_parse_sel`），
+  - `select` 的条件只认**名字**（`feature` 或 `pred` 记录，
+    `ast._parse_select_chain`），
     内联的 `feature("...")` 复合表达式要先落成 `pred`；类型位置的 ternary 同理。
   - `in(slot(i), X)` 的第二参是类型或类型集，不是 `ty(...)` 表达式
     （`dsl.py:313` `parse_set_or_type`）——`typeIs(i, T)` 要译成裸 `T`。

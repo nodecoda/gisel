@@ -31,9 +31,6 @@ bounds (arity imported from GenericOpcodes.td via build_arity_manifest).
 import json
 import os
 import re
-import subprocess
-import sys
-import tempfile
 
 # ---- normal-form node builders (schema 0.4) -------------------------------
 
@@ -454,65 +451,6 @@ class Parser:
 
 # ---- compiler: AST -> normal form ----------------------------------------
 
-def canonicalize_rulesets(rulesets):
-    """One rule set per opcode: the artifact TableGen can read back.
-
-    `getActionDefinitionsBuilder(Op)` appends a table every time it is called,
-    and `getAction` walks the tables in order, so a second table only answers
-    the queries the first one did not.  The `.td` form has no such pairing --
-    one `LegalizeRuleSet` record is (opcodes, rules) -- and llvm-tblgen
-    rejects an opcode covered twice
-    (`test/TableGen/legalizer-info-duplicate.td`).
-
-    Concatenating an opcode's tables in document order keeps the first-match
-    order, so every answer is unchanged.  Opcodes whose rule sequences still
-    coincide share one table; only the opcodes that were described twice pay
-    for a copy.  AArch64 and X86 have no duplicate opcode, so this is the
-    identity for them.
-    """
-    seen = {}
-    for rs in rulesets:
-        for op in rs["opcodes"]:
-            seen[op] = seen.get(op, 0) + 1
-    if all(n == 1 for n in seen.values()):
-        # Nothing to consolidate; keep the artifact byte-identical.
-        return list(rulesets)
-    seq = {}
-    first_def = {}
-    for rs in rulesets:
-        for op in rs["opcodes"]:
-            first_def.setdefault(op, rs["def"])
-            seq.setdefault(op, []).extend(rs["rules"])
-    groups = {}
-    order = []
-    for op, rules in seq.items():
-        key = json.dumps(rules, sort_keys=True)
-        if key not in groups:
-            # Keep the other keys a source block carries (comments, source
-            # lines); only the (opcodes, rules) split is ours.
-            g = dict(rs)
-            g["def"], g["opcodes"], g["rules"] = first_def[op], [], rules
-            groups[key] = g
-            order.append(key)
-        g = groups[key]
-        g["opcodes"].append(op)
-        if "legacy" in rs:
-            g["legacy"] = sorted(set(g.get("legacy", ())) | set(rs["legacy"]))
-    out = []
-    used = set()
-    for key in order:
-        g = groups[key]
-        name, n = g["def"], 2
-        while name in used:
-            name = "%s_%d" % (g["def"], n)
-            n += 1
-        used.add(name)
-        g = dict(g)
-        g["def"] = name
-        out.append(g)
-    return out
-
-
 def compile_rulesets(ast):
     """Return list of rule dicts in schema-0.4 normal form (semantic fields)."""
     out = []
@@ -576,11 +514,6 @@ def compile_stmt(st):
     raise ValueError(f"unknown stmt {op!r}")
 
 # ---- compare against real -gen-legalizer-core output ----------------------
-
-STRIP_KEYS = {"schema", "ruleset", "rule_index", "origin", "def", "_line"}
-
-def strip(rule):
-    return {k: v for k, v in rule.items() if k not in STRIP_KEYS}
 
 def _llt_leaf(name):
     """A non-vector canonical type name -> the LLT expression a
@@ -1032,7 +965,7 @@ def _tc(node, arity, errs, names=None):
         lhs = tc(args[0])
         rhs = args[1] if len(args) > 1 else {}
         # The right-hand side was never visited: a single named type
-        # (`in(slot(0), X86_Vec128)`) and a set's members are only reachable
+        # (`in(slot(0), Target_Vec128)`) and a set's members are only reachable
         # through here, so `[s8]` with no `type s8 = ...` used to lint clean.
         if isinstance(rhs, dict) and rhs.get("kind") in ("type", "set"):
             tc(rhs)
@@ -1058,36 +991,6 @@ def _tc(node, arity, errs, names=None):
         need_any(0, {"Type", "Int"})
         return "Bool"
     raise ValueError(f"typecheck: unknown node kind {k!r}")
-
-def undeclared_features(gs):
-    """[(line, ruleset, expr)] for every `feature("x")` with no declaration.
-
-    A feature is spelled as its C++ expression, not by the name of the
-    `feature NAME = <expr>` declaration.  The `.inc` backend checked the
-    spelling against the declarations; `lint` and `--emit=td` did not, so an
-    undeclared expression could pass both and only fail much later, when the
-    generated record named a feature TableGen had never seen.
-    """
-    declared = {d[2] for d in gs["decls"] if d[0] == "feature"}
-    out = []
-
-    def walk(node, line, ruleset):
-        if isinstance(node, dict):
-            if node.get("kind") == "leaf" and node.get("name") == "hasFeature":
-                expr = node.get("args", [None])[0]
-                if expr not in declared:
-                    out.append((line, ruleset, expr))
-            for value in node.values():
-                walk(value, line, ruleset)
-        elif isinstance(node, list):
-            for value in node:
-                walk(value, line, ruleset)
-
-    for rs in gs["rulesets"]:
-        for rule in rs["rules"]:
-            walk(rule, rule.get("_line", 0), rs["def"])
-    return out
-
 
 def check_rule(rule, arity, errs, names=None):
     op = rule["op"]
@@ -1237,62 +1140,6 @@ def check_rules(compiled, opcodes, manifest, errs):
     for r in compiled:
         check_rule(r, arity if arity is not None else 10**9, errs)
     return arity
-
-
-TBLGEN = "/home/ubuntu/llvm/builds/explore/bin/llvm-tblgen"
-INC = ["-I/home/ubuntu/llvm/trees/explore/llvm/include",
-       "-I/home/ubuntu/llvm/builds/explore/include",
-       "-I/home/ubuntu/llvm/trees/explore/llvm/lib/Target"]
-
-
-def roundtrip_corpus(name, core_json_path, target_dir):
-    """baseline core.json -> reverse-emit .td -> tblgen -> normal form diff."""
-    baseline = json.load(open(core_json_path))
-    rulesets = [{"def": rs["def"], "opcodes": rs["opcodes"], "rules": rs["rules"]}
-                for rs in baseline["rulesets"]]
-    td = TdEmitter(rulesets).emit()
-    d = tempfile.mkdtemp(prefix="dsl-rt-")
-    path = os.path.join(d, "ReverseLegalizerInfo.td")
-    with open(path, "w") as f:
-        f.write(td)
-    out = os.path.join(d, "out.core.json")
-    inc = INC + [f"-I/home/ubuntu/llvm/trees/explore/llvm/lib/Target/{target_dir}"]
-    r = subprocess.run([TBLGEN, "-gen-legalizer-core", *inc, path, "-o", out],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        print(f"({name}) tblgen failed:\n{r.stderr}")
-        print("emitted .td head:\n" + "\n".join(td.splitlines()[:40]))
-        return 10**9
-    gen = json.load(open(out))
-    brs = {rs["def"]: rs for rs in baseline["rulesets"]}
-    grs = {rs["def"]: rs for rs in gen["rulesets"]}
-    total = diff = 0
-    for defn, br in brs.items():
-        if defn not in grs:
-            print(f"  {name}: missing ruleset {defn}")
-            diff += 1
-            continue
-        gr = grs[defn]
-        if br["opcodes"] != gr["opcodes"]:
-            print(f"  {name}:{defn} opcodes differ {br['opcodes']} vs {gr['opcodes']}")
-            diff += 1
-        brr, grr = br["rules"], gr["rules"]
-        total += len(brr)
-        if len(brr) != len(grr):
-            print(f"  {name}:{defn} rule count {len(brr)} vs {len(grr)}")
-            diff += 1
-            continue
-        for i, (e, g) in enumerate(zip(brr, grr)):
-            if strip(e) != strip(g):
-                if diff < 3:
-                    print(f"  {name}:{defn}#{i} DIFF")
-                    print("    oracle:", json.dumps(strip(e), sort_keys=True)[:400])
-                    print("    gen   :", json.dumps(strip(g), sort_keys=True)[:400])
-                diff += 1
-    print(f"({name}) round-trip: {total} rules, {diff} diffs "
-          f"{'ALL MATCH' if diff == 0 else 'SOME DIFF'}")
-    return diff
-
 
 
 # ---- free-form DSL source renderer (normal form -> DSL text) --------------
@@ -1466,156 +1313,3 @@ def render_ruleset(rs):
     for r in rs["rules"]:
         lines.append(f"    {render_rule(r)}")
     return "\n".join(lines)
-
-
-def normalize_nary(n):
-    """Legacy nary/not(arg) predicate-dag -> core all/any/not(args) form."""
-    if isinstance(n, dict):
-        k = n.get("kind")
-        if k == "nary":
-            return _node("all" if n["op"] == "all_of" else "any",
-                         args=[normalize_nary(a) for a in n["args"]])
-        if k == "not" and "arg" in n and "args" not in n:
-            return _node("not", args=[normalize_nary(n["arg"])])
-        return {kk: normalize_nary(vv) for kk, vv in n.items()}
-    if isinstance(n, list):
-        return [normalize_nary(x) for x in n]
-    return n
-
-
-def forward_roundtrip(name, core_json_path):
-    """baseline core.json -> free-form DSL source -> parse -> normal form diff."""
-    baseline = json.load(open(core_json_path))
-    total = diff = 0
-    src_parts = []
-    for rs in baseline["rulesets"]:
-        src_parts.append(render_ruleset(rs))
-    src = "\n\n".join(src_parts) + "\n"
-    ast = Parser(src).parse()
-    compiled = [normalize_nary(r) for r in compile_rulesets(ast)]
-    expect = [normalize_nary(r) for rs in baseline["rulesets"]
-              for r in rs["rules"]]
-    total = len(expect)
-    if len(compiled) != len(expect):
-        print(f"({name}) forward: rule count {len(compiled)} vs {len(expect)}")
-        diff += abs(len(compiled) - len(expect))
-    for i, (e, g) in enumerate(zip(expect, compiled)):
-        if strip(e) != strip(g):
-            if diff < 3:
-                print(f"({name}) forward #{i} DIFF")
-                print("  oracle:", json.dumps(strip(e), sort_keys=True)[:400])
-                print("  gen   :", json.dumps(strip(g), sort_keys=True)[:400])
-            diff += 1
-    print(f"({name}) forward round-trip: {total} rules, {diff} diffs "
-          f"{'ALL MATCH' if diff == 0 else 'SOME DIFF'}")
-    return diff
-
-
-
-def main():
-    src = r'''
-rule G_ADD G_SUB:
-    legal in(slot(0), [s8, s16, s32])
-    legal feature("Subtarget.is64Bit()") and in(slot(0), s64)
-    legal feature("Subtarget.hasSSE2()") and in(slot(0), [v16s8, v8s16, v4s32, v2s64])
-    legal feature("Subtarget.hasAVX2()") and in(slot(0), [v32s8, v16s16, v8s32, v4s64])
-    legal feature("Subtarget.hasAVX512()") and in(slot(0), [v16s32, v8s64])
-    legal feature("Subtarget.hasAVX512() && Subtarget.hasBWI()") and in(slot(0), [v64s8, v32s16])
-    clamp_min(0, s8, 16)
-    clamp_min(0, s16, 8)
-    clamp_min(0, s32, 4)
-    clamp_min(0, s64, 2)
-    clamp_max(0, s8, select(feature("Subtarget.hasAVX512() && Subtarget.hasBWI()"), 64, select(feature("Subtarget.hasAVX2()"), 32, 16)))
-    clamp_max(0, s16, select(feature("Subtarget.hasAVX512() && Subtarget.hasBWI()"), 32, select(feature("Subtarget.hasAVX2()"), 16, 8)))
-    clamp_max(0, s32, select(feature("Subtarget.hasAVX512()"), 16, select(feature("Subtarget.hasAVX2()"), 8, 4)))
-    clamp_max(0, s64, select(feature("Subtarget.hasAVX512()"), 8, select(feature("Subtarget.hasAVX2()"), 4, 2)))
-    widen(slot(0), pow2_min(32))
-    widen(slot(0), ty(s8))
-    narrow(slot(0), ty(select_type(feature("Subtarget.is64Bit()"), s64, s32)))
-    scalarize(slot(0))
-'''
-    ast = Parser(src).parse()
-    compiled = compile_rulesets(ast)
-
-    x86 = json.load(open("/home/ubuntu/legalizer-baseline/x86.core.json"))
-    oracle = next(r for r in x86["rulesets"] if r["def"] == "X86_ADD")["rules"]
-    assert len(compiled) == len(oracle), (len(compiled), len(oracle))
-
-    # (a) direct compile -> normal form, vs baseline
-    ok1 = all(strip(e) == g for e, g in zip(oracle, compiled))
-    print(f"(a) direct compile: {len(compiled)} rules "
-          f"{'ALL MATCH' if ok1 else 'SOME DIFF'}")
-
-    # (b) free-form -> .td -> llvm-tblgen -gen-legalizer-core -> normal form
-    td = TdEmitter([{"def": "X86_ADD", "opcodes": ["G_ADD", "G_SUB"],
-                  "rules": compiled}]).emit()
-    d = tempfile.mkdtemp(prefix="dsl-td-")
-    path = os.path.join(d, "X86LegalizerInfo.td")
-    with open(path, "w") as f:
-        f.write(td)
-    out = os.path.join(d, "out.core.json")
-    tblgen = "/home/ubuntu/llvm/builds/explore/bin/llvm-tblgen"
-    inc = ["-I/home/ubuntu/llvm/trees/explore/llvm/lib/Target/X86",
-           "-I/home/ubuntu/llvm/builds/explore/include",
-           "-I/home/ubuntu/llvm/trees/explore/llvm/include",
-           "-I/home/ubuntu/llvm/trees/explore/llvm/lib/Target"]
-    r = subprocess.run([tblgen, "-gen-legalizer-core", *inc, path, "-o", out],
-                       capture_output=True, text=True)
-    if r.returncode != 0:
-        print("tblgen failed:\n" + r.stderr)
-        print("emitted .td:\n" + td)
-        return 1
-    gen = json.load(open(out))
-    gen_rules = next(x for x in gen["rulesets"] if x["def"] == "X86_ADD")["rules"]
-    assert len(gen_rules) == len(oracle), (len(gen_rules), len(oracle))
-    ok2 = all(strip(e) == strip(g) for e, g in zip(oracle, gen_rules))
-    print(f"(b) .td round-trip: {len(gen_rules)} rules "
-          f"{'ALL MATCH' if ok2 else 'SOME DIFF'}")
-    if not ok2:
-        for i, (e, g) in enumerate(zip(oracle, gen_rules)):
-            if strip(e) != strip(g):
-                print(f"  #{i} oracle:", json.dumps(strip(e), sort_keys=True))
-                print(f"  #{i} gen   :", json.dumps(strip(g), sort_keys=True))
-                break
-    # (c) static checks: positive (X86_ADD) + negative (sort / slot-bound)
-    manifest = build_arity_manifest(
-        "/home/ubuntu/llvm/trees/explore/llvm/include/llvm/Target/GenericOpcodes.td")
-    errs = []
-    arity = check_rules(compiled, ["G_ADD", "G_SUB"], manifest, errs)
-    print(f"(c) static checks: X86_ADD arity={arity} errors={len(errs)}")
-    ok3 = (len(errs) == 0 and arity == 1)
-
-    neg = [
-        ("sort mismatch", "rule G_ADD:\n    legal slot(0) == pow2"),
-        ("slot out of range", "rule G_ADD:\n    legal in(slot(1), s8)"),
-    ]
-    ok4 = True
-    for label, src in neg:
-        ncomp = compile_rulesets(Parser(src).parse())
-        nerrs = []
-        check_rules(ncomp, ["G_ADD"], manifest, nerrs)
-        got_err = len(nerrs) > 0
-        ok4 &= got_err
-        print(f"    negative [{label}]: {'rejected' if got_err else 'MISSED'} -> {nerrs[:1]}")
-
-    print("static checks: " + ("ALL PASS" if (ok3 and ok4) else "FAIL"))
-
-    # (d) full-corpus reverse round-trip
-    d1 = roundtrip_corpus("X86", "/home/ubuntu/legalizer-baseline/x86.core.json", "X86")
-    d2 = roundtrip_corpus("AArch64",
-                          "/home/ubuntu/legalizer-baseline/aarch64.core.json",
-                          "AArch64")
-    ok5 = (d1 == 0 and d2 == 0)
-    print("full corpus: " + ("ALL PASS" if ok5 else "FAIL"))
-
-    # (e) forward: baseline core.json -> free-form DSL -> parse -> normal form
-    e1 = forward_roundtrip("X86", "/home/ubuntu/legalizer-baseline/x86.core.json")
-    e2 = forward_roundtrip("AArch64",
-                           "/home/ubuntu/legalizer-baseline/aarch64.core.json")
-    ok6 = (e1 == 0 and e2 == 0)
-    print("forward DSL: " + ("ALL PASS" if ok6 else "FAIL"))
-    return 0 if (ok1 and ok2 and ok3 and ok4 and ok5 and ok6) else 1
-
-
-if __name__ == "__main__":
-    sys.exit(main())
