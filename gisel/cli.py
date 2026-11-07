@@ -213,6 +213,18 @@ def main(argv=None):
     e.add_argument("--cases", required=True)
     e.add_argument("--verbose", action="store_true")
 
+    gr = sub.add_parser("graph", help="find cycles in the legalizer quotient graph")
+    gr.add_argument("source")
+    gr.add_argument("--emit", default="core", choices=("core",),
+                    help="graph input normal form (only core is supported)")
+    gr.add_argument("--features")
+    gr.add_argument("--config", action="append", dest="configs")
+    gr.add_argument("--pointer-width", type=int, default=64)
+    gr.add_argument("--oracle", help="check matching points in an oracle JSONL")
+    gr.add_argument("--inject-edge", action="store_true")
+    gr.add_argument("--check-closure", action="store_true")
+    gr.add_argument("--json", action="store_true")
+
     args = ap.parse_args(argv)
     if args.cmd == "gen":
         source_text = _read_text(args.source)
@@ -294,6 +306,9 @@ def main(argv=None):
         return diffgen.main(argv[1:])
     if args.cmd == "cases":
         return casegen.main(argv[1:])
+    if args.cmd == "graph":
+        from . import graph
+        return graph.main(argv[1:])
     from . import eval as evaluator
     # `eval` owns its own argument set; drop the subcommand word.
     return evaluator.main(argv[1:])

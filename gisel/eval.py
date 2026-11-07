@@ -971,6 +971,33 @@ def evaluate(evaluator, config, opcode, types, mems, imms=()):
     return "Unsupported", 0, ("invalid",)
 
 
+def evaluate_with_rule(evaluator, config, opcode, types, mems, imms=()):
+    """Evaluate once and also return the winning ``(ruleset, rule)``.
+
+    ``evaluate`` is the public answer API and deliberately keeps its original
+    three-value return shape.  Graph construction needs provenance to label
+    edges and to distinguish a real ``unsupported`` rule from the fallback
+    returned when no rule matched, so this is the additive variant.
+    """
+    idxs = evaluator.by_opcode.get(opcode)
+    if idxs is None:
+        raise EvalError("no_rules", "opcode %r has no rule sets" % (opcode,))
+    for rs_idx in idxs:
+        rs = evaluator.rulesets[rs_idx]
+        for rule_idx, rule in enumerate(rs["rules"]):
+            if not evaluator.bool_value(rule["predicate"], types, mems,
+                                        config, imms):
+                continue
+            guard, new_type = shim_guard_and_newtype(
+                rule.get("op"), rule.get("on"), rule.get("to"),
+                types, mems, evaluator, config, imms)
+            if not guard:
+                continue
+            return (rule["action"], rule.get("type_idx", 0), new_type,
+                    (rs_idx, rule_idx))
+    return "Unsupported", 0, ("invalid",), None
+
+
 # ---------------------------------------------------------------------------
 # Runner
 # ---------------------------------------------------------------------------
