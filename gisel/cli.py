@@ -8,6 +8,8 @@ from pathlib import Path
 
 from . import ast as A, dsl
 from . import cases as casegen
+from . import diff as diffgen
+from . import domain as domaingen
 from .backend import check_json, core_json, llvm_inc, table
 
 BACKENDS = ("inc", "check", "table", "core")
@@ -171,8 +173,31 @@ def main(argv=None):
                     help="limit to configs from --features (repeatable)")
     cs.add_argument("--against",
                     help="oracle JSONL; compares only the overlapping queries")
+    cs.add_argument("--queries",
+                    help="complete answerless query JSONL to compress")
+    cs.add_argument("--oracle",
+                    help="complete answers JSONL for --queries")
     cs.add_argument("--max-outside", type=int, default=2)
     cs.add_argument("--json", action="store_true", help="print stats as JSON")
+
+    d = sub.add_parser("domain",
+                       help="enumerate the answerless query domain (D*)")
+    d.add_argument("source")
+    d.add_argument("--out", required=True, help="JSONL query file to write")
+    d.add_argument("--features",
+                   help="feature truth table (default: derive none/all/only-N)")
+    d.add_argument("--config", action="append", dest="configs",
+                   help="limit to configs from --features (repeatable)")
+    d.add_argument("--pointer-width", type=int, default=64,
+                   help="subtarget pointer width (default 64)")
+    d.add_argument("--slots", help="opcode slot table (default: bundled)")
+    d.add_argument("--json", action="store_true", help="print stats as JSON")
+
+    df = sub.add_parser("diff",
+                        help="compare two full-answer JSONL files")
+    df.add_argument("ref")
+    df.add_argument("ours")
+    df.add_argument("--json", action="store_true", help="print the report as JSON")
 
     l = sub.add_parser("lint", help="static checks over a source file (no LLVM)")
     l.add_argument("source")
@@ -263,6 +288,10 @@ def main(argv=None):
             print(f"{args.source}: {len(errors)} error(s), {len(warnings)} "
                   f"warning(s), {nrules} rule(s)")
         return 1 if errors else 0
+    if args.cmd == "domain":
+        return domaingen.main(argv[1:])
+    if args.cmd == "diff":
+        return diffgen.main(argv[1:])
     if args.cmd == "cases":
         return casegen.main(argv[1:])
     from . import eval as evaluator

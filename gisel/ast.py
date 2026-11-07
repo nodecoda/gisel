@@ -482,6 +482,9 @@ def _convert_node(node, resolve_name):
 
 def parse_program(text: str) -> Program:
     raw_decls, raw_rulesets = [], []
+    # Feature names seen so far, for the rule-body parser: `HasAVX` is a
+    # boolean primary equivalent to `feature("Subtarget.hasAVX()")`.
+    known_features: dict[str, str] = {}
     lines = text.splitlines()
     i = 0
     while i < len(lines):
@@ -514,6 +517,8 @@ def parse_program(text: str) -> Program:
                                       re.findall(r"[A-Za-z0-9_]+", body),
                                       body, i))
             else:
+                if kind == "feature":
+                    known_features[name] = body
                 raw_decls.append((kind, name, body, body, i))
             continue
         m = RULESET_RE.match(s)
@@ -543,7 +548,8 @@ def parse_program(text: str) -> Program:
         snippet = ["rule " + " ".join(opcodes) + ":"]
         snippet += ["  " + b.strip() for _, b in body]
         line_map = [ruleset_line] + [ln for ln, _ in body]
-        tree = D.Parser("\n".join(snippet), line_map=line_map).parse()
+        tree = D.Parser("\n".join(snippet), line_map=line_map,
+                       features=known_features).parse()
         compiled = D.compile_rulesets(tree)
         raw_rulesets.append((name, opcodes, comments, coverage, ruleset_line,
                              compiled))

@@ -139,9 +139,12 @@ def tokenize(text, line_map=None):
 # ---- parser ---------------------------------------------------------------
 
 class Parser:
-    def __init__(self, text, line_map=None):
+    def __init__(self, text, line_map=None, features=None):
         self.toks = tokenize(text, line_map)
         self.p = 0
+        # Declared `feature NAME = ...` names usable as boolean primaries.
+        # Maps NAME -> the C++ bool expression (`Feature.cxx`).
+        self.features = dict(features or {})
 
     def peek(self, t=None):
         tok = self.toks[self.p]
@@ -245,6 +248,12 @@ class Parser:
         if self.peek() and self.peek().t == "ID" and self.peek().v == "feature":
             self.next(); self.expect("("); st = self.next().v; self.expect(")")
             return leaf("hasFeature", [st])
+        # A declared feature name (`HasAVX`) is a boolean primary, equivalent
+        # to `feature("Subtarget.hasAVX()")` and resolving to the same node.
+        if self.peek() and self.peek().t == "ID" \
+                and self.peek().v in self.features:
+            name = self.next().v
+            return leaf("hasFeature", [self.features[name]])
         # explicit n-ary combinators (all_of/any_of) for arity-1 and readability
         if self.peek() and self.peek().t == "ID" and self.peek().v in (
                 "in", "in_pairs", "in_triples", "in_mem_desc"):

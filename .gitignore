@@ -4,3 +4,6 @@ build/
 dist/
 *.egg-info/
 *.swp
+
+# A/B scratch (snapshots of build trees, hundreds of MB)
+.ab/
