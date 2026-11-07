@@ -271,37 +271,36 @@ def _parse_llt(expr: str, type_sources: dict[str, str],
             raise ValueError("cyclic LLT reference: %s" % " -> ".join(stack + (t,)))
         return resolve_named(t, stack + (t,))
 
-    m = re.fullmatch(r"LLT::scalar\((\d+)\)", t)
+    # `LLT::<kind>(args)`: the grammar's type-expression constructor.  This
+    # is the front end's only reading of the C++ spelling; the backends never
+    # see it.
+    m = re.fullmatch(r"LLT::([A-Za-z_][A-Za-z0-9_]*)\((.*)\)", t, re.S)
     if m:
-        return Scalar(int(m.group(1)))
-    m = re.fullmatch(r"LLT::integer\((\d+)\)", t)
-    if m:
-        return Integer(int(m.group(1)))
-    kinds = {"LLT::bfloat16()": BFloat16(),
-             "LLT::float16()": Float(16), "LLT::float32()": Float(32),
-             "LLT::float64()": Float(64), "LLT::float128()": Float(128)}
-    if t in kinds:
-        return kinds[t]
-    m = re.fullmatch(r"LLT::pointer\((\d+),\s*(.+)\)", t, re.S)
-    if m:
-        bits = m.group(2).strip()
-        return Pointer(int(m.group(1)), int(bits) if bits.isdigit() else WILDCARD)
-    for head, scalable in (("LLT::fixed_vector(", False),
-                           ("LLT::scalable_vector(", True)):
-        if t.startswith(head) and t.endswith(")"):
-            inner = t[len(head):-1]
-            comma = inner.find(",")
-            if comma < 0:
-                break
-            lanes = inner[:comma].strip()
-            elem = inner[comma + 1:].strip()
-            if not lanes.isdigit():
-                break
-            if elem.isdigit():
-                e = Scalar(int(elem))
-            else:
-                e = _parse_llt(elem, type_sources, resolve_named, stack)
-            return Vector(int(lanes), scalable, e)
+        kind, args = m.group(1), m.group(2).strip()
+        if kind == "scalar" and args.isdigit():
+            return Scalar(int(args))
+        if kind == "integer" and args.isdigit():
+            return Integer(int(args))
+        floats = {"bfloat16": BFloat16,
+                  "float16": lambda: Float(16), "float32": lambda: Float(32),
+                  "float64": lambda: Float(64),
+                  "float128": lambda: Float(128)}
+        if kind in floats and not args:
+            return floats[kind]()
+        if kind == "pointer":
+            parts = args.split(",", 1)
+            if len(parts) == 2 and parts[0].strip().isdigit():
+                bits = parts[1].strip()
+                return Pointer(int(parts[0]),
+                               int(bits) if bits.isdigit() else WILDCARD)
+        if kind in ("fixed_vector", "scalable_vector"):
+            comma = args.find(",")
+            if comma >= 0:
+                lanes, elem = args[:comma].strip(), args[comma + 1:].strip()
+                if lanes.isdigit():
+                    e = (Scalar(int(elem)) if elem.isdigit()
+                         else _parse_llt(elem, type_sources, resolve_named, stack))
+                    return Vector(int(lanes), kind == "scalable_vector", e)
     raise ValueError("cannot normalize LLT expression %r" % expr)
 
 

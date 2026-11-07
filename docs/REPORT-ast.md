@@ -132,15 +132,14 @@ gisel eval aarch64.core.json ...                  # 9632 points, 0 disagreements
    `X86LegalizerInfo.gisel`（文件名是 `x86.td`，不能只靠 stem）。显式
    `--title` 仍是原语义。
 5. **grep 门禁的字面命中。** `grep -rn 'LLT::scalar\|LegalizeFeature\|X86_' gisel/ --include=*.py`
-   仍有 11 行，全部是：
-   - `gisel/ast.py:274` 的 `_parse_llt`：它必须解析 `type` 右侧的语言语法
-     `LLT::scalar(...)`；这是前端语法，不是 record 模型（唯一非渲染器命中）；
-   - `gisel/dsl.py` 的 `TdEmitter`/`_llt_leaf`、`gisel/td.py` 的
-     `_emit_ast_decl`/`SCAFFOLD_CLASSES`/bootstrap 注释、
-     `gisel/backend/llvm_inc.py` 的 C++ 拼写、`gisel/backend/table.py` 的
-     C++ 注释：都是渲染器或 `.td` 反向读取器。
-   没有命中的是“把 record 名/C++ 文本当语义输入解析”的代码——那类代码已经
-   删除。
+   只剩 10 行，全部在渲染器/反向读取器里：
+   - `gisel/dsl.py` 的 `TdEmitter`/`_llt_leaf`；
+   - `gisel/td.py` 的 `_emit_ast_decl`/`SCAFFOLD_CLASSES`/bootstrap 注释；
+   - `gisel/backend/llvm_inc.py` 生成的 C++ 拼写；
+   - `gisel/backend/table.py` 生成的 C++ 注释。
+   前端不再出现 `LLT::scalar` 字面量：`ast._parse_llt` 用通用的
+   `LLT::<kind>(args)` 分派解析 `type` 声明。没有命中的是“把 record 名/
+   C++ 文本当语义输入解析”的代码——那类代码已经删除。
 6. **`to_record_model` 仍存在。** 它是 `tests/test_ast.py` 的冻结摘要
    适配器，生产路径不调用；保留它是为了让迁移前后的字段级对照可复现，
    不是第二套模型。
