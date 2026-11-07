@@ -184,7 +184,7 @@ def change_element_size(t, new_size):
 
 
 def scalar_or_vector(lanes, scalable, elem):
-    """LLT::scalarOrVector: one fixed lane is the element type itself."""
+    """scalar-or-vector: one fixed lane is the element type itself."""
     if lanes == 1 and not scalable:
         return elem
     return ("vector", lanes, scalable, elem)
@@ -214,8 +214,8 @@ def collapse_extended(t):
     LLT stores INTEGER/FLOAT/bfloat16 as distinct kinds only when
     LLT::getUseExtended() is on; that flag is set by the target machine
     (AArch64, AMDGPU, WebAssembly), not by the IR.  With the flag off,
-    LLT::float16() is just LLT::scalar(16) and LLT::integer(32) is
-    LLT::scalar(32), so legality predicates and mutations see no difference.
+    float16 is just scalar(16) and integer(32) is scalar(32), so legality
+    predicates and mutations see no difference.
     """
     if t[0] in ("integer", "float"):
         return ("scalar", t[1])

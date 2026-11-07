@@ -596,9 +596,9 @@ def parse_program(text: str) -> Program:
                              lambda n, st: resolve_type(n, st), stack)
         except (ValueError, RecursionError) as e:
             raise ValueError(f"line {ln}: cannot normalize LLT expression "
-                             f"for {name}: {expr!r} (expected LLT::scalar/"
-                             f"integer/pointer/fixed_vector/scalable_vector/"
-                             f"float*)") from e
+                             f"for {name}: {expr!r} (expected an LLT "
+                             f"scalar/integer/pointer/fixed_vector/"
+                             f"scalable_vector/float constructor)") from e
         named_types[name] = NamedType(name, llt, expr, ln)
         return llt
 
