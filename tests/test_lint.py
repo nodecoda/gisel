@@ -14,10 +14,6 @@ sys.path.insert(0, str(ROOT))
 from gisel import dsl  # noqa: E402
 
 CORPUS = ROOT / "tests" / "corpus"
-GENERIC_TD = Path("/home/ubuntu/llvm/trees/explore/llvm/include/llvm/Target/"
-                  "GenericOpcodes.td")
-
-
 def run(*args):
     return subprocess.run([sys.executable, "-m", "gisel.cli", *args],
                           cwd=ROOT, capture_output=True, text=True)
@@ -40,7 +36,7 @@ class LintCorpus(unittest.TestCase):
             self.assertIn(f"{nrules} rule(s)", r.stdout)
 
     def test_probe_corpora_have_no_errors(self):
-        # Targets that have no .td yet: the .gisel is the only artifact, so a
+        # Probe corpora: the .gisel is the only artifact, so a
         # silent change in what the front end accepts shows up here first.
         for name, nrules in (("M68kLegalizerInfo", 13),
                              ("WebAssemblyLegalizerInfo", 109)):
@@ -152,9 +148,8 @@ class NegativeControl(unittest.TestCase):
         """Every layer says it, not just the one that happened to build first.
 
         `feature("...")` carries the C++ expression, not the declaration's
-        name.  The `.inc` backend checked it; `lint` and `--emit=td` did not,
-        so the same file was "0 error(s)" and a valid `.td` -- and the record
-        it produced named a feature TableGen had never seen.
+        name.  ``lint`` and every ``gen`` backend must report it as a
+        diagnostic, not silently emit a reference to an undeclared feature.
         """
         text = ("feature F = Subtarget.hasAVX()\n"
                 "ruleset X_ADD: G_ADD\n"
@@ -165,7 +160,7 @@ class NegativeControl(unittest.TestCase):
             r = run("lint", str(src))
             self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
             self.assertIn(":3:", r.stderr)
-            for emit in ("td", "inc", "core"):
+            for emit in ("inc", "check", "table", "core"):
                 r = run("gen", str(src), f"--emit={emit}",
                         "--out", str(Path(d) / f"x.{emit}"))
                 self.assertEqual(r.returncode, 2, f"{emit}: {r.stdout}{r.stderr}")
@@ -264,11 +259,6 @@ class ArityTable(unittest.TestCase):
         self.assertEqual(m["G_FENCE"], 0)            # no type operands
         self.assertIsNone(m["G_INTRINSIC"])          # variable_ops
 
-    def test_bundled_table_matches_the_source(self):
-        if not GENERIC_TD.exists():
-            self.skipTest("no LLVM source tree")
-        self.assertEqual(dsl.build_arity_manifest(str(GENERIC_TD)),
-                         dsl.load_arity_manifest())
 
 
 if __name__ == "__main__":

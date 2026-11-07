@@ -9,10 +9,9 @@ Two kinds of number appear in that JSON, and they must not be confused:
   are derived from the corpus.  ``Rules`` counts every entry in a rule set's
   ``Rules`` list, including ``ImmIdx``; ``Coverage`` counts the ``immIdx``
   markers, so ``rules == core_rules + legacy_rules + coverage``.
-* vocabulary counts (``builders``, ``overloads``, ``entries``) describe the
-  TableGen compatibility layer itself -- 50 ``LegalizeBuilder`` records and 64
-  ``LegalizeLowering`` entries, the same for every target.  They are carried
-  as provenance-stamped constants in ``gisel/vocab.py`` because they are not a
+* vocabulary counts (``builders``, ``overloads``, ``entries``) are the frozen
+  compatibility counters every target reports.  They are carried as
+  provenance-stamped constants in ``gisel/vocab.py`` because they are not a
   property of the DSL; a target cannot change them.
 """
 

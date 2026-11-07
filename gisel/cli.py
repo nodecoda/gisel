@@ -6,18 +6,17 @@ import json
 import sys
 from pathlib import Path
 
-from . import ast as A, dsl, td
+from . import ast as A, dsl
 from .backend import check_json, core_json, llvm_inc, table
 
-BACKENDS = ("td", "inc", "check", "table", "core")
+BACKENDS = ("inc", "check", "table", "core")
 
 
 def _table_prefix(source, explicit, gs=None):
-    """-legalizer-table-prefix, defaulted from the source file name.
+    """The table backend's prefix, defaulted from the source file name.
 
-    tblgen's default is "X86", which is why the AArch64 lane has to pass
-    -legalizer-table-prefix=AArch64.  Deriving it from `X86LegalizerInfo.gisel`
-    removes that footgun; --prefix still overrides.
+    Deriving it from `X86LegalizerInfo.gisel` keeps the generated C++ table
+    self-contained; ``--prefix`` still overrides.
     """
     if explicit:
         return explicit
@@ -47,7 +46,7 @@ def _source_error(source, exc):
 
 
 def _generate(gs, source, emit, prefix=None):
-    # One gate for all five backends: a feature expression the file did not
+    # One gate for all four backends: a feature expression the file did not
     # declare cannot be spelled by any of them (`core` and `inc` used to be
     # the only two that noticed, and only at their own stage).
     bad = A.undeclared_features(gs)
@@ -56,14 +55,13 @@ def _generate(gs, source, emit, prefix=None):
         raise ValueError("line %d: undeclared feature expression %r; declare "
                          "it with `feature NAME = <expr>`" % (line, expr))
     # One table per opcode: a legalizer may build the same opcode twice (the
-    # second chain only answers what the first did not), but a LegalizeRuleSet
-    # record cannot express that, so the artifact is canonicalized first.
-    gs = A.Program(gs.includes, gs.decls,
+    # second chain only answers what the first did not).  The emitted C++
+    # chain and frozen core JSON carry one table per opcode, so the artifact
+    # is canonicalized first.
+    gs = A.Program(gs.decls,
                    A.canonicalize_rulesets(gs.rulesets),
                    gs.features, gs.preds, gs.named_types, gs.selects,
                    gs.setlike)
-    if emit == "td":
-        return td.emit_td(gs, source)
     if emit == "inc":
         return llvm_inc.emit_inc(gs, source)
     if emit == "check":
@@ -149,24 +147,18 @@ def main(argv=None):
 
     g = sub.add_parser("gen", help="generate a backend artifact")
     g.add_argument("source")
-    g.add_argument("--emit", default="td", choices=BACKENDS,
-                   help="backend: td, inc (-gen-legalizer), check (-gen-legalizer-check)")
+    g.add_argument("--emit", default="inc", choices=BACKENDS,
+                   help="backend: inc (-gen-legalizer), check (-gen-legalizer-check), "
+                        "table (-gen-legalizer-table), core (-gen-legalizer-core)")
     g.add_argument("--out", required=True)
     g.add_argument("--prefix", help="table prefix (default: from the file name)")
 
     c = sub.add_parser("check", help="verify a generated artifact is up to date")
     c.add_argument("source")
-    c.add_argument("--emit", default="td", choices=BACKENDS)
+    c.add_argument("--emit", default="inc", choices=BACKENDS)
     c.add_argument("--against", help="artifact to compare against")
-    c.add_argument("--td", help="compatibility alias for --against")
     c.add_argument("--strict-origin", action="store_true",
                    help="core: also compare the per-rule origin line numbers")
-
-    b = sub.add_parser("bootstrap", help="build a .gisel from a hand-written .td")
-    b.add_argument("--td", required=True)
-    b.add_argument("--core", required=True)
-    b.add_argument("--out", required=True)
-    b.add_argument("--title")
 
     l = sub.add_parser("lint", help="static checks over a source file (no LLVM)")
     l.add_argument("source")
@@ -201,7 +193,7 @@ def main(argv=None):
               f"{sum(len(r.rules) for r in gs.rulesets)} rules")
         return 0
     if args.cmd == "check":
-        want_path = args.against or args.td
+        want_path = args.against
         if not want_path:
             c.error("check needs --against <artifact>")
         source_text = _read_text(args.source)
@@ -257,12 +249,6 @@ def main(argv=None):
             print(f"{args.source}: {len(errors)} error(s), {len(warnings)} "
                   f"warning(s), {nrules} rule(s)")
         return 1 if errors else 0
-    if args.cmd == "bootstrap":
-        argv = ["bootstrap", "--td", args.td, "--core", args.core,
-                "--out", args.out]
-        if args.title:
-            argv += ["--title", args.title]
-        return td.main(argv)
     from . import eval as evaluator
     # `eval` owns its own argument set; drop the subcommand word.
     return evaluator.main(argv[1:])

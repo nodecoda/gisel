@@ -36,5 +36,5 @@ done
     aarch64.core.json x86.inc x86.table.inc x86.check.json x86.core.json > SHA256 )
 
 echo "oracle refreshed in $OUT"
-echo "review \`git diff tests/artifacts\`: when the tree's .td was regenerated from .gisel,"
+echo "review \`git diff tests/artifacts\`: the frozen C++/JSON oracle changed,"
 echo "the core JSON legitimately differs in origin/line only"

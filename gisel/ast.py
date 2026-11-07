@@ -1,20 +1,17 @@
 #!/usr/bin/env python3
 """The language AST for `.gisel`.
 
-This is the front-end model: includes, declarations, rule sets and rules.
-It is deliberately not TableGen-shaped:
+This is the front-end model: declarations, rule sets and rules.  It is
+deliberately not a record model:
 
 * a type is a structured LLT (``Scalar(32)``, ``Pointer(0, None)``, ...);
 * a rule's type positions hold semantic values, not record names;
 * a rule-set is ``(name, opcodes, rules)``; ``def`` is only a rendering name.
 
-The ``.td``/``.inc`` renderers still have to spell the target's record names
-(``Target_s32``).  They build a renderer-local :class:`NameTable` at the exit;
-nothing in this module treats a record name as a semantic value.
-
-``to_record_model()`` is a test/oracle adapter: it downgrades a ``Program``
-to the record-shaped dict the pre-AST front end returned, so the frozen
-migration digests can still pin the AST's exact content.  No backend uses it.
+The remaining renderer is the C++ ``.inc`` emitter.  It still has to spell
+the target's declaration names (``Target_s32``); it builds a renderer-local
+:class:`NameTable` at the exit, and nothing in this module treats a record
+name as a semantic value.
 """
 
 from __future__ import annotations
@@ -137,12 +134,6 @@ def value_key(v: TypeValue) -> tuple:
 # ---- declarations --------------------------------------------------------
 
 @dataclass
-class Include:
-    path: str
-    line: int
-
-
-@dataclass
 class Feature:
     name: str
     cxx: str
@@ -161,15 +152,12 @@ class NamedType:
 class PredicateDecl:
     name: str
     pred: dict              # semantic all/any/not tree
-    source: str             # original `A and not B` text, render-only
     line: int
 
 
 @dataclass
 class SelectType:
     name: str
-    arms: tuple[tuple[str, str], ...]   # (condition record, then record)
-    otherwise: str                      # else record
     value: SelectValue
     line: int
 
@@ -177,8 +165,6 @@ class SelectType:
 @dataclass
 class TypeSet:
     name: str
-    members: tuple[str, ...]            # source record names
-    source_ref: str | None              # `X.Elems`, if written that way
     value: SetValue
     line: int
 
@@ -186,12 +172,11 @@ class TypeSet:
 @dataclass
 class TypeList:
     name: str
-    members: tuple[str, ...]
     value: SetValue
     line: int
 
 
-Decl = Include | Feature | NamedType | PredicateDecl | SelectType | TypeSet | TypeList
+Decl = Feature | NamedType | PredicateDecl | SelectType | TypeSet | TypeList
 
 
 # ---- rules ---------------------------------------------------------------
@@ -245,7 +230,6 @@ class RuleSet:
 
 @dataclass
 class Program:
-    includes: list[Include]
     decls: list[Decl]
     rulesets: list[RuleSet]
     features: dict[str, Feature] = field(default_factory=dict)
@@ -497,8 +481,7 @@ def _convert_node(node, resolve_name):
 # ---- program parser ------------------------------------------------------
 
 def parse_program(text: str) -> Program:
-    includes, raw_decls, raw_rulesets = [], [], []
-    decl_lines = {}
+    raw_decls, raw_rulesets = [], []
     lines = text.splitlines()
     i = 0
     while i < len(lines):
@@ -511,12 +494,10 @@ def parse_program(text: str) -> Program:
             m = re.fullmatch(r'include\s+"(.*)"', s)
             if not m:
                 raise ValueError(f"line {i}: bad include {s!r}")
-            includes.append(Include(m.group(1), i))
             continue
         m = DECL_RE.match(s)
         if m:
             kind, name, body = m.group(1), m.group(2), m.group(3).strip()
-            decl_lines[name] = i
             if kind == "select":
                 arms, otherwise = _parse_select_chain(body)
                 raw_decls.append(("select", name, (arms, otherwise), body, i))
@@ -614,7 +595,7 @@ def parse_program(text: str) -> Program:
                                  stack)
         except ValueError as e:
             raise ValueError(f"line {ln}: {e}") from e
-        preds[name] = PredicateDecl(name, pred, source, ln)
+        preds[name] = PredicateDecl(name, pred, ln)
         return pred
 
     def resolve_name(name, stack=()):
@@ -645,7 +626,7 @@ def parse_program(text: str) -> Program:
             out_arms.append((cond, resolve_name(type_name, stack + (name,))))
         value = SelectValue(tuple(out_arms), resolve_name(otherwise, stack + (name,)),
                             legacy_guard=True)
-        select_types[name] = SelectType(name, arms, otherwise, value, ln)
+        select_types[name] = SelectType(name, value, ln)
         return value
 
     def resolve_setlike(name, stack=()):
@@ -655,13 +636,9 @@ def parse_program(text: str) -> Program:
             raise ValueError("cyclic type-set reference: %s" % " -> ".join(stack + (name,)))
         kind, payload, ln = raw_setlike[name]
         if kind == "type_set" and isinstance(payload, tuple) and payload[0] == "ref":
-            ref = payload[1]
-            base = resolve_setlike(ref, stack + (name,))
-            members = ()
-            source_ref = ref
+            base = resolve_setlike(payload[1], stack + (name,))
         else:
             members = tuple(payload)
-            source_ref = None
             base = None
         if base is None:
             elems = tuple(resolve_name(m, stack + (name,)) for m in members)
@@ -669,9 +646,9 @@ def parse_program(text: str) -> Program:
         else:
             value = base
         if kind == "type_set":
-            setlike[name] = TypeSet(name, members, source_ref, value, ln)
+            setlike[name] = TypeSet(name, value, ln)
         else:
-            setlike[name] = TypeList(name, members, value, ln)
+            setlike[name] = TypeList(name, value, ln)
         return value
 
     # Resolve in source order.  The helpers memoize, so forward references
@@ -707,7 +684,7 @@ def parse_program(text: str) -> Program:
                 line=r.get("_line", ln)))
         rulesets.append(RuleSet(name, opcodes, rules, comments, coverage, ln))
 
-    return Program(includes, decls, rulesets, features, preds, named_types,
+    return Program(decls, rulesets, features, preds, named_types,
                    select_types, setlike)
 
 
@@ -739,11 +716,10 @@ def undeclared_features(program: Program) -> list[tuple[int, str, str]]:
 # ---- renderer-local names ------------------------------------------------
 
 class NameTable:
-    """Semantic value -> the target's spelling, computed at the renderer exit.
+    """Semantic value -> the C++ declaration name, at the renderer exit.
 
-    This is the replacement for the old global ``td.build_names``.  It is
-    deliberately built by the .td/.inc renderers only; core/check/table never
-    see record names.
+    This is deliberately built by the ``.inc`` emitter only; core/check/table
+    never see record names.
     """
 
     def __init__(self, program: Program):
@@ -751,7 +727,6 @@ class NameTable:
         self.type: dict[LLT, str] = {}
         self.select: dict[tuple, str] = {}
         self.set_all: dict[tuple, str] = {}
-        self.set_td: dict[tuple, str] = {}
         self.records: set[str] = set()
         for d in program.decls:
             self.records.add(d.name)
@@ -762,11 +737,7 @@ class NameTable:
             elif isinstance(d, SelectType):
                 self.select[value_key(d.value)] = d.name
             elif isinstance(d, TypeSet):
-                key = value_key(d.value)
-                self.set_all[key] = d.name
-                if all(isinstance(e, (Scalar, Integer, Float, BFloat16,
-                                      Pointer, Vector)) for e in d.value.elems):
-                    self.set_td[tuple(value_key(e) for e in d.value.elems)] = d.name
+                self.set_all[value_key(d.value)] = d.name
             elif isinstance(d, TypeList):
                 self.set_all[value_key(d.value)] = d.name
 
@@ -790,123 +761,22 @@ class NameTable:
             raise ValueError("no declared type for %r" % (llt_text(v),))
         return name
 
-    def set_name_td(self, members) -> str | None:
-        return self.set_td.get(tuple(value_key(e) for e in members))
-
-    def feature_name(self, cxx: str) -> str:
-        return self.feature[cxx]
-
-    # Legacy-shaped rule view for the .td/.inc renderers only.  The type
-    # positions are named here; this is the exit computation, not a model.
-    def rule_view(self, rule: Rule, legacy_dag: bool = False) -> dict:
-        out = {"action": rule.action, "type_idx": rule.type_idx,
-               "op": rule.op,
-               "predicate": self.node_view(rule.predicate),
-               "_line": rule.line}
-        if rule.on is not None:
-            out["on"] = self.node_view(rule.on)
-        if rule.to is not None:
-            out["to"] = self.node_view(rule.to)
-        return out
-
-    def node_view(self, node):
-        if isinstance(node, list):
-            return [self.node_view(v) for v in node]
-        if not isinstance(node, dict):
-            return node
-        k = node.get("kind")
-        if k == "type":
-            v = node["value"]
-            if isinstance(v, str):
-                # An undeclared spelling (the old front end kept it verbatim
-                # so lint/gen could name it).  The adapter preserves it too.
-                return {"kind": "type", "value": v}
-            if isinstance(v, SelectValue):
-                name = self.select.get(value_key(v))
-                if name is not None:
-                    return {"kind": "type", "value": name}
-                return {"kind": "type", "value": self.select_view(v)}
-            return {"kind": "type", "value": self.value_name(v)}
-        if k == "set":
-            out = dict(node)
-            if node.get("of", "Type") == "Type":
-                rows = []
-                for e in node.get("elems", []):
-                    if isinstance(e, list):
-                        if len(e) == 4 and isinstance(e[3], int):
-                            rows.append([self.value_name(x) for x in e[:3]] + [e[3]])
-                        else:
-                            rows.append([self.value_name(x) for x in e])
-                    elif isinstance(e, str):
-                        rows.append(e)
-                    else:
-                        rows.append(self.value_name(e))
-                out["elems"] = rows
-            return out
-        return {key: self.node_view(v) for key, v in node.items()}
-
-    def select_view(self, value: SelectValue):
-        expr = self.value_name(value.otherwise)
-        for cond, then in reversed(value.arms):
-            expr = {"select": {"cond": cond, "then": self.value_name(then),
-                               "else": expr}}
-        return expr
-
-
-# ---- Phase-1 compatibility adapter ---------------------------------------
-
-def _select_decl_payload(d: SelectType):
-    return (list(x[0] for x in d.arms), list(x[1] for x in d.arms), d.otherwise)
-
-
-def to_record_model(program: Program) -> dict:
-    """Downgrade a Program to the pre-AST record dict (tests/oracle only)."""
-    names = NameTable(program)
-    includes = ['include "%s"' % inc.path for inc in program.includes]
-    decls = []
-    for d in program.decls:
-        if isinstance(d, Feature):
-            decls.append(("feature", d.name, d.cxx))
-        elif isinstance(d, PredicateDecl):
-            decls.append(("pred", d.name, d.source))
-        elif isinstance(d, NamedType):
-            decls.append(("type", d.name, d.source))
-        elif isinstance(d, SelectType):
-            decls.append(("select", d.name, _select_decl_payload(d)))
-        elif isinstance(d, TypeSet):
-            payload = ("ref", d.source_ref) if d.source_ref else list(d.members)
-            decls.append(("type_set", d.name, payload))
-        elif isinstance(d, TypeList):
-            decls.append(("type_list", d.name, list(d.members)))
-        else:
-            raise AssertionError(d)
-
-    rulesets = []
-    for rs in program.rulesets:
-        rulesets.append({
-            "def": rs.name, "opcodes": list(rs.opcodes),
-            "comments": list(rs.comments), "legacy": list(rs.coverage),
-            "rules": [names.rule_view(r) for r in rs.rules],
-        })
-    return {"includes": includes, "decls": decls, "rulesets": rulesets}
-
 
 # ---- AST-level canonicalisation ------------------------------------------
 
 def canonicalize_rulesets(rulesets: list[RuleSet]) -> list[RuleSet]:
-    """One rule set per opcode: a medium constraint, not a language rule.
+    """One rule set per opcode: an artifact-contract transform, not a rule.
 
-    A ``LegalizeRuleSet`` record is ``(opcodes, rules)`` and llvm-tblgen
-    rejects an opcode covered twice.  The C++ builder, by contrast, appends a
-    table per call and takes the first match.  Concatenating an opcode's
-    tables in document order preserves that answer.
+    A legalizer may build the same opcode twice (the second chain only answers
+    what the first did not).  The emitted C++ chain and the frozen core JSON
+    carry one table per opcode, so concatenating an opcode's tables in
+    document order preserves the artifact answer.
 
-    This is exactly the transform the record model performed, including two
-    details that look accidental but are part of the artifact contract: the
-    rule key contains the source line (two textually identical rules written
-    on different lines stay in different groups), and the copied metadata
+    Two details that look accidental are part of that contract: the rule key
+    contains the source line (two textually identical rules written on
+    different lines stay in different groups), and the copied metadata
     (comments / ImmIdx coverage) comes from the last source block.  Keep both
-    until the corpus can be regenerated as a whole.
+    until the artifacts can be regenerated as a whole.
     """
     seen = {}
     for rs in rulesets:
@@ -946,11 +816,11 @@ def canonicalize_rulesets(rulesets: list[RuleSet]) -> list[RuleSet]:
 
 
 def _rule_key(rule: Rule):
-    """Structural identity of one rule, matching the old JSON rule key.
+    """Structural identity of one rule, with its source line.
 
-    The old key serialised the record-shaped rule, `_line` included.  The
-    semantic fields are the same; the line is kept because it is how the old
-    transform distinguished otherwise identical rules from different blocks.
+    The line is part of the key: it is how the transform distinguishes
+    otherwise identical rules written in different source blocks, which the
+    artifact contract has always done.
     """
     def freeze(x):
         if isinstance(x, dict):

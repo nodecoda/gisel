@@ -1,13 +1,9 @@
 """The front end produces the language AST, not a record-shaped model.
 
-The digests below were taken from the old record front end before it was
-deleted.  They pin both the declaration payloads and the per-rule line
-numbers, so a change in the AST (or in the downgrade) that would have moved
-an artifact fails here first.
+There is no TableGen/record adapter any more: the tests pin the structured
+type positions and the renderer-local names the C++ backend consumes.
 """
 
-import hashlib
-import json
 import unittest
 from pathlib import Path
 
@@ -19,60 +15,9 @@ CORPORA = ("AArch64LegalizerInfo", "M68kLegalizerInfo",
            "RISCVLegalizerInfo", "WebAssemblyLegalizerInfo",
            "X86LegalizerInfo")
 
-# sha256 of json.dumps(record_model, sort_keys, compact)
-MODEL = {
-    "AArch64LegalizerInfo":
-        "90ad84ac13a00f11bcd915c386ca63c6dbc23d95bf981d65e165f543373a17ed",
-    "M68kLegalizerInfo":
-        "af8f045cfd3dffc3ca37c2e5cea902f381f8354ad990b06554874a34fd036181",
-    "RISCVLegalizerInfo":
-        "1ddd711ea29342e3d3dff4c511ed93817a92831ea3069085102747f9bf795cb2",
-    "WebAssemblyLegalizerInfo":
-        "072f417a20b01989a5aac0c675fd3047c8887cd2ed9eca91d965e85c0c00c357",
-    "X86LegalizerInfo":
-        "b9458060c631e7b8f17243477ad3857f7cab89872d9578418996321d2363196a",
-}
-
-# the same, after one-table-per-opcode canonicalisation
-CANON = {
-    "AArch64LegalizerInfo":
-        "720bc1f515688bf546efe833c1224d24189c4b0cde4a23b56a211906792527c9",
-    "M68kLegalizerInfo":
-        "16ee470ebb29859e1ebfc6989e73cb815917c62cd6ae90e15965e879321d86d0",
-    "RISCVLegalizerInfo":
-        "84ea07269919f5b53ea51e978c092ea1a5edc8be8c1b639469860a0f3dcaee93",
-    "WebAssemblyLegalizerInfo":
-        "b77da4d07db31e7693f230c9a5c6d127af755fb55ad9e408b8e51da1b89b3fa9",
-    "X86LegalizerInfo":
-        "292ecfd77e960e320437168c8ef2f6c6ae142f08c10f55f0bd7cbee3f32f87fd",
-}
-
 
 def text_of(name):
     return (CORPUS / (name + ".gisel")).read_text()
-
-
-def digest(obj):
-    data = json.dumps(obj, sort_keys=True, separators=(",", ":")).encode()
-    return hashlib.sha256(data).hexdigest()
-
-
-class DowngradeAdapter(unittest.TestCase):
-    def test_program_downgrades_to_the_frozen_record_model(self):
-        for name in CORPORA:
-            model = A.to_record_model(A.parse_program(text_of(name)))
-            self.assertEqual(digest(model), MODEL[name], name)
-
-    def test_ast_canonicalisation_matches_the_frozen_transform(self):
-        for name in CORPORA:
-            prog = A.parse_program(text_of(name))
-            canon = A.Program(prog.includes, prog.decls,
-                              A.canonicalize_rulesets(prog.rulesets),
-                              prog.features, prog.preds, prog.named_types,
-                              prog.selects, prog.setlike)
-            self.assertEqual(
-                digest(A.to_record_model(canon)["rulesets"]), CANON[name],
-                name)
 
 
 class StructuredTypes(unittest.TestCase):
@@ -111,7 +56,7 @@ class StructuredTypes(unittest.TestCase):
 
 
 class RendererNames(unittest.TestCase):
-    """Record names are computed at the .td/.inc exit, not stored."""
+    """C++ declaration names are computed at the .inc exit, not stored."""
 
     def test_nametable_round_trips_every_unambiguous_named_type(self):
         for name in CORPORA:
@@ -124,6 +69,29 @@ class RendererNames(unittest.TestCase):
                         if isinstance(x, A.NamedType) and x.llt == d.llt]
                 if len(same) == 1:
                     self.assertEqual(names.value_name(d.llt), d.name)
+
+
+class Canonicalisation(unittest.TestCase):
+    def test_one_rule_set_per_opcode(self):
+        for name in CORPORA:
+            prog = A.parse_program(text_of(name))
+            canon = A.canonicalize_rulesets(prog.rulesets)
+            ops = [op for rs in canon for op in rs.opcodes]
+            self.assertEqual(len(ops), len(set(ops)), name)
+
+
+class TableGenFreeModel(unittest.TestCase):
+    """`include` survives only as frozen-corpus input, not as a model node."""
+
+    def test_include_lines_are_accepted_and_dropped(self):
+        prog = A.parse_program('include "llvm/Target/Target.td"\n'
+                               "type s32 = LLT::scalar(32)\n")
+        self.assertFalse(hasattr(prog, "includes"))
+        self.assertEqual([d.name for d in prog.decls], ["s32"])
+
+    def test_malformed_include_is_still_a_parse_error(self):
+        with self.assertRaises(ValueError):
+            A.parse_program("include llvm/Target/Target.td\n")
 
 
 if __name__ == "__main__":

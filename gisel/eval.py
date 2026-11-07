@@ -9,8 +9,8 @@ answers each query with the triple
 
     (action, type_idx, new_type)
 
-exactly as the hand-written C++ builder chain does.  It does not import
-TableGen, does not read the emitter, and does not parse any generated `.inc`.
+exactly as the hand-written C++ builder chain does.  It is independent of
+the C++ emitter and does not parse any generated `.inc`.
 
 Evaluation is first-match: rule sets in document order, rules inside a rule
 set in `rule_index` order, the first rule whose effective guard is true wins.

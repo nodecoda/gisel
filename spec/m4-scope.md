@@ -41,7 +41,7 @@ absent.  The derivation rule is the open question for M4; it has to be read off
 ## 4 `origin`
 
 Per rule: `{"source": <path>, "line": <n>}`.  Ours would point at the `.gisel`
-line, not the `.td` line, so the gate is field equality after dropping
+line, so the gate is field equality after dropping
 `origin` -- exactly the allowance the plan made (AC5).
 
 ## Gate

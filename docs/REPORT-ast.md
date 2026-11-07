@@ -3,6 +3,10 @@
 状态：完成。基线 `35ad508`，本次改动不碰 `tests/corpus/*.gisel` 与
 `tests/artifacts/*`。唯一新增的模型是 `gisel/ast.py` 的 `Program`。
 
+> 历史说明：本报告写作时 `.td` 仍是第 5 个渲染器。后续
+> `docs/REPORT-no-td.md` 已移除 `--emit=td`、`gisel/td.py` 和 bootstrap；
+> 文中涉及 `.td` 的“当前状态”请以那份报告为准。
+
 ## 1 拆掉了什么
 
 迁移前，`parse_gisel` 直接把 `.gisel` 降级成 TableGen record 形状的 dict；

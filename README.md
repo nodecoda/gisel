@@ -11,7 +11,6 @@ turns it into LLVM artifacts **without `llvm-tblgen`**.
 python3 -m pip install .        # or: python3 -m gisel (no install)
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
-gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=td  --out X86LegalizerInfo.td
 gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
 ```
 
@@ -22,9 +21,6 @@ One rule set, four rules, no LLVM build, no `llvm-tblgen`:
 ```sh
 git clone https://github.com/nodecoda/gisel && cd gisel
 mkdir -p /tmp/demo && cat > /tmp/demo/hello.gisel <<'EOF'
-include "llvm/Target/LegalizerInfo.td"
-include "llvm/Target/Target.td"
-
 feature Is64Bit = Subtarget.is64Bit()
 type I32 = LLT::scalar(32)
 type I64 = LLT::scalar(64)
@@ -59,8 +55,9 @@ The generated `.inc` is the C++ chain, one call per rule:
       .scalarize(0);
 ```
 
-`--emit=td`, `--emit=check`, `--emit=table` and `--emit=core` give the other four
-shapes from the same source.
+`--emit=check`, `--emit=table` and `--emit=core` give the other three
+shapes from the same source.  There is no `.td` backend: the C++ `.inc` is the
+product.
 
 ## Architecture
 
@@ -69,22 +66,23 @@ declarations, rule sets and rules.  Types are structured (`Scalar(32)`,
 `Pointer(0, None)`, `Vector(...)`), rule type positions hold those values, and
 a rule set is `(name, opcodes, rules)`.  Record names such as `X86_s32`,
 `LegalizeFeature<...>` and `LegalizeRuleSet<...>` are not part of the model:
-the `.td`/`.inc` renderers compute them at their exit through `NameTable`, and
-`core`/`check`/`table` never see them.  `ast.canonicalize_rulesets` is the one
-AST transform before emission; it exists because a TableGen record cannot
-express "two tables for one opcode", not because the language forbids it.
-`docs/REPORT-ast.md` records what was removed and what boundaries remain.
+the C++ renderer computes declaration names at its exit through `NameTable`,
+and `core`/`check`/`table` never see them.  `ast.canonicalize_rulesets` is the
+one AST transform before emission; it exists to keep the emitted C++ and the
+frozen core JSON at one table per opcode, not because the language forbids it.
+`docs/REPORT-ast.md` records the AST migration; `docs/REPORT-no-td.md` records
+the removal of the `.td` renderer.
 
-What it does not do: it is not the build path for upstream LLVM (the `.td` is
-still what the tree consumes), `import-cxx` refuses any statement it cannot
-translate rather than guessing, and none of the five corpora is an independent
-hand-written second statement -- they are bootstrapped, imported or transcribed.
+What it does not do: it does not generate the upstream `.td` (that backend was
+removed), `import-cxx` refuses any statement it cannot translate rather than
+guessing, and none of the five corpora is an independent hand-written second
+statement -- they were bootstrapped, imported or transcribed before the
+bootstrap reader was removed.
 
 ## Status
 
 | milestone | backend | gate | state |
 |---|---|---|---|
-| M0 | `--emit=td` | byte-identical to the generated `.td` | done |
 | M1 | `--emit=inc` | byte-identical to `-gen-legalizer` | done |
 | M2 | `--emit=check` | the `-gen-legalizer-check` JSON | done |
 | M3 | `--emit=table` | the `-gen-legalizer-table` fragment | done |
@@ -101,15 +99,15 @@ translate.  `docs/REPORT-riscv.md` records both for the largest remaining
 target: 340 builder calls → 402 rules, 0 refusals, and the generated `.inc`
 compiles against the unmodified `LegalizerInfo.h`.
 
-`tests/artifacts/` holds the eight frozen artifacts and their `SHA256`; the
-corpus is derivable, not hand-tuned: `gisel bootstrap` reproduces both `.gisel`
-files byte for byte from the frozen `.td` + core JSON (asserted in the suite).
-`tests/artifacts/SHA256` (relative paths) is the oracle every backend is measured
-against; `tools/refresh-oracle.sh` re-derives it from a built LLVM tree (development
-only — generation never runs llvm-tblgen).
+`tests/artifacts/` holds the eight frozen C++/JSON artifacts and their
+`SHA256`.  They are the oracle every backend is measured against.  The corpus
+is frozen as historical input; the `.td` bootstrap reader was removed, so the
+corpus is no longer regenerated from `.td`.  `tools/refresh-oracle.sh` can
+re-derive the C++/JSON oracle from a built LLVM tree (development only —
+generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 70 tests, ~11 s
+python3 -m unittest discover -q -s tests      # 68 tests, ~9 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
@@ -120,7 +118,7 @@ LLVM source tree: the opcode arity table ships in `gisel/data/`.
 Errors point at the source, not at a synthetic string:
 
 ```
-$ gisel gen bad.gisel --emit=td --out x.td
+$ gisel gen bad.gisel --emit=inc --out x.inc
 bad.gisel:6: expected ,, got ID ('pow2')      # exit 2
 ```
 
@@ -150,13 +148,13 @@ is the subtarget truth table it was recorded with.
 ```
 gisel/ast.py            Program / declarations / rule sets / structured LLT
 gisel/dsl.py            lexer, rule parser, core-IR normal form
-gisel/td.py             .gisel -> .td (M0, compatibility backend)
 gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / table.py / core_json.py   M2 / M3 / M4
 gisel/eval.py           standalone evaluator (9632 points, 0 disagreements)
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/grammar.md         the .gisel grammar and AST, normative
 docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
+docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
 spec/semantics.md       what a rule means (and what the evaluator does)
 ```
 

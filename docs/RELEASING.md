@@ -55,7 +55,7 @@ work=$(mktemp -d) && cp tests/corpus/AArch64LegalizerInfo.gisel "$work/"
 cd "$work"
 /tmp/ci/bin/gisel --version
 /tmp/ci/bin/gisel lint AArch64LegalizerInfo.gisel
-for e in td inc check table core; do
+for e in inc check table core; do
   /tmp/ci/bin/gisel gen AArch64LegalizerInfo.gisel --emit=$e --out "a.$e"
 done
 ```

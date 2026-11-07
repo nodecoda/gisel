@@ -1,6 +1,6 @@
 {
  "schema": 1,
- "source": "llvm/include/llvm/Target/GenericOpcodes.td",
+ "source": "bundled LLVM generic opcode arity table",
  "note": "arity = highest (p)typeN index + 1; null = variadic/unknown",
  "opcodes": {
   "G_ABDS": 1,

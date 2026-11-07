@@ -1,7 +1,7 @@
-"""Artifact gates: the checked-in .gisel reproduces the checked-in artifacts.
+"""Artifact gates: the checked-in .gisel reproduces the checked-in C++/JSON.
 
-M0 gate: the .td (TableGen compatibility backend).
-M1 gate: the .inc (-gen-legalizer), byte for byte, with no llvm-tblgen run.
+The .td renderer was removed; ``--emit=inc`` is the C++ chain, byte for byte,
+with no llvm-tblgen run.
 """
 
 import hashlib
@@ -22,26 +22,6 @@ CORPORA = (("x86", "X86LegalizerInfo"), ("aarch64", "AArch64LegalizerInfo"))
 def run(*args, env=None):
     return subprocess.run([sys.executable, "-m", "gisel.cli", *args],
                           cwd=ROOT, env=env, capture_output=True, text=True)
-
-
-class GoldenTd(unittest.TestCase):
-    def test_generated_td_matches_golden(self):
-        for name, src in CORPORA:
-            with tempfile.TemporaryDirectory() as d:
-                out = Path(d) / f"{name}.td"
-                r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
-                        "--emit=td", "--out", str(out))
-                self.assertEqual(r.returncode, 0, r.stderr)
-                self.assertEqual(
-                    out.read_text(),
-                    (TESTS / "golden" / f"{name}.td").read_text(),
-                    f"{name}: generated .td differs from golden")
-
-    def test_check_is_up_to_date(self):
-        for name, src in CORPORA:
-            r = run("check", str(TESTS / "corpus" / f"{src}.gisel"),
-                    "--emit=td", "--td", str(TESTS / "golden" / f"{name}.td"))
-            self.assertEqual(r.returncode, 0, r.stderr)
 
 
 class GoldenInc(unittest.TestCase):
@@ -142,7 +122,7 @@ class GoldenTable(unittest.TestCase):
         self.assertEqual(set(table.TRANSLATION), set(inc.SHIM_TABLE))
 
     def test_prefix_defaults_from_the_file_name(self):
-        """tblgen defaults to X86; deriving the prefix removes that footgun."""
+        """Deriving the table prefix from the file name removes a footgun."""
         from gisel.cli import _table_prefix
 
         self.assertEqual(_table_prefix("X86LegalizerInfo.gisel", None), "X86")
@@ -361,12 +341,12 @@ class EvaluatorCorpus(unittest.TestCase):
                     "riscv_ref_dump.jsonl", 19512)
 
     def test_riscv_core_is_one_table_per_opcode(self):
-        """The artifact has one rule set per opcode, as llvm-tblgen requires.
+        """The frozen artifact has one rule set per opcode.
 
-        RISCV builds G_CTLZ twice (Zbb and non-Zbb chains).  A LegalizeRuleSet
-        record is (opcodes, rules), so the emitted artifact concatenates the
-        chains per opcode; that duplicates the shared Zbb rules once
-        (402 -> 413) and drops the empty second block (96 -> 91).
+        RISCV builds G_CTLZ twice (Zbb and non-Zbb chains).  The artifact
+        contract concatenates the chains per opcode; that duplicates the
+        shared Zbb rules once (402 -> 413) and drops the empty second block
+        (96 -> 91).
         """
         sys.path.insert(0, str(ROOT))
         with tempfile.TemporaryDirectory() as d:
@@ -384,51 +364,8 @@ class EvaluatorCorpus(unittest.TestCase):
         self.assertEqual(sum(len(rs["rules"]) for rs in doc["rulesets"]), 413)
 
 
-class TdGuards(unittest.TestCase):
-    """A `dag` parameter cannot take a bare record.
-
-    `Core*If` and the terminal `Core*` classes declare their guard as `dag`.
-    The feature leaf has two spellings: the `LegalizeFeature` record (used by
-    `LegalizeSelectType`, whose argument is a list of records) and the
-    `(Feature "...")` expression (the dag spelling).  Emitting the record in a
-    dag position produces a .td that llvm-tblgen rejects with "expected type
-    dag"; it was never noticed because only AArch64/X86 goldens existed and
-    neither corpus guards a lattice rule with a single feature.
-    """
-
-    BARE_GUARD = re.compile(r"Core(?:Legal|Lower|Custom|Unsupported|Libcall)"
-                            r"<[A-Za-z_]\w*>")
-    # The last argument of a Core*If is the guard; a bare identifier there is
-    # a record, not a dag.  The type arguments are always parenthesised
-    # `(Ty R_x)`, so nothing legitimate ends the line this way.
-    BARE_TAIL = re.compile(r"Core\w+If<.*,\s*[A-Za-z_]\w*>(?=,?$)", re.M)
-
-    def test_no_bare_feature_record_in_a_dag_position(self):
-        for name in ("AArch64", "X86", "RISCV"):
-            with tempfile.TemporaryDirectory() as d:
-                out = Path(d) / "x.td"
-                r = run("gen", str(TESTS / "corpus" / f"{name}LegalizerInfo.gisel"),
-                        "--emit=td", "--out", str(out))
-                self.assertEqual(r.returncode, 0, r.stderr)
-                text = out.read_text()
-            self.assertIsNone(self.BARE_GUARD.search(text),
-                              f"{name}: bare record as a terminal guard")
-            self.assertIsNone(self.BARE_TAIL.search(text),
-                              f"{name}: bare record as a mutation guard")
-
-    def test_riscv_feature_guard_is_a_dag(self):
-        with tempfile.TemporaryDirectory() as d:
-            out = Path(d) / "r.td"
-            r = run("gen", str(TESTS / "corpus" / "RISCVLegalizerInfo.gisel"),
-                    "--emit=td", "--out", str(out))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            text = out.read_text()
-        self.assertIn('(Feature "STI.hasStdExtZbb()")', text)
-        self.assertIn('(CoreNot (Feature "STI.hasStdExtZbb()"))', text)
-
-
 class ProbeCorpus(unittest.TestCase):
-    """Targets with no .td yet: every backend must still accept the source.
+    """Probe corpora: every backend must still accept the source.
 
     M68k and WebAssembly are transcribed by hand from their C++, so there is
     no golden artifact to compare against; what is checked is that the source
@@ -439,7 +376,7 @@ class ProbeCorpus(unittest.TestCase):
 
     def test_all_backends_accept_the_probe(self):
         for name, _, nrules in self.PROBES:
-            for emit in ("td", "inc", "check", "table", "core"):
+            for emit in ("inc", "check", "table", "core"):
                 with tempfile.TemporaryDirectory() as d:
                     out = Path(d) / "probe"
                     r = run("gen", "--emit=" + emit, "--out", str(out),
@@ -505,54 +442,6 @@ class ProbeCorpus(unittest.TestCase):
         self.assertIn('"of": "Int"', blob)
 
 
-class BootstrapRoundTrip(unittest.TestCase):
-    """The hand-written .td + core JSON regenerate the checked-in .gisel."""
-
-    def test_bootstrap_then_gen_is_lossless(self):
-        for name, src in CORPORA:
-            target = src[:-len("LegalizerInfo")]
-            with tempfile.TemporaryDirectory() as d:
-                out = Path(d) / f"{src}.gisel"
-                r = run("bootstrap",
-                        "--td", str(TESTS / "golden" / f"{name}.td"),
-                        "--core", str(TESTS / "artifacts" / f"{name}.core.json"),
-                        "--out", str(out), "--title", target)
-                self.assertEqual(r.returncode, 0, r.stderr)
-                self.assertEqual(out.read_text(),
-                                 (TESTS / "corpus" / f"{src}.gisel").read_text(),
-                                 f"{name}: bootstrap does not reproduce the corpus")
-                regen = Path(d) / "x.td"
-                r = run("gen", str(out), "--emit=td", "--out", str(regen))
-                self.assertEqual(r.returncode, 0, r.stderr)
-                self.assertEqual(regen.read_text(),
-                                 (TESTS / "golden" / f"{name}.td").read_text())
-
-
-class ImmRoundTrip(unittest.TestCase):
-    """The imm axis round-trips: parse -> render -> parse, same predicate.
-
-    There is no .td to bootstrap a probe corpus from, so the round-trip is
-    checked one level down, on the renderer the bootstrap path uses.
-    """
-
-    SRC = ("type I32 = LLT::integer(32)\n"
-           "ruleset X: G_SEXT_INREG\n"
-           "    legal (in(slot(0), I32) and (in(imm(0), [8, 16]) or imm(0) == 32))\n")
-
-    def _pred(self, text):
-        from gisel import ast as A
-        model = A.to_record_model(A.parse_program(text))
-        return model["rulesets"][0]["rules"][0]["predicate"]
-
-    def test_render_then_parse_is_stable(self):
-        from gisel import dsl
-        first = self._pred(self.SRC)
-        rendered = dsl.render_pred(first)
-        self.assertIn("imm(0)", rendered)
-        again = self._pred("ruleset X: G_SEXT_INREG\n    legal %s\n" % rendered)
-        self.assertEqual(first, again)
-
-
 class SourceNameIndependence(unittest.TestCase):
     """Renaming a source must not change what the backends emit."""
 
@@ -561,17 +450,10 @@ class SourceNameIndependence(unittest.TestCase):
             with tempfile.TemporaryDirectory() as d:
                 g = Path(d) / "scratch.gisel"
                 g.write_text((TESTS / "corpus" / f"{src}.gisel").read_text())
-                td = Path(d) / "x.td"
-                self.assertEqual(run("gen", str(g), "--emit=td", "--out", str(td)).returncode, 0)
-                self.assertEqual(td.read_text(),
-                                 (TESTS / "golden" / f"{name}.td").read_text(), name)
-                tbl = Path(d) / "x.table"
+                tbl = Path(d) / "x.inc"
                 self.assertEqual(run("gen", str(g), "--emit=table", "--out", str(tbl)).returncode, 0)
                 self.assertEqual(tbl.read_text(),
                                  (TESTS / "artifacts" / f"{name}.table.inc").read_text(), name)
-                r = run("check", str(g), "--emit=td",
-                        "--against", str(TESTS / "golden" / f"{name}.td"))
-                self.assertEqual(r.returncode, 0, r.stderr)
 
 
 class CliSurface(unittest.TestCase):
@@ -589,11 +471,10 @@ class SourceErrors(unittest.TestCase):
         d = tempfile.mkdtemp()
         src = Path(d) / source
         src.write_text(text)
-        return run("gen", str(src), "--emit=td", "--out", str(Path(d) / "x.td")), src
+        return run("gen", str(src), "--emit=inc", "--out", str(Path(d) / "x.inc")), src
 
     def test_error_points_at_the_source_line(self):
-        body = ('include "llvm/Target/LegalizerInfo.td"\n'
-                'type X_s32 = LLT::scalar(32)\n'
+        body = ('type X_s32 = LLT::scalar(32)\n'
                 '\n'
                 'ruleset X_A: G_ADD\n'
                 '    legal in(slot(0), [X_s32])\n'
@@ -601,7 +482,7 @@ class SourceErrors(unittest.TestCase):
         r, src = self._run_bad(body)
         self.assertEqual(r.returncode, 2)
         self.assertNotIn("Traceback", r.stderr)
-        self.assertIn(f"{src}:6: expected ,, got ID ('pow2')", r.stderr)
+        self.assertIn(f"{src}:5: expected ,, got ID ('pow2')", r.stderr)
 
     def test_check_errors_are_not_tracebacks(self):
         r = run("check", str(TESTS / "corpus" / "X86LegalizerInfo.gisel"),
@@ -615,21 +496,20 @@ class SourceErrors(unittest.TestCase):
         self.assertNotIn("Traceback", r.stderr)
 
     def test_missing_source_is_not_a_traceback(self):
-        r = run("gen", "/nonexistent/nope.gisel", "--emit=td", "--out", "/tmp/x.td")
+        r = run("gen", "/nonexistent/nope.gisel", "--emit=inc", "--out", "/tmp/x.inc")
         self.assertEqual(r.returncode, 2)
         self.assertIn("No such file", r.stderr)
         self.assertNotIn("Traceback", r.stderr)
 
     def test_wrapped_rule_reports_the_first_physical_line(self):
-        body = ('include "llvm/Target/LegalizerInfo.td"\n'
-                'type X_s32 = LLT::scalar(32)\n'
+        body = ('type X_s32 = LLT::scalar(32)\n'
                 'ruleset X_A: G_ADD\n'
                 '    widen(slot(0),\n'
                 '          pow2\n'
                 '    legal in(slot(0), X_s32)\n')
         r, src = self._run_bad(body)
         self.assertEqual(r.returncode, 2)
-        self.assertIn(f"{src}:4:", r.stderr)
+        self.assertIn(f"{src}:3:", r.stderr)
 
 
 class ArtifactIntegrity(unittest.TestCase):
@@ -705,6 +585,38 @@ class NegativeControl(unittest.TestCase):
         with tempfile.TemporaryDirectory() as d:
             _, out = self._gen(mutated, d)
             self.assertNotEqual(out.read_text(), golden)
+
+
+
+class RemovedSurface(unittest.TestCase):
+    """The .td renderer and its reader are gone from the CLI contract."""
+
+    def test_td_backend_is_rejected(self):
+        with tempfile.TemporaryDirectory() as d:
+            r = run("gen", str(TESTS / "corpus" / "X86LegalizerInfo.gisel"),
+                    "--emit=td", "--out", str(Path(d) / "x.td"))
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("invalid choice", r.stderr)
+
+    def test_check_td_alias_is_rejected(self):
+        r = run("check", str(TESTS / "corpus" / "X86LegalizerInfo.gisel"),
+                "--td", str(TESTS / "artifacts" / "x86.inc"))
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+
+    def test_bootstrap_is_rejected(self):
+        r = run("bootstrap", "--td", "x.td", "--core", "x.json",
+                "--out", "x.gisel")
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        self.assertIn("invalid choice", r.stderr)
+
+    def test_default_emit_is_the_cpp_chain(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "x.inc"
+            r = run("gen", str(TESTS / "corpus" / "X86LegalizerInfo.gisel"),
+                    "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stderr)
+            self.assertEqual(out.read_bytes(),
+                             (TESTS / "artifacts" / "x86.inc").read_bytes())
 
 
 if __name__ == "__main__":

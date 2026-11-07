@@ -1,5 +1,7 @@
 # Pressure test: M68k and WebAssembly
 
+> 历史说明：本报告写作时 `.td` 渲染器仍存在；它已在 `docs/REPORT-no-td.md` 中移除。
+
 状态: 证据记录（2026-11-06）。语料: `tests/corpus/M68kLegalizerInfo.gisel`（13 条）、
 `tests/corpus/WebAssemblyLegalizerInfo.gisel`（108 条）。
 

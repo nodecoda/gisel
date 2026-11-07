@@ -2,7 +2,7 @@
 
 Result (2026-11-06): `gisel gen --emit=table` reproduces both fragments byte
 for byte -- `x86.table.inc` 4982 lines, `aarch64.table.inc` 10765 lines -- from
-`gisel/backend/table.py` (one module, ~470 lines) with no `llvm-tblgen`.
+`gisel/backend/table.py` (one module, ~470 lines) with no `llvm-tblgen` and no `.td` input.
 
 Two corrections to the plan below, both found while implementing:
 
@@ -35,7 +35,7 @@ this order:
 
 | section | starts at (x86 artifact) | source |
 |---|---|---|
-| environment signature: one bit per feature, `.td` order | `:8` | `emitFeatureSignature` |
+| environment signature: one bit per feature, declaration order | `:8` | `emitFeatureSignature` |
 | type classes: `TableScalar/Pointer/Integer/Float/Vector` | `:~60` | `collectClasses`, `resolve` |
 | memory-descriptor classes + alignment classes + slot partitions | `:79` | `collectMemClasses` |
 | one evaluator per rule set | `:305` | `translateCoreRule`, `run` |

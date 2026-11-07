@@ -2,12 +2,12 @@
 
 状态: 规范性。实现: `gisel/ast.py`（`parse_program`，文件级 AST）与
 `gisel/dsl.py`（`Parser`，规则体）。语料: `tests/corpus/*.gisel`
-（778 + 1310 行，1075 条规则，有 `.td` 对照）；
-另有两份**无 `.td` 的探针语料** `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
+（778 + 1310 行，1075 条规则，有冻结的 C++/JSON 对照）；
+另有两份探针语料 `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
 `WebAssemblyLegalizerInfo.gisel`（228 行 / 108 条），见 `docs/REPORT-wasm.md`。
 另有导入器产物 `RISCVLegalizerInfo.gisel`（402 条规则 / 96 个 ruleset，由
 `tools/import-cxx.py` 从 C++ 构造函数生成，见 `docs/REPORT-riscv.md` §7）；
-它没有 `.td` 对照，只作为「语料是否可表达」的证据。
+它没有冻结产物，只作为「语料是否可表达」的证据。
 任何语法改动都必须让这几份语料 round-trip。
 
 ## 1 词法
@@ -27,7 +27,7 @@
 ```
 program    := { toplevel }
 toplevel   := include | decl | ruleset
-include    := "include" STRING                     // 原样进 .td
+include    := "include" STRING                     // historical; ignored
 decl       := feature | named_type | select_type | predicate | type_set | type_list
 
 feature    := "feature" ID "=" <C++ bool expr>      // 余下整行原文
@@ -39,24 +39,23 @@ type_list  := "type_list" ID "=" "[" type {"," type} "]"
 ```
 
 `feature`/`type` 的右侧保留**原文**（`Feature.cxx`、`NamedType.source`，
-供 `--emit=td/.inc` 渲染）；`select`/`pred`/`type_set` 被解析成语义值。
+供 `--emit=inc` 渲染）；`select`/`pred`/`type_set` 被解析成语义值。
 名字区分大小写。`type` 右侧的 C++ LLT 表达式只在前端解析一次，落成结构化
-`LLT`（见 §2.1）；记录名不在 AST 里，只在 `.td`/`.inc` 的出口由
-`ast.NameTable` 计算。
+`LLT`（见 §2.1）；声明名不在 AST 的规则类型位置里，只在 `.inc` 的出口由
+`ast.NameTable` 计算。`include` 行仍被接受但忽略，只为冻结语料兼容。
 
 ## 2.1 AST（规范形）
 
-前端只产出一种模型（`gisel/ast.py`），五个后端都消费它。记录名、`X86_`
-前缀、`LegalizeFeature<...>` 这些都是**渲染词汇**，不属于模型。
+前端只产出一种模型（`gisel/ast.py`），四个后端都消费它。声明名、`X86_`
+前缀、`LegalizeFeature<...>` 这些只是 C++ 渲染词汇，不属于模型。
 
 ```
-Program  := Include* Decl* RuleSet*
-Include  := { path, line }
+Program  := Decl* RuleSet*
 Decl     := Feature(name, cxx) | NamedType(name, LLT, source)
-          | PredicateDecl(name, pred, source)
-          | SelectType(name, arms, otherwise, value)
-          | TypeSet(name, members, source_ref, value)
-          | TypeList(name, members, value)
+          | PredicateDecl(name, pred)
+          | SelectType(name, value)
+          | TypeSet(name, value)
+          | TypeList(name, value)
 RuleSet  := (name, opcodes: str+, rules: Rule*, comments, coverage, line)
 Rule     := { op, action, type_idx, on?, to?, predicate, line }
 LLT      := Scalar(bits) | Integer(bits) | Float(bits) | BFloat16
@@ -69,8 +68,8 @@ LLT      := Scalar(bits) | Integer(bits) | Float(bits) | BFloat16
   `arms` 是 `(predicate, TypeValue)`；`SetValue` 保留 `of/arity/elems`。
 - `NamedType.source` 是 `LLT::scalar(...)` 原文，只为渲染保留；语义字段是
   `llt`。
-- `TypeSet.members` / `TypeList.members` 是源里的记录名（渲染用）；
-  `value` 是解析后的成员值。`source_ref` 记录 `X.Elems` 形式。
+- `TypeSet.value` / `TypeList.value` 是解析后的成员值；`type_set X = Y.Elems`
+  在解析时展开，不保留源引用。
 - `RuleSet.name` 是 `ruleset` 的 `def` 名；它不参与语义，`eval`/`table`/
   `core` 只把它当输出标签。
 - 规则体由 `dsl.Parser` 编译成 schema-0.4 节点后，`parse_program` 再把其中
@@ -93,7 +92,7 @@ clamp      := ("clamp_min"|"clamp_max") "(" INT "," type "," expr ")"
 ```
 
 - 一个 `ruleset` 可以挂多个 opcode；规则按书写顺序匹配（`evaluate:860`）。
-- `note` 是注释的载体（进 `.td` 的 `Comments`）；`imm_idx(n)` 是覆盖标记，
+- `note` 是注释的载体（进 `.inc` 的注释）；`imm_idx(n)` 是覆盖标记，
   不是 core 规则（`tests/test_artifacts.py:90` 计数 1078 = 1075 + 3）。
 - `clamp_min/max` 是**语法糖**，前端展开成一条 `more`/`fewer` 规则：四个 guard
   （是向量、不是可伸缩向量、元素类型相等、lane 数越界）加
@@ -111,7 +110,7 @@ call   := ID "(" [ expr {"," expr} ] ")"
 `slot(i)`、`mem_slot(i)`、`imm(i)` 是特例（`dsl.py:45`、`ZERO_ARG`）。
 
 `imm(i)` 读 `Query.Immediates[i]`，sort 是 `Int`，只能出现在谓词里（不是类型，
-不能当 `widen` 的目标）。它没有 arity 可检查：`GenericOpcodes.td` 只描述类型槽，
+不能当 `widen` 的目标）。它没有 arity 可检查：冻结 opcode 表只描述类型槽，
 所以 `imm(9)` 不会被 J3b 拦下。
 
 ## 5 谓词
@@ -175,9 +174,9 @@ LLVM 的前提下检查每条规则：
 `{source, errors[], warnings[], rules}`。退出码：0 无 error，1 有 error，
 2 源/IO/解析错误。
 
-arity 来自随包分发的 `gisel/data/generic_opcodes.json`（283 条，从
-`GenericOpcodes.td` 的 `def`/`class` 继承链重建；`tools/gen-opcode-table.py`
-仅开发期重算）。10 条变参指令（`G_PHI`、`G_INTRINSIC*` 等）没有固定 arity：
+arity 来自随包分发的 `gisel/data/generic_opcodes.json`（283 条的冻结 opcode
+表）。10 条变参指令（`G_PHI`、`G_INTRINSIC*`
+等）没有固定 arity：
 lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默通过。
 
 ## 8 已知边界
@@ -186,22 +185,18 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 - `type` 右侧做**形状检查**：只接受 `LLT::scalar/integer/pointer/`
   `fixed_vector/scalable_vector/float*`，可嵌套；无法规范化时
   `ast._parse_llt` 直接拒绝（exit 2）。任意 C++ 常量表达式（如 `LLT::scalar(8*4)`）会被拒——
-  这是刻意的：能规范化才能进 core JSON 与 `.td` 的 `LegalizeNamedType`。
+  这是刻意的：能规范化才能进 core JSON 与 C++ 的 `const LLT` 声明。
 - `feature` 右侧**不检查**：它是 target 特定的任意 C++ bool 表达式，gisel
   不持有 `Subtarget` 接口；错误只能由 C++ 编译期暴露。
 - 规则里的 `feature("...")` 必须与某个 `feature NAME = ...` 的表达式文本完全
   一致，否则 `gen --emit=inc` 报 `undeclared feature expression`。
-- 顶层声明顺序即 `.td` 中的声明顺序；`include` 行原样保留，由 `--emit=td` 输出。
+- 顶层声明顺序即 C++ prologue 中的声明顺序；`include` 行被忽略。
 - `type_set X = Y.Elems` 是引用，不是拷贝（`ast.parse_program` 的
   `resolve_setlike`）。
 - 语法错误报 `path:line: message`（exit 2），行号是 `.gisel` 的物理行；
   被续行拆开的规则报该语句的起始行（`ast.parse_program` 传入的 line map）。
 - `lint` 只做单步静态检查，不求值、不检查终止性；求值见 `gisel eval`。
 - `imm(i)` 没有下界检查（见 §4）：`imm(7)` 在只有 1 个立即数的指令上不会被 lint 拦下。
-- `--emit=td` 会把立即数规则写成 `(CoreIn (Imm 0), [8, 16])`，而 LLVM 侧的
-  `LegalizerCore.td` 还没有 `CoreImm`；AArch64/X86 不用 imm，所以现有 8 份产物不受
-  影响。要让生成的 `.td` 能被 `llvm-tblgen` 吃下，`LegalizerCore.td` 需补一个
-  `CoreImm`（sort `Int`）并让 `CoreIn` 接受 Int 集合。
 - 多 opcode 的 ruleset 用 `min(arity)` 做 J3b（`dsl.py:check_rules`），这是
   保守下界，不是 per-opcode 精确检查。
 - 导入器（`tools/import-cxx.py`）的产物暴露了三条表达边界，均**不改语法**：
@@ -213,5 +208,5 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
   - `in(slot(i), X)` 的第二参是类型或类型集，不是 `ty(...)` 表达式
     （`dsl.py:313` `parse_set_or_type`）——`typeIs(i, T)` 要译成裸 `T`。
 - 同一 opcode 允许多个 `ruleset`（C++ 里多次 `getActionDefinitionsBuilder`），
-  按书写顺序匹配；但 `--emit=td` 的 def 名必须唯一，所以导入器会给重名的加
-  `_2` 后缀。core JSON 里它们仍是两个 ruleset，`eval` 按 `by_opcode` 的顺序遍历。
+  按书写顺序匹配。发射前 `canonicalize_rulesets` 把它们合并成一张表，以保持
+  C++ `.inc` 与冻结 core JSON 的既有形状；这是产物约束，不是语言规则。

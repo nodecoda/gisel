@@ -31,7 +31,7 @@ jobs:
           export PATH="$shim:$PATH"
           out=$(mktemp -d)
           for target in X86 AArch64; do
-            for emit in td inc check table core; do
+            for emit in inc check table core; do
               python3 -m gisel.cli gen "tests/corpus/${target}LegalizerInfo.gisel" \
                 --emit="$emit" --out "$out/$target.$emit"
             done

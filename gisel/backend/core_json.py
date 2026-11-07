@@ -1,10 +1,7 @@
-"""Emit the ``-gen-legalizer-core`` JSON from the schema-0.4 normal form.
+"""Emit the ``-gen-legalizer-core`` JSON from the language AST.
 
-Mirrors ``LegalizerInfoEmitter::runCore`` (LegalizerInfoEmitter.cpp:4816),
-``coreTypeValue`` (:1361) and ``coreSetJson`` (:2820).
-
-The rule body is already the normal form; three things are re-spelled on the
-way out:
+Mirrors the legacy core emitter's schema-0.4 output.  The AST rule body is
+already the normal form; three things are re-spelled on the way out:
 
 * a type is named by its LLT, not by its record (``Target_s8`` -> ``s8``), and a
   pointer whose width the configuration decides is written as a wildcard
@@ -14,8 +11,8 @@ way out:
 * the domain is the set of normalised named types with the wildcards dropped,
   plus ``p0:<width>``, sorted and deduplicated (:4856).
 
-``origin`` points at the ``.gisel`` source, not at the generated ``.td``, so
-the gate compares documents after dropping it (plan AC5).
+``origin`` points at the ``.gisel`` source, so the gate compares documents
+after dropping it.
 """
 
 import json
@@ -34,10 +31,9 @@ _ORIGIN_RE = re.compile(r'"origin": \{[^{}]*\}')
 def strip_origin(text):
     """Drop the per-rule ``origin`` values, keeping the key.
 
-    ``origin`` names the source file and line; ours point at ``.gisel`` and the
-    baseline at the generated ``.td``, so it is provenance, not semantics
-    (plan AC5).  Both the golden test and ``gisel check --emit=core`` compare
-    documents with the values erased.
+    ``origin`` names the source file and line; ours point at ``.gisel``, so it
+    is provenance, not semantics.  Both the golden test and
+    ``gisel check --emit=core`` compare documents with the values erased.
     """
     return _ORIGIN_RE.sub('"origin": {}', text)
 

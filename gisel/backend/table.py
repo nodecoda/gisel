@@ -56,7 +56,7 @@ def table_types(llt, root):
         return [TableType("BFloat", 16, 1, root)]
     if isinstance(llt, A.Pointer):
         # The table class deliberately ignores the pointer width; that is
-        # the one axis the .td leaves to the subtarget (:126-127).
+        # the one axis the target leaves to the subtarget.
         return [TableType("Pointer", 0, 1, root)]
     if isinstance(llt, A.Vector):
         kind = "ScalableVector" if llt.scalable else "Vector"
@@ -106,7 +106,7 @@ def collect_mem_classes(gs, classes=None):
                 continue
             seen.add(key)
             out.append(t)
-    # The pointer class is the one width the .td leaves to the subtarget, and
+    # The pointer class is the one width the target leaves to the subtarget, and
     # it is also the self-check probe for a memdesc rule set.
     if ("Pointer", 0, 1) not in seen:
         out.append(TableType("Pointer", 0, 1, "p0"))
@@ -458,7 +458,8 @@ def emit_prologue(gs):
         for d in gs.decls:
             if isinstance(d, A.TypeList):
                 out.append("  [[maybe_unused]] const std::initializer_list<LLT> "
-                           "%s = {%s};" % (d.name, ", ".join(d.members)))
+                           "%s = {%s};" % (d.name, ", ".join(
+                               cxx._type_value(e) for e in d.value.elems)))
     else:
         for k, name, cond in gs["decls"]:
             if k == "feature":

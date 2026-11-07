@@ -1,8 +1,8 @@
-"""Emit the ``-gen-legalizer`` C++ fragment from the schema-0.4 normal form.
+"""Emit the ``-gen-legalizer`` C++ fragment from the language AST.
 
-This is a from-scratch reimplementation of the parts of
-``llvm/utils/TableGen/LegalizerInfoEmitter.cpp`` (LLVM commit d48f5512a162)
-that turn a rule set into the ``.inc`` the target's LegalizerInfo consumes:
+This is a from-scratch reimplementation of the legacy C++ legalizer emitter
+(LLVM commit d48f5512a162) that turns a rule set into the ``.inc`` the
+target's LegalizerInfo consumes:
 
   emitFeatures              :266
   selectText                :385
@@ -13,9 +13,8 @@ that turn a rule set into the ``.inc`` the target's LegalizerInfo consumes:
   CoreCxxEmitter            :2974   (value :2983, boolean :2984)
   emitCoreRule              :3689
 
-It consumes the same normal form the ``td`` backend consumes, so the two
-backends cannot disagree about what a rule means: they only disagree about
-how it is spelled.
+The AST is the only input: rule type positions are structured LLT values and
+the C++ spelling (declaration names, guards, shims) is computed here.
 
 Ported logic keeps the LLVM license header and names its source commit.
 """
@@ -143,7 +142,7 @@ class IncEmitter:
                     self.sets[d.name] = tuple(
                         self.names.value_name(e) for e in value.elems)
                 else:
-                    self.sets[d.name] = tuple(d.members)
+                    self.sets[d.name] = ()
 
     # ---- names ----------------------------------------------------------
 
@@ -263,8 +262,8 @@ class IncEmitter:
             if n["name"] == "true":
                 return "true"
             if n["name"] == "hasFeature":
-                # A guard that names a LegalizeFeature record emits the record
-                # name bare; emitCoreRule's junction adds the parentheses.
+                # A feature guard emits the declared bool name bare; the
+                # junction adds the parentheses.
                 return self._feature(n["args"][0])
             raise ValueError(f"unknown leaf predicate {n['name']!r}")
         if k in ("all", "any"):
@@ -489,7 +488,8 @@ class IncEmitter:
         for d in self.gs.decls:
             if isinstance(d, A.TypeList):
                 lists.append("  const std::initializer_list<LLT> %s = {%s};"
-                             % (d.name, ", ".join(d.members)))
+                             % (d.name, ", ".join(
+                                 self._type_value(e) for e in d.value.elems)))
         features = ["  bool %s = %s;" % (d.name, d.cxx)
                     for d in self.gs.decls
                     if isinstance(d, A.Feature)
