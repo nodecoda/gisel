@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 from . import ast as A, dsl
+from . import cases as casegen
 from .backend import check_json, core_json, llvm_inc, table
 
 BACKENDS = ("inc", "check", "table", "core")
@@ -160,6 +161,19 @@ def main(argv=None):
     c.add_argument("--strict-origin", action="store_true",
                    help="core: also compare the per-rule origin line numbers")
 
+    cs = sub.add_parser("cases",
+                        help="generate equivalence/boundary/outside test cases")
+    cs.add_argument("source")
+    cs.add_argument("--out", required=True, help="JSONL case file to write")
+    cs.add_argument("--features",
+                    help="feature truth table (default: derive none/all/only-N)")
+    cs.add_argument("--config", action="append", dest="configs",
+                    help="limit to configs from --features (repeatable)")
+    cs.add_argument("--against",
+                    help="oracle JSONL; compares only the overlapping queries")
+    cs.add_argument("--max-outside", type=int, default=2)
+    cs.add_argument("--json", action="store_true", help="print stats as JSON")
+
     l = sub.add_parser("lint", help="static checks over a source file (no LLVM)")
     l.add_argument("source")
     l.add_argument("--manifest",
@@ -249,6 +263,8 @@ def main(argv=None):
             print(f"{args.source}: {len(errors)} error(s), {len(warnings)} "
                   f"warning(s), {nrules} rule(s)")
         return 1 if errors else 0
+    if args.cmd == "cases":
+        return casegen.main(argv[1:])
     from . import eval as evaluator
     # `eval` owns its own argument set; drop the subcommand word.
     return evaluator.main(argv[1:])

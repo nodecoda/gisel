@@ -137,3 +137,9 @@ C++ 的 `getActionDefinitionsBuilder(Op)` 每调用一次就追加一张表，`g
 - AArch64（114 表 / 743 条）、X86（63 / 332）没有重复 opcode → 恒等变换，golden 不变。
 - RISCV 有 11 个重复 opcode（`G_CTLZ` 的 Zbb / 非 Zbb 两条链）→ **96 表 / 402 条
   变成 91 表 / 413 条**（共享的 Zbb 规则只复制一次）；`19512 / 0 / 0` 不变。
+
+## 10 用例生成
+
+`spec/cases.md` 定义如何从本文的语义派生用例：等价类是首个命中的规则区域，
+边界是答案真的翻转的相邻值，类外是落到 `Unsupported` 的点。生成器只调用
+`evaluate` / `bool_value` / `shim_guard_and_newtype`，不引入第二套求值规则。

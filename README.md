@@ -12,6 +12,9 @@ python3 -m pip install .        # or: python3 -m gisel (no install)
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
 gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
+gisel cases tests/corpus/X86LegalizerInfo.gisel --out x86.cases.jsonl \
+            --features tests/cases/x86-features.json \
+            --against tests/cases/x86_ref_dump.jsonl   # equivalence/boundary/outside
 ```
 
 ## Five minutes
@@ -73,6 +76,14 @@ frozen core JSON at one table per opcode, not because the language forbids it.
 `docs/REPORT-ast.md` records the AST migration; `docs/REPORT-no-td.md` records
 the removal of the `.td` renderer.
 
+Test cases are derived from that same model, not written by hand:
+`gisel cases` emits one representative per equivalence class (rule region),
+boundaries where the answer actually flips (`N-1`/`N+1` on bits, lanes,
+memory size and alignment), and outside probes that fall through to
+`Unsupported`.  `--against` compares only the overlap with an oracle dump;
+`uncovered` is reported separately and is never counted as a pass.
+`spec/cases.md` is the contract, `docs/REPORT-cases.md` the evidence.
+
 What it does not do: it does not generate the upstream `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than
 guessing, and none of the five corpora is an independent hand-written second
@@ -90,6 +101,7 @@ bootstrap reader was removed.
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 | v0.4 | `import-cxx` | RISCV: 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
+| v0.5 | `cases` | equivalence/boundary/outside; X86 365, AArch64 663 oracle-covered, 0 disagreements | done |
 
 `tools/import-inventory.py` answers "what would it cost to migrate target X?" by
 censusing a hand-written constructor (method histogram, chain shapes, guards);
@@ -107,7 +119,7 @@ re-derive the C++/JSON oracle from a built LLVM tree (development only —
 generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 68 tests, ~9 s
+python3 -m unittest discover -q -s tests      # 78 tests, ~11 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
@@ -151,10 +163,13 @@ gisel/dsl.py            lexer, rule parser, core-IR normal form
 gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / table.py / core_json.py   M2 / M3 / M4
 gisel/eval.py           standalone evaluator (9632 points, 0 disagreements)
+gisel/cases.py          equivalence/boundary/outside case generation
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/grammar.md         the .gisel grammar and AST, normative
+spec/cases.md           what a generated case means, and the subset contract
 docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
 docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
+docs/REPORT-cases.md    case generation: algorithm, evidence, rejected options
 spec/semantics.md       what a rule means (and what the evaluator does)
 ```
 
