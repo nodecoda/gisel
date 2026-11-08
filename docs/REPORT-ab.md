@@ -662,16 +662,21 @@ total                    1408
 
 ### 6.4 结果：基线 + 四轮，全部 0 失败
 
-五轮都是完整 `ninja check-llvm`（RelWithDebInfo，assertions ON）。每轮都是先换
-`.inc`、重新编译、再跑全量；跑完 `restore` 回官方实现。
+五轮的口径都是：**先 `ninja all` 做全量构建，再 `ninja check-llvm` 跑全量测试**
+（RelWithDebInfo，assertions ON，`LLVM_ENABLE_PROJECTS=clang`，
+`LLVM_TARGETS_TO_BUILD=X86;AArch64;RISCV`）。每轮先换 `.inc`，跑完 `restore`
+回官方实现。
 
-| 轮 | 替换的 target | Total | Passed | Failed | `ninja` rc |
-|---|---|---:|---:|---:|---:|
-| 基线 | 无（三份都是官方实现） | 80,629 | 54,920 | 0 | 0 |
-| 1 | X86 | 80,629 | 54,920 | 0 | 0 |
-| 2 | AArch64 | 80,629 | 54,920 | 0 | 0 |
-| 3 | RISC-V | 80,629 | 54,920 | 0 | 0 |
-| 4 | 三个同时 | 80,629 | 54,920 | 0 | 0 |
+| 轮 | 替换的 target | `ninja all` | Total | Passed | Failed | `check-llvm` rc |
+|---|---|---:|---:|---:|---:|---:|
+| 基线 | 无（三份都是官方实现） | 0 | 80,629 | 54,920 | 0 | 0 |
+| 1 | X86 | 0 | 80,629 | 54,920 | 0 | 0 |
+| 2 | AArch64 | 0 | 80,629 | 54,920 | 0 | 0 |
+| 3 | RISC-V | 0 | 80,629 | 54,920 | 0 | 0 |
+| 4 | 三个同时 | 0 | 80,629 | 54,920 | 0 | 0 |
+
+`ninja all` 每次都真的重编了受影响的 target（X86 轮 53 步、AArch64 轮 58 步、
+RISC-V 轮 53 步、三合一 53 步，都包含 `libclang-cpp` 重链接），不是空转。
 
 五轮的 `Skipped 62 / Unsupported 25,576 / Expectedly Failed 71` 也逐条相同。
 也就是说：三个 target 分别替换、以及三个同时替换，全量结果和基线**逐条相同**，
@@ -719,31 +724,31 @@ python3 -m gisel gen tests/corpus/AArch64LegalizerInfo.gisel --emit=inc --out /t
 python3 -m gisel gen tests/corpus/RISCVLegalizerInfo.gisel   --emit=inc --out /tmp/swapinc/riscv.inc
 
 # 基线
-cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+cd /home/ubuntu/llvm/builds/explore && ninja all && ninja check-llvm
 
-# 每轮：换 -> 编 -> 跑 -> 恢复
+# 每轮：换 -> ninja all（全量构建）-> ninja check-llvm（全量测试）-> 恢复
 cd /home/ubuntu/llvm/gisel
 python3 tools/ab/swap-source-ctor.py apply --target x86 \
   --build /home/ubuntu/llvm/builds/explore --inc /tmp/swapinc/x86.inc
-cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+cd /home/ubuntu/llvm/builds/explore && ninja all && ninja check-llvm
 
 cd /home/ubuntu/llvm/gisel
 python3 tools/ab/swap-source-ctor.py restore --target x86 --build /home/ubuntu/llvm/builds/explore
 python3 tools/ab/swap-source-ctor.py apply --target aarch64 \
   --tree /home/ubuntu/llvm/trees/explore --inc /tmp/swapinc/aarch64.inc
-cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+cd /home/ubuntu/llvm/builds/explore && ninja all && ninja check-llvm
 
 cd /home/ubuntu/llvm/gisel
 python3 tools/ab/swap-source-ctor.py restore --target aarch64 --tree /home/ubuntu/llvm/trees/explore
 python3 tools/ab/swap-source-ctor.py apply --target riscv \
   --tree /home/ubuntu/llvm/trees/explore --inc /tmp/swapinc/riscv.inc
-cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+cd /home/ubuntu/llvm/builds/explore && ninja all && ninja check-llvm
 
 # 三个同时
 cd /home/ubuntu/llvm/gisel
 python3 tools/ab/swap-source-ctor.py apply --target x86 \
   --build /home/ubuntu/llvm/builds/explore --inc /tmp/swapinc/x86.inc
-cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+cd /home/ubuntu/llvm/builds/explore && ninja all && ninja check-llvm
 
 # 收工，恢复
 cd /home/ubuntu/llvm/gisel
@@ -754,10 +759,10 @@ python3 tools/ab/swap-source-ctor.py restore --target riscv   --tree  /home/ubun
 
 ### 6.7 这轮证明了什么，没证明什么
 
-证明的：我们生成的 `.inc` 换掉三个 target 的合法化规则之后，LLVM 的全量测试
-和基线逐条相同——`80,629` 条发现、`54,920` 通过、`0` 失败，分别换和一起换都是
-这个数。`legalizer-info-validation.mir` 逐字通过，说明覆盖面（不只是答案）也和
-现网一致。
+证明的：我们生成的 `.inc` 换掉三个 target 的合法化规则之后，`ninja all` 全量
+构建 rc=0，全量测试和基线逐条相同——`80,629` 条发现、`54,920` 通过、`0` 失败，
+分别换和一起换都是这个数。`legalizer-info-validation.mir` 逐字通过，说明覆盖面
+（不只是答案）也和现网一致。
 
 没证明的：
 
