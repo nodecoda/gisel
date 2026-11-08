@@ -179,6 +179,22 @@ parse .gisel
 关键点：**测试用例不是第二套模型**。`document()` 走的是和代码生成完全相同的
 解析、规范化和 `core_json` 发射路径。规则改了，用例自动跟着变。
 
+### 4.1 轴的存在性：结构标记 + 值集，不是一个总开关
+
+代码里没有一张全局的「轴注册表」，也没有 `if values: axis_on` 的统一判断。
+每个 ruleset 先做一次统一的观察分类（`RuleInfo`），然后按轴各自的规则决定：
+
+| 轴 | 何时存在 | 值集为空时 | 代码 |
+|---|---|---|---|
+| config | 总是 | 没有 config → 退出 2 | `cases.py:650` |
+| type slot | 总是，每个 slot 一根 | 用默认 `s32` | `_candidates` `cases.py:531-533` |
+| mem | 任一规则 `uses_mem` | 没有 `inMemDesc` 行 → **没有 mem 查询点**（覆盖缺口，不静默关轴） | `cases.py:678`、`_queries:623-638` |
+| imm | 任一规则读 `imm(i)` | `_imm_tuples` 返回 `[()]`，等于没有 imm 轴 | `imm_candidates:368-397`、`_imm_tuples:400-414` |
+| ordering | 任一规则 `uses_ordering` **且** `--axes` 声明 orderings | 回退到 `NotAtomic` | `cases.py:679-682`、`axes.ordering_pairs()` |
+
+所以准确的说法是：**结构标记决定轴是否存在，值集决定轴的长度；空值集在 type /
+imm / ordering 上有默认，在 mem 上是覆盖缺口。**
+
 ## 5 切点提取：`inspect_ruleset`
 
 对每个 ruleset，`inspect_rule` 递归遍历每条规则的 `predicate`、`on`、`to`，
