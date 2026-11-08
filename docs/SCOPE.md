@@ -1,0 +1,68 @@
+# SCOPE：gisel 是什么，不是“用 gisel 能做成什么”
+
+这份文件是边界的唯一出处。新加一个命令、脚本或报告之前，先按这里的判定规则
+归位；归类不确定就是设计没想清楚，不是文档问题。
+
+## 1 gisel 本体
+
+gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.core.json`），
+全程不跑 `llvm-tblgen`、不编译 LLVM、不读 LLVM 源码。
+
+| # | 功能 | 入口 | 输入 → 输出 |
+|---|---|---|---|
+| 1 | **转译**：把规则文本变成规则产物 | `gen --emit={inc,check,table,core}`、`check`、`lint` | `.gisel` → C++ / JSON / TableGen 文本；`check` 只比对字节，`lint` 只报诊断 |
+| 2 | **用例生成**：把规则空间变成有限的题 | `cases`、`domain` | `.gisel` + feature 真值表 + 轴 → 无答案查询 JSONL（等价类 / 边界 / 域外） |
+
+配套的内部件，不单独算功能：
+
+- `eval`：schema-0.4 正常形的求值器。它是 `cases` 的**分母自检**手段——同一份
+  查询既给 evaluator 答，也给编译出来的规则答，两边必须一致。
+- `graph`：读 `--emit=core` 的静态分析（商图找环）。它同样不碰 LLVM。
+- `gisel/data/*.json`：opcode 槽位/arity 的**快照**。生成它要 LLVM，但 gisel
+  运行时只读这份随包数据。
+
+## 2 工作台：用 gisel 完成的，不是 gisel 的功能
+
+| 工具 | 做什么 | 用 gisel 的哪个出口 |
+|---|---|---|
+| `tools/import-cxx.py` | 解析 LLVM 手写 legalizer C++ → `.gisel` | 目标端：产出 gisel 的输入 |
+| `llvm-dev/tools/gisel_td.py` | `.gisel` → `.td`（给 llvm-tblgen 用） | 复用 `gisel/ast.py` 的 AST |
+| `tools/refresh-oracle.sh` | 跑 `llvm-tblgen` 刷新 `tests/artifacts/` | 校验 `gen` 的字节一致 |
+| `tools/ab/*` | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
+| `gisel diff` | 比较两个答案文件 | 唯一住在 CLI 里的工作台动词 |
+
+这一层的共同特征：**输入或对照物来自 gisel 之外**（LLVM 源码、llvm-tblgen、
+编译产物、另一个实现的答案）。它们证明的是“两条规则实现相同”，不是“gisel
+有这个能力”。
+
+物理边界：`pyproject.toml` 只打包 `gisel*`，`tools/` 和 `docs/` 不随 wheel
+发布。工作台脚本是仓库内的开发工具，不是产品面。
+
+## 3 判定规则
+
+新东西放哪边，只看两个问题：
+
+1. **输入是什么？** `.gisel` 或 `.core.json` → 本体；LLVM 源码、`.td`、
+   llvm-tblgen 输出、编译出的 runner → 工作台。
+2. **跑不跑外部程序？** 只读文件、纯 Python → 本体；起 `llvm-tblgen`、`g++`、
+   `llc`，或者比较两个实现的答案 → 工作台。
+
+报告也按这条分：出现 `llvm-project`、`llvm-tblgen`、`runner`、`对拍`、
+`A/B` 字样的，是**工作台报告**，标题和开头必须写明，不能当成 gisel 的能力
+宣传。
+
+## 4 已经发生过的越界（如实记录）
+
+| 位置 | 越界形态 | 处置 |
+|---|---|---|
+| `docs/REPORT-cases.md` §6–§7 | 对拍结果住在用例生成报告里，读起来像 gisel 的能力 | 已整体搬到 `docs/REPORT-ab.md`，并在文首写明是工作台报告 |
+| `gisel diff` | 对拍动词住在产品 CLI 里 | 保留（纯 JSON、无 LLVM 依赖，且被 cases 文档引用），help 与本文都标成 workbench |
+| `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 不随 wheel 发布；本文第 2 节列明它是目标端工具 |
+| `cases --against <llvm dump>` | 看起来像运行时依赖 LLVM | 它读的是冻结在 `tests/` 的 oracle，不是运行时依赖 |
+| `eval --answers` | 为对拍加的出口 | 属于求值器本身（答案就是它的输出），归本体 |
+
+## 5 一句话
+
+gisel 只负责“规则文本 ↔ 规则产物 / 查询”。**证明两条规则实现一致，是工作台
+拿 gisel 做的事**；工作台可以反复跑、归因、修语料，但它的结论不改变 gisel 的
+功能清单。

@@ -7,6 +7,13 @@
 A free-form language for GlobalISel legalizer rules, and the toolchain that
 turns it into LLVM artifacts **without `llvm-tblgen`**.
 
+gisel has two functions: turn a `.gisel` file into rule artifacts
+(`gen`/`check`/`lint`) and generate test cases (`cases`/`domain`).  Importing
+LLVM's hand-written legalizer into `.gisel`, regenerating the `.td`, and the
+two-implementation A/B all live in the workbench (`tools/`) and are not part of
+gisel — see [docs/SCOPE.md](docs/SCOPE.md) for the boundary and the rule that
+keeps it fixed.
+
 ```sh
 # from a checkout: the corpus and frozen artifacts ship with the repo,
 # not with the wheel (the wheel carries the opcode table lint needs).
@@ -200,6 +207,8 @@ spec/cases.md           what a generated case means, and the subset contract
 docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
 docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
 docs/REPORT-cases.md    case generation: algorithm, evidence, rejected options
+docs/REPORT-ab.md       workbench: end-to-end A/B (not a gisel feature)
+docs/SCOPE.md           what gisel is, what only uses it
 spec/semantics.md       what a rule means (and what the evaluator does)
 ```
 

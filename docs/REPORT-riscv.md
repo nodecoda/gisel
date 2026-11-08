@@ -1,6 +1,7 @@
 # RISCV：为什么它不是「再抄一遍」，以及抄的代价
 
 > 历史说明：本报告写作时 `.td` 渲染器仍存在；它已在 `docs/REPORT-no-td.md` 中移除。
+> 这是工作台报告：`tools/import-cxx.py` 是工作台工具，不是 gisel 的功能；边界见 `docs/SCOPE.md`。
 
 状态: 评估（2026-11-07）。工具: `tools/import-inventory.py`（本文件里所有数字都由它产出）。
 

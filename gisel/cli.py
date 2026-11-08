@@ -144,7 +144,15 @@ def _lint(gs, source, manifest):
 
 def main(argv=None):
     argv = list(sys.argv[1:] if argv is None else argv)
-    ap = argparse.ArgumentParser(prog="gisel", description=__doc__)
+    ap = argparse.ArgumentParser(
+        prog="gisel", description=__doc__,
+        epilog="gisel does two things: turn a .gisel file into rule artifacts "
+               "(gen/check/lint) and generate test cases (cases/domain).  "
+               "eval answers queries for the case generator; graph analyses "
+               "the normal form.  diff is the one workbench verb here: it "
+               "compares answer files produced elsewhere.  Everything that "
+               "reads LLVM sources, runs llvm-tblgen or compiles LLVM lives "
+               "under tools/ and is not part of gisel.  See docs/SCOPE.md.")
     ap.add_argument("--version", action="version", version="gisel 0.3.0")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -196,7 +204,7 @@ def main(argv=None):
     d.add_argument("--json", action="store_true", help="print stats as JSON")
 
     df = sub.add_parser("diff",
-                        help="compare two full-answer JSONL files")
+                        help="workbench: compare two full-answer JSONL files")
     df.add_argument("ref")
     df.add_argument("ours")
     df.add_argument("--json", action="store_true", help="print the report as JSON")
