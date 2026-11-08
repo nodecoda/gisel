@@ -1,5 +1,6 @@
 """Answerless domain enumeration: axes come from declarations, not the rules."""
 
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -24,7 +25,7 @@ class X86Domain(unittest.TestCase):
         # 26,092 points the old D* enumerated, plus the five zero-type-slot
         # opcodes (G_BR, G_TRAP, G_DEBUGTRAP, G_UBSANTRAP, G_INVOKE_REGION_START)
         # that -gen-legalizer also emits.
-        self.assertEqual(len(rows), 26097)
+        self.assertEqual(len(rows), 25127)
         types, mems, _ = domain.domain_axes(X86)
         self.assertEqual(len(types), 24)
         self.assertEqual(len(mems), 23)
@@ -44,7 +45,7 @@ class X86Domain(unittest.TestCase):
 
     def test_pointer_width_is_a_configuration_axis(self):
         rows = self.rows(pointer_width=32)
-        self.assertEqual(len(rows), 26097)
+        self.assertEqual(len(rows), 25127)
         values = {t for r in rows for t in r["types"]}
         self.assertIn("p0:32", values)
         self.assertIn("v2p0:32", values)
@@ -52,6 +53,47 @@ class X86Domain(unittest.TestCase):
 
     def test_enumeration_is_deterministic(self):
         self.assertEqual(self.rows(), self.rows())
+
+
+MERGE = """\
+type s32 = LLT::scalar(32)
+type s64 = LLT::scalar(64)
+type nxv16s8 = LLT::scalable_vector(16, LLT::scalar(8))
+
+ruleset B_MERGE: G_MERGE_VALUES
+    legal in(slot(0), [s32, s64])
+    legal in(slot(1), [s32, s64])
+
+ruleset B_UNMERGE: G_UNMERGE_VALUES
+    legal in(slot(0), [s32, s64])
+    legal in(slot(1), [s32, s64])
+"""
+
+
+class VerifierShapes(unittest.TestCase):
+    """The declared type domain is cut by the opcode's MIR shape, not by rules."""
+
+    def rows(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "t.gisel"
+            src.write_text(MERGE)
+            features = cases.derive_features(cases.document(src))
+            return list(domain.enumerate_domain(src, features,
+                                                configs=["none"]))
+
+    def test_merge_never_gets_a_vector_slot(self):
+        merge = [r for r in self.rows() if r["name"] == "G_MERGE_VALUES"]
+        self.assertTrue(merge)
+        for row in merge:
+            self.assertFalse(any(t.startswith(("v", "nxv"))
+                                 for t in row["types"]), row)
+
+    def test_unmerge_drops_mixed_shapes(self):
+        unmerge = [r for r in self.rows() if r["name"] == "G_UNMERGE_VALUES"]
+        self.assertTrue(unmerge)
+        for row in unmerge:
+            kinds = {t.startswith(("v", "nxv")) for t in row["types"]}
+            self.assertEqual(len(kinds), 1, row)
 
 
 if __name__ == "__main__":

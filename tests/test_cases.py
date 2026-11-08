@@ -113,6 +113,54 @@ class Shapes(unittest.TestCase):
                 self.assertEqual(cases.llt_text(E.parse_case_llt(text)), text)
 
 
+MERGE = """\
+type s32 = LLT::scalar(32)
+type s64 = LLT::scalar(64)
+type v2s32 = LLT::fixed_vector(2, LLT::scalar(32))
+type nxv16s8 = LLT::scalable_vector(16, LLT::scalar(8))
+
+ruleset B_MERGE: G_MERGE_VALUES
+    legal in(slot(0), [s32, s64])
+    legal in(slot(1), [s32, s64])
+
+ruleset B_UNMERGE: G_UNMERGE_VALUES
+    legal in(slot(0), [s32, s64])
+    legal in(slot(1), [s32, s64])
+"""
+
+
+class VerifierShapes(unittest.TestCase):
+    """Queries the generic MIR verifier rejects are not part of the domain."""
+
+    def test_merge_is_scalar_only(self):
+        self.assertTrue(cases.type_shape_ok(
+            "G_MERGE_VALUES", [E.parse_case_llt("s64"),
+                               E.parse_case_llt("s32")]))
+        self.assertFalse(cases.type_shape_ok(
+            "G_MERGE_VALUES", [E.parse_case_llt("f128"),
+                               E.parse_case_llt("nxv16i8")]))
+
+    def test_unmerge_vector_form_needs_matching_elements(self):
+        ok = [E.parse_case_llt(t) for t in ("v4s8", "v16s8")]
+        bad = [E.parse_case_llt(t) for t in ("nxv16i8", "f128")]
+        mixed = [E.parse_case_llt(t) for t in ("v4s8", "s32")]
+        self.assertTrue(cases.type_shape_ok("G_UNMERGE_VALUES", ok))
+        self.assertFalse(cases.type_shape_ok("G_UNMERGE_VALUES", bad))
+        self.assertFalse(cases.type_shape_ok("G_UNMERGE_VALUES", mixed))
+
+    def test_other_opcodes_are_unaffected(self):
+        self.assertTrue(cases.type_shape_ok(
+            "G_ADD", [E.parse_case_llt("f128"),
+                      E.parse_case_llt("nxv16i8")]))
+
+    def test_generated_cases_respect_the_shape(self):
+        doc, features, gen = build(MERGE)
+        self.assertTrue(gen.cases)
+        for case in gen.cases:
+            types = [E.parse_case_llt(t) for t in case.types]
+            self.assertTrue(cases.type_shape_ok(case.opcode, types), case)
+
+
 class Configs(unittest.TestCase):
     def test_config_filter_keeps_only_requested_rows(self):
         doc = cases.document(CORPUS / "X86LegalizerInfo.gisel")

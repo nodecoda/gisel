@@ -521,6 +521,27 @@ def _try_fire(evaluator, case):
         return "error"
 
 
+# Shapes the generic MIR verifier rejects before the legalizer can run.  A
+# query of such a shape is not reachable, so it is not part of the domain: the
+# runner would either abort on the official side or answer a question that no
+# `llc` input can ask.  Source: MachineVerifier.cpp, G_MERGE_VALUES and
+# G_UNMERGE_VALUES.
+def type_shape_ok(opcode, types):
+    if opcode == "G_MERGE_VALUES":
+        return all(not E.is_vector(t) for t in types)
+    if opcode == "G_UNMERGE_VALUES":
+        if all(not E.is_vector(t) for t in types):
+            return True
+        # Vector form is the converse of G_CONCAT_VECTORS: same element type
+        # and the same scalability on every slot.
+        if all(E.is_vector(t) for t in types):
+            first = types[0]
+            return all(t[2] == first[2] and E.llt_eq(t[3], first[3])
+                       for t in types[1:])
+        return False
+    return True
+
+
 def _candidates(infos, nslots, cap, domain):
     """Per-slot candidates: literals, domain types, neighbours, sentinels."""
     per = []
@@ -611,7 +632,7 @@ def _pad(types, nslots, default):
 
 
 def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
-             mem_pairs=(("NotAtomic", "NotAtomic"),)):
+             mem_pairs=(("NotAtomic", "NotAtomic"),), opcode=""):
     """Base queries: sampled type tuples, plus memory-descriptor queries.
 
     The matched descriptor (the row's own t0/t1) is what ``inMemDesc`` asks
@@ -624,6 +645,8 @@ def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
         for t0, t1, mty, align in mem_entries:
             types = _pad([E.parse_case_llt(x) for x in (t0, t1)], len(per),
                          default)
+            if not type_shape_ok(opcode, types):
+                continue
             for ordering, failure in mem_pairs:
                 for imms in imm_tuples:
                     out.append((types, (mty, int(align), ordering, failure),
@@ -637,6 +660,8 @@ def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
                                     (mty, int(align), ordering, failure),
                                     imms))
     for types in itertools.product(*per):
+        if not type_shape_ok(opcode, types):
+            continue
         for imms in imm_tuples:
             out.append((types, None, imms))
     return out
@@ -683,7 +708,7 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         imm_axis = imm_candidates(infos, axes)
         imm_tuples = _imm_tuples(imm_axis)
         queries = _queries(per, default, mem_entries, uses_mem, imm_tuples,
-                           mem_pairs)
+                           mem_pairs, opcode)
 
         stats["rulesets"] += 1
         stats["opcodes"] += len(rs["opcodes"])

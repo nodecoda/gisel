@@ -157,6 +157,13 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
     slots = slots if slots is not None else load_opcode_slots()
     manifest = dsl.load_arity_manifest()
     configs = list(configs or sorted(features.table))
+    parsed = {}
+
+    def _llt(text):
+        if text not in parsed:
+            parsed[text] = E.parse_case_llt(text)
+        return parsed[text]
+
     skipped = []
     per_config = {}
 
@@ -190,6 +197,8 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
                              else cfg_types for i in range(arity)]
                 mem_axis = list(cfg_mems) if uses_mem else [None]
                 for combo in itertools.product(*slot_axes):
+                    if not C.type_shape_ok(opcode, [_llt(t) for t in combo]):
+                        continue
                     for mem in mem_axis:
                         for ordering, failure in mem_pairs:
                             for imms in imm_tuples:
