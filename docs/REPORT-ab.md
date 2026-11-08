@@ -575,18 +575,12 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 三份 `tests/artifacts/*.inc` 分别替换进现网的 legalizer 构造函数，重新编译，
 然后跑**完整**的 `ninja check-llvm`。判据只有一条：不新增失败。
 
-### 6.1 拦路的那一个测试
+### 6.1 拦路的第一件事：`legalizer-info-validation.mir`
 
-基线（没换 `.inc`）的 `check-llvm` 只有 1 个既有红点：
-
-```text
-LLVM-Unit :: Target/X86/X86Tests/X86LegalizerDifferentialTest/ReferenceAnswersAreSpread
-```
-
-换完 `.inc` 之后，AArch64 和 RISC-V 的
-`test/CodeGen/<target>/GlobalISel/legalizer-info-validation.mir` 变红。这个
-测试不看答案，看的是 `LegalizerInfo::verify()` 的调试输出：哪些 type/imm
-index 被规则覆盖了。
+这一节记录走到全绿之前踩到的两个坑。第一个在 lit 侧：第一次换完 `.inc` 之后，
+AArch64 和 RISC-V 的 `test/CodeGen/<target>/GlobalISel/legalizer-info-validation.mir`
+变红。这个测试不看答案，看的是 `LegalizerInfo::verify()` 的调试输出：哪些
+type/imm index 被规则覆盖了。
 
 根因不是规则不同，是**入口不同**。上游大量使用声明式入口：
 
@@ -631,79 +625,139 @@ index 被规则覆盖了。
 - `gisel/cli.py` 的 `inc` 出口不再合并同一 opcode 的多个 builder。手写 C++ 本来
   就会对同一个 opcode 建两次链，这个结构可被 verifier 观测到。
 
-### 6.3 结果
+### 6.3 第二个红点：我们自己测试代码的变量遮蔽（已修）
 
-三个 target 的 `.inc` 同时替换（X86 在构建目录里替换，AArch64/RISC-V 在树里
-替换），重新编译后：
+上一版 §6 把基线里唯一那条红点（`ReferenceAnswersAreSpread`，
+`Expected: (Legal) > (100u), actual: 4 vs 100`）当成“与本轮无关的既有失败”。
+这个判断是错的：它不是上游的毛病，是**我们新写的测试自己写错了**。
 
-```text
-$ ninja check-llvm
-Total Discovered Tests: 80629
-  Passed          : 54919
-  Unsupported     : 25576
-  Skipped         :    62
-  Expectedly Failed:   71
-  Failed          :     1
-Failed Tests (1):
-  LLVM-Unit :: Target/X86/./X86Tests/X86LegalizerDifferentialTest/ReferenceAnswersAreSpread
+根因是变量遮蔽。测试里把计数器声明成 `unsigned Legal` / `unsigned
+Unsupported`，遮蔽了 `LegalizeActions::Legal` / `LegalizeActions::Unsupported`
+枚举量，于是
+
+```cpp
+Legal += Step.Action == Legal;        // 左边是计数器，右边也是计数器
 ```
 
-与基线逐条相同：唯一红点还是那条既有的 X86 unit test。
+比的不是动作，是计数器自己，计数值永远上不去。用临时插桩打印直方图，真实分布是：
 
-三个 target 的 GlobalISel lit 目录（`legalizer-info-validation.mir` 在内）：
+```text
+action=0 (Legal)          511
+action=1 (NarrowScalar)    10
+action=6 (Lower)           70
+action=7 (Libcall)        224
+action=8 (Custom)          15
+action=9 (Unsupported)    317
+total                    1408
+```
+
+修法：计数器改名 `NumLegal` / `NumUnsupported` / `NumMutating`，比较一律写全
+`LegalizeActions::Legal` 等，并在测试里留注释说明为什么不能叫 `Legal`。改完再用
+`grep` 扫了一遍 `unsigned Legal|Unsupported|Custom|Lower|Libcall` 这种写法，
+全仓没有第二处（唯一命中是 `ConstantRangeTest` 的 lambda 形参，无关）。
+
+这一处修在 explore 树的工作区里
+（`llvm/unittests/Target/X86/X86LegalizerInfoDifferentialTest.cpp`），和该分支上
+其它未提交的实验性改动在一起，没有单独提交。
+
+### 6.4 结果：基线 + 四轮，全部 0 失败
+
+五轮都是完整 `ninja check-llvm`（RelWithDebInfo，assertions ON）。每轮都是先换
+`.inc`、重新编译、再跑全量；跑完 `restore` 回官方实现。
+
+| 轮 | 替换的 target | Total | Passed | Failed | `ninja` rc |
+|---|---|---:|---:|---:|---:|
+| 基线 | 无（三份都是官方实现） | 80,629 | 54,920 | 0 | 0 |
+| 1 | X86 | 80,629 | 54,920 | 0 | 0 |
+| 2 | AArch64 | 80,629 | 54,920 | 0 | 0 |
+| 3 | RISC-V | 80,629 | 54,920 | 0 | 0 |
+| 4 | 三个同时 | 80,629 | 54,920 | 0 | 0 |
+
+五轮的 `Skipped 62 / Unsupported 25,576 / Expectedly Failed 71` 也逐条相同。
+也就是说：三个 target 分别替换、以及三个同时替换，全量结果和基线**逐条相同**，
+既没有新增失败，也没有多出来的 unsupported。
+
+第 4 轮（三份同时替换）另外抓的两个数：
 
 ```text
 $ ./bin/llvm-lit -q test/CodeGen/AArch64/GlobalISel/ \
     test/CodeGen/RISCV/GlobalISel/ test/CodeGen/X86/GlobalISel/
-Total Discovered Tests: 1534
-Failed: 0
+Total Discovered Tests: 1534          # 0 failed
+
+$ ./unittests/Target/X86/X86Tests --gtest_filter='*Legalizer*'
+[  PASSED  ] 3 tests.
+X86 legalizer differential: 1408 points x 10 configs, 14080 compared
 ```
 
 gisel 自身：
 
 ```text
 $ python3 -m unittest discover -q -s tests     # 210 tests OK
-$ (cd tests/artifacts && sha256sum -c SHA256)  # 12/12
+$ (cd tests/artifacts && sha256sum -c SHA256)  # 12/12 OK
 ```
 
-### 6.4 输入指纹
+### 6.5 输入指纹
 
 | 文件 | sha256 |
 |---|---|
 | `tests/artifacts/x86.inc` | `c9b39260bb0e4cd6…` |
 | `tests/artifacts/aarch64.inc` | `dbb97efba96c6f80…` |
 | `tests/artifacts/riscv.inc` | `cbd91241c15878b7…` |
-| `gisel/backend/llvm_inc.py` | `84b4f25a10ad8987…` |
+| `gisel/backend/llvm_inc.py` | `bcf46945678cd661…` |
 | `tools/ab/swap-source-ctor.py` | `a2597b8ab96c284a…` |
 | llvm 树 | `e88a24a0fe84` |
 
-复现：
+三份 `.inc` 都是本轮从 `tests/corpus/*.gisel` 重新 `gisel gen --emit=inc` 出来的，
+和 `tests/artifacts/` 里入库的产物逐字节相同（`sha256sum` 一致）之后才拿去替换。
+
+### 6.6 复现
 
 ```sh
 cd /home/ubuntu/llvm/gisel
-for t in x86 aarch64 riscv; do
-  python3 -m gisel gen tests/corpus/${t^^}LegalizerInfo.gisel \
-    --emit=inc --out /tmp/swapinc/$t.inc
-done
+python3 -m gisel gen tests/corpus/X86LegalizerInfo.gisel     --emit=inc --out /tmp/swapinc/x86.inc
+python3 -m gisel gen tests/corpus/AArch64LegalizerInfo.gisel --emit=inc --out /tmp/swapinc/aarch64.inc
+python3 -m gisel gen tests/corpus/RISCVLegalizerInfo.gisel   --emit=inc --out /tmp/swapinc/riscv.inc
+
+# 基线
+cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+
+# 每轮：换 -> 编 -> 跑 -> 恢复
+cd /home/ubuntu/llvm/gisel
 python3 tools/ab/swap-source-ctor.py apply --target x86 \
   --build /home/ubuntu/llvm/builds/explore --inc /tmp/swapinc/x86.inc
+cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+
+cd /home/ubuntu/llvm/gisel
+python3 tools/ab/swap-source-ctor.py restore --target x86 --build /home/ubuntu/llvm/builds/explore
 python3 tools/ab/swap-source-ctor.py apply --target aarch64 \
   --tree /home/ubuntu/llvm/trees/explore --inc /tmp/swapinc/aarch64.inc
+cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+
+cd /home/ubuntu/llvm/gisel
+python3 tools/ab/swap-source-ctor.py restore --target aarch64 --tree /home/ubuntu/llvm/trees/explore
 python3 tools/ab/swap-source-ctor.py apply --target riscv \
   --tree /home/ubuntu/llvm/trees/explore --inc /tmp/swapinc/riscv.inc
 cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
-# 收工
+
+# 三个同时
 cd /home/ubuntu/llvm/gisel
-python3 tools/ab/swap-source-ctor.py restore --target x86 --build /home/ubuntu/llvm/builds/explore
-python3 tools/ab/swap-source-ctor.py restore --target aarch64 --tree /home/ubuntu/llvm/trees/explore
-python3 tools/ab/swap-source-ctor.py restore --target riscv --tree /home/ubuntu/llvm/trees/explore
+python3 tools/ab/swap-source-ctor.py apply --target x86 \
+  --build /home/ubuntu/llvm/builds/explore --inc /tmp/swapinc/x86.inc
+cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+
+# 收工，恢复
+cd /home/ubuntu/llvm/gisel
+python3 tools/ab/swap-source-ctor.py restore --target x86     --build /home/ubuntu/llvm/builds/explore
+python3 tools/ab/swap-source-ctor.py restore --target aarch64 --tree  /home/ubuntu/llvm/trees/explore
+python3 tools/ab/swap-source-ctor.py restore --target riscv   --tree  /home/ubuntu/llvm/trees/explore
 ```
 
-### 6.5 这轮证明了什么，没证明什么
+### 6.7 这轮证明了什么，没证明什么
 
 证明的：我们生成的 `.inc` 换掉三个 target 的合法化规则之后，LLVM 的全量测试
-没有新增失败；`legalizer-info-validation.mir` 逐字通过，说明覆盖面（而不只是
-答案）也和现网一致。
+和基线逐条相同——`80,629` 条发现、`54,920` 通过、`0` 失败，分别换和一起换都是
+这个数。`legalizer-info-validation.mir` 逐字通过，说明覆盖面（不只是答案）也和
+现网一致。
 
 没证明的：
 
@@ -712,6 +766,5 @@ python3 tools/ab/swap-source-ctor.py restore --target riscv --tree /home/ubuntu/
   种写法。
 - 覆盖自检对 `opcode-slots.json` 里没有 arity 的 opcode（ATOMICRMW 家族）跳过，
   那些 opcode 的提升安全性没有静态论证，只由 lit 覆盖。
-- 判据是“不新增失败”，不是“全绿”：既有的
-  `X86LegalizerDifferentialTest/ReferenceAnswersAreSpread` 与本轮无关，
-  仍是红的。
+- 判据是“与基线完全相同”，不是“规则本身正确”。两边一起错的情况这套对拍抓不到。
+- X86 的差分单测修复还在 explore 分支的工作区里，没有单独提交。
