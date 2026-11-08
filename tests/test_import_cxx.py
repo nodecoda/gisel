@@ -46,15 +46,15 @@ class Fixture(unittest.TestCase):
             text = out.read_text()
             # `if (ST.hasStdExtZbb()) { legalFor } else { maxScalar }`
             self.assertIn(
-                'legal (R_ST_hasStdExtZbb and '
+                'legal (R_hasStdExtZbb and '
                 "in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))", text)
             self.assertIn(
                 'narrow(slot(0), ty(R_s32)) when not '
-                'R_ST_hasStdExtZbb', text)
+                'R_hasStdExtZbb', text)
             # `minScalar(pred, 0, s32)` is a gated widen, not an unconditional one.
             self.assertIn(
                 'widen(slot(0), ty(R_s32)) when '
-                'R_ST_hasStdExtZbb', text)
+                'R_hasStdExtZbb', text)
             self.assertIn("lower true", text)
 
     def test_predicate_first_mutations_are_gated(self):
@@ -63,7 +63,7 @@ class Fixture(unittest.TestCase):
         # non-Zbb case too.
         text = (CORPUS / "RISCVLegalizerInfo.gisel").read_text()
         self.assertIn('widen(slot(0), ty(R_sXLen)) when '
-                      'R_ST_hasStdExtZbb', text)
+                      'R_hasStdExtZbb', text)
 
     def test_every_statement_is_either_emitted_or_refused(self):
         with tempfile.TemporaryDirectory() as d:
@@ -110,6 +110,35 @@ class AllTargets(unittest.TestCase):
         r = run("--all", "--check", env=env)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(r.stdout.count(": matches"), 3, r.stdout)
+
+
+class ReviewedNames(unittest.TestCase):
+    """No `selN`/`condN` leftovers, and the reviewed names are present."""
+
+    def test_no_generated_names_remain(self):
+        for target in ("X86", "AArch64", "RISCV"):
+            text = (CORPUS / ("%sLegalizerInfo.gisel" % target)).read_text()
+            with self.subTest(target=target):
+                self.assertNotRegex(text, r"\b[A-Z]_sel\d+\b")
+                self.assertNotRegex(text, r"\b[A-Z]_cond\d+\b")
+
+    def test_x86_named_selects(self):
+        text = (CORPUS / "X86LegalizerInfo.gisel").read_text()
+        for name in ("X_sMaxScalar", "X_s8MaxVector", "X_s16MaxVector",
+                     "X_s32MaxVector", "X_s64MaxVector",
+                     "X_sse2MaxScalar", "X_x87MinScalar", "X_cmovMinScalar"):
+            self.assertIn("select %s =" % name, text)
+        self.assertIn("pred X_useX87NoSSE1 =", text)
+        self.assertIn(
+            "select X_sMaxScalar = if X_Is64Bit then X_s64 else X_s32", text)
+
+    def test_riscv_named_select(self):
+        text = (CORPUS / "RISCVLegalizerInfo.gisel").read_text()
+        self.assertIn("select R_maxScalar = if R_has64BitScalar", text)
+        self.assertIn("pred R_has64BitScalar =", text)
+        self.assertIn("feature R_hasStdExtD = ST.hasStdExtD()", text)
+        self.assertIn("feature R_subtargetInfoHasZbb = STI.hasStdExtZbb()", text)
+        self.assertIn("feature R_XLen_le_ELen = XLen <= ST.getELen()", text)
 
 
 class PinnedCounts(unittest.TestCase):

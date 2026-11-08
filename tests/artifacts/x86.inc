@@ -47,18 +47,18 @@
   const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   getActionDefinitionsBuilder({G_IMPLICIT_DEF, G_PHI, G_FREEZE, G_CONSTANT_FOLD_BARRIER})
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_p0 || Query.Types[0] == X_s1 || Query.Types[0] == X_s8 || Query.Types[0] == X_s16 || Query.Types[0] == X_s32 || Query.Types[0] == X_s64); })
@@ -69,24 +69,24 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasAVX512) && ((Query.Types[0] == X_v64s8 || Query.Types[0] == X_v32s16 || Query.Types[0] == X_v16s32 || Query.Types[0] == X_v8s64)); })
       .coreWidenScalarOrEltToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
       .coreMinScalarOrElt([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalarOrElt([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalarOrElt([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() < (X_v16s8).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v16s8).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() > (X_sel2).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel2).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() < (X_v8s16).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v8s16).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() > (X_sel4).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel4).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() < (X_v4s32).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v4s32).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() > (X_sel6).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel6).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() < (X_v2s64).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v2s64).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > (X_sel8).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel8).getNumElements()), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_p0)) && (((Query.Types[0]).getNumElements() > (X_Is64Bit ? (X_sel8).getNumElements() : (X_sel6).getNumElements()))); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_Is64Bit ? (X_sel8).getNumElements() : (X_sel6).getNumElements())), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_p0)) && (((Query.Types[0]).getNumElements() > (X_Is64Bit ? (X_s64MaxVector).getNumElements() : (X_s32MaxVector).getNumElements()))); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_Is64Bit ? (X_s64MaxVector).getNumElements() : (X_s32MaxVector).getNumElements())), (Query.Types[0]).getElementType())); })
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0);
   getActionDefinitionsBuilder(G_CONSTANT)
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_p0 || Query.Types[0] == X_s8 || Query.Types[0] == X_s16 || Query.Types[0] == X_s32); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && ((Query.Types[0] == X_s64)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0);
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar);
   getActionDefinitionsBuilder({G_LROUND, G_LLROUND})
       .coreWidenTo([=](const LegalityQuery &Query) { return (Query.Types[1] == X_s16); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, X_s32); })
       .libcall();
@@ -135,14 +135,14 @@
       .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > (X_HasAVX512 ? 8 : (X_HasAVX2 ? 4 : 2)))); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_HasAVX512 ? 8 : (X_HasAVX2 ? 4 : 2))), (Query.Types[0]).getElementType())); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder({G_UADDE, G_UADDO, G_USUBE, G_USUBO})
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{X_s8, X_s8}, {X_s16, X_s8}, {X_s32, X_s8}})(Query); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s8}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s8)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_s8)
       .scalarize(0);
@@ -164,26 +164,26 @@
       .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > 8)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed(8), (Query.Types[0]).getElementType())); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder({G_SMULH, G_UMULH})
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_s8 || Query.Types[0] == X_s16 || Query.Types[0] == X_s32); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && ((Query.Types[0] == X_s64)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder({G_SDIV, G_SREM, G_UDIV, G_UREM})
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_s8 || Query.Types[0] == X_s16 || Query.Types[0] == X_s32); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && ((Query.Types[0] == X_s64)); })
       .coreLibcallIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_s64); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0);
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar);
   getActionDefinitionsBuilder({G_SHL, G_LSHR, G_ASHR})
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{X_s8, X_s8}, {X_s16, X_s8}, {X_s32, X_s8}})(Query); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s8}})(Query)); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s8)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_s8);
   getActionDefinitionsBuilder({G_AND, G_OR, G_XOR})
@@ -193,16 +193,16 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasAVX) && ((Query.Types[0] == X_v32s8 || Query.Types[0] == X_v16s16 || Query.Types[0] == X_v8s32 || Query.Types[0] == X_v4s64)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasAVX512) && ((Query.Types[0] == X_v64s8 || Query.Types[0] == X_v32s16 || Query.Types[0] == X_v16s32 || Query.Types[0] == X_v8s64)); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() < (X_v16s8).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v16s8).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() > (X_sel2).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel2).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() < (X_v8s16).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v8s16).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() > (X_sel4).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel4).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() < (X_v4s32).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v4s32).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() > (X_sel6).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel6).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() < (X_v2s64).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector((X_v2s64).getNumElements(), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > (X_sel8).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel8).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder(G_ICMP)
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s8, X_s8}, {X_s8, X_s16}, {X_s8, X_s32}, {X_s8, X_s64}, {X_s8, X_p0}})(Query)); })
@@ -211,13 +211,13 @@
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0);
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar);
   getActionDefinitionsBuilder(G_BSWAP)
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_s32); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && ((Query.Types[0] == X_s64)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0);
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar);
   getActionDefinitionsBuilder(G_CTPOP)
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasPOPCNT) && (LegalityPredicates::typePairInSet(0, 1, {{X_s16, X_s16}, {X_s32, X_s32}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasPOPCNT) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Query)); })
@@ -225,7 +225,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasVPOPCNTDQ) && (X_HasVLX)) && (LegalityPredicates::typePairInSet(0, 1, {{X_v4s32, X_v4s32}, {X_v8s32, X_v8s32}, {X_v2s64, X_v2s64}, {X_v4s64, X_v4s64}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
       .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
   getActionDefinitionsBuilder(G_CTLZ)
@@ -233,7 +233,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasLZCNT) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
       .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
   getActionDefinitionsBuilder(G_CTTZ_ZERO_POISON)
@@ -241,7 +241,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
       .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
   getActionDefinitionsBuilder(G_CTTZ)
@@ -249,7 +249,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasBMI) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
       .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
   getActionDefinitionsBuilder(G_BR)
@@ -259,10 +259,10 @@
   getActionDefinitionsBuilder(G_PTRTOINT)
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s1, X_p0}, {X_s8, X_p0}, {X_s16, X_p0}, {X_s32, X_p0}, {X_s64, X_p0}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (!(X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s1, X_p0}, {X_s8, X_p0}, {X_s16, X_p0}, {X_s32, X_p0}})(Query)); })
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8);
   getActionDefinitionsBuilder(G_INTTOPTR)
-      .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{X_p0, X_sel0}})(Query); });
+      .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{X_p0, X_sMaxScalar}})(Query); });
   getActionDefinitionsBuilder(G_CONSTANT_POOL)
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_p0); });
   getActionDefinitionsBuilder(G_PTR_ADD)
@@ -270,7 +270,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_p0, X_s64}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0);
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar);
   getActionDefinitionsBuilder(G_FRAME_INDEX)
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_p0); });
   getActionDefinitionsBuilder(G_GLOBAL_VALUE)
@@ -286,7 +286,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s64, X_p0, X_s8, 1}, {X_s64, X_p0, X_s16, 1}, {X_s64, X_p0, X_s32, 1}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder(G_STORE)
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s8, X_p0, X_s8, 1}, {X_s16, X_p0, X_s16, 1}, {X_s32, X_p0, X_s32, 1}, {X_s80, X_p0, X_s80, 1}, {X_p0, X_p0, X_p0, 1}, {X_v4s8, X_p0, X_v4s8, 1}})(Query); })
@@ -298,7 +298,7 @@
       .coreCustomIf([=](const LegalityQuery &Query) { return (Query.Types[0] != (Query.MMODescrs[0]).MemoryTy); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder(G_SEXTLOAD)
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s16, X_p0, X_s8, 1}, {X_s32, X_p0, X_s8, 1}, {X_s32, X_p0, X_s16, 1}})(Query); })
@@ -315,20 +315,20 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && ((Query.Types[0] == X_s64)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder({G_SEXT, G_ZEXT})
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == X_s8 || Query.Types[0] == X_s16 || Query.Types[0] == X_s32); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_Is64Bit) && ((Query.Types[0] == X_s64)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s8)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .scalarize(0);
   getActionDefinitionsBuilder(G_TRUNC)
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{X_s1, X_s8}, {X_s1, X_s16}, {X_s1, X_s32}, {X_s1, X_s64}, {X_s1, X_s128}, {X_s8, X_s8}, {X_s8, X_s16}, {X_s8, X_s32}, {X_s8, X_s64}, {X_s8, X_s128}, {X_s16, X_s8}, {X_s16, X_s16}, {X_s16, X_s32}, {X_s16, X_s64}, {X_s16, X_s128}, {X_s32, X_s8}, {X_s32, X_s16}, {X_s32, X_s32}, {X_s32, X_s64}, {X_s32, X_s128}, {X_s64, X_s8}, {X_s64, X_s16}, {X_s64, X_s32}, {X_s64, X_s64}, {X_s64, X_s128}})(Query); });
@@ -355,7 +355,7 @@
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_s8)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel9)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sse2MaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1);
   getActionDefinitionsBuilder(G_FPEXT)
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasSSE2) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s32}})(Query)); })
@@ -373,51 +373,51 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasSSE1) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s64}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasSSE2) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s32}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasSSE2) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Query)); })
-      .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_sel10)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_x87MinScalar)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1)
       .coreCustomIf([=](const LegalityQuery &Query) { return (X_UseX87) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s16}, {X_s32, X_s32}, {X_s32, X_s64}, {X_s64, X_s16}, {X_s64, X_s32}, {X_s64, X_s64}, {X_s80, X_s16}, {X_s80, X_s32}, {X_s80, X_s64}})(Query)); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel9)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sse2MaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0);
   getActionDefinitionsBuilder(G_FPTOSI)
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasSSE1) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s32}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasSSE1) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s32}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasSSE2) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s64}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasSSE2) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Query)); })
-      .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_sel10)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_x87MinScalar)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreCustomIf([=](const LegalityQuery &Query) { return (X_UseX87) && (LegalityPredicates::typePairInSet(0, 1, {{X_s16, X_s32}, {X_s16, X_s64}, {X_s16, X_s80}, {X_s32, X_s32}, {X_s32, X_s64}, {X_s32, X_s80}, {X_s64, X_s32}, {X_s64, X_s64}, {X_s64, X_s80}})(Query)); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel9)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sse2MaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1);
   getActionDefinitionsBuilder(G_UITOFP)
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasAVX512) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s32}, {X_s32, X_s64}, {X_s64, X_s32}, {X_s64, X_s64}})(Query)); })
       .coreCustomIf([=](const LegalityQuery &Query) { return (!(X_HasAVX512)) && (((X_HasSSE1) && ((Query.Types[0] == X_s32))) || ((X_HasSSE2) && ((Query.Types[0] == X_s64)))) && ((Query.Types[1].isScalar()) && (((Query.Types[1]).getSizeInBits().getKnownMinValue() < (X_Is64Bit ? 64 : 32)))); })
       .coreLowerIf([=](const LegalityQuery &Query) { return (!(X_HasAVX512)) && (((X_HasSSE1) && ((Query.Types[0] == X_s32))) || ((X_HasSSE2) && ((Query.Types[0] == X_s64)))) && ((X_Is64Bit) && ((Query.Types[1] == X_s64))); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel9)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sse2MaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1);
   getActionDefinitionsBuilder(G_FPTOUI)
       .coreLegalIf([=](const LegalityQuery &Query) { return (X_HasAVX512) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s32}, {X_s32, X_s64}, {X_s64, X_s32}, {X_s64, X_s64}})(Query)); })
       .coreCustomIf([=](const LegalityQuery &Query) { return (!(X_HasAVX512)) && (((X_HasSSE1) && ((Query.Types[1] == X_s32))) || ((X_HasSSE2) && ((Query.Types[1] == X_s64)))) && ((Query.Types[0].isScalar()) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() < (X_Is64Bit ? 64 : 32)))); })
       .coreLowerIf([=](const LegalityQuery &Query) { return (!(X_HasAVX512)) && (((X_HasSSE1) && ((Query.Types[1] == X_s32))) || ((X_HasSSE2) && ((Query.Types[1] == X_s64)))) && ((X_Is64Bit) && ((Query.Types[0] == X_s64))); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s32)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sel9)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sse2MaxScalar)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1);
   getActionDefinitionsBuilder(G_BUILD_VECTOR)
       .coreCustomIf([=](const LegalityQuery &Query) { return ((X_HasSSE1) && ((Query.Types[0] == X_v4s32))) || ((X_HasSSE2) && ((Query.Types[0] == X_v2s64 || Query.Types[0] == X_v8s16 || Query.Types[0] == X_v16s8))) || ((X_HasAVX) && ((Query.Types[0] == X_v4s64 || Query.Types[0] == X_v8s32 || Query.Types[0] == X_v16s16 || Query.Types[0] == X_v32s8))) || ((X_HasAVX512) && ((Query.Types[0] == X_v8s64 || Query.Types[0] == X_v16s32 || Query.Types[0] == X_v32s16 || Query.Types[0] == X_v64s8))); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() > (X_sel2).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel2).getNumElements()), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() > (X_sel4).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel4).getNumElements()), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() > (X_sel6).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel6).getNumElements()), (Query.Types[0]).getElementType())); })
-      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > (X_sel8).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_sel8).getNumElements()), (Query.Types[0]).getElementType())); });
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s8)) && (((Query.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s16)) && (((Query.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s32)) && (((Query.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Query.Types[0]).getElementType())); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == X_s64)) && (((Query.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements())); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Query.Types[0]).getElementType())); });
   getActionDefinitionsBuilder(G_EXTRACT)
       .coreLegalIf([=](const LegalityQuery &Query) { return ((X_HasAVX) && (LegalityPredicates::typePairInSet(0, 1, {{X_v16s8, X_v32s8}, {X_v8s16, X_v16s16}, {X_v4s32, X_v8s32}, {X_v2s64, X_v4s64}})(Query))) || ((X_HasAVX512) && (LegalityPredicates::typePairInSet(0, 1, {{X_v16s8, X_v64s8}, {X_v32s8, X_v64s8}, {X_v8s16, X_v32s16}, {X_v16s16, X_v32s16}, {X_v4s32, X_v16s32}, {X_v8s32, X_v16s32}, {X_v2s64, X_v8s64}, {X_v4s64, X_v8s64}})(Query))); });
   getActionDefinitionsBuilder(G_INSERT)
@@ -433,8 +433,8 @@
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s32)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_s32)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
-      .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_sel11)
-      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sel0);
+      .coreMinScalar([](const LegalityQuery &) { return true; }, 0, X_cmovMinScalar)
+      .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, X_sMaxScalar);
   getActionDefinitionsBuilder({G_MEMCPY, G_MEMMOVE, G_MEMSET})
       .libcall();
   getActionDefinitionsBuilder({G_DYN_STACKALLOC, G_STACKSAVE, G_STACKRESTORE})

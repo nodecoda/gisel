@@ -48,6 +48,37 @@ A/B 还要多一轮“`.td` vs C++”的对拍。
 原则不变：**翻译不了就带行号拒绝，绝不静默丢规则**。下面三个真 bug 都是
 这条原则抓出来的。
 
+## 3b 生成名的人工审阅（LLM 提议，表里冻结）
+
+转录器最初给匿名三元表达式起名 `X_sel0` / `X_cond0`，给带接收者的
+feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器产物。现在
+名字分两层：
+
+- **结构化来源优先**：C++ 里有名字的类型（`sMaxScalar`、`s8MaxVector`）
+  直接沿用，不再丢成 `selN`。
+- **LLM 审阅 + 冻结表**：匿名表达式由模型读定义和用途后提议名字，结果写进
+  `SELECT_NAMES` / `FEATURE_NAMES`。key 是去掉 target 前缀后的 C++ 表达式；
+  每个 key 必须被命中，没命中的 selector 或残留的 `selN`/`condN` 都报
+  `DRIFT`（rc=1），所以上游一改，表就失效而不是悄悄退化。
+
+命名规则：
+
+| 情况 | 处理 | 例子 |
+|---|---|---|
+| C++ 变量本身有名字 | 沿用 | `sMaxScalar` → `X_sMaxScalar` |
+| 嵌套三元的内层 | `<外层名>NoAVX512` | `X_s8MaxVectorNoAVX512` |
+| 条件是单个 feature | 直接写进 `select`，删掉 `pred` 别名 | `select X_sse2MaxScalar = if X_HasSSE2 then ...` |
+| 条件是复合谓词 | 保留 `pred`，用审阅名 | `pred X_useX87NoSSE1` |
+| 接收者前缀 | 去掉 `ST_`/`STI_`，但不同接收者不合并 | `R_hasStdExtZbb` / `R_subtargetInfoHasZbb` |
+| 比较表达式 | 按实际关系命名 | `XLen <= ST.getELen()` → `R_XLen_le_ELen` |
+
+`R_ST_hasStdExtZbb` 和 `R_STI_hasStdExtZbb` 看着一样，但 features 表里是两个
+独立的配置轴，合成一个会改变语义，所以保留两个名字。这是“重命名”不是
+“化简”。
+
+语义保持的证据：三个目标的冻结查询答案门全部仍然 agree；`inc/table/core`
+产物重新冻结后测试全绿。名字只影响可读性和产物字节，不影响求值。
+
 ## 4 三个真实 bug
 
 1. **`const_eval` 把运行时条件当常量**
@@ -82,7 +113,7 @@ A/B 还要多一轮“`.td` vs C++”的对拍。
 ## 6 证据
 
 - 转录：三个目标 0 拒绝，`--all --check` 逐字节匹配。
-- 生成：`python3 -m unittest discover -q -s tests` 全绿（185 tests）。
+- 生成：`python3 -m unittest discover -q -s tests` 全绿（188 tests）。
 - 行为：三个目标的冻结查询全部 agree，0 disagree。
 - 计数：`tests/artifacts` 总调用 1074 = 1071 + 3（`immIdx` 3 条，来自
   AArch64；`gisel/ast.py` 的 `canonicalize_rulesets` 已按 opcode 汇总

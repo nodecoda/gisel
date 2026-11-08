@@ -9,60 +9,60 @@
 // A shared table cache keys on this, so equal signatures must mean equal
 // answers.
 enum : uint32_t {
-  RFeatureBit_R_STI_hasStdExtZbb = 1u << 0,
-  RFeatureBit_R_ST_enableUnalignedScalarMem = 1u << 1,
-  RFeatureBit_R_ST_getELen_64 = 1u << 2,
-  RFeatureBit_R_ST_hasStdExtA = 1u << 3,
-  RFeatureBit_R_ST_hasStdExtD = 1u << 4,
-  RFeatureBit_R_ST_hasStdExtF = 1u << 5,
-  RFeatureBit_R_ST_hasStdExtM = 1u << 6,
-  RFeatureBit_R_ST_hasStdExtP = 1u << 7,
-  RFeatureBit_R_ST_hasStdExtZbb = 1u << 8,
-  RFeatureBit_R_ST_hasStdExtZbc = 1u << 9,
-  RFeatureBit_R_ST_hasStdExtZbkb = 1u << 10,
-  RFeatureBit_R_ST_hasStdExtZbkc = 1u << 11,
-  RFeatureBit_R_ST_hasStdExtZfa = 1u << 12,
-  RFeatureBit_R_ST_hasStdExtZfh = 1u << 13,
-  RFeatureBit_R_ST_hasStdExtZfhmin = 1u << 14,
-  RFeatureBit_R_ST_hasStdExtZilsd = 1u << 15,
-  RFeatureBit_R_ST_hasStdExtZmmul = 1u << 16,
-  RFeatureBit_R_ST_hasVInstructions = 1u << 17,
-  RFeatureBit_R_ST_hasVInstructionsF64 = 1u << 18,
-  RFeatureBit_R_ST_hasVInstructionsI64 = 1u << 19,
-  RFeatureBit_R_ST_hasVendorXTHeadBb = 1u << 20,
-  RFeatureBit_R_ST_is64Bit = 1u << 21,
-  RFeatureBit_R_XLen_32 = 1u << 22,
-  RFeatureBit_R_XLen_64 = 1u << 23,
-  RFeatureBit_R_XLen_ST_getELen = 1u << 24,
+  RFeatureBit_R_XLen_32 = 1u << 0,
+  RFeatureBit_R_XLen_64 = 1u << 1,
+  RFeatureBit_R_XLen_le_ELen = 1u << 2,
+  RFeatureBit_R_enableUnalignedScalarMem = 1u << 3,
+  RFeatureBit_R_getELen_64 = 1u << 4,
+  RFeatureBit_R_hasStdExtA = 1u << 5,
+  RFeatureBit_R_hasStdExtD = 1u << 6,
+  RFeatureBit_R_hasStdExtF = 1u << 7,
+  RFeatureBit_R_hasStdExtM = 1u << 8,
+  RFeatureBit_R_hasStdExtP = 1u << 9,
+  RFeatureBit_R_hasStdExtZbb = 1u << 10,
+  RFeatureBit_R_hasStdExtZbc = 1u << 11,
+  RFeatureBit_R_hasStdExtZbkb = 1u << 12,
+  RFeatureBit_R_hasStdExtZbkc = 1u << 13,
+  RFeatureBit_R_hasStdExtZfa = 1u << 14,
+  RFeatureBit_R_hasStdExtZfh = 1u << 15,
+  RFeatureBit_R_hasStdExtZfhmin = 1u << 16,
+  RFeatureBit_R_hasStdExtZilsd = 1u << 17,
+  RFeatureBit_R_hasStdExtZmmul = 1u << 18,
+  RFeatureBit_R_hasVInstructions = 1u << 19,
+  RFeatureBit_R_hasVInstructionsF64 = 1u << 20,
+  RFeatureBit_R_hasVInstructionsI64 = 1u << 21,
+  RFeatureBit_R_hasVendorXTHeadBb = 1u << 22,
+  RFeatureBit_R_is64Bit = 1u << 23,
+  RFeatureBit_R_subtargetInfoHasZbb = 1u << 24,
 };
 
 static uint32_t RFeatureSignature(const RSubtarget &Subtarget) {
   uint32_t S = 0;
-  S |= (STI.hasStdExtZbb()) ? RFeatureBit_R_STI_hasStdExtZbb : 0u;
-  S |= (ST.enableUnalignedScalarMem()) ? RFeatureBit_R_ST_enableUnalignedScalarMem : 0u;
-  S |= (ST.getELen() == 64) ? RFeatureBit_R_ST_getELen_64 : 0u;
-  S |= (ST.hasStdExtA()) ? RFeatureBit_R_ST_hasStdExtA : 0u;
-  S |= (ST.hasStdExtD()) ? RFeatureBit_R_ST_hasStdExtD : 0u;
-  S |= (ST.hasStdExtF()) ? RFeatureBit_R_ST_hasStdExtF : 0u;
-  S |= (ST.hasStdExtM()) ? RFeatureBit_R_ST_hasStdExtM : 0u;
-  S |= (ST.hasStdExtP()) ? RFeatureBit_R_ST_hasStdExtP : 0u;
-  S |= (ST.hasStdExtZbb()) ? RFeatureBit_R_ST_hasStdExtZbb : 0u;
-  S |= (ST.hasStdExtZbc()) ? RFeatureBit_R_ST_hasStdExtZbc : 0u;
-  S |= (ST.hasStdExtZbkb()) ? RFeatureBit_R_ST_hasStdExtZbkb : 0u;
-  S |= (ST.hasStdExtZbkc()) ? RFeatureBit_R_ST_hasStdExtZbkc : 0u;
-  S |= (ST.hasStdExtZfa()) ? RFeatureBit_R_ST_hasStdExtZfa : 0u;
-  S |= (ST.hasStdExtZfh()) ? RFeatureBit_R_ST_hasStdExtZfh : 0u;
-  S |= (ST.hasStdExtZfhmin()) ? RFeatureBit_R_ST_hasStdExtZfhmin : 0u;
-  S |= (ST.hasStdExtZilsd()) ? RFeatureBit_R_ST_hasStdExtZilsd : 0u;
-  S |= (ST.hasStdExtZmmul()) ? RFeatureBit_R_ST_hasStdExtZmmul : 0u;
-  S |= (ST.hasVInstructions()) ? RFeatureBit_R_ST_hasVInstructions : 0u;
-  S |= (ST.hasVInstructionsF64()) ? RFeatureBit_R_ST_hasVInstructionsF64 : 0u;
-  S |= (ST.hasVInstructionsI64()) ? RFeatureBit_R_ST_hasVInstructionsI64 : 0u;
-  S |= (ST.hasVendorXTHeadBb()) ? RFeatureBit_R_ST_hasVendorXTHeadBb : 0u;
-  S |= (ST.is64Bit()) ? RFeatureBit_R_ST_is64Bit : 0u;
   S |= (XLen == 32) ? RFeatureBit_R_XLen_32 : 0u;
   S |= (XLen == 64) ? RFeatureBit_R_XLen_64 : 0u;
-  S |= (XLen <= ST.getELen()) ? RFeatureBit_R_XLen_ST_getELen : 0u;
+  S |= (XLen <= ST.getELen()) ? RFeatureBit_R_XLen_le_ELen : 0u;
+  S |= (ST.enableUnalignedScalarMem()) ? RFeatureBit_R_enableUnalignedScalarMem : 0u;
+  S |= (ST.getELen() == 64) ? RFeatureBit_R_getELen_64 : 0u;
+  S |= (ST.hasStdExtA()) ? RFeatureBit_R_hasStdExtA : 0u;
+  S |= (ST.hasStdExtD()) ? RFeatureBit_R_hasStdExtD : 0u;
+  S |= (ST.hasStdExtF()) ? RFeatureBit_R_hasStdExtF : 0u;
+  S |= (ST.hasStdExtM()) ? RFeatureBit_R_hasStdExtM : 0u;
+  S |= (ST.hasStdExtP()) ? RFeatureBit_R_hasStdExtP : 0u;
+  S |= (ST.hasStdExtZbb()) ? RFeatureBit_R_hasStdExtZbb : 0u;
+  S |= (ST.hasStdExtZbc()) ? RFeatureBit_R_hasStdExtZbc : 0u;
+  S |= (ST.hasStdExtZbkb()) ? RFeatureBit_R_hasStdExtZbkb : 0u;
+  S |= (ST.hasStdExtZbkc()) ? RFeatureBit_R_hasStdExtZbkc : 0u;
+  S |= (ST.hasStdExtZfa()) ? RFeatureBit_R_hasStdExtZfa : 0u;
+  S |= (ST.hasStdExtZfh()) ? RFeatureBit_R_hasStdExtZfh : 0u;
+  S |= (ST.hasStdExtZfhmin()) ? RFeatureBit_R_hasStdExtZfhmin : 0u;
+  S |= (ST.hasStdExtZilsd()) ? RFeatureBit_R_hasStdExtZilsd : 0u;
+  S |= (ST.hasStdExtZmmul()) ? RFeatureBit_R_hasStdExtZmmul : 0u;
+  S |= (ST.hasVInstructions()) ? RFeatureBit_R_hasVInstructions : 0u;
+  S |= (ST.hasVInstructionsF64()) ? RFeatureBit_R_hasVInstructionsF64 : 0u;
+  S |= (ST.hasVInstructionsI64()) ? RFeatureBit_R_hasVInstructionsI64 : 0u;
+  S |= (ST.hasVendorXTHeadBb()) ? RFeatureBit_R_hasVendorXTHeadBb : 0u;
+  S |= (ST.is64Bit()) ? RFeatureBit_R_is64Bit : 0u;
+  S |= (STI.hasStdExtZbb()) ? RFeatureBit_R_subtargetInfoHasZbb : 0u;
   return S;
 }
 
@@ -462,31 +462,31 @@ static inline int rTableForOpcode(unsigned Opcode) {
 
 static LegalizeActionStep REval0(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -535,15 +535,15 @@ static LegalizeActionStep REval0(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_sXLen)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) {
+  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s32))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -563,31 +563,31 @@ static LegalizeActionStep REval0(
 
 static LegalizeActionStep REval1(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -636,12 +636,12 @@ static LegalizeActionStep REval1(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_sXLen)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) {
+  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -661,31 +661,31 @@ static LegalizeActionStep REval1(
 
 static LegalizeActionStep REval2(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -734,7 +734,7 @@ static LegalizeActionStep REval2(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -742,31 +742,31 @@ static LegalizeActionStep REval2(
 
 static LegalizeActionStep REval3(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -815,7 +815,7 @@ static LegalizeActionStep REval3(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
@@ -827,31 +827,31 @@ static LegalizeActionStep REval3(
 
 static LegalizeActionStep REval4(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -900,7 +900,7 @@ static LegalizeActionStep REval4(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -908,31 +908,31 @@ static LegalizeActionStep REval4(
 
 static LegalizeActionStep REval5(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -981,12 +981,12 @@ static LegalizeActionStep REval5(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -1014,31 +1014,31 @@ static LegalizeActionStep REval5(
 
 static LegalizeActionStep REval6(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1087,18 +1087,18 @@ static LegalizeActionStep REval6(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s16}, {R_s64, R_s32}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s16}, {R_s64, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64))))) {
+  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64))))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64)))) {
+  if (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64)))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -1110,31 +1110,31 @@ static LegalizeActionStep REval6(
 
 static LegalizeActionStep REval7(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1183,7 +1183,7 @@ static LegalizeActionStep REval7(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -1191,31 +1191,31 @@ static LegalizeActionStep REval7(
 
 static LegalizeActionStep REval8(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1264,9 +1264,9 @@ static LegalizeActionStep REval8(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if (((Q.Types[0] == R_sXLen)) && (((R_STI_hasStdExtZbb) && (((((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64)) && ((Q.Immediates[0] == 32))) || (LegalityPredicates::immInSet(0, {8, 16})(Q)))) || ((!(R_STI_hasStdExtZbb)) && ((((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64)) && ((Q.Immediates[0] == 32)))))) {
+  if (((Q.Types[0] == R_sXLen)) && (((R_subtargetInfoHasZbb) && (((((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64)) && ((Q.Immediates[0] == 32))) || (LegalityPredicates::immInSet(0, {8, 16})(Q)))) || ((!(R_subtargetInfoHasZbb)) && ((((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64)) && ((Q.Immediates[0] == 32)))))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -1283,31 +1283,31 @@ static LegalizeActionStep REval8(
 
 static LegalizeActionStep REval9(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1356,9 +1356,9 @@ static LegalizeActionStep REval9(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if (((R_XLen_32) && ((R_ST_hasStdExtD) || (R_ST_hasStdExtZilsd))) && (((Q.Types[0] == R_s64)) && ((Q.Types[1] == R_s32)))) {
+  if (((R_XLen_32) && ((R_hasStdExtD) || (R_hasStdExtZilsd))) && (((Q.Types[0] == R_s64)) && ((Q.Types[1] == R_s32)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -1390,31 +1390,31 @@ static LegalizeActionStep REval9(
 
 static LegalizeActionStep REval10(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1463,9 +1463,9 @@ static LegalizeActionStep REval10(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if (((R_XLen_32) && ((R_ST_hasStdExtD) || (R_ST_hasStdExtZilsd))) && (((Q.Types[1] == R_s64)) && ((Q.Types[0] == R_s32)))) {
+  if (((R_XLen_32) && ((R_hasStdExtD) || (R_hasStdExtZilsd))) && (((Q.Types[1] == R_s64)) && ((Q.Types[0] == R_s32)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -1497,31 +1497,31 @@ static LegalizeActionStep REval10(
 
 static LegalizeActionStep REval11(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1570,7 +1570,7 @@ static LegalizeActionStep REval11(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -1578,31 +1578,31 @@ static LegalizeActionStep REval11(
 
 static LegalizeActionStep REval12(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1651,12 +1651,12 @@ static LegalizeActionStep REval12(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if (((R_ST_hasStdExtZbb) || (R_ST_hasStdExtZbkb)) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
+  if (((R_hasStdExtZbb) || (R_hasStdExtZbkb)) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && ((R_ST_hasStdExtZbb) || (R_ST_hasStdExtZbkb))) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if (((R_is64Bit) && ((R_hasStdExtZbb) || (R_hasStdExtZbkb))) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   return {LegalizeActions::Lower, 0, LLT{}};
@@ -1665,31 +1665,31 @@ static LegalizeActionStep REval12(
 
 static LegalizeActionStep REval13(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1738,9 +1738,9 @@ static LegalizeActionStep REval13(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbkb) && ((Q.Types[0] == R_s8))) {
+  if ((R_hasStdExtZbkb) && ((Q.Types[0] == R_s8))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -1753,31 +1753,31 @@ static LegalizeActionStep REval13(
 
 static LegalizeActionStep REval14(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1826,9 +1826,9 @@ static LegalizeActionStep REval14(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if (((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) || (((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64))))) && ((((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64)))) || (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64)))))) {
+  if (((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) || (((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64))))) && ((((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64)))) || (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64)))))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -1836,31 +1836,31 @@ static LegalizeActionStep REval14(
 
 static LegalizeActionStep REval15(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -1909,24 +1909,24 @@ static LegalizeActionStep REval15(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if (((R_ST_hasStdExtZbb) || (R_ST_hasStdExtZbkb)) && ((Q.Types[0] == R_sXLen))) {
+  if (((R_hasStdExtZbb) || (R_hasStdExtZbkb)) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZbb) || (R_ST_hasStdExtZbkb)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((R_hasStdExtZbb) || (R_hasStdExtZbkb)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((R_ST_hasStdExtZbb) || (R_ST_hasStdExtZbkb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((R_hasStdExtZbb) || (R_hasStdExtZbkb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!((R_ST_hasStdExtZbb) || (R_ST_hasStdExtZbkb))) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!((R_hasStdExtZbb) || (R_hasStdExtZbkb))) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (!((R_ST_hasStdExtZbb) || (R_ST_hasStdExtZbkb))) {
+  if (!((R_hasStdExtZbb) || (R_hasStdExtZbkb))) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -1934,31 +1934,31 @@ static LegalizeActionStep REval15(
 
 static LegalizeActionStep REval16(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2007,9 +2007,9 @@ static LegalizeActionStep REval16(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbkc) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtZbkc) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2018,31 +2018,31 @@ static LegalizeActionStep REval16(
 
 static LegalizeActionStep REval17(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2091,12 +2091,12 @@ static LegalizeActionStep REval17(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbkc) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtZbkc) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtZbkc)) && ((Q.Types[0] == R_s32))) {
+  if (((R_is64Bit) && (R_hasStdExtZbkc)) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2105,31 +2105,31 @@ static LegalizeActionStep REval17(
 
 static LegalizeActionStep REval18(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2178,12 +2178,12 @@ static LegalizeActionStep REval18(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbc) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtZbc) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtZbc)) && ((Q.Types[0] == R_s32))) {
+  if (((R_is64Bit) && (R_hasStdExtZbc)) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2192,31 +2192,31 @@ static LegalizeActionStep REval18(
 
 static LegalizeActionStep REval19(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2265,33 +2265,33 @@ static LegalizeActionStep REval19(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (!(R_ST_hasVendorXTHeadBb))) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((!(R_hasStdExtZbb)) && (!(R_hasVendorXTHeadBb))) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (!(R_ST_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (!(R_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (!(R_ST_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (!(R_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
@@ -2301,31 +2301,31 @@ static LegalizeActionStep REval19(
 
 static LegalizeActionStep REval20(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2374,17 +2374,17 @@ static LegalizeActionStep REval20(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((!(R_ST_hasStdExtZbb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtZbb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
@@ -2394,31 +2394,31 @@ static LegalizeActionStep REval20(
 
 static LegalizeActionStep REval21(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2467,66 +2467,66 @@ static LegalizeActionStep REval21(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
+  if ((R_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if ((R_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && (sizeNotPow2(0)(Q))) {
+  if ((R_hasStdExtZbb) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (R_ST_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (R_hasVendorXTHeadBb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (!(R_ST_hasVendorXTHeadBb))) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if (((!(R_hasStdExtZbb)) && (!(R_hasVendorXTHeadBb))) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (!(R_ST_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (!(R_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZbb)) && (!(R_ST_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if (((!(R_hasStdExtZbb)) && (!(R_hasVendorXTHeadBb))) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && (!(R_ST_hasVendorXTHeadBb))) {
+  if ((!(R_hasStdExtZbb)) && (!(R_hasVendorXTHeadBb))) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2534,31 +2534,31 @@ static LegalizeActionStep REval21(
 
 static LegalizeActionStep REval22(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2607,47 +2607,47 @@ static LegalizeActionStep REval22(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
+  if ((R_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if ((R_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && (sizeNotPow2(0)(Q))) {
+  if ((R_hasStdExtZbb) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtZbb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (!(R_ST_hasStdExtZbb)) {
+  if (!(R_hasStdExtZbb)) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2655,31 +2655,31 @@ static LegalizeActionStep REval22(
 
 static LegalizeActionStep REval23(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2728,47 +2728,47 @@ static LegalizeActionStep REval23(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtP) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
+  if ((R_hasStdExtP) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtP) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if ((R_hasStdExtP) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtP) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
+  if ((R_hasStdExtP) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtP) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtP) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtP) && (sizeNotPow2(0)(Q))) {
+  if ((R_hasStdExtP) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtP) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtP) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtP) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtP) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtP)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtP)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtP)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtP)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtP)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtP)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (!(R_ST_hasStdExtP)) {
+  if (!(R_hasStdExtP)) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2776,31 +2776,31 @@ static LegalizeActionStep REval23(
 
 static LegalizeActionStep REval24(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2849,48 +2849,48 @@ static LegalizeActionStep REval24(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
+  if ((R_hasStdExtZbb) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && (sizeNotPow2(0)(Q))) {
+  if ((!(R_hasStdExtZbb)) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && (scalarNarrowerThan(0, (R_s8).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtZbb)) && (scalarNarrowerThan(0, (R_s8).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtZbb)) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() > Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
+  if ((!(R_hasStdExtZbb)) && ((Q.Types[0].getScalarSizeInBits() < Q.Types[1].getScalarSizeInBits()))) {
     auto M = (LegalizeMutations::changeElementSizeTo(1, 0))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if (!(R_ST_hasStdExtZbb)) {
+  if (!(R_hasStdExtZbb)) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2898,31 +2898,31 @@ static LegalizeActionStep REval24(
 
 static LegalizeActionStep REval25(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -2971,15 +2971,15 @@ static LegalizeActionStep REval25(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_is64Bit)) && ((Q.Types[0] == R_s32))) {
+  if ((!(R_is64Bit)) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s64))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -2999,31 +2999,31 @@ static LegalizeActionStep REval25(
 
 static LegalizeActionStep REval26(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3072,18 +3072,18 @@ static LegalizeActionStep REval26(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_s16 || Q.Types[0] == R_s32 || Q.Types[0] == R_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s64))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) {
+  if (((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) {
+  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -3103,31 +3103,31 @@ static LegalizeActionStep REval26(
 
 static LegalizeActionStep REval27(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3176,15 +3176,15 @@ static LegalizeActionStep REval27(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_s32 || Q.Types[0] == R_sXLen || Q.Types[0] == R_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) {
+  if (((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) {
+  if (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -3204,31 +3204,31 @@ static LegalizeActionStep REval27(
 
 static LegalizeActionStep REval28(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3277,12 +3277,12 @@ static LegalizeActionStep REval28(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_sXLen}, {R_sXLen, R_p0}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64))))) {
+  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64))))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if ((scalarOrEltNarrowerThan(1, 8)(Q) || scalarOrEltSizeNotPow2(1)(Q))) {
@@ -3310,31 +3310,31 @@ static LegalizeActionStep REval28(
 
 static LegalizeActionStep REval29(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3383,15 +3383,15 @@ static LegalizeActionStep REval29(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_sXLen}, {R_p0, R_sXLen}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64))))) {
+  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64))))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_XLen_64) || (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_sXLen}})(Q))) {
+  if (((R_XLen_64) || (R_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -3402,8 +3402,8 @@ static LegalizeActionStep REval29(
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (R_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, R_sel0))(Q);
+  if (scalarWiderThan(0, (R_maxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, R_maxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (scalarNarrowerThan(1, (R_sXLen).getSizeInBits())(Q)) {
@@ -3419,31 +3419,31 @@ static LegalizeActionStep REval29(
 
 static LegalizeActionStep REval30(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3492,42 +3492,42 @@ static LegalizeActionStep REval30(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 8}, {R_s32, R_p0, R_s16, 8}, {R_s32, R_p0, R_s32, 8}, {R_p0, R_p0, R_sXLen, 8}})(Q))) {
+  if ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 8}, {R_s32, R_p0, R_s16, 8}, {R_s32, R_p0, R_s32, 8}, {R_p0, R_p0, R_sXLen, 8}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_enableUnalignedScalarMem)) && (R_XLen_64) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 64}})(Q))) {
+  if ((!(R_enableUnalignedScalarMem)) && (R_XLen_64) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_enableUnalignedScalarMem)) && (R_XLen_32) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 32}})(Q))) {
+  if ((!(R_enableUnalignedScalarMem)) && (R_XLen_32) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_XLen_64) && ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 8}, {R_s64, R_p0, R_s32, 8}, {R_s64, R_p0, R_s64, 8}})(Q)))) {
+  if ((R_XLen_64) && ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 8}, {R_s64, R_p0, R_s32, 8}, {R_s64, R_p0, R_s64, 8}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_XLen_64) && ((!(R_ST_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 16}, {R_s64, R_p0, R_s32, 32}, {R_s64, R_p0, R_s64, 64}})(Q)))) {
+  if ((R_XLen_64) && ((!(R_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 16}, {R_s64, R_p0, R_s32, 32}, {R_s64, R_p0, R_s64, 64}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((!(R_XLen_64)) && ((R_ST_hasStdExtD) || (R_ST_hasStdExtZilsd))) && ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 8}})(Q)))) {
+  if (((!(R_XLen_64)) && ((R_hasStdExtD) || (R_hasStdExtZilsd))) && ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 8}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((!(R_XLen_64)) && ((R_ST_hasStdExtD) || (R_ST_hasStdExtZilsd))) && ((!(R_ST_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 64}})(Q)))) {
+  if (((!(R_XLen_64)) && ((R_hasStdExtD) || (R_hasStdExtZilsd))) && ((!(R_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 64}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasVInstructions) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv2s8, R_p0, R_nxv2s8, 8}, {R_nxv4s8, R_p0, R_nxv4s8, 8}, {R_nxv8s8, R_p0, R_nxv8s8, 8}, {R_nxv16s8, R_p0, R_nxv16s8, 8}, {R_nxv32s8, R_p0, R_nxv32s8, 8}, {R_nxv64s8, R_p0, R_nxv64s8, 8}, {R_nxv2s16, R_p0, R_nxv2s16, 16}, {R_nxv4s16, R_p0, R_nxv4s16, 16}, {R_nxv8s16, R_p0, R_nxv8s16, 16}, {R_nxv16s16, R_p0, R_nxv16s16, 16}, {R_nxv32s16, R_p0, R_nxv32s16, 16}, {R_nxv2s32, R_p0, R_nxv2s32, 32}, {R_nxv4s32, R_p0, R_nxv4s32, 32}, {R_nxv8s32, R_p0, R_nxv8s32, 32}, {R_nxv16s32, R_p0, R_nxv16s32, 32}})(Q))) {
+  if ((R_hasVInstructions) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv2s8, R_p0, R_nxv2s8, 8}, {R_nxv4s8, R_p0, R_nxv4s8, 8}, {R_nxv8s8, R_p0, R_nxv8s8, 8}, {R_nxv16s8, R_p0, R_nxv16s8, 8}, {R_nxv32s8, R_p0, R_nxv32s8, 8}, {R_nxv64s8, R_p0, R_nxv64s8, 8}, {R_nxv2s16, R_p0, R_nxv2s16, 16}, {R_nxv4s16, R_p0, R_nxv4s16, 16}, {R_nxv8s16, R_p0, R_nxv8s16, 16}, {R_nxv16s16, R_p0, R_nxv16s16, 16}, {R_nxv32s16, R_p0, R_nxv32s16, 16}, {R_nxv2s32, R_p0, R_nxv2s32, 32}, {R_nxv4s32, R_p0, R_nxv4s32, 32}, {R_nxv8s32, R_p0, R_nxv8s32, 32}, {R_nxv16s32, R_p0, R_nxv16s32, 32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasVInstructions) && (R_ST_getELen_64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s8, R_p0, R_nxv1s8, 8}, {R_nxv1s16, R_p0, R_nxv1s16, 16}, {R_nxv1s32, R_p0, R_nxv1s32, 32}})(Q))) {
+  if (((R_hasVInstructions) && (R_getELen_64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s8, R_p0, R_nxv1s8, 8}, {R_nxv1s16, R_p0, R_nxv1s16, 16}, {R_nxv1s32, R_p0, R_nxv1s32, 32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasVInstructions) && (R_ST_hasVInstructionsI64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s64, R_p0, R_nxv1s64, 64}, {R_nxv2s64, R_p0, R_nxv2s64, 64}, {R_nxv4s64, R_p0, R_nxv4s64, 64}, {R_nxv8s64, R_p0, R_nxv8s64, 64}})(Q))) {
+  if (((R_hasVInstructions) && (R_hasVInstructionsI64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s64, R_p0, R_nxv1s64, 64}, {R_nxv2s64, R_p0, R_nxv2s64, 64}, {R_nxv4s64, R_p0, R_nxv4s64, 64}, {R_nxv8s64, R_p0, R_nxv8s64, 64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasVInstructions) && (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64))))) {
+  if ((R_hasVInstructions) && (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64))))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_hasVInstructions) && (R_XLen_ST_getELen)) && (((Q.Types[0] == R_nxv1p0 || Q.Types[0] == R_nxv2p0 || Q.Types[0] == R_nxv4p0 || Q.Types[0] == R_nxv8p0 || Q.Types[0] == R_nxv16p0)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)) && ((((Q.Types[0]).getNumElements() != 16)) || (((Q.Types[0]).getScalarSizeInBits() == 32)))))) {
+  if (((R_hasVInstructions) && (R_XLen_le_ELen)) && (((Q.Types[0] == R_nxv1p0 || Q.Types[0] == R_nxv2p0 || Q.Types[0] == R_nxv4p0 || Q.Types[0] == R_nxv8p0 || Q.Types[0] == R_nxv16p0)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)) && ((((Q.Types[0]).getNumElements() != 16)) || (((Q.Types[0]).getScalarSizeInBits() == 32)))))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -3551,31 +3551,31 @@ static LegalizeActionStep REval30(
 
 static LegalizeActionStep REval31(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3624,42 +3624,42 @@ static LegalizeActionStep REval31(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 8}, {R_s32, R_p0, R_s16, 8}, {R_s32, R_p0, R_s32, 8}, {R_p0, R_p0, R_sXLen, 8}})(Q))) {
+  if ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 8}, {R_s32, R_p0, R_s16, 8}, {R_s32, R_p0, R_s32, 8}, {R_p0, R_p0, R_sXLen, 8}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_enableUnalignedScalarMem)) && (R_XLen_64) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 64}})(Q))) {
+  if ((!(R_enableUnalignedScalarMem)) && (R_XLen_64) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_enableUnalignedScalarMem)) && (R_XLen_32) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 32}})(Q))) {
+  if ((!(R_enableUnalignedScalarMem)) && (R_XLen_32) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s16, R_p0, R_s8, 8}, {R_s32, R_p0, R_s8, 8}, {R_s16, R_p0, R_s16, 16}, {R_s32, R_p0, R_s16, 16}, {R_s32, R_p0, R_s32, 32}, {R_p0, R_p0, R_sXLen, 32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_XLen_64) && ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 8}, {R_s64, R_p0, R_s32, 8}, {R_s64, R_p0, R_s64, 8}})(Q)))) {
+  if ((R_XLen_64) && ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 8}, {R_s64, R_p0, R_s32, 8}, {R_s64, R_p0, R_s64, 8}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_XLen_64) && ((!(R_ST_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 16}, {R_s64, R_p0, R_s32, 32}, {R_s64, R_p0, R_s64, 64}})(Q)))) {
+  if ((R_XLen_64) && ((!(R_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s8, 8}, {R_s64, R_p0, R_s16, 16}, {R_s64, R_p0, R_s32, 32}, {R_s64, R_p0, R_s64, 64}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((!(R_XLen_64)) && ((R_ST_hasStdExtD) || (R_ST_hasStdExtZilsd))) && ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 8}})(Q)))) {
+  if (((!(R_XLen_64)) && ((R_hasStdExtD) || (R_hasStdExtZilsd))) && ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 8}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((!(R_XLen_64)) && ((R_ST_hasStdExtD) || (R_ST_hasStdExtZilsd))) && ((!(R_ST_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 64}})(Q)))) {
+  if (((!(R_XLen_64)) && ((R_hasStdExtD) || (R_hasStdExtZilsd))) && ((!(R_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s64, 64}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasVInstructions) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv2s8, R_p0, R_nxv2s8, 8}, {R_nxv4s8, R_p0, R_nxv4s8, 8}, {R_nxv8s8, R_p0, R_nxv8s8, 8}, {R_nxv16s8, R_p0, R_nxv16s8, 8}, {R_nxv32s8, R_p0, R_nxv32s8, 8}, {R_nxv64s8, R_p0, R_nxv64s8, 8}, {R_nxv2s16, R_p0, R_nxv2s16, 16}, {R_nxv4s16, R_p0, R_nxv4s16, 16}, {R_nxv8s16, R_p0, R_nxv8s16, 16}, {R_nxv16s16, R_p0, R_nxv16s16, 16}, {R_nxv32s16, R_p0, R_nxv32s16, 16}, {R_nxv2s32, R_p0, R_nxv2s32, 32}, {R_nxv4s32, R_p0, R_nxv4s32, 32}, {R_nxv8s32, R_p0, R_nxv8s32, 32}, {R_nxv16s32, R_p0, R_nxv16s32, 32}})(Q))) {
+  if ((R_hasVInstructions) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv2s8, R_p0, R_nxv2s8, 8}, {R_nxv4s8, R_p0, R_nxv4s8, 8}, {R_nxv8s8, R_p0, R_nxv8s8, 8}, {R_nxv16s8, R_p0, R_nxv16s8, 8}, {R_nxv32s8, R_p0, R_nxv32s8, 8}, {R_nxv64s8, R_p0, R_nxv64s8, 8}, {R_nxv2s16, R_p0, R_nxv2s16, 16}, {R_nxv4s16, R_p0, R_nxv4s16, 16}, {R_nxv8s16, R_p0, R_nxv8s16, 16}, {R_nxv16s16, R_p0, R_nxv16s16, 16}, {R_nxv32s16, R_p0, R_nxv32s16, 16}, {R_nxv2s32, R_p0, R_nxv2s32, 32}, {R_nxv4s32, R_p0, R_nxv4s32, 32}, {R_nxv8s32, R_p0, R_nxv8s32, 32}, {R_nxv16s32, R_p0, R_nxv16s32, 32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasVInstructions) && (R_ST_getELen_64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s8, R_p0, R_nxv1s8, 8}, {R_nxv1s16, R_p0, R_nxv1s16, 16}, {R_nxv1s32, R_p0, R_nxv1s32, 32}})(Q))) {
+  if (((R_hasVInstructions) && (R_getELen_64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s8, R_p0, R_nxv1s8, 8}, {R_nxv1s16, R_p0, R_nxv1s16, 16}, {R_nxv1s32, R_p0, R_nxv1s32, 32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasVInstructions) && (R_ST_hasVInstructionsI64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s64, R_p0, R_nxv1s64, 64}, {R_nxv2s64, R_p0, R_nxv2s64, 64}, {R_nxv4s64, R_p0, R_nxv4s64, 64}, {R_nxv8s64, R_p0, R_nxv8s64, 64}})(Q))) {
+  if (((R_hasVInstructions) && (R_hasVInstructionsI64)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_nxv1s64, R_p0, R_nxv1s64, 64}, {R_nxv2s64, R_p0, R_nxv2s64, 64}, {R_nxv4s64, R_p0, R_nxv4s64, 64}, {R_nxv8s64, R_p0, R_nxv8s64, 64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasVInstructions) && (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64))))) {
+  if ((R_hasVInstructions) && (((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64))))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_hasVInstructions) && (R_XLen_ST_getELen)) && (((Q.Types[0] == R_nxv1p0 || Q.Types[0] == R_nxv2p0 || Q.Types[0] == R_nxv4p0 || Q.Types[0] == R_nxv8p0 || Q.Types[0] == R_nxv16p0)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)) && ((((Q.Types[0]).getNumElements() != 16)) || (((Q.Types[0]).getScalarSizeInBits() == 32)))))) {
+  if (((R_hasVInstructions) && (R_XLen_le_ELen)) && (((Q.Types[0] == R_nxv1p0 || Q.Types[0] == R_nxv2p0 || Q.Types[0] == R_nxv4p0 || Q.Types[0] == R_nxv8p0 || Q.Types[0] == R_nxv16p0)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)) && ((((Q.Types[0]).getNumElements() != 16)) || (((Q.Types[0]).getScalarSizeInBits() == 32)))))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_s16).getSizeInBits())(Q)) {
@@ -3679,31 +3679,31 @@ static LegalizeActionStep REval31(
 
 static LegalizeActionStep REval32(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3752,18 +3752,18 @@ static LegalizeActionStep REval32(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_sXLen, R_p0, R_s8, 8}, {R_sXLen, R_p0, R_s16, 8}})(Q))) {
+  if ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_sXLen, R_p0, R_s8, 8}, {R_sXLen, R_p0, R_s16, 8}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_sXLen, R_p0, R_s8, 8}, {R_sXLen, R_p0, R_s16, 16}})(Q))) {
+  if ((!(R_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_sXLen, R_p0, R_s8, 8}, {R_sXLen, R_p0, R_s16, 16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_XLen_64) && ((R_ST_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s32, 8}})(Q)))) {
+  if ((R_XLen_64) && ((R_enableUnalignedScalarMem) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s32, 8}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_XLen_64) && ((!(R_ST_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s32, 32}})(Q)))) {
+  if ((R_XLen_64) && ((!(R_enableUnalignedScalarMem)) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{R_s64, R_p0, R_s32, 32}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -3784,31 +3784,31 @@ static LegalizeActionStep REval32(
 
 static LegalizeActionStep REval33(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3857,7 +3857,7 @@ static LegalizeActionStep REval33(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_p0, R_sXLen}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3867,31 +3867,31 @@ static LegalizeActionStep REval33(
 
 static LegalizeActionStep REval34(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -3940,7 +3940,7 @@ static LegalizeActionStep REval34(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_p0}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3958,31 +3958,31 @@ static LegalizeActionStep REval34(
 
 static LegalizeActionStep REval35(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4031,7 +4031,7 @@ static LegalizeActionStep REval35(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_p0, R_sXLen}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4049,31 +4049,31 @@ static LegalizeActionStep REval35(
 
 static LegalizeActionStep REval36(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4122,7 +4122,7 @@ static LegalizeActionStep REval36(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -4130,31 +4130,31 @@ static LegalizeActionStep REval36(
 
 static LegalizeActionStep REval37(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4203,7 +4203,7 @@ static LegalizeActionStep REval37(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_sXLen)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4217,31 +4217,31 @@ static LegalizeActionStep REval37(
 
 static LegalizeActionStep REval38(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4290,7 +4290,7 @@ static LegalizeActionStep REval38(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_p0, R_sXLen}})(Q)) {
     return {LegalizeActions::Custom, 0, LLT{}};
@@ -4300,31 +4300,31 @@ static LegalizeActionStep REval38(
 
 static LegalizeActionStep REval39(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4373,7 +4373,7 @@ static LegalizeActionStep REval39(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4383,31 +4383,31 @@ static LegalizeActionStep REval39(
 
 static LegalizeActionStep REval40(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4456,7 +4456,7 @@ static LegalizeActionStep REval40(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_p0 || Q.Types[0] == R_s32 || Q.Types[0] == R_sXLen)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4478,31 +4478,31 @@ static LegalizeActionStep REval40(
 
 static LegalizeActionStep REval41(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4551,7 +4551,7 @@ static LegalizeActionStep REval41(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4561,31 +4561,31 @@ static LegalizeActionStep REval41(
 
 static LegalizeActionStep REval42(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4634,35 +4634,35 @@ static LegalizeActionStep REval42(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZmmul) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtZmmul) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZmmul) && (sizeNotPow2(0)(Q))) {
+  if ((R_hasStdExtZmmul) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZmmul) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZmmul) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtZmmul) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZmmul) && (scalarWiderThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen || Q.Types[0] == R_sDoubleXLen))) {
+  if ((!(R_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen || Q.Types[0] == R_sDoubleXLen))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((!(R_ST_hasStdExtZmmul)) && (sizeNotPow2(0)(Q))) {
+  if ((!(R_hasStdExtZmmul)) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZmmul)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtZmmul)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZmmul)) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtZmmul)) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sDoubleXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
@@ -4671,31 +4671,31 @@ static LegalizeActionStep REval42(
 
 static LegalizeActionStep REval43(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4744,15 +4744,15 @@ static LegalizeActionStep REval43(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZmmul) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtZmmul) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (R_ST_hasStdExtZmmul) {
+  if (R_hasStdExtZmmul) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
-  if ((!(R_ST_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen))) {
+  if ((!(R_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -4760,31 +4760,31 @@ static LegalizeActionStep REval43(
 
 static LegalizeActionStep REval44(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4833,24 +4833,24 @@ static LegalizeActionStep REval44(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZmmul) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZmmul) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (R_ST_hasStdExtZmmul) {
+  if (R_hasStdExtZmmul) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
-  if ((!(R_ST_hasStdExtZmmul)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtZmmul)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen))) {
+  if ((!(R_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), R_sDoubleXLen); })(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (!(R_ST_hasStdExtZmmul)) {
+  if (!(R_hasStdExtZmmul)) {
     return {LegalizeActions::Lower, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -4858,31 +4858,31 @@ static LegalizeActionStep REval44(
 
 static LegalizeActionStep REval45(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -4931,41 +4931,41 @@ static LegalizeActionStep REval45(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtM) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtM) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtM) && ((Q.Types[0] == R_s32))) {
+  if ((R_hasStdExtM) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtM) && ((Q.Types[0] == R_sDoubleXLen))) {
+  if ((R_hasStdExtM) && ((Q.Types[0] == R_sDoubleXLen))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtM) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
+  if ((R_hasStdExtM) && (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtM) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtM) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sDoubleXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtM) && (sizeNotPow2(0)(Q))) {
+  if ((R_hasStdExtM) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtM)) && ((Q.Types[0] == R_sXLen || Q.Types[0] == R_sDoubleXLen))) {
+  if ((!(R_hasStdExtM)) && ((Q.Types[0] == R_sXLen || Q.Types[0] == R_sDoubleXLen))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((!(R_ST_hasStdExtM)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtM)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtM)) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtM)) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sDoubleXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtM)) && (sizeNotPow2(0)(Q))) {
+  if ((!(R_hasStdExtM)) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -4974,31 +4974,31 @@ static LegalizeActionStep REval45(
 
 static LegalizeActionStep REval46(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5047,38 +5047,38 @@ static LegalizeActionStep REval46(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtM) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtM) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtM) && ((Q.Types[0] == R_sDoubleXLen))) {
+  if ((R_hasStdExtM) && ((Q.Types[0] == R_sDoubleXLen))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtM) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtM) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtM) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtM) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sDoubleXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((R_ST_hasStdExtM) && (sizeNotPow2(0)(Q))) {
+  if ((R_hasStdExtM) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtM)) && ((Q.Types[0] == R_sXLen || Q.Types[0] == R_sDoubleXLen))) {
+  if ((!(R_hasStdExtM)) && ((Q.Types[0] == R_sXLen || Q.Types[0] == R_sDoubleXLen))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((!(R_ST_hasStdExtM)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtM)) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtM)) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
+  if ((!(R_hasStdExtM)) && (scalarWiderThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sDoubleXLen))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtM)) && (sizeNotPow2(0)(Q))) {
+  if ((!(R_hasStdExtM)) && (sizeNotPow2(0)(Q))) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -5087,31 +5087,31 @@ static LegalizeActionStep REval46(
 
 static LegalizeActionStep REval47(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5160,7 +5160,7 @@ static LegalizeActionStep REval47(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5168,31 +5168,31 @@ static LegalizeActionStep REval47(
 
 static LegalizeActionStep REval48(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5241,12 +5241,12 @@ static LegalizeActionStep REval48(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -5256,31 +5256,31 @@ static LegalizeActionStep REval48(
 
 static LegalizeActionStep REval49(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5329,9 +5329,9 @@ static LegalizeActionStep REval49(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -5341,31 +5341,31 @@ static LegalizeActionStep REval49(
 
 static LegalizeActionStep REval50(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5414,12 +5414,12 @@ static LegalizeActionStep REval50(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZbb) && ((Q.Types[0] == R_sXLen))) {
+  if ((R_hasStdExtZbb) && ((Q.Types[0] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
+  if ((R_hasStdExtZbb) && (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -5429,31 +5429,31 @@ static LegalizeActionStep REval50(
 
 static LegalizeActionStep REval51(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5502,7 +5502,7 @@ static LegalizeActionStep REval51(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5510,31 +5510,31 @@ static LegalizeActionStep REval51(
 
 static LegalizeActionStep REval52(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5583,7 +5583,7 @@ static LegalizeActionStep REval52(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -5593,31 +5593,31 @@ static LegalizeActionStep REval52(
 
 static LegalizeActionStep REval53(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5666,7 +5666,7 @@ static LegalizeActionStep REval53(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Libcall, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5674,31 +5674,31 @@ static LegalizeActionStep REval53(
 
 static LegalizeActionStep REval54(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5747,7 +5747,7 @@ static LegalizeActionStep REval54(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5755,31 +5755,31 @@ static LegalizeActionStep REval54(
 
 static LegalizeActionStep REval55(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5828,7 +5828,7 @@ static LegalizeActionStep REval55(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5836,31 +5836,31 @@ static LegalizeActionStep REval55(
 
 static LegalizeActionStep REval56(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5909,12 +5909,12 @@ static LegalizeActionStep REval56(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s64))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_is64Bit)) && ((Q.Types[0] == R_s64))) {
+  if ((!(R_is64Bit)) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5922,31 +5922,31 @@ static LegalizeActionStep REval56(
 
 static LegalizeActionStep REval57(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -5995,21 +5995,21 @@ static LegalizeActionStep REval57(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && ((Q.Types[0] == R_s32))) {
+  if ((R_hasStdExtF) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && ((Q.Types[0] == R_s64))) {
+  if ((R_hasStdExtD) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && ((Q.Types[0] == R_s16))) {
+  if ((R_hasStdExtZfh) && ((Q.Types[0] == R_s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if ((Q.Types[0] == R_s32 || Q.Types[0] == R_s64)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s128))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s128))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -6017,31 +6017,31 @@ static LegalizeActionStep REval57(
 
 static LegalizeActionStep REval58(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6090,15 +6090,15 @@ static LegalizeActionStep REval58(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && ((Q.Types[0] == R_s32))) {
+  if ((R_hasStdExtF) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && ((Q.Types[0] == R_s64))) {
+  if ((R_hasStdExtD) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && ((Q.Types[0] == R_s16))) {
+  if ((R_hasStdExtZfh) && ((Q.Types[0] == R_s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if ((Q.Types[0] == R_s32 || Q.Types[0] == R_s64 || Q.Types[0] == R_s128)) {
@@ -6109,31 +6109,31 @@ static LegalizeActionStep REval58(
 
 static LegalizeActionStep REval59(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6182,12 +6182,12 @@ static LegalizeActionStep REval59(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_s32 || Q.Types[0] == R_s64)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s128))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s128))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_s32).getSizeInBits())(Q)) {
@@ -6203,31 +6203,31 @@ static LegalizeActionStep REval59(
 
 static LegalizeActionStep REval60(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6276,18 +6276,18 @@ static LegalizeActionStep REval60(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s64}, {R_s32, R_s64}, {R_s64, R_s32}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s64}, {R_s32, R_s64}, {R_s64, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s16}, {R_s16, R_s32}, {R_s32, R_s16}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s16}, {R_s16, R_s32}, {R_s32, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZfh) && (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s64}, {R_s64, R_s16}})(Q))) {
+  if (((R_hasStdExtZfh) && (R_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s64}, {R_s64, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Lower, 0, LLT{}};
@@ -6296,31 +6296,31 @@ static LegalizeActionStep REval60(
 
 static LegalizeActionStep REval61(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6369,21 +6369,21 @@ static LegalizeActionStep REval61(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfhmin) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s32}})(Q))) {
+  if ((R_hasStdExtZfhmin) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZfhmin) && (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s64}})(Q))) {
+  if (((R_hasStdExtZfhmin) && (R_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_s32}, {R_s16, R_s64}, {R_s32, R_s64}})(Q)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s128}, {R_s64, R_s128}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s128}, {R_s64, R_s128}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -6391,31 +6391,31 @@ static LegalizeActionStep REval61(
 
 static LegalizeActionStep REval62(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6464,27 +6464,27 @@ static LegalizeActionStep REval62(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s32}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfhmin) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
+  if ((R_hasStdExtZfhmin) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZfhmin) && (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s16}})(Q))) {
+  if (((R_hasStdExtZfhmin) && (R_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_hasStdExtZfhmin)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
+  if ((!(R_hasStdExtZfhmin)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((!((R_ST_hasStdExtZfhmin) && (R_ST_hasStdExtD))) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s16}})(Q))) {
+  if ((!((R_hasStdExtZfhmin) && (R_hasStdExtD))) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s16}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_s32}})(Q)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -6492,31 +6492,31 @@ static LegalizeActionStep REval62(
 
 static LegalizeActionStep REval63(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6565,15 +6565,15 @@ static LegalizeActionStep REval63(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -6591,7 +6591,7 @@ static LegalizeActionStep REval63(
   if (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}, {R_sXLen, R_s64}})(Q)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s128}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s128}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -6599,31 +6599,31 @@ static LegalizeActionStep REval63(
 
 static LegalizeActionStep REval64(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6672,15 +6672,15 @@ static LegalizeActionStep REval64(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_s1, R_s32}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_s1, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s1, R_s64}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s1, R_s64}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_s1, R_s16}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_s1, R_s16}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   return {LegalizeActions::Lower, 0, LLT{}};
@@ -6689,31 +6689,31 @@ static LegalizeActionStep REval64(
 
 static LegalizeActionStep REval65(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6762,15 +6762,15 @@ static LegalizeActionStep REval65(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && ((Q.Types[0] == R_s32))) {
+  if ((R_hasStdExtF) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && ((Q.Types[0] == R_s64))) {
+  if ((R_hasStdExtD) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfhmin) && ((Q.Types[0] == R_s16))) {
+  if ((R_hasStdExtZfhmin) && ((Q.Types[0] == R_s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if ((Q.Types[0] == R_s32 || Q.Types[0] == R_s64 || Q.Types[0] == R_s128)) {
@@ -6781,31 +6781,31 @@ static LegalizeActionStep REval65(
 
 static LegalizeActionStep REval66(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6854,24 +6854,24 @@ static LegalizeActionStep REval66(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtF)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtF)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -6882,11 +6882,11 @@ static LegalizeActionStep REval66(
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((Q.Types[1] == R_f16)) && (!(R_ST_hasStdExtZfh)) && ((R_ST_is64Bit) || ((Q.Types[0] == R_s32)))) {
+  if (((Q.Types[1] == R_f16)) && (!(R_hasStdExtZfh)) && ((R_is64Bit) || ((Q.Types[0] == R_s32)))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(1), R_s32); })(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((!(R_ST_hasStdExtZfhmin)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Q))) {
+  if ((!(R_hasStdExtZfhmin)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Q)) {
@@ -6896,10 +6896,10 @@ static LegalizeActionStep REval66(
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}, {R_s64, R_s32}, {R_s32, R_s64}, {R_s64, R_s64}})(Q)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s128}, {R_s64, R_s128}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s128}, {R_s64, R_s128}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}, {R_s128, R_s128}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}, {R_s128, R_s128}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -6907,31 +6907,31 @@ static LegalizeActionStep REval66(
 
 static LegalizeActionStep REval67(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -6980,24 +6980,24 @@ static LegalizeActionStep REval67(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtF)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtF)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if ((Q.Types[1] == R_s16)) {
@@ -7012,31 +7012,31 @@ static LegalizeActionStep REval67(
 
 static LegalizeActionStep REval68(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7085,24 +7085,24 @@ static LegalizeActionStep REval68(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtF)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtF)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_ST_is64Bit) && (R_ST_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
+  if (((R_is64Bit) && (R_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (scalarNarrowerThan(1, (R_s32).getSizeInBits())(Q)) {
@@ -7117,31 +7117,31 @@ static LegalizeActionStep REval68(
 
 static LegalizeActionStep REval69(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7190,15 +7190,15 @@ static LegalizeActionStep REval69(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s16}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -7217,31 +7217,31 @@ static LegalizeActionStep REval69(
 
 static LegalizeActionStep REval70(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7290,22 +7290,22 @@ static LegalizeActionStep REval70(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_sXLen}})(Q))) {
+  if ((R_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_sXLen}})(Q))) {
+  if ((R_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_sXLen}})(Q))) {
+  if ((R_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_sXLen}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (sizeNotPow2(1)(Q)) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((Q.Types[0].isScalar()) && (Q.Types[1].isScalar()) && (((Q.Types[1]).getSizeInBits().getKnownMinValue() < (R_XLen_64 ? 64 : 32))) && (((R_ST_hasStdExtF) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 32))) || ((R_ST_hasStdExtD) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64))) || ((R_ST_hasStdExtZfh) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 16))))) {
+  if ((Q.Types[0].isScalar()) && (Q.Types[1].isScalar()) && (((Q.Types[1]).getSizeInBits().getKnownMinValue() < (R_XLen_64 ? 64 : 32))) && (((R_hasStdExtF) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 32))) || ((R_hasStdExtD) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64))) || ((R_hasStdExtZfh) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 16))))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(1), R_sXLen); })(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -7316,10 +7316,10 @@ static LegalizeActionStep REval70(
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}, {R_s64, R_s32}, {R_s32, R_s64}, {R_s64, R_s64}})(Q)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s128}, {R_s64, R_s128}, {R_s128, R_s128}})(Q))) {
+  if ((R_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s128}, {R_s64, R_s128}, {R_s128, R_s128}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -7327,31 +7327,31 @@ static LegalizeActionStep REval70(
 
 static LegalizeActionStep REval71(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7400,21 +7400,21 @@ static LegalizeActionStep REval71(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZfa) && ((Q.Types[0] == R_s32))) {
+  if ((R_hasStdExtZfa) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZfa) && (R_ST_hasStdExtD)) && ((Q.Types[0] == R_s64))) {
+  if (((R_hasStdExtZfa) && (R_hasStdExtD)) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZfa) && (R_ST_hasStdExtZfh)) && ((Q.Types[0] == R_s16))) {
+  if (((R_hasStdExtZfa) && (R_hasStdExtZfh)) && ((Q.Types[0] == R_s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if ((Q.Types[0] == R_s32 || Q.Types[0] == R_s64)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s128))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s128))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -7422,31 +7422,31 @@ static LegalizeActionStep REval71(
 
 static LegalizeActionStep REval72(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7495,15 +7495,15 @@ static LegalizeActionStep REval72(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtZfa) && ((Q.Types[0] == R_s32))) {
+  if ((R_hasStdExtZfa) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZfa) && (R_ST_hasStdExtD)) && ((Q.Types[0] == R_s64))) {
+  if (((R_hasStdExtZfa) && (R_hasStdExtD)) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_ST_hasStdExtZfa) && (R_ST_hasStdExtZfh)) && ((Q.Types[0] == R_s16))) {
+  if (((R_hasStdExtZfa) && (R_hasStdExtZfh)) && ((Q.Types[0] == R_s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -7511,31 +7511,31 @@ static LegalizeActionStep REval72(
 
 static LegalizeActionStep REval73(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7584,12 +7584,12 @@ static LegalizeActionStep REval73(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_s32 || Q.Types[0] == R_s64)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s128))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s128))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -7597,31 +7597,31 @@ static LegalizeActionStep REval73(
 
 static LegalizeActionStep REval74(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7670,12 +7670,12 @@ static LegalizeActionStep REval74(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}, {R_s64, R_s32}})(Q)) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((R_ST_is64Bit) && ((Q.Types[0] == R_s128 || Q.Types[0] == R_s32))) {
+  if ((R_is64Bit) && ((Q.Types[0] == R_s128 || Q.Types[0] == R_s32))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -7683,31 +7683,31 @@ static LegalizeActionStep REval74(
 
 static LegalizeActionStep REval75(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7756,15 +7756,15 @@ static LegalizeActionStep REval75(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtF) && ((Q.Types[0] == R_s32))) {
+  if ((R_hasStdExtF) && ((Q.Types[0] == R_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtD) && ((Q.Types[0] == R_s64))) {
+  if ((R_hasStdExtD) && ((Q.Types[0] == R_s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((R_ST_hasStdExtZfh) && ((Q.Types[0] == R_s16))) {
+  if ((R_hasStdExtZfh) && ((Q.Types[0] == R_s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -7772,31 +7772,31 @@ static LegalizeActionStep REval75(
 
 static LegalizeActionStep REval76(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7845,7 +7845,7 @@ static LegalizeActionStep REval76(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_p0)) {
     return {LegalizeActions::Custom, 0, LLT{}};
@@ -7855,31 +7855,31 @@ static LegalizeActionStep REval76(
 
 static LegalizeActionStep REval77(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -7928,7 +7928,7 @@ static LegalizeActionStep REval77(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
@@ -7946,31 +7946,31 @@ static LegalizeActionStep REval77(
 
 static LegalizeActionStep REval78(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8019,7 +8019,7 @@ static LegalizeActionStep REval78(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
@@ -8037,31 +8037,31 @@ static LegalizeActionStep REval78(
 
 static LegalizeActionStep REval79(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8110,18 +8110,18 @@ static LegalizeActionStep REval79(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && ((Q.Types[1] == R_sXLen))) {
+  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && ((Q.Types[1] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && ((Q.Types[1] == R_s1))) {
+  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && ((Q.Types[1] == R_s1))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((R_XLen_32) && ((R_ST_hasVInstructionsF64) && (R_ST_hasStdExtD))) && (((Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((Q.Types[1] == R_s64)))) {
+  if (((R_XLen_32) && ((R_hasVInstructionsF64) && (R_hasStdExtD))) && (((Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((Q.Types[1] == R_s64)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (((R_XLen_32) && (!((R_ST_hasVInstructionsF64) && (R_ST_hasStdExtD))) && (R_ST_hasVInstructionsI64)) && (((Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((Q.Types[1] == R_s64)))) {
+  if (((R_XLen_32) && (!((R_hasVInstructionsF64) && (R_hasStdExtD))) && (R_hasVInstructionsI64)) && (((Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((Q.Types[1] == R_s64)))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   if (scalarNarrowerThan(1, (R_sXLen).getSizeInBits())(Q)) {
@@ -8137,31 +8137,31 @@ static LegalizeActionStep REval79(
 
 static LegalizeActionStep REval80(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8210,13 +8210,13 @@ static LegalizeActionStep REval80(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64)))) && ((((Q.Types[0]).getElementType() == R_s1)) && (((Q.Types[0]).getNumElements() >= 8)) && (((Q.Types[1]).getNumElements() >= 8)))) {
+  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64)))) && ((((Q.Types[0]).getElementType() == R_s1)) && (((Q.Types[0]).getNumElements() >= 8)) && (((Q.Types[1]).getNumElements() >= 8)))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), ((Q.Types[0]).changeElementCount((Q.Types[0]).getElementCount().divideCoefficientBy(8))).changeElementType(R_s8)); })(Q);
     return {LegalizeActions::Bitcast, M.first, M.second};
   }
-  if (((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64))))) || ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64)))))) {
+  if (((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64))))) || ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64)))))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -8224,31 +8224,31 @@ static LegalizeActionStep REval80(
 
 static LegalizeActionStep REval81(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8297,12 +8297,12 @@ static LegalizeActionStep REval81(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64))))) {
+  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s1 || Q.Types[1] == R_nxv2s1 || Q.Types[1] == R_nxv4s1 || Q.Types[1] == R_nxv8s1 || Q.Types[1] == R_nxv16s1 || Q.Types[1] == R_nxv32s1 || Q.Types[1] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64))))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_ST_getELen_64))))) {
+  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[1] == R_nxv1s8 || Q.Types[1] == R_nxv2s8 || Q.Types[1] == R_nxv4s8 || Q.Types[1] == R_nxv8s8 || Q.Types[1] == R_nxv16s8 || Q.Types[1] == R_nxv32s8 || Q.Types[1] == R_nxv64s8 || Q.Types[1] == R_nxv1s16 || Q.Types[1] == R_nxv2s16 || Q.Types[1] == R_nxv4s16 || Q.Types[1] == R_nxv8s16 || Q.Types[1] == R_nxv16s16 || Q.Types[1] == R_nxv32s16 || Q.Types[1] == R_nxv1s32 || Q.Types[1] == R_nxv2s32 || Q.Types[1] == R_nxv4s32 || Q.Types[1] == R_nxv8s32 || Q.Types[1] == R_nxv16s32 || Q.Types[1] == R_nxv1s64 || Q.Types[1] == R_nxv2s64 || Q.Types[1] == R_nxv4s64 || Q.Types[1] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[1]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[1]).getNumElements() != 1)) || (R_getELen_64))))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -8310,31 +8310,31 @@ static LegalizeActionStep REval81(
 
 static LegalizeActionStep REval82(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8383,7 +8383,7 @@ static LegalizeActionStep REval82(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if (((Q.Types[0] == R_s8 || Q.Types[0] == R_s16 || Q.Types[0] == R_s32 || Q.Types[0] == R_s64)) && ((Q.Types[2] == R_p0))) {
     return {LegalizeActions::Lower, 0, LLT{}};
@@ -8393,31 +8393,31 @@ static LegalizeActionStep REval82(
 
 static LegalizeActionStep REval83(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8466,12 +8466,12 @@ static LegalizeActionStep REval83(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtA) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_p0}})(Q))) {
+  if ((R_hasStdExtA) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_p0}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((!(R_ST_hasStdExtA)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s8, R_p0}, {R_s16, R_p0}, {R_s32, R_p0}, {R_s64, R_p0}})(Q))) {
+  if ((!(R_hasStdExtA)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s8, R_p0}, {R_s16, R_p0}, {R_s32, R_p0}, {R_s64, R_p0}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -8487,31 +8487,31 @@ static LegalizeActionStep REval83(
 
 static LegalizeActionStep REval84(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8560,9 +8560,9 @@ static LegalizeActionStep REval84(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((!(R_ST_hasStdExtA)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s8, R_p0}, {R_s16, R_p0}, {R_s32, R_p0}, {R_s64, R_p0}})(Q))) {
+  if ((!(R_hasStdExtA)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s8, R_p0}, {R_s16, R_p0}, {R_s32, R_p0}, {R_s64, R_p0}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -8579,31 +8579,31 @@ static LegalizeActionStep REval84(
 
 static LegalizeActionStep REval85(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8652,9 +8652,9 @@ static LegalizeActionStep REval85(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((R_ST_hasStdExtA) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_p0}})(Q))) {
+  if ((R_hasStdExtA) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_p0}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   if (scalarNarrowerThan(0, (R_sXLen).getSizeInBits())(Q)) {
@@ -8671,31 +8671,31 @@ static LegalizeActionStep REval85(
 
 static LegalizeActionStep REval86(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8744,7 +8744,7 @@ static LegalizeActionStep REval86(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   if ((Q.Types[0] == R_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -8754,31 +8754,31 @@ static LegalizeActionStep REval86(
 
 static LegalizeActionStep REval87(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8827,12 +8827,12 @@ static LegalizeActionStep REval87(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
-  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_ST_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[0]).getElementType() == Q.Types[1])) && ((Q.Types[2] == R_sXLen))) {
+  if ((((Q.Types[0] == R_nxv1s8 || Q.Types[0] == R_nxv2s8 || Q.Types[0] == R_nxv4s8 || Q.Types[0] == R_nxv8s8 || Q.Types[0] == R_nxv16s8 || Q.Types[0] == R_nxv32s8 || Q.Types[0] == R_nxv64s8 || Q.Types[0] == R_nxv1s16 || Q.Types[0] == R_nxv2s16 || Q.Types[0] == R_nxv4s16 || Q.Types[0] == R_nxv8s16 || Q.Types[0] == R_nxv16s16 || Q.Types[0] == R_nxv32s16 || Q.Types[0] == R_nxv1s32 || Q.Types[0] == R_nxv2s32 || Q.Types[0] == R_nxv4s32 || Q.Types[0] == R_nxv8s32 || Q.Types[0] == R_nxv16s32 || Q.Types[0] == R_nxv1s64 || Q.Types[0] == R_nxv2s64 || Q.Types[0] == R_nxv4s64 || Q.Types[0] == R_nxv8s64)) && ((R_hasVInstructions) && ((((Q.Types[0]).getScalarSizeInBits() != 64)) || (R_hasVInstructionsI64)) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[0]).getElementType() == Q.Types[1])) && ((Q.Types[2] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_ST_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_ST_getELen_64)))) && (((Q.Types[0]).getElementType() == Q.Types[1])) && ((Q.Types[2] == R_sXLen))) {
+  if ((((Q.Types[0] == R_nxv1s1 || Q.Types[0] == R_nxv2s1 || Q.Types[0] == R_nxv4s1 || Q.Types[0] == R_nxv8s1 || Q.Types[0] == R_nxv16s1 || Q.Types[0] == R_nxv32s1 || Q.Types[0] == R_nxv64s1)) && ((R_hasVInstructions) && ((((Q.Types[0]).getNumElements() != 1)) || (R_getELen_64)))) && (((Q.Types[0]).getElementType() == Q.Types[1])) && ((Q.Types[2] == R_sXLen))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -8840,31 +8840,31 @@ static LegalizeActionStep REval87(
 
 static LegalizeActionStep REval88(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8913,7 +8913,7 @@ static LegalizeActionStep REval88(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -8921,31 +8921,31 @@ static LegalizeActionStep REval88(
 
 static LegalizeActionStep REval89(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -8994,7 +8994,7 @@ static LegalizeActionStep REval89(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -9002,31 +9002,31 @@ static LegalizeActionStep REval89(
 
 static LegalizeActionStep REval90(
     const RSubtarget &Subtarget, const LegalityQuery &Q) {
-  [[maybe_unused]] const bool R_STI_hasStdExtZbb = STI.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
-  [[maybe_unused]] const bool R_ST_getELen_64 = ST.getELen() == 64;
-  [[maybe_unused]] const bool R_ST_hasStdExtA = ST.hasStdExtA();
-  [[maybe_unused]] const bool R_ST_hasStdExtD = ST.hasStdExtD();
-  [[maybe_unused]] const bool R_ST_hasStdExtF = ST.hasStdExtF();
-  [[maybe_unused]] const bool R_ST_hasStdExtM = ST.hasStdExtM();
-  [[maybe_unused]] const bool R_ST_hasStdExtP = ST.hasStdExtP();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbb = ST.hasStdExtZbb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbc = ST.hasStdExtZbc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkb = ST.hasStdExtZbkb();
-  [[maybe_unused]] const bool R_ST_hasStdExtZbkc = ST.hasStdExtZbkc();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfa = ST.hasStdExtZfa();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfh = ST.hasStdExtZfh();
-  [[maybe_unused]] const bool R_ST_hasStdExtZfhmin = ST.hasStdExtZfhmin();
-  [[maybe_unused]] const bool R_ST_hasStdExtZilsd = ST.hasStdExtZilsd();
-  [[maybe_unused]] const bool R_ST_hasStdExtZmmul = ST.hasStdExtZmmul();
-  [[maybe_unused]] const bool R_ST_hasVInstructions = ST.hasVInstructions();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsF64 = ST.hasVInstructionsF64();
-  [[maybe_unused]] const bool R_ST_hasVInstructionsI64 = ST.hasVInstructionsI64();
-  [[maybe_unused]] const bool R_ST_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
-  [[maybe_unused]] const bool R_ST_is64Bit = ST.is64Bit();
   [[maybe_unused]] const bool R_XLen_32 = XLen == 32;
   [[maybe_unused]] const bool R_XLen_64 = XLen == 64;
-  [[maybe_unused]] const bool R_XLen_ST_getELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_XLen_le_ELen = XLen <= ST.getELen();
+  [[maybe_unused]] const bool R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem();
+  [[maybe_unused]] const bool R_getELen_64 = ST.getELen() == 64;
+  [[maybe_unused]] const bool R_hasStdExtA = ST.hasStdExtA();
+  [[maybe_unused]] const bool R_hasStdExtD = ST.hasStdExtD();
+  [[maybe_unused]] const bool R_hasStdExtF = ST.hasStdExtF();
+  [[maybe_unused]] const bool R_hasStdExtM = ST.hasStdExtM();
+  [[maybe_unused]] const bool R_hasStdExtP = ST.hasStdExtP();
+  [[maybe_unused]] const bool R_hasStdExtZbb = ST.hasStdExtZbb();
+  [[maybe_unused]] const bool R_hasStdExtZbc = ST.hasStdExtZbc();
+  [[maybe_unused]] const bool R_hasStdExtZbkb = ST.hasStdExtZbkb();
+  [[maybe_unused]] const bool R_hasStdExtZbkc = ST.hasStdExtZbkc();
+  [[maybe_unused]] const bool R_hasStdExtZfa = ST.hasStdExtZfa();
+  [[maybe_unused]] const bool R_hasStdExtZfh = ST.hasStdExtZfh();
+  [[maybe_unused]] const bool R_hasStdExtZfhmin = ST.hasStdExtZfhmin();
+  [[maybe_unused]] const bool R_hasStdExtZilsd = ST.hasStdExtZilsd();
+  [[maybe_unused]] const bool R_hasStdExtZmmul = ST.hasStdExtZmmul();
+  [[maybe_unused]] const bool R_hasVInstructions = ST.hasVInstructions();
+  [[maybe_unused]] const bool R_hasVInstructionsF64 = ST.hasVInstructionsF64();
+  [[maybe_unused]] const bool R_hasVInstructionsI64 = ST.hasVInstructionsI64();
+  [[maybe_unused]] const bool R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb();
+  [[maybe_unused]] const bool R_is64Bit = ST.is64Bit();
+  [[maybe_unused]] const bool R_subtargetInfoHasZbb = STI.hasStdExtZbb();
   [[maybe_unused]] const LLT R_sXLen_lo = LLT::scalar(32);
   [[maybe_unused]] const LLT R_sXLen_hi = LLT::scalar(64);
   [[maybe_unused]] const LLT R_sDoubleXLen_lo = LLT::scalar(64);
@@ -9075,7 +9075,7 @@ static LegalizeActionStep REval90(
   [[maybe_unused]] const LLT R_nxv16p0 = LLT::scalable_vector(16, R_p0);
   [[maybe_unused]] const LLT R_sXLen = (R_XLen_64 ? R_s64 : R_s32);
   [[maybe_unused]] const LLT R_sDoubleXLen = (R_XLen_64 ? R_s128 : R_s64);
-  [[maybe_unused]] const LLT R_sel0 = (R_XLen_64 || R_ST_hasStdExtD ? R_s64 : R_s32);
+  [[maybe_unused]] const LLT R_maxScalar = (R_XLen_64 || R_hasStdExtD ? R_s64 : R_s32);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};

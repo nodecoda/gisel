@@ -32,6 +32,85 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 
 PREFIX = None  # set from the target name: RISCV -> "R_"
+CURRENT_TARGET = None
+USED_RENAMES = {"select": set(), "feature": set()}
+
+
+def _norm(text):
+    """Whitespace-insensitive key for the reviewed rename tables."""
+    return " ".join(text.split())
+
+
+# ---------------------------------------------------------------------------
+# Reviewed names for the generated declarations
+#
+# The transcriber names anonymous ternaries `selN`/`condN`, which is accurate
+# but unreadable.  The tables below are the reviewed replacement: the key is
+# the C++ expression with the target prefix removed, the value is
+# (select name, predicate name).  A `None` predicate means the condition is a
+# bare feature name and is used directly in the `select`, so no alias record
+# is emitted.  Every key must still match, or the import fails: an upstream
+# edit must not silently reintroduce generated names.
+# ---------------------------------------------------------------------------
+
+SELECT_NAMES = {
+    "X86": {
+        "Subtarget.is64Bit() ? s64 : s32": ("sMaxScalar", None),
+        "HasAVX512 ? v64s8 : HasAVX ? v32s8 : v16s8": ("s8MaxVector", None),
+        "HasAVX ? v32s8 : v16s8": ("s8MaxVectorNoAVX512", None),
+        "HasAVX512 ? v32s16 : HasAVX ? v16s16 : v8s16": ("s16MaxVector", None),
+        "HasAVX ? v16s16 : v8s16": ("s16MaxVectorNoAVX512", None),
+        "HasAVX512 ? v16s32 : HasAVX ? v8s32 : v4s32": ("s32MaxVector", None),
+        "HasAVX ? v8s32 : v4s32": ("s32MaxVectorNoAVX512", None),
+        "HasAVX512 ? v8s64 : HasAVX ? v4s64 : v2s64": ("s64MaxVector", None),
+        "HasAVX ? v4s64 : v2s64": ("s64MaxVectorNoAVX512", None),
+        "HasSSE2 ? s64 : s32": ("sse2MaxScalar", None),
+        "(UseX87 && !HasSSE1) ? s16 : s32": ("x87MinScalar", "useX87NoSSE1"),
+        "HasCMOV ? s16 : s8": ("cmovMinScalar", None),
+    },
+    "AArch64": {},
+    "RISCV": {
+        "(XLen == 64 || ST.hasStdExtD()) ? s64 : s32":
+            ("maxScalar", "has64BitScalar"),
+    },
+}
+
+# C++ feature text -> name suffix.  Without these the receiver is part of the
+# slug (`ST_hasNEON`), which reads like a different namespace.
+FEATURE_NAMES = {
+    "X86": {},
+    "AArch64": {
+        "ST.hasBF16()": "hasBF16",
+        "ST.hasFPARMv8()": "hasFPARMv8",
+        "ST.hasMOPS()": "hasMOPS",
+        "ST.hasNEON()": "hasNEON",
+    },
+    "RISCV": {
+        "ST.enableUnalignedScalarMem()": "enableUnalignedScalarMem",
+        "ST.getELen() == 64": "getELen_64",
+        "ST.hasStdExtA()": "hasStdExtA",
+        "ST.hasStdExtD()": "hasStdExtD",
+        "ST.hasStdExtF()": "hasStdExtF",
+        "ST.hasStdExtM()": "hasStdExtM",
+        "ST.hasStdExtP()": "hasStdExtP",
+        "ST.hasStdExtZbb()": "hasStdExtZbb",
+        "ST.hasStdExtZbc()": "hasStdExtZbc",
+        "ST.hasStdExtZbkb()": "hasStdExtZbkb",
+        "ST.hasStdExtZbkc()": "hasStdExtZbkc",
+        "ST.hasStdExtZfa()": "hasStdExtZfa",
+        "ST.hasStdExtZfh()": "hasStdExtZfh",
+        "ST.hasStdExtZfhmin()": "hasStdExtZfhmin",
+        "ST.hasStdExtZilsd()": "hasStdExtZilsd",
+        "ST.hasStdExtZmmul()": "hasStdExtZmmul",
+        "ST.hasVInstructions()": "hasVInstructions",
+        "ST.hasVInstructionsF64()": "hasVInstructionsF64",
+        "ST.hasVInstructionsI64()": "hasVInstructionsI64",
+        "ST.hasVendorXTHeadBb()": "hasVendorXTHeadBb",
+        "ST.is64Bit()": "is64Bit",
+        "STI.hasStdExtZbb()": "subtargetInfoHasZbb",
+        "XLen <= ST.getELen()": "XLen_le_ELen",
+    },
+}
 
 
 # ---------------------------------------------------------------------------
@@ -133,6 +212,9 @@ class Types:
     def name(self, cpp):
         if cpp in self.by_cpp:
             return self.by_cpp[cpp]
+        canon = "?" + _norm(cpp).replace(PREFIX, "")
+        if canon in self.by_cpp:
+            return self.by_cpp[canon]
         m = re.fullmatch(r"LLT::scalar\(\s*(\d+)\s*\)", cpp.strip())
         if m and "s%s" % m.group(1) in self.by_cpp:
             return self.by_cpp["s%s" % m.group(1)]
@@ -146,17 +228,33 @@ class Types:
             # resolve type values through names, not inline expressions).
             self.anon = getattr(self, "anon", [])
             self.preds = getattr(self, "preds", [])
-            pname = PREFIX + "cond%d" % len(self.preds)
+            key = _norm(cpp).replace(PREFIX, "")
+            named = SELECT_NAMES.get(CURRENT_TARGET, {}).get(key)
             cond = self.cond_fn(m[0].strip())
             cond = re.sub(r'feature\("((?:[^"\\]|\\.)*)"\)',
                           lambda k: self.feat_name(k.group(1)), cond)
-            self.preds.append((pname, cond))
+            if named:
+                USED_RENAMES["select"].add(key)
+                sel_suffix, pred_suffix = named
+                name = PREFIX + sel_suffix
+            else:
+                self.unnamed = getattr(self, "unnamed", 0) + 1
+                sel_suffix = pred_suffix = None
+                name = PREFIX + "sel%d" % getattr(self, "sel_n", 0)
+                self.sel_n = getattr(self, "sel_n", 0) + 1
             lo = self.name(m[1].strip())
             hi = self.name(m[2].strip())
-            name = PREFIX + "sel%d" % getattr(self, "sel_n", 0)
-            self.sel_n = getattr(self, "sel_n", 0) + 1
-            self.anon.append((name, pname, lo, hi))
+            # A bare condition is already a feature/pred name; the `select`
+            # grammar accepts it directly, so no `pred` alias is needed.
+            if re.fullmatch(r"[A-Za-z_]\w*", cond):
+                self.anon.append((name, cond, lo, hi))
+            else:
+                pname = PREFIX + pred_suffix if pred_suffix \
+                    else PREFIX + "cond%d" % len(self.preds)
+                self.preds.append((pname, cond))
+                self.anon.append((name, pname, lo, hi))
             self.by_cpp[cpp.strip()] = name
+            self.by_cpp[canon] = name
             return name
         return cpp
 
@@ -310,8 +408,13 @@ class Translator:
     def feature(self, cpp_text):
         name = cpp_text
         if name not in self.features:
-            slug = re.sub(r"[^0-9A-Za-z]+", "_", cpp_text).strip("_")
-            self.features[name] = PREFIX + slug
+            key = _norm(cpp_text)
+            suffix = FEATURE_NAMES.get(CURRENT_TARGET, {}).get(key)
+            if suffix:
+                USED_RENAMES["feature"].add(key)
+            else:
+                suffix = re.sub(r"[^0-9A-Za-z]+", "_", cpp_text).strip("_")
+            self.features[name] = PREFIX + suffix
         return self.features[name]
 
     def feature_named(self, name, cpp_text):
@@ -1578,8 +1681,9 @@ def apply_gate(line, gate):
 
 class Importer:
     def __init__(self, target, source=""):
-        global PREFIX
+        global PREFIX, CURRENT_TARGET
         PREFIX = target[0].upper() + "_"
+        CURRENT_TARGET = target
         self.p = Program()
         self.t = Types()
         self.tr = Translator(self.t)
@@ -2054,6 +2158,8 @@ def transcribe(spec, source, out):
     text = source.read_text()
     STATS["calls"].clear()
     STATS["rules"].clear()
+    USED_RENAMES["select"].clear()
+    USED_RENAMES["feature"].clear()
     imp = Importer(spec.name, text)
     for name, rhs in member_types(source):
         imp.t.add(name, rhs, 0)
@@ -2090,6 +2196,18 @@ def transcribe(spec, source, out):
         if (rulesets, rules) != (spec.rulesets, spec.rules):
             print("  DRIFT: %s pinned at %d rulesets / %d rules, got %d / %d"
                   % (spec.name, spec.rulesets, spec.rules, rulesets, rules))
+            rc = 1
+        for kind, table in (("select", SELECT_NAMES),
+                            ("feature", FEATURE_NAMES)):
+            stale = set(table.get(spec.name, {})) - USED_RENAMES[kind]
+            if stale:
+                print("  DRIFT: %s %s rename keys no longer match: %s"
+                      % (spec.name, kind, ", ".join(sorted(stale))))
+                rc = 1
+        unnamed = getattr(imp.t, "unnamed", 0)
+        if unnamed:
+            print("  DRIFT: %s has %d unnamed select(s); extend SELECT_NAMES"
+                  % (spec.name, unnamed))
             rc = 1
 
     if out is not None:

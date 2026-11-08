@@ -10,10 +10,10 @@
   bool A_HasFP16 = ST.hasFullFP16();
   bool A_HasRCPC3 = ST.hasRCPC3();
   bool A_HasSVE = ST.hasSVE();
-  bool A_ST_hasBF16 = ST.hasBF16();
-  bool A_ST_hasMOPS = ST.hasMOPS();
   bool A_SmallCodeModel = TM.getCodeModel() == CodeModel::Small;
   bool A_UseOutlineAtomics = ST.outlineAtomics() && !ST.hasLSE();
+  bool A_hasBF16 = ST.hasBF16();
+  bool A_hasMOPS = ST.hasMOPS();
 
   const LLT A_p0 = LLT::pointer(0, 64);
   const LLT A_s8 = LLT::scalar(8);
@@ -568,7 +568,7 @@
       .lower();
   getActionDefinitionsBuilder(G_FPTRUNC)
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{A_f16, A_f32}, {A_f16, A_f64}, {A_f32, A_f64}, {A_v4f16, A_v4f32}, {A_v2f32, A_v2f64}})(Query); })
-      .coreLegalIf([=](const LegalityQuery &Query) { return (A_ST_hasBF16) && (LegalityPredicates::typePairInSet(0, 1, {{A_bf16, A_f32}, {A_v4bf16, A_v4f32}})(Query)); })
+      .coreLegalIf([=](const LegalityQuery &Query) { return (A_hasBF16) && (LegalityPredicates::typePairInSet(0, 1, {{A_bf16, A_f32}, {A_v4bf16, A_v4f32}})(Query)); })
       .coreLibcallIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{A_f16, A_f128}, {A_f32, A_f128}, {A_f64, A_f128}})(Query); })
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 1)
       .coreCustomIf([=](const LegalityQuery &Query) { return (((Query.Types[1]).getScalarSizeInBits() == 64)) && (((Query.Types[0]).getScalarSizeInBits() == 16)); })
@@ -832,22 +832,22 @@
   getActionDefinitionsBuilder({G_STACKSAVE, G_STACKRESTORE})
       .lower();
   getActionDefinitionsBuilder(G_BZERO)
-      .coreUnsupportedIf([=](const LegalityQuery &Query) { return A_ST_hasMOPS; })
-      .coreLibcallIf([=](const LegalityQuery &Query) { return !(A_ST_hasMOPS); });
+      .coreUnsupportedIf([=](const LegalityQuery &Query) { return A_hasMOPS; })
+      .coreLibcallIf([=](const LegalityQuery &Query) { return !(A_hasMOPS); });
   getActionDefinitionsBuilder(G_MEMSET)
-      .coreLegalIf([=](const LegalityQuery &Query) { return (A_ST_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s64)) && ((Query.Types[2] == A_s64)); })
-      .coreCustomIf([=](const LegalityQuery &Query) { return (A_ST_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s8)) && ((Query.Types[2] == A_s64)); })
-      .coreLibcallIf([=](const LegalityQuery &Query) { return !(A_ST_hasMOPS); })
+      .coreLegalIf([=](const LegalityQuery &Query) { return (A_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s64)) && ((Query.Types[2] == A_s64)); })
+      .coreCustomIf([=](const LegalityQuery &Query) { return (A_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s8)) && ((Query.Types[2] == A_s64)); })
+      .coreLibcallIf([=](const LegalityQuery &Query) { return !(A_hasMOPS); })
       .immIdx(0);
   getActionDefinitionsBuilder({G_MEMCPY, G_MEMMOVE})
-      .coreLegalIf([=](const LegalityQuery &Query) { return (A_ST_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_p0)) && ((Query.Types[2] == A_s64)); })
-      .coreLibcallIf([=](const LegalityQuery &Query) { return !(A_ST_hasMOPS); })
+      .coreLegalIf([=](const LegalityQuery &Query) { return (A_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_p0)) && ((Query.Types[2] == A_s64)); })
+      .coreLibcallIf([=](const LegalityQuery &Query) { return !(A_hasMOPS); })
       .immIdx(0);
   getActionDefinitionsBuilder(G_MEMCPY_INLINE)
-      .coreLegalIf([=](const LegalityQuery &Query) { return (A_ST_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_p0)) && ((Query.Types[2] == A_s64)); });
+      .coreLegalIf([=](const LegalityQuery &Query) { return (A_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_p0)) && ((Query.Types[2] == A_s64)); });
   getActionDefinitionsBuilder(G_MEMSET_INLINE)
-      .coreLegalIf([=](const LegalityQuery &Query) { return (A_ST_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s64)) && ((Query.Types[2] == A_s64)); })
-      .coreCustomIf([=](const LegalityQuery &Query) { return (A_ST_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s8)) && ((Query.Types[2] == A_s64)); });
+      .coreLegalIf([=](const LegalityQuery &Query) { return (A_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s64)) && ((Query.Types[2] == A_s64)); })
+      .coreCustomIf([=](const LegalityQuery &Query) { return (A_hasMOPS) && ((Query.Types[0] == A_p0)) && ((Query.Types[1] == A_s8)) && ((Query.Types[2] == A_s64)); });
   getActionDefinitionsBuilder(G_VECREDUCE_FADD)
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{A_f32, A_v2f32}, {A_f32, A_v4f32}, {A_f64, A_v2f64}})(Query); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (A_HasFP16) && (LegalityPredicates::typePairInSet(0, 1, {{A_f16, A_v4f16}, {A_f16, A_v8f16}})(Query)); })

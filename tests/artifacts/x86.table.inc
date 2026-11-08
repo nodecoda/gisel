@@ -349,18 +349,18 @@ static LegalizeActionStep XEval0(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_p0 || Q.Types[0] == X_s1 || Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32 || Q.Types[0] == X_s64)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -388,8 +388,8 @@ static LegalizeActionStep XEval0(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarOrEltWiderThan(0, (X_sel0).getScalarSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarOrEltWiderThan(0, (X_sMaxScalar).getScalarSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (numElementsNotPow2(0)(Q)) {
@@ -400,36 +400,36 @@ static LegalizeActionStep XEval0(
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v16s8).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_sel2).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel2).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() < (X_v8s16).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v8s16).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_sel4).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel4).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() < (X_v4s32).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v4s32).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_sel6).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel6).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() < (X_v2s64).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v2s64).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_sel8).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel8).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_p0)) && (((Q.Types[0]).getNumElements() > (X_Is64Bit ? (X_sel8).getNumElements() : (X_sel6).getNumElements())))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_Is64Bit ? (X_sel8).getNumElements() : (X_sel6).getNumElements())), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_p0)) && (((Q.Types[0]).getNumElements() > (X_Is64Bit ? (X_s64MaxVector).getNumElements() : (X_s32MaxVector).getNumElements())))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_Is64Bit ? (X_s64MaxVector).getNumElements() : (X_s32MaxVector).getNumElements())), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if ((((Q.Types[0]).getScalarSizeInBits() > 64)) && (isVector(0)(Q))) {
@@ -481,18 +481,18 @@ static LegalizeActionStep XEval1(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_p0 || Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -508,8 +508,8 @@ static LegalizeActionStep XEval1(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -557,18 +557,18 @@ static LegalizeActionStep XEval2(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[1] == X_s16)) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(1), X_s32); })(Q);
@@ -620,18 +620,18 @@ static LegalizeActionStep XEval3(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Libcall, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -679,18 +679,18 @@ static LegalizeActionStep XEval4(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (((X_UseX87) && (!(X_HasSSE1))) && ((Q.Types[0] == X_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -747,18 +747,18 @@ static LegalizeActionStep XEval5(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (((X_HasSSE1) || (X_UseX87)) && ((Q.Types[0] == X_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -814,18 +814,18 @@ static LegalizeActionStep XEval6(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s32)) {
     return {LegalizeActions::Custom, 0, LLT{}};
@@ -875,18 +875,18 @@ static LegalizeActionStep XEval7(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (sizeNotPow2(1)(Q)) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(1, 8))(Q);
@@ -952,18 +952,18 @@ static LegalizeActionStep XEval8(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (sizeNotPow2(0)(Q)) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 8))(Q);
@@ -1029,18 +1029,18 @@ static LegalizeActionStep XEval9(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (sizeNotPow2(0)(Q)) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 32))(Q);
@@ -1092,18 +1092,18 @@ static LegalizeActionStep XEval10(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1163,8 +1163,8 @@ static LegalizeActionStep XEval10(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -1216,18 +1216,18 @@ static LegalizeActionStep XEval11(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{X_s8, X_s8}, {X_s16, X_s8}, {X_s32, X_s8}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1243,8 +1243,8 @@ static LegalizeActionStep XEval11(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (scalarNarrowerThan(1, (X_s8).getSizeInBits())(Q)) {
@@ -1304,18 +1304,18 @@ static LegalizeActionStep XEval12(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1376,8 +1376,8 @@ static LegalizeActionStep XEval12(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -1429,18 +1429,18 @@ static LegalizeActionStep XEval13(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1456,8 +1456,8 @@ static LegalizeActionStep XEval13(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -1509,18 +1509,18 @@ static LegalizeActionStep XEval14(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1535,8 +1535,8 @@ static LegalizeActionStep XEval14(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -1584,18 +1584,18 @@ static LegalizeActionStep XEval15(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{X_s8, X_s8}, {X_s16, X_s8}, {X_s32, X_s8}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1607,8 +1607,8 @@ static LegalizeActionStep XEval15(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (scalarNarrowerThan(1, (X_s8).getSizeInBits())(Q)) {
@@ -1664,18 +1664,18 @@ static LegalizeActionStep XEval16(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1696,32 +1696,32 @@ static LegalizeActionStep XEval16(
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v16s8).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_sel2).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel2).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() < (X_v8s16).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v8s16).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_sel4).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel4).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() < (X_v4s32).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v4s32).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_sel6).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel6).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() < (X_v2s64).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v2s64).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_sel8).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel8).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -1732,8 +1732,8 @@ static LegalizeActionStep XEval16(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -1785,18 +1785,18 @@ static LegalizeActionStep XEval17(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s8, X_s8}, {X_s8, X_s16}, {X_s8, X_s32}, {X_s8, X_s64}, {X_s8, X_p0}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1820,8 +1820,8 @@ static LegalizeActionStep XEval17(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -1869,18 +1869,18 @@ static LegalizeActionStep XEval18(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1896,8 +1896,8 @@ static LegalizeActionStep XEval18(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -1945,18 +1945,18 @@ static LegalizeActionStep XEval19(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasPOPCNT) && (LegalityPredicates::typePairInSet(0, 1, {{X_s16, X_s16}, {X_s32, X_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -1978,8 +1978,8 @@ static LegalizeActionStep XEval19(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s16))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if ((Q.Types[1].getScalarSizeInBits() > Q.Types[0].getScalarSizeInBits())) {
@@ -2035,18 +2035,18 @@ static LegalizeActionStep XEval20(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasLZCNT) && (LegalityPredicates::typePairInSet(0, 1, {{X_s16, X_s16}, {X_s32, X_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2062,8 +2062,8 @@ static LegalizeActionStep XEval20(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s16))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if ((Q.Types[1].getScalarSizeInBits() > Q.Types[0].getScalarSizeInBits())) {
@@ -2119,18 +2119,18 @@ static LegalizeActionStep XEval21(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{X_s16, X_s16}, {X_s32, X_s32}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2146,8 +2146,8 @@ static LegalizeActionStep XEval21(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s16))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if ((Q.Types[1].getScalarSizeInBits() > Q.Types[0].getScalarSizeInBits())) {
@@ -2203,18 +2203,18 @@ static LegalizeActionStep XEval22(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasBMI) && (LegalityPredicates::typePairInSet(0, 1, {{X_s16, X_s16}, {X_s32, X_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2230,8 +2230,8 @@ static LegalizeActionStep XEval22(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s16))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if ((Q.Types[1].getScalarSizeInBits() > Q.Types[0].getScalarSizeInBits())) {
@@ -2287,18 +2287,18 @@ static LegalizeActionStep XEval23(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2346,18 +2346,18 @@ static LegalizeActionStep XEval24(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s1)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2407,18 +2407,18 @@ static LegalizeActionStep XEval25(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s1, X_p0}, {X_s8, X_p0}, {X_s16, X_p0}, {X_s32, X_p0}, {X_s64, X_p0}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2426,8 +2426,8 @@ static LegalizeActionStep XEval25(
   if ((!(X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s1, X_p0}, {X_s8, X_p0}, {X_s16, X_p0}, {X_s32, X_p0}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -2479,20 +2479,20 @@ static LegalizeActionStep XEval26(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
-  if (LegalityPredicates::typePairInSet(0, 1, {{X_p0, X_sel0}})(Q)) {
+  if (LegalityPredicates::typePairInSet(0, 1, {{X_p0, X_sMaxScalar}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2540,18 +2540,18 @@ static LegalizeActionStep XEval27(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2601,18 +2601,18 @@ static LegalizeActionStep XEval28(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{X_p0, X_s32}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2628,8 +2628,8 @@ static LegalizeActionStep XEval28(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -2677,18 +2677,18 @@ static LegalizeActionStep XEval29(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_p0)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2738,18 +2738,18 @@ static LegalizeActionStep XEval30(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_p0)) {
     return {LegalizeActions::Custom, 0, LLT{}};
@@ -2799,18 +2799,18 @@ static LegalizeActionStep XEval31(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s8, X_p0, X_s8, 1}, {X_s16, X_p0, X_s16, 1}, {X_s32, X_p0, X_s32, 1}, {X_s80, X_p0, X_s80, 1}, {X_p0, X_p0, X_p0, 1}, {X_v4s8, X_p0, X_v4s8, 1}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2844,8 +2844,8 @@ static LegalizeActionStep XEval31(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -2897,18 +2897,18 @@ static LegalizeActionStep XEval32(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s8, X_p0, X_s8, 1}, {X_s16, X_p0, X_s16, 1}, {X_s32, X_p0, X_s32, 1}, {X_s80, X_p0, X_s80, 1}, {X_p0, X_p0, X_p0, 1}, {X_v4s8, X_p0, X_v4s8, 1}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -2939,8 +2939,8 @@ static LegalizeActionStep XEval32(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -2992,18 +2992,18 @@ static LegalizeActionStep XEval33(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s16, X_p0, X_s8, 1}, {X_s32, X_p0, X_s8, 1}, {X_s32, X_p0, X_s16, 1}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3056,18 +3056,18 @@ static LegalizeActionStep XEval34(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s16, X_p0, X_s8, 1}, {X_s32, X_p0, X_s8, 1}, {X_s32, X_p0, X_s16, 1}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3120,18 +3120,18 @@ static LegalizeActionStep XEval35(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_UseX87) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s80, X_p0, X_s32, 1}, {X_s80, X_p0, X_s64, 1}, {X_s64, X_p0, X_s32, 1}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3181,18 +3181,18 @@ static LegalizeActionStep XEval36(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_UseX87) && (LegalityPredicates::typePairAndMemDescInSet(0, 1, 0, {{X_s80, X_p0, X_s32, 1}, {X_s80, X_p0, X_s64, 1}, {X_s64, X_p0, X_s32, 1}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3242,18 +3242,18 @@ static LegalizeActionStep XEval37(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32 || Q.Types[0] == X_s128)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3269,8 +3269,8 @@ static LegalizeActionStep XEval37(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -3281,8 +3281,8 @@ static LegalizeActionStep XEval37(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -3334,18 +3334,18 @@ static LegalizeActionStep XEval38(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s8 || Q.Types[0] == X_s16 || Q.Types[0] == X_s32)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3361,8 +3361,8 @@ static LegalizeActionStep XEval38(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -3373,8 +3373,8 @@ static LegalizeActionStep XEval38(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (isVector(0)(Q)) {
@@ -3426,18 +3426,18 @@ static LegalizeActionStep XEval39(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{X_s1, X_s8}, {X_s1, X_s16}, {X_s1, X_s32}, {X_s1, X_s64}, {X_s1, X_s128}, {X_s8, X_s8}, {X_s8, X_s16}, {X_s8, X_s32}, {X_s8, X_s64}, {X_s8, X_s128}, {X_s16, X_s8}, {X_s16, X_s16}, {X_s16, X_s32}, {X_s16, X_s64}, {X_s16, X_s128}, {X_s32, X_s8}, {X_s32, X_s16}, {X_s32, X_s32}, {X_s32, X_s64}, {X_s32, X_s128}, {X_s64, X_s8}, {X_s64, X_s16}, {X_s64, X_s32}, {X_s64, X_s64}, {X_s64, X_s128}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3487,18 +3487,18 @@ static LegalizeActionStep XEval40(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -3546,18 +3546,18 @@ static LegalizeActionStep XEval41(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s32 || Q.Types[0] == X_s64)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3610,18 +3610,18 @@ static LegalizeActionStep XEval42(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((Q.Types[0] == X_s32 || Q.Types[0] == X_s64)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3686,18 +3686,18 @@ static LegalizeActionStep XEval43(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_UseX87) && ((Q.Types[0] == X_s80))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3751,18 +3751,18 @@ static LegalizeActionStep XEval44(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (((X_HasSSE1) || (X_UseX87)) && ((Q.Types[0] == X_s8 || Q.Types[0] == X_s32))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3785,8 +3785,8 @@ static LegalizeActionStep XEval44(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel9).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel9))(Q);
+  if (scalarWiderThan(1, (X_sse2MaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sse2MaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -3838,18 +3838,18 @@ static LegalizeActionStep XEval45(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasSSE2) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3909,18 +3909,18 @@ static LegalizeActionStep XEval46(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasSSE2) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -3979,18 +3979,18 @@ static LegalizeActionStep XEval47(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasSSE1) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4004,12 +4004,12 @@ static LegalizeActionStep XEval47(
   if (((X_HasSSE2) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (scalarNarrowerThan(1, (X_sel10).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel10))(Q);
+  if (scalarNarrowerThan(1, (X_x87MinScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_x87MinScalar))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -4023,8 +4023,8 @@ static LegalizeActionStep XEval47(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel9).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel9))(Q);
+  if (scalarWiderThan(0, (X_sse2MaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sse2MaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -4076,18 +4076,18 @@ static LegalizeActionStep XEval48(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasSSE1) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s32}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4101,12 +4101,12 @@ static LegalizeActionStep XEval48(
   if (((X_HasSSE2) && (X_Is64Bit)) && (LegalityPredicates::typePairInSet(0, 1, {{X_s64, X_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (scalarNarrowerThan(0, (X_sel10).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel10))(Q);
+  if (scalarNarrowerThan(0, (X_x87MinScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_x87MinScalar))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -4120,8 +4120,8 @@ static LegalizeActionStep XEval48(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel9).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel9))(Q);
+  if (scalarWiderThan(1, (X_sse2MaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sse2MaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -4173,18 +4173,18 @@ static LegalizeActionStep XEval49(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasAVX512) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s32}, {X_s32, X_s64}, {X_s64, X_s32}, {X_s64, X_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4199,8 +4199,8 @@ static LegalizeActionStep XEval49(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel9).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel9))(Q);
+  if (scalarWiderThan(0, (X_sse2MaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sse2MaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -4211,8 +4211,8 @@ static LegalizeActionStep XEval49(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel0))(Q);
+  if (scalarWiderThan(1, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -4264,18 +4264,18 @@ static LegalizeActionStep XEval50(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasAVX512) && (LegalityPredicates::typePairInSet(0, 1, {{X_s32, X_s32}, {X_s32, X_s64}, {X_s64, X_s32}, {X_s64, X_s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4290,8 +4290,8 @@ static LegalizeActionStep XEval50(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(0)(Q)) {
@@ -4302,8 +4302,8 @@ static LegalizeActionStep XEval50(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(1, (X_sel9).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sel9))(Q);
+  if (scalarWiderThan(1, (X_sse2MaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(1, X_sse2MaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (sizeNotPow2(1)(Q)) {
@@ -4355,36 +4355,36 @@ static LegalizeActionStep XEval51(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (((X_HasSSE1) && ((Q.Types[0] == X_v4s32))) || ((X_HasSSE2) && ((Q.Types[0] == X_v2s64 || Q.Types[0] == X_v8s16 || Q.Types[0] == X_v16s8))) || ((X_HasAVX) && ((Q.Types[0] == X_v4s64 || Q.Types[0] == X_v8s32 || Q.Types[0] == X_v16s16 || Q.Types[0] == X_v32s8))) || ((X_HasAVX512) && ((Q.Types[0] == X_v8s64 || Q.Types[0] == X_v16s32 || Q.Types[0] == X_v32s16 || Q.Types[0] == X_v64s8)))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_sel2).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel2).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_sel4).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel4).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_sel6).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel6).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_sel8).getNumElements()))) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_sel8).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements()))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -4432,18 +4432,18 @@ static LegalizeActionStep XEval52(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (((X_HasAVX) && (LegalityPredicates::typePairInSet(0, 1, {{X_v16s8, X_v32s8}, {X_v8s16, X_v16s16}, {X_v4s32, X_v8s32}, {X_v2s64, X_v4s64}})(Q))) || ((X_HasAVX512) && (LegalityPredicates::typePairInSet(0, 1, {{X_v16s8, X_v64s8}, {X_v32s8, X_v64s8}, {X_v8s16, X_v32s16}, {X_v16s16, X_v32s16}, {X_v4s32, X_v16s32}, {X_v8s32, X_v16s32}, {X_v2s64, X_v8s64}, {X_v4s64, X_v8s64}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4493,18 +4493,18 @@ static LegalizeActionStep XEval53(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (((X_HasAVX) && (LegalityPredicates::typePairInSet(1, 0, {{X_v16s8, X_v32s8}, {X_v8s16, X_v16s16}, {X_v4s32, X_v8s32}, {X_v2s64, X_v4s64}})(Q))) || ((X_HasAVX512) && (LegalityPredicates::typePairInSet(1, 0, {{X_v16s8, X_v64s8}, {X_v32s8, X_v64s8}, {X_v8s16, X_v32s16}, {X_v16s16, X_v32s16}, {X_v4s32, X_v16s32}, {X_v8s32, X_v16s32}, {X_v2s64, X_v8s64}, {X_v4s64, X_v8s64}})(Q)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4554,18 +4554,18 @@ static LegalizeActionStep XEval54(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_HasSSE1) && (LegalityPredicates::typePairInSet(0, 1, {{X_v32s8, X_v16s8}, {X_v16s16, X_v8s16}, {X_v8s32, X_v4s32}, {X_v4s64, X_v2s64}})(Q))) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4618,18 +4618,18 @@ static LegalizeActionStep XEval55(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (LegalityPredicates::typePairInSet(0, 1, {{X_s16, X_s32}, {X_s32, X_s32}, {X_p0, X_s32}})(Q)) {
     return {LegalizeActions::Legal, 0, LLT{}};
@@ -4655,12 +4655,12 @@ static LegalizeActionStep XEval55(
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 8))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarNarrowerThan(0, (X_sel11).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel11))(Q);
+  if (scalarNarrowerThan(0, (X_cmovMinScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_cmovMinScalar))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (scalarWiderThan(0, (X_sel0).getSizeInBits())(Q)) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sel0))(Q);
+  if (scalarWiderThan(0, (X_sMaxScalar).getSizeInBits())(Q)) {
+    auto M = (LegalizeMutations::changeElementSizeTo(0, X_sMaxScalar))(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -4708,18 +4708,18 @@ static LegalizeActionStep XEval56(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Libcall, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -4767,18 +4767,18 @@ static LegalizeActionStep XEval57(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Lower, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -4826,18 +4826,18 @@ static LegalizeActionStep XEval58(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if ((X_Is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{X_s1, X_s32}, {X_s1, X_s64}, {X_s1, X_s80}})(Q))) {
     return {LegalizeActions::Lower, 0, LLT{}};
@@ -4887,18 +4887,18 @@ static LegalizeActionStep XEval59(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   if (isVector(0)(Q)) {
     auto M = (LegalizeMutations::scalarize(0))(Q);
@@ -4954,18 +4954,18 @@ static LegalizeActionStep XEval60(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5013,18 +5013,18 @@ static LegalizeActionStep XEval61(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -5072,18 +5072,18 @@ static LegalizeActionStep XEval62(
   [[maybe_unused]] const LLT X_v32s16 = LLT::fixed_vector(32, 16);
   [[maybe_unused]] const LLT X_v16s32 = LLT::fixed_vector(16, 32);
   [[maybe_unused]] const LLT X_v8s64 = LLT::fixed_vector(8, 64);
-  [[maybe_unused]] const LLT X_sel0 = (X_Is64Bit ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel1 = (X_HasAVX ? X_v32s8 : X_v16s8);
-  [[maybe_unused]] const LLT X_sel2 = (X_HasAVX512 ? X_v64s8 : X_sel1);
-  [[maybe_unused]] const LLT X_sel3 = (X_HasAVX ? X_v16s16 : X_v8s16);
-  [[maybe_unused]] const LLT X_sel4 = (X_HasAVX512 ? X_v32s16 : X_sel3);
-  [[maybe_unused]] const LLT X_sel5 = (X_HasAVX ? X_v8s32 : X_v4s32);
-  [[maybe_unused]] const LLT X_sel6 = (X_HasAVX512 ? X_v16s32 : X_sel5);
-  [[maybe_unused]] const LLT X_sel7 = (X_HasAVX ? X_v4s64 : X_v2s64);
-  [[maybe_unused]] const LLT X_sel8 = (X_HasAVX512 ? X_v8s64 : X_sel7);
-  [[maybe_unused]] const LLT X_sel9 = (X_HasSSE2 ? X_s64 : X_s32);
-  [[maybe_unused]] const LLT X_sel10 = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
-  [[maybe_unused]] const LLT X_sel11 = (X_HasCMOV ? X_s16 : X_s8);
+  [[maybe_unused]] const LLT X_sMaxScalar = (X_Is64Bit ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_s8MaxVectorNoAVX512 = (X_HasAVX ? X_v32s8 : X_v16s8);
+  [[maybe_unused]] const LLT X_s8MaxVector = (X_HasAVX512 ? X_v64s8 : X_s8MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s16MaxVectorNoAVX512 = (X_HasAVX ? X_v16s16 : X_v8s16);
+  [[maybe_unused]] const LLT X_s16MaxVector = (X_HasAVX512 ? X_v32s16 : X_s16MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s32MaxVectorNoAVX512 = (X_HasAVX ? X_v8s32 : X_v4s32);
+  [[maybe_unused]] const LLT X_s32MaxVector = (X_HasAVX512 ? X_v16s32 : X_s32MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_s64MaxVectorNoAVX512 = (X_HasAVX ? X_v4s64 : X_v2s64);
+  [[maybe_unused]] const LLT X_s64MaxVector = (X_HasAVX512 ? X_v8s64 : X_s64MaxVectorNoAVX512);
+  [[maybe_unused]] const LLT X_sse2MaxScalar = (X_HasSSE2 ? X_s64 : X_s32);
+  [[maybe_unused]] const LLT X_x87MinScalar = (X_UseX87 && !(X_HasSSE1) ? X_s16 : X_s32);
+  [[maybe_unused]] const LLT X_cmovMinScalar = (X_HasCMOV ? X_s16 : X_s8);
 
   return {LegalizeActions::Legal, 0, LLT{}};
   return {LegalizeActions::Unsupported, 0, LLT{}};

@@ -63,6 +63,11 @@ python3 tools/import-cxx.py X86 .../X86LegalizerInfo.cpp \
 
 换上游修订不是改参数，而是改工具：计数断言会立刻报 `DRIFT`。
 
+`pred`/`select`/`feature` 的名字经过一轮人工审阅（LLM 提议、表里冻结）：
+C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接内联进 `select`。
+残留的 `X_selN` / `X_condN` 会被测试拦下。详见
+`docs/REPORT-cxx-corpus.md` §3b。
+
 | 语料 | 上游规则在哪 | 我们的提取路径 | 冻结对照物 | 能证明 |
 |---|---|---|---|---|
 | X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | 无 emitter；gisel 自己的输出（**自基线**）+ 冻结答案 | 生成器回归；规则保真靠 `tests/cases/x86_ref_dump.jsonl` 与工作台对拍 |

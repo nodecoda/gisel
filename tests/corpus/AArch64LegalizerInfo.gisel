@@ -14,12 +14,12 @@ feature A_HasCSSC = ST.hasCSSC()
 feature A_HasFP16 = ST.hasFullFP16()
 feature A_HasRCPC3 = ST.hasRCPC3()
 feature A_HasSVE = ST.hasSVE()
-feature A_ST_hasBF16 = ST.hasBF16()
-feature A_ST_hasFPARMv8 = ST.hasFPARMv8()
-feature A_ST_hasMOPS = ST.hasMOPS()
-feature A_ST_hasNEON = ST.hasNEON()
 feature A_SmallCodeModel = TM.getCodeModel() == CodeModel::Small
 feature A_UseOutlineAtomics = ST.outlineAtomics() && !ST.hasLSE()
+feature A_hasBF16 = ST.hasBF16()
+feature A_hasFPARMv8 = ST.hasFPARMv8()
+feature A_hasMOPS = ST.hasMOPS()
+feature A_hasNEON = ST.hasNEON()
 
 type A_p0 = LLT::pointer(0, 64)
 type A_s8 = LLT::scalar(8)
@@ -633,7 +633,7 @@ ruleset A_G_SEXT_INREG: G_SEXT_INREG
 
 ruleset A_G_FPTRUNC: G_FPTRUNC
     legal in_pairs(slot(0), slot(1), [[A_f16, A_f32], [A_f16, A_f64], [A_f32, A_f64], [A_v4f16, A_v4f32], [A_v2f32, A_v2f64]])
-    legal (A_ST_hasBF16 and in_pairs(slot(0), slot(1), [[A_bf16, A_f32], [A_v4bf16, A_v4f32]]))
+    legal (A_hasBF16 and in_pairs(slot(0), slot(1), [[A_bf16, A_f32], [A_v4bf16, A_v4f32]]))
     libcall in_pairs(slot(0), slot(1), [[A_f16, A_f128], [A_f32, A_f128], [A_f64, A_f128]])
     more(slot(1), pow2)
     custom (bits_of(slot(1)) == 64 and bits_of(slot(0)) == 16)
@@ -938,26 +938,26 @@ ruleset A_G_STACKSAVE: G_STACKSAVE G_STACKRESTORE
     lower true
 
 ruleset A_G_BZERO: G_BZERO
-    unsupported A_ST_hasMOPS
+    unsupported A_hasMOPS
 
 ruleset A_G_MEMSET: G_MEMSET
-    legal (A_ST_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))
-    custom (A_ST_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))
+    custom (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))
     imm_idx(0)
 
 ruleset A_G_MEMCPY: G_MEMCPY G_MEMMOVE
-    legal (A_ST_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))
     imm_idx(0)
 
 ruleset A_G_MEMCPY_INLINE: G_MEMCPY_INLINE
-    legal (A_ST_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))
 
 ruleset A_G_MEMSET_INLINE: G_MEMSET_INLINE
-    legal (A_ST_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))
-    custom (A_ST_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))
+    custom (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))
 
 ruleset A_G_BZERO_2: G_BZERO G_MEMCPY G_MEMMOVE G_MEMSET
-    libcall not A_ST_hasMOPS
+    libcall not A_hasMOPS
 
 ruleset A_G_VECREDUCE_FADD: G_VECREDUCE_FADD
     legal in_pairs(slot(0), slot(1), [[A_f32, A_v2f32], [A_f32, A_v4f32], [A_f64, A_v2f64]])
