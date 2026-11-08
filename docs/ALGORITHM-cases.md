@@ -195,6 +195,49 @@ parse .gisel
 所以准确的说法是：**结构标记决定轴是否存在，值集决定轴的长度；空值集在 type /
 imm / ordering 上有默认，在 mem 上是覆盖缺口。**
 
+### 4.2 config 轴：一行是一张真值表
+
+config 轴不是固定枚举，而是 feature 真值表的行：
+
+```python
+class Features:
+    table: dict[str, dict[str, bool]]   # config -> {feature expr: bool}
+```
+
+规则侧：
+
+```text
+feature X_HasAVX512 = Subtarget.hasAVX512()
+```
+
+规范化后是：
+
+```json
+{"kind":"leaf","name":"hasFeature","args":["Subtarget.hasAVX512()"]}
+```
+
+求值时：
+
+```python
+features.get(config, "Subtarget.hasAVX512()")
+```
+
+所以每个 target 的 feature 集合由**该 target 的规则文本**决定：
+
+| target | config 行 | feature 表达式前缀 |
+|---|---:|---|
+| X86 | 4（C0–C3） | `Subtarget.*` |
+| AArch64 | 9 | `ST.*`、`TM.getCodeModel()` |
+| RISC-V | 8 | `ST.*`、`STI.*`、`XLen 比较` |
+
+表里多出来的键不会影响结果；规则读到的键缺失会直接
+`unknown_feature` 报错，不会当成 `false`。这就是为什么 AArch64 语料从
+`Subtarget.*` 改成 `ST.*` 时，features 表必须一起改。
+
+没有 `--features` 时，`derive_features` 从文档里的 `hasFeature(...)` 派生
+合成行：`none`（全假）、`all`（全真）、`only-N`（只把第 N 个置真）。这些
+行只用于覆盖规则，不代表真实子目标；和 oracle 对拍必须传真实表。
+
 ## 5 切点提取：`inspect_ruleset`
 
 对每个 ruleset，`inspect_rule` 递归遍历每条规则的 `predicate`、`on`、`to`，
