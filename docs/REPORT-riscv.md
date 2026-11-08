@@ -139,6 +139,7 @@ TOTAL                                 340    402
 | **编译** | `g++ -std=c++17 -fsyntax-only` + 未修改的 `LegalizerInfo.h` | OK |
 | core | `gisel gen --emit=core ...` | 96 rule sets / 402 rules |
 | check | `gisel gen --emit=check ...` | 402 rules |
+| 冻结自基线 | `tests/artifacts/riscv.{inc,check.json,table.inc,core.json}` | 与 `gen` 逐字节一致（core modulo `origin`） |
 | td | `gisel gen --emit=td ...` | 96 defs，无重名；`imm` 规则需 `CoreImm`（§8） |
 
 编译门用的桩：一个 `FakeST` 提供构造里出现的 21 个 `ST.x()`，`XLen = 64`，

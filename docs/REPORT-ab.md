@@ -99,7 +99,7 @@ SHA-256 相同（`3c12728a…`）：不是“语义等价”，是逐字节相�
 python3 -m unittest discover -q -s tests                  # 151 tests OK
 llvm-lit -s -j24 llvm/test/TableGen                      # 544 passed
 GlobalISelTests --gtest_filter='LegalizerInfoTest.*'     # 4 passed
-llvm-tblgen -gen-legalizer ... | cmp aarch64.inc         # 逐字节一致
+llvm-tblgen -gen-legalizer ... | cmp aarch64.inc         # 逐字节一致（本项目后端）
 llvm-tblgen -gen-legalizer-table ... | cmp aarch64.table.inc  # 逐字节一致
 ```
 

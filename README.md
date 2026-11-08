@@ -135,11 +135,15 @@ official build and the build carrying the generated `.inc` on that same file,
 and compares the two answer streams.  That workbench has its own report,
 `docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
 
-What it does not do: it does not generate the upstream `.td` (that backend was
+What it does not do: it does not generate the `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than
 guessing, and none of the five corpora is an independent hand-written second
-statement -- they were bootstrapped, imported or transcribed before the
-bootstrap reader was removed.
+statement -- they were extracted from LLVM's hand-written C++ constructors
+with our own tooling as a preparation for self-proof, before the bootstrap
+reader was removed (X86/AArch64 passed through a `.td` this project added).
+`docs/CORPORA.md` says, per corpus, which upstream file it was extracted from
+and what its frozen artifacts can and cannot prove (X86/AArch64 are byte
+oracles; RISC-V is a self-baseline).
 
 ## Status
 
@@ -154,6 +158,10 @@ bootstrap reader was removed.
 | v0.4 | RISCV corpus (workbench import) | 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
 | v0.5 | `cases` | equivalence/boundary/outside; X86 3,277 cases (383 oracle-covered), AArch64 9,705 cases (439 oracle-covered), 0 disagreements | done |
 
+`-gen-legalizer*` in the M1–M3 rows is this project's TableGen backend
+(`utils/TableGen/LegalizerInfoEmitter.cpp` on the LLVM research branch), not an
+upstream-main feature; `docs/CORPORA.md` has the full chain.
+
 Migration and A/B tooling is **workbench**, not a gisel function
 (`docs/SCOPE.md`): `tools/import-inventory.py` prices a target,
 `tools/import-cxx.py` turns its constructor into `.gisel` (refusing, exit 1,
@@ -161,15 +169,20 @@ any statement it cannot translate), and `tools/ab/` compares two
 implementations.  The evidence lives in `docs/REPORT-riscv.md` and
 `docs/REPORT-ab.md`.
 
-`tests/artifacts/` holds the eight frozen C++/JSON artifacts and their
-`SHA256`.  They are the oracle every backend is measured against.  The corpus
+`tests/artifacts/` holds the twelve frozen C++/JSON artifacts and their
+`SHA256`: four each for X86, AArch64 and RISC-V.  Upstream LLVM main has no
+legalizer `.td` and no `-gen-legalizer`; the rules live in hand-written
+`*LegalizerInfo.cpp` constructors.  X86/AArch64 were restated in a `.td` that
+this project introduced, so their four files are that TableGen backend's
+output (byte oracles for the Python emitter); RISC-V has no emitter at all, so
+its four files are a self-baseline.  `docs/CORPORA.md` has the chain.  The corpus
 is frozen as historical input; the `.td` bootstrap reader was removed, so the
 corpus is no longer regenerated from `.td`.  `tools/refresh-oracle.sh` can
 re-derive the C++/JSON oracle from a built LLVM tree (development only —
 generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 180 tests
+python3 -m unittest discover -q -s tests      # 181 tests
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 

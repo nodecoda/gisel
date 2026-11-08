@@ -20,6 +20,7 @@ jobs:
         run: |
           python3 -m gisel.cli lint tests/corpus/X86LegalizerInfo.gisel
           python3 -m gisel.cli lint tests/corpus/AArch64LegalizerInfo.gisel
+          python3 -m gisel.cli lint tests/corpus/RISCVLegalizerInfo.gisel
       - name: unit tests
         run: python3 -m unittest discover -v -s tests
       - name: every backend without llvm-tblgen
@@ -30,13 +31,14 @@ jobs:
           chmod +x "$shim/llvm-tblgen"
           export PATH="$shim:$PATH"
           out=$(mktemp -d)
-          for target in X86 AArch64; do
+          for target in X86 AArch64 RISCV; do
             for emit in inc check table core; do
               python3 -m gisel.cli gen "tests/corpus/${target}LegalizerInfo.gisel" \
                 --emit="$emit" --out "$out/$target.$emit"
             done
           done
-          test -s "$out/AArch64.core" -a -s "$out/X86.core"
+          test -s "$out/AArch64.core" -a -s "$out/X86.core" \
+            -a -s "$out/RISCV.core"
       - name: clean install, outside the checkout
         run: |
           set -eu

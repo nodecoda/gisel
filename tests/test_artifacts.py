@@ -16,7 +16,11 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = ROOT / "tests"
+# Output of this project's `-gen-legalizer*` backend on our `.td`: byte oracles
+# for the Python emitter (docs/CORPORA.md).
 CORPORA = (("x86", "X86LegalizerInfo"), ("aarch64", "AArch64LegalizerInfo"))
+# No upstream TableGen emitter: frozen from gisel itself (docs/CORPORA.md).
+SELF_BASELINE = (("riscv", "RISCVLegalizerInfo"),)
 
 
 def run(*args, env=None):
@@ -132,6 +136,37 @@ class GoldenTable(unittest.TestCase):
 
 sys.path.insert(0, str(ROOT))
 from gisel.backend.core_json import strip_origin as _strip_origin  # noqa: E402
+
+
+class SelfBaseline(unittest.TestCase):
+    """RISC-V has no upstream emitter, so the artifact is our own output.
+
+    The gate still catches corpus or generator drift; it does not claim byte
+    equality with `llvm-tblgen` (`docs/CORPORA.md`).
+    """
+
+    def test_all_four_outputs_match_the_frozen_files(self):
+        for name, src in SELF_BASELINE:
+            with tempfile.TemporaryDirectory() as d:
+                for emit, suffix in (("inc", "inc"), ("check", "check.json"),
+                                     ("table", "table.inc")):
+                    out = Path(d) / f"{name}.{suffix}"
+                    r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
+                            f"--emit={emit}", "--out", str(out))
+                    self.assertEqual(r.returncode, 0, r.stderr)
+                    self.assertEqual(
+                        out.read_bytes(),
+                        (TESTS / "artifacts" / f"{name}.{suffix}").read_bytes(),
+                        f"{name}.{suffix}: frozen baseline is stale")
+                out = Path(d) / f"{name}.core.json"
+                r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
+                        "--emit=core", "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                self.assertEqual(
+                    _strip_origin(out.read_text()),
+                    _strip_origin(
+                        (TESTS / "artifacts" / f"{name}.core.json").read_text()),
+                    "riscv.core.json: frozen baseline is stale outside origin")
 
 
 class GoldenCoreJson(unittest.TestCase):
@@ -526,7 +561,7 @@ class ArtifactIntegrity(unittest.TestCase):
             self.assertEqual(hashlib.sha256(p.read_bytes()).hexdigest(),
                              digest, p.name)
             seen += 1
-        self.assertEqual(seen, 8)
+        self.assertEqual(seen, 12)
 
 
 class ShimCoverage(unittest.TestCase):

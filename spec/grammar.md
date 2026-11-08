@@ -7,7 +7,8 @@
 `WebAssemblyLegalizerInfo.gisel`（228 行 / 108 条），见 `docs/REPORT-wasm.md`。
 另有导入器产物 `RISCVLegalizerInfo.gisel`（402 条规则 / 96 个 ruleset，由
 `tools/import-cxx.py` 从 C++ 构造函数生成，见 `docs/REPORT-riscv.md` §7）；
-它没有冻结产物，只作为「语料是否可表达」的证据。
+上游没有 TableGen emitter，所以它的冻结产物是**自基线**
+（`tests/artifacts/riscv.*`），证据性质见 `docs/CORPORA.md`。
 任何语法改动都必须让这几份语料 round-trip。
 
 ## 1 词法

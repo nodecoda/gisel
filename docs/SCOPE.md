@@ -43,6 +43,10 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 物理边界：`pyproject.toml` 只打包 `gisel*`，`tools/` 和 `docs/` 不随 wheel
 发布。工作台脚本是仓库内的开发工具，不是产品面。
 
+语料的来源同样按这条分：`tests/corpus/` 是**输入**，由工作台工具从上游手写的
+`*LegalizerInfo.cpp` 规则转出后冻结（X86/AArch64 中途经过本项目引入的 `.td`）；
+每份语料的来源和它能证明什么见 `docs/CORPORA.md`。
+
 ## 3 判定规则
 
 新东西放哪边，只看两个问题：
