@@ -1,0 +1,377 @@
+# 从规则生成测试用例：有界商算法
+
+> 这份文档是写给文章用的算法说明，不是验收报告。验收证据在
+> `docs/REPORT-cases.md`；规范在 `spec/cases.md`；实现在 `gisel/cases.py`。
+> 命令、数字都可以直接复现。
+
+## 0 一句话
+
+我们不随机采样类型，也不手写边界清单。我们把「规则对查询的答案」定义成等价
+关系，用规则自己写出来的切点把无限的 LLT 空间压成一个有限代表集，再在这个
+有限集上取商：
+
+```text
+equivalence  每个首命中区域一个代表
+boundary     相邻两个答案区域之间的翻转点
+outside      没有规则命中的补集
+```
+
+产物是**不带答案的查询 JSONL**，不是 MIR，也不跑 `llc`。
+
+## 1 问题：为什么不能靠采样
+
+LLT 的空间是无限的：`s1`、`s3`、`s24`、`s31`、`s33`、`v3s32`、`nxv4s32`、
+`p0:32`、`p0:64`……规则真正关心的却只是少数几个切点：
+
+```text
+in(slot(0), [s8, s32, v4s32])
+bits_of(slot(0)) == 64
+num_elems(slot(0)) <= 8
+is_pow2(slot(0))
+in_mem_desc(slot(0), slot(1), mem_slot(0), [...])
+imm(0) == 32
+```
+
+随机采样会反复落在同一个答案区域里，覆盖率无法解释；全笛卡尔积会爆炸，而且
+绝大多数点答案相同；手写清单会随规则漂移。我们要的是：**每个答案区域至少
+一个代表，每条规则自己声明过的边界都被碰到。**
+
+## 2 三个对象
+
+查询：
+
+```text
+q = (config, opcode, types, mem, imms)
+```
+
+答案：
+
+```text
+A(q) = (首命中 rule, action, type_idx, new_type)
+     = Unsupported                      没有规则命中
+```
+
+`config` 是特征真值表的一行。同一组类型在不同 config 下可以是不同答案，所以
+商是**按 config 分别取**的。
+
+## 3 商：按答案等价
+
+### 3.1 定义
+
+固定一个 config，定义
+
+```text
+q ~ q'  ⇔  A(q) = A(q')
+```
+
+`Q/~` 就是答案商。两个类型是否同类，不看位宽像不像，只看**这个 ruleset 的
+全部规则对它们的回答是否完全一样**，包括哪条规则先命中。
+
+这和「按谓词向量分类」是同一件事的两种粒度：
+
+- `gisel graph` 用每个原子谓词的三值向量 `(True/False/None)` 做更细的商类，
+  用来建商图找环；
+- `gisel cases` 直接用答案函数做商，用来出题。
+
+两者共用同一份切点提取 `inspect_ruleset`。
+
+### 3.2 有界：切点闭包
+
+`Q` 无限，但谓词真值只在切点处翻转。于是取一个有限集 `B ⊂ Q`：
+
+```text
+B = 每个槽的候选类型 × 内存候选 × 立即数候选 × config
+```
+
+候选类型必须满足两条：
+
+1. **包含规则写出的每一个字面量**；
+2. **每条阈值 N 的两侧都有代表**（`N-1`、`N`、`N+1`）。
+
+然后枚举 `B`，隐式地建出 `B/~`。这就是「有界商」：不是对无限空间取商，而是
+对切点闭包取商。
+
+## 4 算法总览
+
+```text
+parse .gisel
+  -> canonicalize rulesets
+  -> core schema 0.4 document          # 与 gen --emit=core 同一份正常形
+  -> for each ruleset:
+       inspect_ruleset()               # 提取槽、字面量、阈值、mem、imm
+       build B_types / B_mem / B_imm   # 有界代表集
+       for each config:
+         enumerate B, evaluate first match
+         emit equivalence / boundary / outside
+  -> JSONL
+```
+
+关键点：**测试用例不是第二套模型**。`document()` 走的是和代码生成完全相同的
+解析、规范化和 `core_json` 发射路径。规则改了，用例自动跟着变。
+
+## 5 切点提取：`inspect_ruleset`
+
+对每个 ruleset，`inspect_rule` 递归遍历每条规则的 `predicate`、`on`、`to`，
+把下面这些信息收集到 `RuleInfo`：
+
+| 字段 | 来源 | 用途 |
+|---|---|---|
+| `literals[slot]` | `in(slot(i), [T...])`、`in_pairs`、`in_triples`、`typeIs` | 直接候选；永不丢弃 |
+| `thresholds[slot]` | 字面量的 bits/lanes；`bits_of`/`size_of`/`size_in_bytes_of`/`num_elems` 与整数的比较；`is_pow2` 的 2 的幂 | 生成 `N-1/N/N+1` 边界 |
+| `mem_entries` | `in_mem_desc(..., [[t0,t1,mty,align], ...])` | 内存查询行 |
+| `uses_mem` | 任何 `memSlot`/`memSize`/`inMemDesc`/`typeDiffersFromMemDesc` | 是否带 mem 轴 |
+| `uses_ordering` | `mem_ordering`/`mem_failure_ordering` | 是否乘 ordering 轴 |
+| `imms` / `imm_values` / `imm_thresholds` | `imm(i)`、`imm(i)==N`、`in(imm(i), [...])` | 立即数轴 |
+
+`inspect_ruleset` 同时算出 `nslots`：规则和变异里出现过的最大槽号 +1。后面的
+候选集是「每槽一组值」，但答案等价是在**整个类型元组**上判定的——跨槽谓词
+（`in_pairs`、`typeDiffersFromMemDesc`）不会被拆成单槽判断。
+
+## 6 构造有限代表集 B
+
+### 6.1 类型
+
+每个槽的候选按顺序拼：
+
+```text
+1. 规则字面量（全部）
+2. core domain 里声明的类型
+3. 邻居 _neighbours()
+4. 兜底 sentinel
+```
+
+`_neighbours` 生成：
+
+- 标量/指针：位宽 `bits-1`、`bits+1`；float 只取 `16/32/64/80/128`；
+- 向量：lane `±1`，加 `1/2/4/8/16/32/64` 的精确值（只靠 `±1` 会漏
+  `v4s8` 这种跨幂的切点），fixed ↔ scalable 翻转；
+- `bf16` ↔ `f16`。
+
+sentinel 是 `s32, s64, s8, s16, s128, s1, s3, s7, s24, s31, s33, s63, s65,
+v4s32, v2s64, v16s8, nxv1s8, v3s32, nxv4s32, p0:64, p0:32, p0:128, p0:*,
+f16, f32, f64, bf16`。它们保证「规则什么字面量都没写」时也能出一个普通见证，
+并且能探到域外形状。
+
+两个上限：
+
+- 每槽默认 16 个（`--axes` 的 `cases.max_slot_values` 可改）；
+- 整个笛卡尔积超过 20,000 时，从**最宽的轴**尾部逐个删。
+
+字面量排在最前面，且截断时用 `max(cap, len(literals))`，所以**字面量永远不
+会被裁掉**；被裁掉的是 sentinel 和邻居。这是「有界」不损害「每条规则都有
+机会被见证」的关键。
+
+### 6.2 内存
+
+内存行来自 `in_mem_desc` 的 `(t0, t1, mty, align)`：
+
+- `mty` 可能是配置相关的 `select`，两个分支都展开成具体 LLT；
+- 生成 `align-1 / align+1` 和 `mty` 位宽的 `bits-1 / bits+1` 作为边界；
+- 读 `mem_ordering` 的 ruleset 再乘 `(ordering, failure_ordering)` 采样点
+  （由 `--axes` 的 `mems.orderings` 提供；没提供时只采样 `NotAtomic`）；
+- `in_mem_desc` 的行会和少量「无关类型元组」交叉，用来命中
+  `typeDiffersFromMemDesc` 这种「槽和内存类型不一致」的规则。
+
+### 6.3 立即数
+
+`imm(i)` 的候选 = 规则里出现的值 ∪ `{0}` ∪ 每个值 `±1`，每个 ruleset 的
+组合上限 32。没有规则读 `imm(i)` 时，`imms` 为空。
+
+### 6.4 界可以被显式声明
+
+`--axes` 把「界」从隐式采样变成可审阅的输入：
+
+- `types.mode = "derive"`：在推导结果上 `add` / `remove`；
+- `types.mode = "explicit"`：用声明的一组类型**替换**推导结果；
+- `mems.rows` / `mems.orderings` / `imms` 同理；
+- `profiles.cases.max_slot_values`、`boundaries`、`max_outside` 控制预算。
+
+没有 `--axes` 时行为不变。这一点对文章很重要：有界商的「界」不是藏在校验和
+里的魔法，而是一个可以写出来、审阅、版本化的文件。
+
+## 7 三类用例
+
+### 7.1 equivalence：首命中区域的代表
+
+枚举 `B` 的每个点，用与 `gisel eval` 相同的语义求值：
+
+```text
+for q in B:
+    res = first rule whose predicate is true
+          and whose implicit shim guard succeeds
+    if res is None: continue
+    fires[(config, rule_index)].append(q)
+```
+
+对每个 `(config, rule)` 取第一条（mem 规则最多 4 条）作为 equivalence 用例。
+它满足：
+
+- 本规则 predicate 为真；
+- 本规则隐式 guard 为真；
+- 更早的规则要么 predicate 为假，要么 guard 失败。
+
+所以它是「这条规则首命中区域」的见证，也是答案商里一个类的代表。
+
+隐式 guard 必须算进去：`widenScalarToNextPow2`、`clampScalar` 这些变异自带
+`is_scalar`/`is_pow2`/lane 数检查。如果只按谓词分类，`s3` 和 `s32` 会被并成
+一类，`s3 -> s32` 看起来就像回到自己。
+
+### 7.2 boundary：答案翻转的相邻点
+
+取该规则的 witness，对它的每个阈值 `N` 做：
+
+```text
+for slot, (dim, N) in thresholds(rule):
+    for probe in (N-1, N, N+1):
+        q' = witness with slot resized to probe
+        if A(q') != A(witness):  emit boundary(q')
+```
+
+`dim` 可以是 `bits`、`bytes`、`lanes`；内存另有 `align±1`、`mty bits±1`；
+立即数是 `N-1/N+1`；ordering 规则换 ordering 组合。
+
+只保留答案真的变化的点。因此每条 boundary 都能指出另一侧的代表：**两点答案
+不同**。`N` 本身通常和 witness 答案相同，会被过滤掉。
+
+注意边界比较的是 `(action, type_idx, new_type)`，不含 rule index；它找的是
+「动作翻转」，比 equivalence 的区域粒度粗一层。这是有意的：边界要的是行为
+差异，不是规则编号差异。
+
+### 7.3 outside：商的补集
+
+`B` 里没有任何规则命中的点：
+
+```text
+A(q) = Unsupported
+```
+
+每个 `(config, ruleset)` 最多保留 `--max-outside` 条（默认 2）。mem 规则额外
+插入 `s3` / `p0:64` 这类探测，专门打兜底路径。
+
+outside 用例是**查询形状**，不保证是合法 MIR 指令；它测的是「没有规则命中时
+系统怎么回答」，不是指令合法性。
+
+### 7.4 shadowed / unexercised
+
+不是每条规则都能被见证：
+
+- **shadowed**：规则本身可满足，但被更早的规则挡住，从未首命中；
+- **unexercised**：在给定 config 集合下，用同一套有界候选也找不到满足
+  predicate + guard 的点。
+
+`_satisfiable` 只枚举该规则实际读的槽，其它槽用默认值，逐 config 试 mem 和
+imm。两者都写进 `--json` 统计，不静默丢。
+
+## 8 一个完整例子
+
+X86 规则：
+
+```text
+legal (X_UseX87 and in(slot(0), [X_s80]))
+```
+
+1. `inspect_rule` 从 `in` 取出字面量 `s80`，写入 `literals[0]`；
+   `_add_literal` 同时把 `bits=80` 写入 `thresholds[0]`。
+2. `_candidates` 生成 `s79`、`s80`、`s81`。
+3. 枚举求值：`s80` → Legal；`s79`、`s81` → 落到后面的 widen。
+4. 生成 boundary：
+
+```json
+{"types":["s79"], "kind":"boundary", "reason":"bits 80 -> 79"}
+```
+
+同一招在 `G_IMPLICIT_DEF` 的 `s128` 上给出 `s127`；在 RISC-V
+`G_SELECT` 的 `clampScalar(0, s32, R_maxScalar)` 上给出 32/64 两侧的边界。
+
+## 9 压缩路径：全量 A/B → 回归集
+
+上面的算法是「从规则直接出题」。还有一条下游路径，用于把全量对拍结果压成
+回归集：
+
+```sh
+gisel cases SOURCE --queries full-queries.jsonl --oracle answers.jsonl ...
+```
+
+规则：
+
+- `queries` 固定测试总体，`oracle` 必须给每条查询一个答案；缺一条算
+  `oracle_missing`，失败；
+- 两边都标成 `unanswerable` 的查询保留统计，不冒充答案差异；
+- 对每个 `(config, ruleset, rule)` 最多保留 4 个 witness；
+- 在同一个 `(config, opcode, mem, imms)` 组内按类型排序，相邻两条 oracle
+  答案不同就记一条 boundary，每组最多 24 条；
+- 没有规则命中的查询按 outside 保留，每个 `(config, opcode)` 最多 2 条。
+
+这条路径的意义：用例集是从**端到端真实运行**的答案里压出来的，不是拿生成器
+自证。
+
+## 10 和 `domain`、`graph` 的关系
+
+- `gisel domain`：枚举与规则无关的 D*。轴来自 opcode 声明的槽位
+  （`gisel/data/opcode-slots.json`）、源文件声明的类型、内存行、imm 和
+  ordering。它是全量 A/B 的固定题面，不偏向任何规则。
+- `gisel cases`：规则感知的有界商，用于覆盖和回归。它比 domain 小得多，
+  但每个点都有「为什么在这里」的理由。
+- `gisel graph`：用原子谓词向量显式建商类，再建商图找环。它和 cases 共用
+  `inspect_ruleset` 的切点，是同一理论的两个消费者。
+
+X86、4 个 config 的 domain 实测是 104,388 条查询、113 个 opcode、24 个类型、
+23 个内存行；cases 只有 3,273 条，但覆盖了答案区域和边界。
+
+## 11 规模与实测
+
+命令：
+
+```sh
+python3 -m gisel cases tests/corpus/X86LegalizerInfo.gisel \
+  --features tests/cases/x86-features.json --out /tmp/x86-cases.jsonl --json
+
+python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json --out /tmp/a64-cases.jsonl --json
+```
+
+当前语料实测（2026-11-08）：
+
+| target | configs | cases | equivalence | boundary | outside | rules | witnessed | shadowed | unexercised | 时间 |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| X86 | 4 | 3,273 | 998 | 1,951 | 324 | 328 | 292 | 14 | 22 | ~1.7 s |
+| AArch64 | 9 | 9,911 | 2,851 | 6,047 | 1,013 | 743 | 315 | 25 | 403 | ~10 s |
+
+对拍（只比较生成集与冻结 dump 的交集）：
+
+```text
+X86:     covered=379  agree=379  disagree=0  errors=0  uncovered=2894
+AArch64: covered=493  agree=493  disagree=0  errors=0  uncovered=9418
+```
+
+`uncovered` 不是通过，只是「oracle 里没有这个点」。真正的不分歧结论只在
+`covered` 上成立。
+
+复杂度上界很粗：`O(configs × Π_slots |B_slot| × rules)`。真正的约束是
+`|B| ≤ 20,000`、每槽 16 个候选、boundary 每条规则 24 条，所以时间是
+秒级到十秒级，不需要 LLVM。
+
+## 12 这个方法证明了什么，没证明什么
+
+**证明了：**
+
+- 每个被见证的规则，都有一个满足 predicate + guard 的具体查询；
+- 每条被保留的 boundary，两侧答案确实不同；
+- 生成集和 oracle 的交集上，答案逐字段一致（`disagree=0`）。
+
+**没证明：**
+
+- 「所有规则都可达」：shadowed/unexercised 会明确列出来；
+- 「没有漏掉别的边界」：只探测规则写出来的阈值；组合条件、没有字面量的
+  薄区域可能漏；
+- 「outside 是合法指令」：它只是查询形状；
+- 「生成集覆盖了 oracle 全量」：`uncovered` 单列，不算通过。
+
+这就是有界商的诚实口径：**给的是下界和可解释的覆盖面，不是完备性证明。**
+
+## 13 可以直接引用的句子
+
+- 「测试用例不是手写的点集，而是规则答案商上的代表。」
+- 「有界不是随机采样：每个字面量都保留，每条阈值两侧都取代表。」
+- 「equivalence 证明规则可达，boundary 证明动作翻转，outside 证明兜底路径。」
+- 「uncovered 不是通过——它只说明还没有答案。」

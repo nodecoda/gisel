@@ -248,7 +248,8 @@ spec/cases.md           what a generated case means, and the subset contract
 spec/graph.md           the quotient-graph state, successor and outcomes
 docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
 docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
-docs/REPORT-cases.md    case generation: algorithm, evidence, rejected options
+docs/ALGORITHM-cases.md  case generation as a bounded quotient (article source)
+docs/REPORT-cases.md    case generation: evidence, rejected options
 docs/REPORT-ab.md       workbench: end-to-end A/B (not a gisel feature)
 docs/SCOPE.md           what gisel is, what only uses it
 spec/semantics.md       what a rule means (and what the evaluator does)

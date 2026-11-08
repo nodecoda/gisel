@@ -3,6 +3,9 @@
 状态：完成。新增 `gisel/cases.py`（命令 `gisel cases`）与 `spec/cases.md`。
 不碰语料、不改四个后端、不改 `eval` 的输入格式。
 
+> 算法本身（有界商、切点、三类用例的推导）见 `docs/ALGORITHM-cases.md`；
+> 本文只保留实现证据、快照和否决方案。
+
 ## 1 为什么是“派生”
 
 规则先被建模成 `Program`，再由它发射 C++/JSON。模型的意义不是多一份文档，
@@ -41,19 +44,19 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 
 | target | configs | cases | eq | boundary | outside | rules | witnessed | shadowed | unexercised | oracle covered | disagree | time |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| X86 | 4（C0–C3） | 3,277 | 1,008 | 1,961 | 308 | 332 | 296 | 14 | 22 | 383 | 0 | 1.8 s |
-| AArch64 | 9 | 9,705 | 2,841 | 5,966 | 898 | 743 | 313 | 28 | 402 | 439 | 0 | 15 s |
+| X86 | 4（C0–C3） | 3,273 | 998 | 1,951 | 324 | 328 | 292 | 14 | 22 | 379 | 0 | 1.8 s |
+| AArch64 | 9 | 9,911 | 2,851 | 6,047 | 1,013 | 743 | 315 | 25 | 403 | 493 | 0 | 10 s |
 | M68k | 派生 2 | 84 | 28 | 36 | 20 | 13 | 11 | 2 | 0 | — | — | 0.6 s |
 | WebAssembly | 派生 2 | 978 | 426 | 376 | 176 | 109 | 98 | 8 | 3 | — | — | 0.6 s |
 
 对拍口径：只比较生成集与冻结 dump 的交集。
 
-- X86：`covered=383 / agree=383 / disagree=0 / uncovered=2894`
-- AArch64：`covered=439 / agree=439 / disagree=0 / uncovered=9266`
+- X86：`covered=379 / agree=379 / disagree=0 / uncovered=2894`
+- AArch64：`covered=493 / agree=493 / disagree=0 / uncovered=9418`
 
-（2026-11-08 重测。cases 比 2026-11-07 少，因为候选轴不再发明 LLVM 构造不出来的
-类型：固定 1 车道向量归一成元素类型，float 位宽只取 16/32/64/80/128。见
-`spec/axes.md` §4。）
+（2026-11-08 切 cpp 语料后重测；`docs/ALGORITHM-cases.md` 有同一份数字。
+cases 比 2026-11-07 少，因为候选轴不再发明 LLVM 构造不出来的类型：固定 1 车道
+向量归一成元素类型，float 位宽只取 16/32/64/80/128。见 `spec/axes.md` §4。）
 
 这就是“子集”的准确说法：**在重叠域上，我们的答案与现有系统逐字段一致**。
 `uncovered` 不是通过——它只是还没有 oracle 答案。
