@@ -388,6 +388,45 @@ gisel cases SOURCE --queries full-queries.jsonl --oracle answers.jsonl ...
 X86、4 个 config 的 domain 实测是 104,388 条查询、113 个 opcode、24 个类型、
 23 个内存行；cases 只有 3,273 条，但覆盖了答案区域和边界。
 
+### 10.1 三个 target 的轴差异
+
+生成器里没有 `if target == "X86"` 这种分支。三个 target 的差别全部来自数据：
+规则文本、类型/内存声明、feature 真值表，以及可选的 `--axes` 文件。轴还是
+同一组，变的是**哪些轴被规则激活**、**轴上放什么值**。
+
+| | X86 | AArch64 | RISC-V |
+|---|---|---|---|
+| config | 4（C0–C3） | 9（baseline + 单特性变体） | 8（rv32/rv64 × G/C/V/Zbb/Zfh/Zilsd） |
+| rulesets / rules | 63 / 328 | 114 / 743 | 91 / 413 |
+| 类型声明 | 24 | 49 | 46 |
+| `select` 类型 | 12（AVX/AVX512 的最大向量） | 0 | 3（`sXLen`、`sDoubleXLen`、`maxScalar`） |
+| 可伸缩向量 | 无 | 有（SVE `nxv`） | 有（V `nxv`） |
+| 指针宽度 | `p0:*`，按 config 32/64 | 固定 64 | `p0:*`，按 config 32/64（XLen） |
+| 读内存的规则 | 21 | 24 | 26 |
+| 读 ordering 的规则 | 0 | 8 | 0 |
+| 读 imm 的规则 | 0 | 0 | 1（`G_SEXT_INREG`） |
+| `LLT::getUseExtended()` | false | true | false |
+
+**X86**：config 轴是 SSE2 / AVX / AVX512 这些子目标级别，C0/C3 是 32 位、
+C1/C2 是 64 位；类型轴里 12 个 `select` 把「最大向量」表达成 AVX 级别相关的
+选择。没有 ordering，也没有 imm。
+
+**AArch64**：config 轴是 9 行「baseline + 单特性」；类型轴同时包含 NEON 固定
+向量和 SVE `nxv`；指针固定 64。8 条规则读 `mem_ordering`，但 ordering 轴默认
+不激活——不传 `--axes tests/cases/aarch64-mem-orderings.axes.json` 时它们只会
+落到 unexercised。加上之后：cases 9,911 → 10,271，witnessed 315 → 321，
+unexercised 403 → 397。
+
+**RISC-V**：config 轴同时带 `XLen`/`ELen`；类型轴有 3 个 XLen 相关的 `select`
+和 V 扩展的 `nxv`；指针宽度就是 XLen，所以 `p0:*` 在 32/64 两种 config 下
+分别解析。内存类型里还有 `select(XLen == 64, s64, s32)` 这种配置相关的
+`mty`，两个分支都会被展开。唯一读 imm 的规则是 `G_SEXT_INREG`，所以 imm 轴
+只对它激活。
+
+一个容易忽略的语义差别：`LLT::getUseExtended()` 不新增轴，但它决定
+`f16`/`bf16`/`i32` 是不是独立 kind。AArch64 为 true，X86/RISC-V 为 false，
+所以同一个 `f16` 在 RISC-V 上按 `scalar(16)` 处理。轴相同，值语义不同。
+
 ## 11 规模与实测
 
 命令：
