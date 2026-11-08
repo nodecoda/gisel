@@ -68,12 +68,22 @@ jobs:
             echo "diff is a workbench verb and must not be a gisel command" >&2
             exit 1
           fi
+          # Run outside the checkout: at the repo root, `gisel.egg-info` wins
+          # the metadata lookup and the check would inspect the build tree
+          # instead of the installed wheel.
+          cd "$RUNNER_TEMP"
           /tmp/gisel-venv/bin/python - <<'PY'
           import importlib.metadata as md
 
-          files = [str(f) for f in md.files("gisel")]
+          dist = md.distribution("gisel")
+          root = dist.locate_file("")
+          assert "site-packages" in str(root), root
+          files = [str(f) for f in dist.files]
           leaked = [f for f in files if f.startswith(("tools/", "tests/", "docs/"))]
           assert not leaked, leaked
           assert any(f.endswith("data/opcode-slots.json") for f in files), files
+          assert any(f.endswith("licenses/LICENSE") for f in files), files
+          meta = md.metadata("gisel")
+          assert meta["License-Expression"] == "Apache-2.0 WITH LLVM-exception", meta
           print("%d files, no workbench paths" % len(files))
           PY

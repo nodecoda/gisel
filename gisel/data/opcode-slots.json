@@ -993,5 +993,6 @@
   }
  },
  "schema": 1,
- "source": "llvm/include/llvm/Target/GenericOpcodes.td"
+ "source": "llvm/include/llvm/Target/GenericOpcodes.td",
+ "source_commit": "e88a24a0fe845da4043952343c72de6eff3f6400"
 }

@@ -13,6 +13,10 @@ from . import domain as domaingen
 from .backend import check_json, core_json, llvm_inc, table
 
 BACKENDS = ("inc", "check", "table", "core")
+# The product surface, in one place.  `spec/cli.md` is the prose contract,
+# `tests/test_cli.py` checks the parser against it, and `tests/test_scope.py`
+# checks the spec table against this tuple.
+COMMANDS = ("gen", "check", "cases", "domain", "lint", "eval", "graph")
 
 
 def _table_prefix(source, explicit, gs=None):
@@ -232,6 +236,10 @@ def main(argv=None):
     gr.add_argument("--check-closure", action="store_true")
     gr.add_argument("--progress", action="store_true")
     gr.add_argument("--json", action="store_true")
+
+    if set(sub.choices) != set(COMMANDS):
+        raise RuntimeError("parser and COMMANDS disagree: %s vs %s"
+                           % (sorted(sub.choices), COMMANDS))
 
     args = ap.parse_args(argv)
     if args.cmd == "gen":

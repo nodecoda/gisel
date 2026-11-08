@@ -13,10 +13,10 @@ import unittest
 from pathlib import Path
 
 import gisel
+from gisel.cli import COMMANDS
 
 ROOT = Path(__file__).resolve().parents[1]
 PYPROJECT = ROOT / "pyproject.toml"
-COMMANDS = {"gen", "check", "lint", "cases", "domain", "eval", "graph"}
 
 FIXTURE = """\
 type S8 = LLT::scalar(8)
@@ -89,7 +89,7 @@ class Commands(unittest.TestCase):
         r = run("--help")
         self.assertEqual(r.returncode, 0, r.stderr)
         listed = set(re.search(r"\{([a-z,]+)\}", r.stdout).group(1).split(","))
-        self.assertEqual(listed, COMMANDS)
+        self.assertEqual(listed, set(COMMANDS))
 
     def test_every_command_answers_help(self):
         for command in sorted(COMMANDS):
@@ -158,6 +158,29 @@ class ExitCodes(unittest.TestCase):
             self.assertTrue(cases.read_text().strip())
             self.assertEqual(
                 run("domain", str(src), "--out", f"{d}/d.jsonl").returncode, 0)
+
+
+class Determinism(unittest.TestCase):
+    """`spec/cli.md` §3: the same input produces byte-identical output."""
+
+    def test_core_bytes_are_stable(self):
+        with tempfile.TemporaryDirectory() as d:
+            source = write(d, "d.gisel", FIXTURE)
+            outs = []
+            for i in range(2):
+                out = Path(d) / f"d{i}.core"
+                r = run("gen", str(source), "--emit=core", "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stderr)
+                outs.append(out.read_bytes())
+            self.assertEqual(outs[0], outs[1])
+
+    def test_graph_stdout_is_stable(self):
+        with tempfile.TemporaryDirectory() as d:
+            source = write(d, "g.gisel", GRAPH_FIXTURE)
+            first = run("graph", str(source), "--config", "none", "--json")
+            second = run("graph", str(source), "--config", "none", "--json")
+            self.assertEqual(first.returncode, 0, first.stderr)
+            self.assertEqual(first.stdout, second.stdout)
 
 
 class Streams(unittest.TestCase):

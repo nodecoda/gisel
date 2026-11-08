@@ -12,6 +12,7 @@ import io
 import json
 import os
 import re
+import subprocess
 import sys
 
 DEF_RE = re.compile(
@@ -35,6 +36,17 @@ def parse(path):
     return out
 
 
+def source_commit(path):
+    """The LLVM revision the table was frozen from, if the tree can tell us."""
+    try:
+        out = subprocess.run(
+            ["git", "-C", os.path.dirname(os.path.abspath(path)), "rev-parse", "HEAD"],
+            capture_output=True, text=True, check=True)
+    except (OSError, subprocess.CalledProcessError):
+        return None
+    return out.stdout.strip() or None
+
+
 def main(argv):
     src = argv[1] if len(argv) > 1 else os.environ.get(
         "LLVM_TREE", "/home/ubuntu/llvm/trees/explore"
@@ -50,6 +62,9 @@ def main(argv):
                 "null arity = variadic/unknown",
         "opcodes": opcodes,
     }
+    commit = source_commit(src)
+    if commit:
+        doc["source_commit"] = commit
     with open(dst, "w") as f:
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")

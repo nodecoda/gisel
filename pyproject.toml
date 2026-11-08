@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -8,7 +8,8 @@ dynamic = ["version"]
 description = "A free-form language for GlobalISel legalizer rules"
 readme = "README.md"
 requires-python = ">=3.10"
-license = {file = "LICENSE"}
+license = "Apache-2.0 WITH LLVM-exception"
+license-files = ["LICENSE"]
 dependencies = []
 classifiers = [
     "Programming Language :: Python :: 3.10",

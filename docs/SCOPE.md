@@ -21,8 +21,9 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 - `eval`：schema-0.4 正常形的求值器。它是 `cases` 的**分母自检**手段——同一份
   查询既给 evaluator 答，也给编译出来的规则答，两边必须一致。
 - `graph`：读 `--emit=core` 的静态分析（商图找环）。它同样不碰 LLVM。
-- `gisel/data/*.json`：opcode 槽位/arity 的**快照**。生成它要 LLVM，但 gisel
-  运行时只读这份随包数据。
+- `gisel/data/*.json`：opcode 槽位/arity 的**快照**，`opcode-slots.json` 记录
+  冻结时的 LLVM `source_commit`。生成它要 LLVM，但 gisel 运行时只读这份随包
+  数据。
 
 ## 2 工作台：用 gisel 完成的，不是 gisel 的功能
 
