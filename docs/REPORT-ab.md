@@ -226,3 +226,78 @@ differential test 仍然 0 分歧（1,191 点 × 9 配置，9,641 条可比较�
   是 LLVM 的问题，本轮未覆盖。
 - 配置只覆盖 `tests/cases/features.json` 的 9 个，不是全部 subtarget 组合；
   查询形状只覆盖 `gisel cases` 的等价类 + 边界 + 域外，不是任意 LLT。
+
+## 3 AB harness 首轮 smoke（2026-11-08）
+
+这一节是 `tools/ab/ab.py` 的首轮运行记录，**不是验收结论**；它证明编排、
+答案文件、全 key diff、恢复和 ledger 能串起来，同时暴露了两处待归因的差异。
+
+### 3.1 X86：非侵入式 generated-ctor
+
+```sh
+head -400 /tmp/x86-domain.jsonl > /tmp/x86-400.jsonl
+python3 tools/ab/ab.py run --target x86-ctor \
+  --tree /home/ubuntu/llvm/trees/explore \
+  --build /home/ubuntu/llvm/builds/explore \
+  --queries /tmp/x86-400.jsonl \
+  --out /tmp/ab-x86-ctor --state /tmp/ab-state-x86-ctor \
+  --compare full
+```
+
+结果：
+
+```text
+queries=400  agree=400  disagree=0  unanswerable=0
+missing_ref=0  missing_ours=0  rc=0
+```
+
+`x86-ctor` 只替换 `X86LegalizerInfo` 构造函数，不 swap build 里的库；
+因此它可以在共享 build 上跑，不动 `libLLVMX86CodeGen.so`。`x86`（swap）
+adapter 已通过 `--dry-run` 校验，真实 swap 留给专用 build。
+
+### 3.2 AArch64：10,271 条全量
+
+```sh
+python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json \
+  --axes tests/cases/aarch64-mem-orderings.axes.json \
+  --out /tmp/a64-queries.jsonl --json
+
+python3 tools/ab/ab.py run --target aarch64 \
+  --tree /home/ubuntu/llvm/trees/explore \
+  --build /home/ubuntu/llvm/builds/explore \
+  --queries /tmp/a64-queries.jsonl \
+  --out /tmp/ab-a64-run --state /tmp/ab-state-a64 \
+  --compare full
+```
+
+结果：
+
+```text
+queries=10271  agree=10219  disagree=52  unanswerable=224
+missing_ref=0  missing_ours=0  rc=1
+```
+
+52 条的构成（`diff.json` 的 `first_details`）：
+
+```text
+status    45   官方侧断言（unanswerable），ours 侧给出 Unsupported
+type_idx   7   G_SITOFP 的 v2s63 类点，两侧都 WidenScalar，但改写槽不同
+```
+
+这说明 harness 能区分“单侧断言”和“答案不同”，但**还没有归因**。这两个
+差异更像“explore 树的官方实现 / 当前语料修订”之间的漂移，不是 harness
+自身的 diff 错误；下一轮要用 official/ours/eval 三方矩阵定位。
+
+### 3.3 查询数变化
+
+旧报告里的 10,029 是上一版语料 + axes 的快照；当前
+`tests/cases/aarch64-mem-orderings.axes.json` 生成的是 10,271 条。adapter 的
+`query_count` 因此改为 10,271，条数变化会被当成契约失败，而不是静默接受。
+
+### 3.4 产物与恢复
+
+- 答案文件逐行平行，`run-queries.py` 把断言点标成对称/单侧 `unanswerable`；
+- `diff.json` 含 `mode/agree/disagree/...` 和 `first_details`；
+- `ledger.jsonl` 记录 tree HEAD、inc sha、query sha、runner sha、计数；
+- `ab.py verify` 对 AArch64 返回 `OK`，build 未被修改。

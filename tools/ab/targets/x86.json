@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "name": "x86",
+  "source": "tests/corpus/X86LegalizerInfo.gisel",
+  "strategy": "swap-library",
+  "baseline_inc": "lib/Target/X86/X86LegalizerInfo.inc",
+  "swap_inc": "lib/Target/X86/X86LegalizerInfo.inc",
+  "inc_name": "X86LegalizerInfo.inc",
+  "library": "lib/libLLVMX86CodeGen.so.24.0git",
+  "ninja_target": "libLLVMX86CodeGen.so",
+  "touch_source": "llvm/lib/Target/X86/GISel/X86LegalizerInfo.cpp",
+  "runner": {
+    "source": "tools/ab/query_runner.cpp",
+    "builder": "tools/ab/build-runner.sh",
+    "mode": "shipping"
+  },
+  "features": "tests/cases/x86-features.json",
+  "axes": null,
+  "query_count": null
+}
