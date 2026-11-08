@@ -1,20 +1,24 @@
 # Releasing `gisel`
 
-The package is pure Python (≥3.10, zero dependencies).  A release is a tag,
-a CI-built wheel/sdist, and a Trusted Publishing upload — no tokens.
+The package is pure Python (≥3.10, zero dependencies).  A release is a tag, a
+CI-built wheel/sdist, and an upload through `publish.yml` — no local upload is
+required.
 
-## 0. Preconditions (once)
+## 0. Release history
 
-Done (2026-11-06):
+| version | state | note |
+|---|---|---|
+| 0.2.0 | on PyPI | https://pypi.org/project/gisel/0.2.0/ — wheel + sdist, plus the GitHub release |
+| 0.3.0 | unreleased | current `__version__`; adds `graph`, `eval --answers`, `feature NAME` predicates, `lint imm`, and the product-surface pin |
 
-- remote `origin` = https://github.com/nodecoda/gisel (public).
-- GitHub environment `pypi` exists.
-- `ci.yml` is green on 3.10 / 3.11 / 3.12.
-- **0.2.0 is on PyPI**: https://pypi.org/project/gisel/0.2.0/
-  (wheel + sdist), uploaded once with `twine` and then by the `v0.2.0`
-  tag pipeline; the repository secret `PYPI_API_TOKEN` authenticates it.
-  `skip-existing: true` makes the tag run a green no-op.
-- GitHub release: https://github.com/nodecoda/gisel/releases/tag/v0.2.0
+Infrastructure, done once (2026-11-06):
+
+- remote `origin` = https://github.com/nodecoda/gisel (public);
+- GitHub environment `pypi` exists;
+- `ci.yml` is green on 3.10 / 3.11 / 3.12;
+- `publish.yml` authenticates with the repository secret `PYPI_API_TOKEN` and
+  `skip-existing: true`, so a tag pushed after a manual upload is a green
+  no-op.
 
 Optional, better long-term: add a pending trusted publisher on PyPI
 (owner `nodecoda`, repo `gisel`, workflow `publish.yml`, environment `pypi`)
@@ -28,9 +32,9 @@ gisel/__init__.py     __version__ = "0.3.0"
 ```
 
 That is the only copy. `pyproject.toml` declares `dynamic = ["version"]` and
-reads it via `[tool.setuptools.dynamic]`, and `gisel --version` prints it from
-the same constant. `tests/test_cli.py` fails if the two ever disagree or if
-`pyproject.toml` starts hardcoding a version again.
+reads it via `[tool.setuptools.dynamic]`; `gisel --version` prints the same
+constant. `tests/test_cli.py::Version` fails if the two disagree, if
+`pyproject.toml` starts hardcoding a version, or if it appears twice.
 
 ## 2. Build and check
 
@@ -40,12 +44,23 @@ python -m venv /tmp/rel && /tmp/rel/bin/pip install -q build twine
 /tmp/rel/bin/twine check dist/*
 ```
 
-`twine check` must print PASSED for both files.  The wheel must contain
-`gisel/data/generic_opcodes.json` (lint's arity table):
+`twine check` must print PASSED for both files.  The wheel carries the two
+bundled tables (`gisel/data/generic_opcodes.json` for `lint`,
+`gisel/data/opcode-slots.json` for `domain`/`graph`) and nothing else from the
+repository:
 
 ```sh
-python -c "import zipfile,glob;z=zipfile.ZipFile(glob.glob('dist/*.whl')[0]);
-print([n for n in z.namelist() if 'generic_opcodes' in n])"
+python - <<'PY'
+import zipfile, glob
+z = zipfile.ZipFile(glob.glob('dist/*.whl')[0])
+names = z.namelist()
+assert any(n.endswith('data/generic_opcodes.json') for n in names), names
+assert any(n.endswith('data/opcode-slots.json') for n in names), names
+leaked = [n for n in names if n.startswith(('tools/', 'tests/', 'docs/'))]
+assert not leaked, leaked
+assert any(n.endswith('licenses/LICENSE') for n in names), names
+print(len(names), 'files')
+PY
 ```
 
 ## 3. Verify a clean install outside the checkout
@@ -61,7 +76,9 @@ for e in inc check table core; do
 done
 ```
 
-The five artifacts must match `tests/artifacts/` (core modulo `origin`).
+The **four** artifacts must match `tests/artifacts/` (`core` modulo `origin`).
+`tests/artifacts/` holds eight files: four artifacts for each of the two
+transcribed targets, plus `SHA256`.
 
 ## 3.5. Product-surface checklist
 
@@ -72,29 +89,36 @@ The wheel ships one surface; check it before tagging:
 - `gisel diff` is rejected: that command lives in `tools/ab/diff.py`.
 - The three exit codes mean the same thing everywhere (`spec/cli.md` §2):
   `0` yes, `1` no, `2` could not start.
-- The wheel contains `gisel/data/generic_opcodes.json` and `gisel/data/opcode-slots.json`,
-  and **no** `tools/`, `tests/` or `docs/` entries.
+- `gisel/` imports no external-process or network module and no `tools/`
+  module (`tests/test_scope.py`), matching `spec/cli.md` §3.
 - `docs/SCOPE.md` and `spec/cli.md` are the two files a new surface has to
   update; if a release adds a command without them, it is not ready.
+- Run the installed-file check **outside the checkout**.  At the repo root,
+  `gisel.egg-info` wins the `importlib.metadata` lookup and the check silently
+  inspects the build tree instead of the installed wheel (`ci.yml` `cd`s to
+  `$RUNNER_TEMP` for this reason).
 
 ## 4. Tag and let CI publish
 
+Take the tag from the package, so the tag cannot disagree with the wheel:
+
 ```sh
-git tag -a v0.2.0 -m "gisel 0.2.0"
+version=$(python -c 'import gisel; print(gisel.__version__)')
+git tag -a "v$version" -m "gisel $version"
 git push origin main --tags
 ```
 
-`.github/workflows/publish.yml` builds, runs `twine check`, and uploads via
-`pypa/gh-action-pypi-publish` when a `v*` tag is pushed.  A failing `ci.yml`
-on the same commit should be treated as a release blocker.
+`publish.yml` builds, runs `twine check`, and uploads on any `v*` tag.  A
+failing `ci.yml` on the same commit is a release blocker.
 
 ## 5. Post-release check
 
 ```sh
-python -m venv /tmp/after && /tmp/after/bin/pip install gisel==0.2.0
+version=$(python -c 'import gisel; print(gisel.__version__)')
+python -m venv /tmp/after && /tmp/after/bin/pip install "gisel==$version"
 /tmp/after/bin/gisel --version
 ```
 
-Known boundary: the wheel ships the opcode table but **not** `tests/`; the
+Known boundary: the wheel ships the opcode tables but **not** `tests/`; the
 corpus and frozen artifacts are repository-only.  Examples in the README
 assume a checkout.
