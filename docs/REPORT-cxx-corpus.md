@@ -113,7 +113,7 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 ## 6 证据
 
 - 转录：三个目标 0 拒绝，`--all --check` 逐字节匹配。
-- 生成：`python3 -m unittest discover -q -s tests` 全绿（188 tests）。
+- 生成：`python3 -m unittest discover -q -s tests` 全绿（208 tests）。
 - 行为：三个目标的冻结查询全部 agree，0 disagree。
 - 计数：`tests/artifacts` 总调用 1074 = 1071 + 3（`immIdx` 3 条，来自
   AArch64；`gisel/ast.py` 的 `canonicalize_rulesets` 已按 opcode 汇总
@@ -127,3 +127,23 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 - M68k / WebAssembly 仍是人工转写的小探针，不在 `--all` 里。
 - LLVM 研究分支上残留的 `.td` / `-gen-legalizer*` 代码不在本仓库清理范围；
   gisel 这边已经不再读它。
+
+## 8 追补：`widenScalarOrElt…` 曾被压成标量拼写（2026-11-08）
+
+A/B 归因（`docs/REPORT-ab.md` §4.2）发现 16 条 `G_SITOFP` / `G_FPTOSI`
+差异：上游 `widenScalarOrEltToNextPow2OrMinSize(1)` 会把 `v2i63` 的元素
+widen 到 64，我们生成的 inc 不动，随后另一条 `changeElementSize(0, 63)`
+造出 `f63`，在断言构建里直接 `UNREACHABLE`。
+
+原因是转录器把三个 C++ 方法合并成了同一个 `widen(slot(i), pow2)`：
+
+| 方法 | 谓词 | 现在的拼写 |
+|---|---|---|
+| `widenScalarToNextPow2` | `isScalar() && !pow2(总位宽)` | `widen(slot(i), pow2)` |
+| `widenScalarOrEltToNextPow2` | `!pow2(元素位宽)` | `widen(elem_of(slot(i)), pow2)` |
+| `widenScalarOrEltToNextPow2OrMinSize`（无 MinSize） | 同上（`MinSize=0` 时等价） | 同上 |
+| `widenScalarOrEltToNextPow2OrMinSize(n)` / `(select)` | `narrowerThan(n) or !pow2` | `widen(slot(i), n / select)` |
+
+`v2i63` 的总位宽 126 不是 2 的幂，但标量谓词先看 `isScalar()`，所以旧拼写
+静默不命中。修复后重生成 AArch64 语料只改 2 行，`tests/artifacts/aarch64.*`
+同步重生成；RISC-V / X86 语料逐字节不变（X86 源已漂移，比较时按单目标跑）。

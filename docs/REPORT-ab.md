@@ -14,7 +14,8 @@
 ## 1 全量端到端 A/B（2026-11-07）
 
 X86 的无答案域由 `gisel domain` 生成：C0/C3 使用 32 位指针，C1/C2 使用
-64 位指针，每个配置 26,097 条，共 104,388 条。官方生成的
+64 位指针，每个配置 26,097 条，共 104,388 条（§4 加上 opcode 形状过滤后是
+每配置 25,127 条 / 共 100,508 条；这一节保留当时的快照）。官方生成的
 `X86LegalizerInfo.inc` 先运行一次，再替换为 gisel 生成的 `.inc` 并重编
 `X86CodeGen`，两次都读取同一个 JSONL 文件。
 
@@ -291,9 +292,10 @@ type_idx   7   G_SITOFP 的 v2s63 类点，两侧都 WidenScalar，但改写槽�
 
 ### 3.3 查询数变化
 
-旧报告里的 10,029 是上一版语料 + axes 的快照；当前
-`tests/cases/aarch64-mem-orderings.axes.json` 生成的是 10,271 条。adapter 的
-`query_count` 因此改为 10,271，条数变化会被当成契约失败，而不是静默接受。
+旧报告里的 10,029 是上一版语料 + axes 的快照；§3 写的时候
+`tests/cases/aarch64-mem-orderings.axes.json` 生成 10,271 条，adapter 的
+`query_count` 随之写上。§4 修掉生成器形状过滤后是 10,244 条，**以 §4 为准**；
+条数变化会被当成契约失败，而不是静默接受。
 
 ### 3.4 产物与恢复
 
@@ -301,3 +303,124 @@ type_idx   7   G_SITOFP 的 v2s63 类点，两侧都 WidenScalar，但改写槽�
 - `diff.json` 含 `mode/agree/disagree/...` 和 `first_details`；
 - `ledger.jsonl` 记录 tree HEAD、inc sha、query sha、runner sha、计数；
 - `ab.py verify` 对 AArch64 返回 `OK`，build 未被修改。
+
+## 4 归因与收敛：52 → 9（2026-11-08 晚）
+
+§3 的 52 条已经全部归因：**43 条是我们自己的问题，9 条是上游缺陷**。修完
+我方两条之后，同一批查询缩小到 10,244 条，结果是：
+
+```text
+queries=10244  agree=10235  disagree=9  unanswerable=224
+missing_ref=0  missing_ours=0  errors=0  rc=1
+```
+
+三方矩阵（official / ours / gisel eval）：
+
+```text
+matrix = {all_agree: 10011, both_assert: 224, official_assert: 9}
+owner  = {query: 9}
+```
+
+224 条 `both_assert` 两边同位置断言，输出对称，不进差异；`all_agree` 里已经
+包含 ours 编译产物与 eval 的逐条一致。
+
+### 4.1 36 条：生成器给了 MIR 验证器不接受的形状
+
+`G_MERGE_VALUES f128, nxv16i8` 这类查询，官方侧 abort：
+
+```text
+LLVM ERROR: cannot implicitly convert a scalable size to a fixed-width size
+             in `TypeSize::operator ScalarTy()`     AArch64LegalizerInfo.cpp:1206
+```
+
+但根因不在 LLVM 的 legalizer。`MachineVerifier.cpp:1502-1510` 明确规定
+`G_MERGE_VALUES` 只能合并标量；同一份形状写成 MIR 会在 verifier 就被拒：
+
+```text
+*** Bad machine code: G_MERGE_VALUES cannot operate on vectors ***
+```
+
+也就是说这批查询**没有到达 legalizer 的路径**，是 domain 把“不可表示的
+形状”当成了题面。修法（我方）：
+
+- `gisel/cases.py` 新增 `type_shape_ok(opcode, types)`，按 verifier 的形状
+  约束裁剪：`G_MERGE_VALUES` 全标量；`G_UNMERGE_VALUES` 要么全标量，要么
+  全向量且元素类型与 scalability 一致（它是 `G_CONCAT_VECTORS` 的逆）。
+- `gisel/cases.py::_queries` 和 `gisel/domain.py::enumerate_domain` 共用它。
+
+计数影响：AArch64 查询 10,271 → 10,244；X86 domain 每个配置 26,097 →
+25,127（4 个配置 104,388 → 100,508）。**这不是缩小覆盖面**：被去掉的形状
+没有任何 `llc` 输入能产生。
+
+### 4.2 16 条：`widenScalarOrElt…` 被转录成了标量版本
+
+`G_SITOFP` / `G_FPTOSI` 的 `v2i63` 点，官方 widen 元素到 `v2i64`，我们却
+落到后面的 `changeElementSize(0, 63)`，造出 `f63`：
+
+```text
+ours runner: Wrong SizeInBits for IEEE Floating point!  LowLevelType.h:151
+eval       : WidenScalar slot 0 -> f63
+```
+
+差异来自 C++ 方法被压成同一个拼写：
+
+| 上游方法 | 谓词 | 语料（修复前） |
+|---|---|---|
+| `widenScalarToNextPow2` | `sizeNotPow2` → `isScalar() && !pow2(总位宽)` | `widen(slot(i), pow2)` |
+| `widenScalarOrEltToNextPow2(OrMinSize)` | `scalarOrEltSizeNotPow2` → `!pow2(元素位宽)` | 也是 `widen(slot(i), pow2)` |
+
+`v2i63` 总位宽 126、元素 63：标量谓词不命中，元素谓词命中。`pow2` 是标量
+拼写，所以我们的规则静默失效。
+
+修法（我方）：`tools/import-cxx.py` 区分三种方法，`...OrElt...` 一律输出
+`widen(elem_of(slot(i)), pow2)`（`MinSize=0` 时两种 `...OrElt...` 谓词相同；
+显式 `MinSize` 仍走 `widen(slot(i), <int|select>)`）。重生成语料只改了 2 行
+（`A_FPTOSI` 一条、`A_SITOFP` 一条），`tests/artifacts/aarch64.*` 跟着重生成。
+
+### 4.3 剩下 9 条：上游缺陷，已落盘
+
+`G_UNMERGE_VALUES nxv16i8, nxv16i8`（以及任何 scalable 拆分的真实形状）在
+官方 `legalIf` 里对 scalable 源类型做 `switch (getSizeInBits())`，隐式转
+`uint64_t` 直接 abort。合法 MIR、单 pass 可复现，已按 `admin/AGENTS.md` §4.1
+写到：
+
+```text
+/home/ubuntu/admin/upstream-issues/2026-11-08-12-gisel-aarch64-unmerge-scalable-assert.md
+```
+
+状态：待搜重后提单。ours 侧（gisel 生成的 inc）对同一查询返回
+`Unsupported`，不崩，也不参与这条缺陷。
+
+### 4.4 本轮指纹
+
+| 文件 | sha256 |
+|---|---|
+| `tests/corpus/AArch64LegalizerInfo.gisel` | `df5a0d8d1020b9c5…` |
+| `tests/artifacts/aarch64.inc` | `bf58c71f2ba8193b…` |
+| `tests/artifacts/aarch64.core.json` | `fad7c0881e6a01ba…` |
+| 10,244 条查询 | `5670b99944b1f92b…` |
+| `runner.official` / `runner.ours` | `0af9d83a0a9e9112…` / `8650c0060b7014a8…` |
+| official / ours 答案 | `f3b7baa56ac2b54f…` / `fad6618722293175…` |
+
+复现：
+
+```sh
+python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json \
+  --axes tests/cases/aarch64-mem-orderings.axes.json \
+  --out /tmp/a64-queries2.jsonl --json
+
+python3 tools/ab/ab.py run --target aarch64 \
+  --tree /home/ubuntu/llvm/trees/explore \
+  --build /home/ubuntu/llvm/builds/explore \
+  --queries /tmp/a64-queries2.jsonl \
+  --out /tmp/ab-a64-eval2 --state /tmp/ab-state-a64 \
+  --compare full
+```
+
+### 4.5 仍未覆盖
+
+- 224 条对称断言只证明“两边都不答”，没有归因到具体断言；要在崩溃点上
+  逐个取栈才能说是 LLVM 的问题。
+- 查询仍只覆盖 `gisel cases` 的等价类 / 边界 / 域外，不是任意 LLT。
+- 配置仍是 `tests/cases/features.json` 的 9 个，不是全部 subtarget 组合。
