@@ -164,8 +164,9 @@ class ConfigDependentMemory(unittest.TestCase):
                 report = graph.build(source, config, features)
                 return {str(state["mem"]) for state in report.states.values()}
 
-            self.assertEqual({str(("s32", 8))}, mems_for("none"))
-            self.assertEqual({str(("s64", 8))}, mems_for("all"))
+            atomic = ("NotAtomic", "NotAtomic")
+            self.assertEqual({str(("s32", 8) + atomic)}, mems_for("none"))
+            self.assertEqual({str(("s64", 8) + atomic)}, mems_for("all"))
 
             _, mem_axis, _ = domain.domain_axes(source)
             self.assertEqual({"s32", "s64"}, {text for text, _bits, _align in mem_axis})

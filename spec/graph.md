@@ -42,9 +42,11 @@ opcode（精确或家族前缀），输出多一行 `skipped`。schema 与未覆
 (opcode, type_class_0, ..., type_class_n, mem_class?, imm_class?)
 ```
 
-只有 ruleset 的谓词递归读取 `memSlot`/内存描述时才有 `mem_class`；只有
-提供 `--axes` 且规则读取 `imm(i)` 时才有 `imm_class`（否则该 opcode 写入
-`uncovered`）。内存候选
+只有 ruleset 的谓词递归读取 `memSlot`/内存描述时才有 `mem_class`（内存值
+包含 `(mty, align, ordering, failure_ordering)`，ordering 由 `--axes` 的
+`mems.orderings` 提供）；只有提供 `--axes` 且规则读取 `imm(i)` 时才有
+`imm_class`。读 ordering 但没有 `mems.orderings`、或读 imm 但没有对应
+`imms` 下标时，该 opcode 写入 `uncovered`。内存候选
 来自 `in_mem_desc` 的行，并保存 memory type 和 alignment；不读内存的 ruleset
 不携带这个轴。
 

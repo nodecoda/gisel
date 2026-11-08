@@ -6,7 +6,9 @@
 
 ## 1 三种 kind
 
-一条用例是查询 `(config, opcode, types, mem, imms)`，外加 `kind` / `ruleset` /
+一条用例是查询 `(config, opcode, types, mem, imms)`；`mem` 通常是
+`[mty, align]`，声明 ordering 轴后可以是
+`[mty, align, ordering, failure_ordering]`，外加 `kind` / `ruleset` /
 `rule` / `reason` 四个标签字段。`kind` 只有三种：
 
 ```

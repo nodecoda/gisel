@@ -19,7 +19,9 @@ from . import eval as E
 def _key(q):
     mem = None
     if q.get("mem"):
-        mem = (E.parse_case_llt(q["mem"][0]), int(q["mem"][1]))
+        m = q["mem"]
+        mem = (E.parse_case_llt(m[0]), int(m[1]))
+        mem += (m[2], m[3]) if len(m) >= 4 else ("NotAtomic", "NotAtomic")
     return (q["config"], q["name"],
             tuple(E.parse_case_llt(t) for t in q.get("types", [])),
             mem, tuple(q.get("imms") or []))

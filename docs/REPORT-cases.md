@@ -98,6 +98,31 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 全量 A/B 数字尚未用新查询重跑，上表的 `cases/covered` 仍是 2026-11-07 的
 结果；重跑后需要同时更新第 6 节。
 
+## 5.2 ordering 轴补充（2026-11-08）
+
+`mems.orderings` 现在会为读 `mem_ordering` 的 ruleset 乘上
+`(ordering, failure_ordering)` 采样点，导出的查询 `mem` 为 4 元组。AArch64
+（`--features tests/cases/features.json`）的对照：
+
+```sh
+python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json --json --out /tmp/a64-noorder.jsonl
+# witnessed 313 / shadowed 28 / unexercised 402 / cases 10,920
+
+python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json \
+  --axes /tmp/a64-order.axes.json --json --out /tmp/a64-order.jsonl
+# mems.orderings = [Unordered, Acquire, Release, SequentiallyConsistent]
+# witnessed 317 / shadowed 29 / unexercised 397 / cases 10,947
+```
+
+8 条读 ordering 的规则里，6 条从 unexercised 变为 witnessed：
+`AArch64_LOAD#0/#1`、`AArch64_SEXTLOAD#0`、`AArch64_STORE#0/#1/#2`。
+`AArch64_INDEXED_LOAD#0`、`AArch64_INDEXED_SEXTLOAD#0` 仍未命中，原因不是
+ordering（可能是类型/谓词组合），留给下一轮定位。
+
+全量 A/B 尚未用 4 元组 mem 重跑。
+
 ## 6 全量端到端 A/B（2026-11-07）
 
 X86 的无答案域由 `gisel domain` 生成：C0/C3 使用 32 位指针，C1/C2 使用

@@ -35,6 +35,18 @@ using Legalizer = AArch64LegalizerInfo;
 
 namespace {
 
+static std::optional<AtomicOrdering> parseOrdering(StringRef Text) {
+  return StringSwitch<std::optional<AtomicOrdering>>(Text)
+      .Case("NotAtomic", AtomicOrdering::NotAtomic)
+      .Case("Unordered", AtomicOrdering::Unordered)
+      .Case("Monotonic", AtomicOrdering::Monotonic)
+      .Case("Acquire", AtomicOrdering::Acquire)
+      .Case("Release", AtomicOrdering::Release)
+      .Case("AcquireRelease", AtomicOrdering::AcquireRelease)
+      .Case("SequentiallyConsistent", AtomicOrdering::SequentiallyConsistent)
+      .Default(std::nullopt);
+}
+
 struct Config {
   const char *ID;
   const char *Features;
@@ -221,7 +233,7 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
   SmallVector<LegalityQuery::MemDesc, 1> MMOs;
   std::string MemText = "null";
   if (json::Array *Mem = Obj->getArray("mem")) {
-    if (Mem->size() != 2)
+    if (Mem->size() != 2 && Mem->size() != 4)
       return 2;
     auto TyText = (*Mem)[0].getAsString();
     auto Align = (*Mem)[1].getAsInteger();
@@ -230,10 +242,29 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
     auto Ty = parseLLT(*TyText);
     if (!Ty)
       return 2;
-    MMOs.push_back(LegalityQuery::MemDesc(
-        *Ty, *Align, AtomicOrdering::NotAtomic, AtomicOrdering::NotAtomic));
+    AtomicOrdering Ordering = AtomicOrdering::NotAtomic;
+    AtomicOrdering Failure = AtomicOrdering::NotAtomic;
+    std::optional<StringRef> OrderingText;
+    std::optional<StringRef> FailureText;
+    if (Mem->size() == 4) {
+      OrderingText = (*Mem)[2].getAsString();
+      FailureText = (*Mem)[3].getAsString();
+      auto ParsedOrdering = OrderingText ? parseOrdering(*OrderingText)
+                                         : std::nullopt;
+      auto ParsedFailure = FailureText ? parseOrdering(*FailureText)
+                                       : std::nullopt;
+      if (!ParsedOrdering || !ParsedFailure)
+        return 2;
+      Ordering = *ParsedOrdering;
+      Failure = *ParsedFailure;
+    }
+    MMOs.push_back(LegalityQuery::MemDesc(*Ty, *Align, Ordering, Failure));
     MemText = "[" + jsonString(lltStr(*Ty)) + "," +
-              std::to_string(*Align) + "]";
+              std::to_string(*Align);
+    if (Mem->size() == 4)
+      MemText += "," + jsonString(*OrderingText) + "," +
+                 jsonString(*FailureText);
+    MemText += "]";
   }
 
   unsigned Opcode = opcodeFor(*Name);

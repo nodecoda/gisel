@@ -67,7 +67,7 @@ class Wiring(unittest.TestCase):
         self.assertLessEqual(seen, want)
         mems = {case.mem for case in generation.cases
                 if case.kind == "equivalence" and case.mem}
-        self.assertEqual(mems, {("s8", 8)})
+        self.assertEqual(mems, {("s8", 8, "NotAtomic", "NotAtomic")})
 
         rows = list(domain.enumerate_domain(
             self.source, self.features, configs=["none"], axes=profile))

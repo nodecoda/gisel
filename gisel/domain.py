@@ -169,6 +169,10 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
     for rs in doc["rulesets"]:
         uses_mem = any(_reads_mem(rule["predicate"]) for rule in rs["rules"])
         _nslots, infos = C.inspect_ruleset(rs)
+        uses_ordering = any(info.uses_ordering for info in infos)
+        mem_pairs = (axes.ordering_pairs()
+                     if (axes is not None and uses_ordering)
+                     else [("NotAtomic", "NotAtomic")])
         imm_axis = C.imm_candidates(infos, axes)
         imm_tuples = C._imm_tuples(imm_axis)
         for opcode in rs["opcodes"]:
@@ -187,14 +191,21 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
                 mem_axis = list(cfg_mems) if uses_mem else [None]
                 for combo in itertools.product(*slot_axes):
                     for mem in mem_axis:
-                        for imms in imm_tuples:
-                            yield {
-                                "config": config,
-                                "name": opcode,
-                                "types": list(combo),
-                                "mem": [mem[0], mem[2]] if mem else None,
-                                "imms": list(imms),
-                            }
+                        for ordering, failure in mem_pairs:
+                            for imms in imm_tuples:
+                                mem_json = None
+                                if mem:
+                                    mem_json = [mem[0], mem[2]]
+                                    if (ordering, failure) != (
+                                            "NotAtomic", "NotAtomic"):
+                                        mem_json += [ordering, failure]
+                                yield {
+                                    "config": config,
+                                    "name": opcode,
+                                    "types": list(combo),
+                                    "mem": mem_json,
+                                    "imms": list(imms),
+                                }
     if skipped:
         # Surface rather than silently narrowing the domain.
         sys.stderr.write("domain: skipped %d opcode(s) with unknown arity: %s\n"

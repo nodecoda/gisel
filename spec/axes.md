@@ -80,12 +80,23 @@ profile 给某个下标的值会**替换**该下标的推导值。
 imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内存和 imm 的谓词会把
 每个 imm 点单独成类（保守但不会误并）。
 
-### orderings（当前未采样）
+### orderings
 
 `mems.orderings`/`failure_orderings` 必须是已知标签（`NotAtomic`、`Unordered`、
-`Acquire`、`Release` 等）。**这两个轴仍然只校验、不采样**：它们不会进入
-`cases` 的查询、`domain` 的笛卡尔积或 `graph` 的状态键。规则里的 ordering
-依赖仍按 `opaque` 处理，后续阶段补齐。
+`Monotonic`、`Acquire`、`Release`、`AcquireRelease`、
+`SequentiallyConsistent`）。声明 `orderings` 就开启这个轴：
+
+- 采样点是 `(ordering, failure_ordering)` 的笛卡尔积；`failure_orderings`
+  缺省为 `["NotAtomic"]`。
+- `cases`/`domain` 只对**读取 `mem_ordering`/`mem_failure_ordering` 的
+  ruleset** 乘上 ordering 点；不读 ordering 的 ruleset 行为不变。
+- 导出的查询 `mem` 变成 4 元组
+  `[mty, align, ordering, failure_ordering]`；默认 `NotAtomic/NotAtomic`
+  仍写 2 元组，保持旧文件兼容。`gisel diff`、`gisel eval` 和
+  `tools/ab` 的两个 C++ runner 都接受两种形状。
+- `graph` 在没有 `mems.orderings` 时把读 ordering 的 opcode 写入
+  `uncovered`，不把状态算成 `opaque`；提供 axis 后 ordering 进入内存值的
+  第 3/4 位，内存类按谓词取值划分。
 
 ### bind
 
@@ -148,7 +159,8 @@ imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内�
 
 ## 5. 未覆盖
 
-- 内存 ordering / failure ordering：schema 已校验，尚未进入 `MemDesc` 和状态键。
+- 内存 ordering 的 AArch64 graph 全量数字尚未重跑；cases 侧已确认 8 条
+  ordering 规则中 6 条从 unexercised 变为 witnessed。
 - `cases` 的按配置指针宽度：仍输出 `p0:*`。
 - `graph` 在 derive 模式下用 `cases._candidates` 生成切点，该函数仍按 64 位解析
   规则字面量指针；`bind.pointer_width` 只作用于声明类型和 explicit 模式。

@@ -190,6 +190,19 @@ X86 没有 imm 读点，无轴输出不变（SHA `a6fa9724…`）。RISC-V 无�
 `47907499…` 变为 `ad2c60fd…`，差异只有 `G_SEXT_INREG` 从 opaque 变成
 uncovered；这是本次修复的预期变化。
 
+### ordering 轴（2026-11-08）
+
+`gisel graph` 现在把读 `mem_ordering`/`mem_failure_ordering` 的 opcode 在
+没有 `mems.orderings` 时写入 `uncovered`；提供 axis 后，内存值扩展为
+`(mty, align, ordering, failure_ordering)`，内存类按谓词取值划分，状态键不变
+（仍由 `mem_class` 编码）。
+
+小夹具已验证：无 axis 时 `G_STORE` 是 uncovered、不建状态；有 axis 时能看到
+`("s32", 8, "Unordered", "NotAtomic")` 这类内存点（`tests/test_axes_ordering.py`）。
+AArch64 `baseline` 的全量 graph 单次约 15 分钟，本轮没有重跑，因此
+`docs/REPORT-graph.md` 里的 AArch64 数字仍是 ordering 轴之前的；这里明确标为
+**未覆盖**，不拿小夹具冒充全量。
+
 ### Oracle 对拍
 
 X86 C1 的完整 oracle 对拍命令：

@@ -63,12 +63,23 @@ def _row_key(row):
     return tuple(row)
 
 
+def _llt_text(value):
+    if value[0] == "bf16":
+        return "bf16"
+    if value[0] == "pointer":
+        return "p%d:%s" % (value[1], value[2])
+    if value[0] == "vector":
+        return ("nxv" if value[2] else "v") + str(value[1]) + _llt_text(value[3])
+    return {"scalar": "s", "integer": "i", "float": "f"}[value[0]] + str(value[1])
+
+
 class Axes:
     def __init__(self, data, path="<memory>"):
         self.data = data
         self.path = path
         self.doc = None
         self._named = {}
+        self._selects = set()
         self._doc_types = set()
         self._imm_indices = set()
         self._configs = set()
@@ -102,10 +113,9 @@ class Axes:
         except (OSError, ValueError) as exc:
             raise AxisError("%s: %s" % (source, exc)) from exc
         self._named = {}
+        self._selects = set(program.selects)
         for name, decl in program.named_types.items():
-            self._named[name] = decl.llt
-        for name, decl in program.selects.items():
-            self._named[name] = decl.value
+            self._named[name] = A.llt_text(decl.llt)
         if features is not None:
             self._configs = set(features.table)
 
@@ -307,12 +317,15 @@ class Axes:
             except E.EvalError as exc:
                 raise AxisError("%s: type %r: %s" % (self.path, text, exc)) from exc
         if text in self._named:
-            value = self._named[text]
-            if not isinstance(value, tuple):
-                raise AxisError(
-                    "%s: type %r is configuration-selected; list a concrete "
-                    "LLT in the axis instead" % (self.path, text))
-            return value
+            try:
+                return E.parse_case_llt(self._named[text])
+            except E.EvalError as exc:
+                raise AxisError("%s: type %r: %s"
+                                % (self.path, text, exc)) from exc
+        if text in self._selects:
+            raise AxisError(
+                "%s: type %r is configuration-selected; list a concrete "
+                "LLT in the axis instead" % (self.path, text))
         try:
             return E.parse_case_llt(text)
         except E.EvalError as exc:
@@ -341,6 +354,21 @@ class Axes:
 
     def failure_orderings(self):
         return list(self._mems().get("failure_orderings", []))
+
+    def has_orderings(self):
+        return bool(self.orderings())
+
+    def ordering_pairs(self):
+        """``(ordering, failure_ordering)`` points to sample.
+
+        Declaring ``mems.orderings`` turns the axis on; the failure ordering
+        defaults to ``NotAtomic`` (the value non-atomic loads/stores carry).
+        """
+        orderings = self.orderings()
+        if not orderings:
+            return [("NotAtomic", "NotAtomic")]
+        failures = self.failure_orderings() or ["NotAtomic"]
+        return [(o, f) for o in orderings for f in failures]
 
     def apply_features(self, features):
         """Apply ``bind.extended`` over the derived feature truth table."""
@@ -372,15 +400,25 @@ class Axes:
             out = [v for v in out if v[0] == "pointer"]
         return _dedup(out)
 
+    def _canon_row(self, row):
+        t0, t1, mty, align = row
+        return (_llt_text(self.resolve_type(t0)) if t0 else "",
+                _llt_text(self.resolve_type(t1)) if t1 else "",
+                _llt_text(self.resolve_type(mty)) if mty else "",
+                int(align))
+
     def apply_mems(self, rows):
         mems = self._mems()
         mode = mems.get("mode", "derive")
         if mode == "explicit":
-            out = [tuple(row) for row in mems.get("rows", [])]
+            out = [self._canon_row(tuple(row))
+                   for row in mems.get("rows", [])]
         else:
             out = [tuple(row) for row in rows]
-            out += [tuple(row) for row in mems.get("rows", [])]
-        remove = {_row_key(tuple(row)) for row in mems.get("remove", [])}
+            out += [self._canon_row(tuple(row))
+                    for row in mems.get("rows", [])]
+        remove = {_row_key(self._canon_row(tuple(row)))
+                  for row in mems.get("remove", [])}
         out = [row for row in out if _row_key(row) not in remove]
         dedup, seen = [], set()
         for row in out:

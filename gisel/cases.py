@@ -239,6 +239,7 @@ class RuleInfo:
     mem_entries: list = field(default_factory=list)  # (t0, t1, mty, align)
     uses_mem: bool = False
     slots: set = field(default_factory=set)
+    uses_ordering: bool = False
     imms: set = field(default_factory=set)           # imm indices this rule reads
     imm_values: dict = field(default_factory=dict)   # index -> {literal}
     imm_thresholds: dict = field(default_factory=dict)  # index -> {literal}
@@ -268,6 +269,8 @@ def _walk_info(node, info):
         info.uses_mem = True
     if k == "imm":
         info.imms.add(node["index"])
+    if k in ("memOrdering", "memFailureOrdering"):
+        info.uses_ordering = True
 
     if k == "in":
         lhs, rhs = node["args"]
@@ -413,13 +416,27 @@ class Case:
     reason: str
     imms: tuple = ()
 
+    def __post_init__(self):
+        # mem is kept as (mty, align, ordering, failure_ordering); the two
+        # ordering slots are appended for every legacy two-element input.
+        if self.mem is not None and len(self.mem) == 2:
+            object.__setattr__(
+                self, "mem",
+                (self.mem[0], int(self.mem[1]), "NotAtomic", "NotAtomic"))
+
     def key(self):
         return (self.config, self.opcode, self.types, self.mem, self.imms)
 
     def query(self):
+        mem = None
+        if self.mem:
+            if tuple(self.mem[2:4]) == ("NotAtomic", "NotAtomic"):
+                mem = list(self.mem[:2])
+            else:
+                mem = list(self.mem)
         q = {"config": self.config, "name": self.opcode,
              "types": list(self.types),
-             "mem": list(self.mem) if self.mem else None,
+             "mem": mem,
              "imms": list(self.imms)}
         q.update({"kind": self.kind, "ruleset": self.ruleset,
                   "rule": self.rule, "reason": self.reason})
@@ -436,10 +453,20 @@ def _parse(types):
     return [E.parse_case_llt(t) for t in types]
 
 
+def mem_point(value):
+    """Normalize a query ``mem`` value to the internal four-tuple."""
+    if value is None:
+        return None
+    if len(value) >= 4:
+        return (value[0], int(value[1]), value[2], value[3])
+    return (value[0], int(value[1]), "NotAtomic", "NotAtomic")
+
+
 def _mems(case):
     if case.mem is None:
         return []
-    return [E.MemDesc(E.parse_case_llt(case.mem[0]), case.mem[1])]
+    mty, align, ordering, failure = mem_point(case.mem)
+    return [E.MemDesc(E.parse_case_llt(mty), align, ordering, failure)]
 
 
 def _fire(evaluator, config, opcode, types, mems, imms=()):
@@ -571,7 +598,8 @@ def _pad(types, nslots, default):
     return tuple(out)
 
 
-def _queries(per, default, mem_entries, uses_mem, imm_tuples=(())):
+def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
+             mem_pairs=(("NotAtomic", "NotAtomic"),)):
     """Base queries: sampled type tuples, plus memory-descriptor queries.
 
     The matched descriptor (the row's own t0/t1) is what ``inMemDesc`` asks
@@ -584,13 +612,18 @@ def _queries(per, default, mem_entries, uses_mem, imm_tuples=(())):
         for t0, t1, mty, align in mem_entries:
             types = _pad([E.parse_case_llt(x) for x in (t0, t1)], len(per),
                          default)
-            for imms in imm_tuples:
-                out.append((types, (mty, int(align)), imms))
+            for ordering, failure in mem_pairs:
+                for imms in imm_tuples:
+                    out.append((types, (mty, int(align), ordering, failure),
+                                imms))
         cross = list(itertools.islice(itertools.product(*per), 4))
         for _, _, mty, align in mem_entries[:8]:
             for types in cross:
-                for imms in imm_tuples:
-                    out.append((types, (mty, int(align)), imms))
+                for ordering, failure in mem_pairs:
+                    for imms in imm_tuples:
+                        out.append((types,
+                                    (mty, int(align), ordering, failure),
+                                    imms))
     for types in itertools.product(*per):
         for imms in imm_tuples:
             out.append((types, None, imms))
@@ -631,9 +664,14 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         if axes is not None:
             mem_entries = axes.apply_mems(mem_entries)
         uses_mem = any(info.uses_mem for info in infos)
+        uses_ordering = any(info.uses_ordering for info in infos)
+        mem_pairs = (axes.ordering_pairs()
+                     if (axes is not None and uses_ordering)
+                     else [("NotAtomic", "NotAtomic")])
         imm_axis = imm_candidates(infos, axes)
         imm_tuples = _imm_tuples(imm_axis)
-        queries = _queries(per, default, mem_entries, uses_mem, imm_tuples)
+        queries = _queries(per, default, mem_entries, uses_mem, imm_tuples,
+                           mem_pairs)
 
         stats["rulesets"] += 1
         stats["opcodes"] += len(rs["opcodes"])
@@ -670,7 +708,8 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                        if ri not in witnessed]
         for ri in unwitnessed:
             stat = _satisfiable(evaluator, rs_idx, ri, rs, configs, infos,
-                                per, default, mem_entries, imm_tuples)
+                                per, default, mem_entries, imm_tuples,
+                                mem_pairs)
             stats["shadowed" if stat else "unexercised"] += 1
             if len(stats["unwitnessed"]) < 40:
                 stats["unwitnessed"].append(
@@ -710,13 +749,14 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                         if emitted >= max_boundary_per_rule:
                             break
                     if mem is not None:
-                        mty, align = mem
+                        mty, align, ordering, failure = mem
                         for probe, reason in (
                                 (align - 1, "align %d -> %d" % (align, align - 1)),
                                 (align + 1, "align %d -> %d" % (align, align + 1))):
                             case = Case(config, opcode,
                                         tuple(llt_text(t) for t in types),
-                                        (mty, probe), "boundary", rs["def"], ri,
+                                        (mty, probe, ordering, failure),
+                                        "boundary", rs["def"], ri,
                                         reason, imms=imms)
                             res = _try_fire(evaluator, case)
                             if res != "error" and _outcome(res) != base[1:] and emit(case):
@@ -730,7 +770,8 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                                     continue
                                 case = Case(config, opcode,
                                             tuple(llt_text(t) for t in types),
-                                            (llt_text(nmt), align), "boundary",
+                                            (llt_text(nmt), align, ordering,
+                                             failure), "boundary",
                                             rs["def"], ri,
                                             "mem bits %d -> %d" % (bits, probe),
                                             imms=imms)
@@ -738,6 +779,25 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                                 if (res != "error" and _outcome(res) != base[1:]
                                         and emit(case)):
                                     emitted += 1
+                    if mem is not None and len(mem_pairs) > 1:
+                        mty, align, ordering, failure = mem
+                        for other_ordering, other_failure in mem_pairs[:4]:
+                            if (other_ordering, other_failure) == (
+                                    ordering, failure):
+                                continue
+                            case = Case(config, opcode,
+                                        tuple(llt_text(t) for t in types),
+                                        (mty, align, other_ordering,
+                                         other_failure), "boundary",
+                                        rs["def"], ri,
+                                        "ordering %s/%s" % (other_ordering,
+                                                            other_failure),
+                                        imms=imms)
+                            res = _try_fire(evaluator, case)
+                            if res == "error":
+                                continue
+                            if _outcome(res) != base[1:] and emit(case):
+                                emitted += 1
                     for index, literals in sorted(
                             infos[ri].imm_thresholds.items()):
                         for n in sorted(literals):
@@ -766,9 +826,11 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         probes = list(queries)
         if uses_mem:
             for mty, align in ((e[2], 0) for e in mem_entries[:4]):
+                ordering, failure = mem_pairs[0]
                 probes.insert(0, (_pad([E.parse_case_llt("s3"),
                                         E.parse_case_llt("p0:64")],
-                                       nslots, default), (mty, align),
+                                       nslots, default),
+                                (mty, align, ordering, failure),
                                 imm_tuples[0]))
         for config in configs:
             emitted = 0
@@ -821,7 +883,7 @@ def generate_from_queries(doc, features, queries_path, oracle_path,
             if answer[0] == "unanswerable":
                 unanswerable += 1
                 continue
-            mem = (q["mem"][0], int(q["mem"][1])) if q.get("mem") else None
+            mem = mem_point(q.get("mem"))
             case = Case(q["config"], q["name"], tuple(q.get("types", [])),
                         mem, "", "", None, "",
                         imms=tuple(q.get("imms") or ()))
@@ -904,22 +966,25 @@ def generate_from_queries(doc, features, queries_path, oracle_path,
 
 
 def _satisfiable(evaluator, rs_idx, ri, rs, configs, infos, per, default,
-                 mem_entries, imm_tuples=((),)):
+                 mem_entries, imm_tuples=((),),
+                 mem_pairs=(("NotAtomic", "NotAtomic"),)):
     """Whether rule ``ri`` can fire *at all* under any supplied config."""
     rule = rs["rules"][ri]
     slots = sorted(infos[ri].slots) or [0]
     values = [per[s] if s < len(per) else [default[s]] for s in slots]
     mem_trials = [None]
     if infos[ri].uses_mem:
-        mem_trials += [(mty, int(align)) for _, _, mty, align in mem_entries]
+        mem_trials += [(mty, int(align), ordering, failure)
+                       for _, _, mty, align in mem_entries
+                       for ordering, failure in mem_pairs]
     for config in configs:
         for combo in itertools.product(*values):
             types = list(default)
             for s, t in zip(slots, combo):
                 types[s] = t
             for mem in mem_trials:
-                mems = ([E.MemDesc(E.parse_case_llt(mem[0]), mem[1])]
-                        if mem else [])
+                mems = ([E.MemDesc(E.parse_case_llt(mem[0]), mem[1],
+                                   mem[2], mem[3])] if mem else [])
                 for imms in imm_tuples:
                     try:
                         if not evaluator.bool_value(
@@ -974,7 +1039,8 @@ def differ(generation, doc, features, oracle_path):
     diff = Diff()
     for case in generation.cases:
         key = (case.config, case.opcode, tuple(_parse(case.types)),
-               (E.parse_case_llt(case.mem[0]), case.mem[1]) if case.mem else None,
+               (E.parse_case_llt(case.mem[0]), case.mem[1], case.mem[2],
+                case.mem[3]) if case.mem else None,
                case.imms)
         want = index.get(key)
         if want is None:

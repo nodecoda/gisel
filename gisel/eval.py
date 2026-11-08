@@ -1064,8 +1064,11 @@ def run_cases(evaluator, cases_path):
             types = [collapse(parse_case_llt(s)) for s in q["types"]]
             mems = []
             if q["mem"] is not None:
-                mems.append(MemDesc(collapse(parse_case_llt(q["mem"][0])),
-                                    q["mem"][1]))
+                m = q["mem"]
+                ordering, failure = ((m[2], m[3]) if len(m) >= 4
+                                     else ("NotAtomic", "NotAtomic"))
+                mems.append(MemDesc(collapse(parse_case_llt(m[0])), m[1],
+                                    ordering, failure))
             imms = q.get("imms") or []
             try:
                 action, type_idx, new_type = evaluate(

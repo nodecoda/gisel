@@ -100,10 +100,10 @@ def _atoms(ruleset):
 
 
 def _dependencies(node):
-    slots, mem, imms = set(), False, set()
+    slots, mem, imms, ordering = set(), False, set(), False
 
     def walk(value):
-        nonlocal mem
+        nonlocal mem, ordering
         if isinstance(value, dict):
             if value.get("kind") == "slot":
                 slots.add(value["index"])
@@ -111,6 +111,8 @@ def _dependencies(node):
                 mem = True
             elif value.get("kind") == "imm":
                 imms.add(value["index"])
+            elif value.get("kind") in ("memOrdering", "memFailureOrdering"):
+                ordering = True
             for child in value.values():
                 walk(child)
         elif isinstance(value, (list, tuple)):
@@ -118,7 +120,7 @@ def _dependencies(node):
                 walk(child)
 
     walk(node)
-    return slots, mem, imms
+    return slots, mem, imms, ordering
 
 
 def _mutation_slots(node):
@@ -158,8 +160,10 @@ def _parse_type(text, extended):
 def _mem_desc(mem, extended):
     if mem is None:
         return []
-    text, align = mem
-    return [E.MemDesc(_parse_type(text, extended), int(align))]
+    ordering, failure = ((mem[2], mem[3]) if len(mem) >= 4
+                         else ("NotAtomic", "NotAtomic"))
+    return [E.MemDesc(_parse_type(mem[0], extended), int(mem[1]),
+                      ordering, failure)]
 
 
 def _opcode_shape(opcode, slots, manifest):
@@ -198,7 +202,8 @@ def _mem_type_spellings(node, evaluator, config):
 
 
 def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=(),
-                   expand=None, axis_profile=None):
+                   expand=None, axis_profile=None,
+                   ordering_pairs=(("NotAtomic", "NotAtomic"),)):
     rows = list(C._mem_candidates(infos, expand=expand))
     if axis_profile is not None:
         rows = axis_profile.apply_mems(rows)
@@ -212,14 +217,24 @@ def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=(),
         if parsed not in seen:
             seen.add(parsed)
             out.append(value)
-    for mty, align in extra_mems:
-        mty = D._resolve(str(mty), pointer_width)
-        value = (mty, int(align))
-        parsed = (_parse_type(mty, extended), value[1])
-        if parsed not in seen:
-            seen.add(parsed)
-            out.append(value)
-    return sorted(out, key=lambda x: (x[0], x[1]))
+    points, seen_points = [], set()
+    for mty, align in out:
+        for ordering, failure in ordering_pairs:
+            key = (mty, align, ordering, failure)
+            if key not in seen_points:
+                seen_points.add(key)
+                points.append(key)
+    for entry in extra_mems:
+        mty = D._resolve(str(entry[0]), pointer_width)
+        align = int(entry[1])
+        pairs = ([(entry[2], entry[3])] if len(entry) >= 4
+                 else ordering_pairs)
+        for ordering, failure in pairs:
+            key = (mty, align, ordering, failure)
+            if key not in seen_points:
+                seen_points.add(key)
+                points.append(key)
+    return sorted(points, key=lambda x: (x[0], x[1], x[2], x[3]))
 
 
 def _candidate_axes(infos, arity, ptypes, domain_types, extra_types, extended,
@@ -275,8 +290,8 @@ def _make_classes(values, axis, atoms, rules, axes, mem_values,
         types[axis] = value
         signature = []
         for atom in atoms:
-            slots, has_mem, has_imm = _dependencies(atom)
-            if (slots - {axis}) or has_mem:
+            slots, has_mem, has_imm, has_ordering = _dependencies(atom)
+            if (slots - {axis}) or has_mem or has_ordering:
                 # A relation involving another slot cannot be represented by
                 # a unary class without losing information.  Preserve the
                 # concrete value; closure checking still audits the result.
@@ -296,9 +311,11 @@ def _make_classes(values, axis, atoms, rules, axes, mem_values,
         for rule in rules:
             if rule.get("on") is None:
                 continue
-            slots, has_mem, has_imm = _dependencies(rule.get("predicate"))
+            slots, has_mem, has_imm, has_ordering = _dependencies(
+                rule.get("predicate"))
             to_slots = _mutation_slots(rule.get("to"))
-            if (slots - {axis}) or has_mem or has_imm or (to_slots - {axis}):
+            if ((slots - {axis}) or has_mem or has_imm or has_ordering
+                    or (to_slots - {axis})):
                 signature.append(["raw-guard", _type_text(value)])
             else:
                 signature.append(E.rule_matches(
@@ -325,7 +342,7 @@ def _make_mem_classes(mem_values, atoms, axes, evaluator, config):
     for value in mem_values:
         signature = []
         for atom in atoms:
-            slots, has_mem, has_imm = _dependencies(atom)
+            slots, has_mem, has_imm, _has_ordering = _dependencies(atom)
             if slots or not has_mem or has_imm:
                 signature.append(["raw", value])
             else:
@@ -352,7 +369,7 @@ def _make_imm_classes(values, atoms, evaluator, config):
     for value in values:
         signature = []
         for atom in atoms:
-            slots, has_mem, has_imm = _dependencies(atom)
+            slots, has_mem, has_imm, _has_ordering = _dependencies(atom)
             if not has_imm:
                 continue
             if slots or has_mem:
@@ -509,6 +526,12 @@ def build(source, config, features, *, pointer_width=64, slots=None,
         imm_axis = C.imm_candidates(infos, axis_profile)
         imm_tuples = C._imm_tuples(imm_axis) if imm_axis else [()]
         imm_spec = axis_profile.imms() if axis_profile is not None else {}
+        uses_ordering = any(info.uses_ordering for info in infos)
+        ordering_covered = (axis_profile is not None
+                            and axis_profile.has_orderings())
+        ordering_pairs = (axis_profile.ordering_pairs()
+                          if ordering_covered and uses_ordering
+                          else [("NotAtomic", "NotAtomic")])
         # The graph does not invent imm values: without an explicit axis the
         # opcode is reported as uncovered instead of every state turning
         # opaque on an IndexError.
@@ -526,6 +549,9 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             if imm_axis and not imm_covered:
                 uncovered.append(opcode)
                 continue
+            if uses_ordering and not ordering_covered:
+                uncovered.append(opcode)
+                continue
             if arity != nslots:
                 n = max(arity, nslots)
             else:
@@ -540,7 +566,8 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                 infos, domain_mems, pointer_width, extended, extra_mems,
                 expand=lambda value: _mem_type_spellings(value, evaluator,
                                                          config),
-                axis_profile=axis_profile)
+                axis_profile=axis_profile,
+                ordering_pairs=ordering_pairs)
             mem_values = mem_values if any(info.uses_mem for info in infos) else [None]
             type_classes = [_make_classes(axes[i], i, atoms, rs["rules"], axes,
                                           mem_values if mem_values != [None] else [],
@@ -780,7 +807,10 @@ def oracle_check(report, oracle_path, evaluator, extended):
             types = tuple(_parse_type(x, extended) for x in query["types"])
             mem = None
             if query.get("mem") is not None:
-                mem = (query["mem"][0], int(query["mem"][1]))
+                m = query["mem"]
+                mem = ((m[0], int(m[1]))
+                       + ((m[2], m[3]) if len(m) >= 4
+                          else ("NotAtomic", "NotAtomic")))
             imms = tuple(query.get("imms") or ())
             tables = (report.class_tables or {}).get(query["name"])
             key = (_class_key(tables, query["name"], types, mem, imms)
@@ -825,7 +855,10 @@ def _oracle_inputs(path, configs, extended):
             for text in query.get("types", ()):
                 types.add(_parse_type(text, extended))
             if query.get("mem") is not None:
-                mems.add((query["mem"][0], int(query["mem"][1])))
+                m = query["mem"]
+                mems.add((m[0], int(m[1]))
+                         + ((m[2], m[3]) if len(m) >= 4
+                            else ("NotAtomic", "NotAtomic")))
     return (sorted(types, key=_type_text), sorted(mems), arities)
 
 
