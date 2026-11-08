@@ -26,6 +26,7 @@ import sys
 from pathlib import Path
 
 from . import ast as A
+from . import axes as axesmod
 from . import cases as C
 from . import eval as E
 from . import dsl
@@ -122,18 +123,51 @@ def domain_axes(source, pointer_width=64):
     return sorted(types), sorted(mems), doc
 
 
-def enumerate_domain(source, features, configs=None, pointer_width=64,
-                     slots=None):
-    """Yield answerless queries for every (config, opcode, types, mem)."""
+def _apply_mem_axis(mems, axes, pointer_width):
+    """Profile rows -> the `(mty, bits, align)` tuples this command emits."""
+    rows = axes.apply_mems([(mty, "", mty, align)
+                            for mty, _bits, align in mems])
+    out = []
+    for _t0, _t1, mty, align in rows:
+        mty = _resolve(str(mty), pointer_width)
+        try:
+            parsed = E.parse_case_llt(mty)
+        except E.EvalError:
+            continue
+        bits = _bits(parsed)
+        if bits:
+            out.append((mty, bits, int(align)))
+    return sorted(set(out))
+
+
+def effective_axes(source, pointer_width=64, axes=None):
+    """`domain_axes` with an optional profile applied."""
     types, mems, doc = domain_axes(source, pointer_width)
+    if axes is not None:
+        types = [C.llt_text(t) for t in axes.apply_types(
+            [E.parse_case_llt(t) for t in types])]
+        mems = _apply_mem_axis(mems, axes, pointer_width)
+    return types, mems, doc
+
+
+def enumerate_domain(source, features, configs=None, pointer_width=64,
+                     slots=None, axes=None):
+    """Yield answerless queries for every (config, opcode, types, mem)."""
+    types, mems, doc = effective_axes(source, pointer_width, axes)
     slots = slots if slots is not None else load_opcode_slots()
     manifest = dsl.load_arity_manifest()
     configs = list(configs or sorted(features.table))
     skipped = []
+    per_config = {}
+
+    for config in configs:
+        width = axes.pointer_width(config, pointer_width) if axes else pointer_width
+        per_config[config] = ((width,) + effective_axes(source, width, axes)[:2]
+                              if width != pointer_width else
+                              (width, types, mems))
 
     for rs in doc["rulesets"]:
         uses_mem = any(_reads_mem(rule["predicate"]) for rule in rs["rules"])
-        mem_axis = list(mems) if uses_mem else [None]
         for opcode in rs["opcodes"]:
             info = slots.get(opcode, {})
             arity = info.get("arity")
@@ -143,9 +177,11 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
                 skipped.append(opcode)
                 continue
             ptype = set(info.get("ptype", ()))
-            axes = [[_resolve("p0:*", pointer_width)] if i in ptype else types
-                    for i in range(arity)]
             for config in configs:
+                width, cfg_types, cfg_mems = per_config[config]
+                axes = [[_resolve("p0:*", width)] if i in ptype else cfg_types
+                        for i in range(arity)]
+                mem_axis = list(cfg_mems) if uses_mem else [None]
                 for combo in itertools.product(*axes):
                     for mem in mem_axis:
                         yield {
@@ -174,11 +210,31 @@ def main(argv=None):
     ap.add_argument("--pointer-width", type=int, default=64,
                     help="subtarget pointer width (default 64)")
     ap.add_argument("--slots", help="opcode slot table (default: bundled)")
+    ap.add_argument("--axes", help="axis profile JSON (analysis only)")
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
     doc = C.document(args.source)
-    features = C.derive_features(doc, args.features, args.configs)
+    try:
+        axes = axesmod.load(args.axes) if args.axes else None
+        features_path = args.features or (axes.configs_path if axes else None)
+        features = C.derive_features(doc, features_path, args.configs)
+        if axes is not None:
+            full = (C.derive_features(doc, features_path)
+                    if args.configs else features)
+            axes.bind(args.source, doc, full)
+            axes.apply_features(features)
+            domain_profile = axes.profile("domain")
+            if domain_profile.get("full", True) is False:
+                raise axesmod.AxisError(
+                    "%s: profiles.domain.full=false is not implemented"
+                    % axes.path)
+            max_points = int(domain_profile.get("max_points", 0))
+        else:
+            max_points = 0
+    except (axesmod.AxisError, ValueError) as exc:
+        print("gisel domain: %s" % exc, file=sys.stderr)
+        return 2
     configs = sorted(features.table)
     if not configs:
         print("domain: no configurations selected", file=sys.stderr)
@@ -186,7 +242,11 @@ def main(argv=None):
 
     slots = load_opcode_slots(args.slots)
     rows = list(enumerate_domain(args.source, features, configs,
-                                 args.pointer_width, slots))
+                                 args.pointer_width, slots, axes))
+    if max_points and len(rows) > max_points:
+        sys.stderr.write("domain: profile max_points truncates %d -> %d\n"
+                         % (len(rows), max_points))
+        rows = rows[:max_points]
     rows.sort(key=lambda q: (q["config"], q["name"], tuple(q["types"]),
                              json.dumps(q["mem"])))
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
@@ -194,7 +254,7 @@ def main(argv=None):
         for row in rows:
             f.write(json.dumps(row, sort_keys=True) + "\n")
 
-    types, mems, _ = domain_axes(args.source, args.pointer_width)
+    types, mems, _ = effective_axes(args.source, args.pointer_width, axes)
     stats = {
         "configs": configs,
         "types": len(types),

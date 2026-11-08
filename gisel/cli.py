@@ -177,7 +177,8 @@ def main(argv=None):
                     help="complete answerless query JSONL to compress")
     cs.add_argument("--oracle",
                     help="complete answers JSONL for --queries")
-    cs.add_argument("--max-outside", type=int, default=2)
+    cs.add_argument("--max-outside", type=int, default=None)
+    cs.add_argument("--axes", help="axis profile JSON (analysis only)")
     cs.add_argument("--json", action="store_true", help="print stats as JSON")
 
     d = sub.add_parser("domain",
@@ -191,6 +192,7 @@ def main(argv=None):
     d.add_argument("--pointer-width", type=int, default=64,
                    help="subtarget pointer width (default 64)")
     d.add_argument("--slots", help="opcode slot table (default: bundled)")
+    d.add_argument("--axes", help="axis profile JSON (analysis only)")
     d.add_argument("--json", action="store_true", help="print stats as JSON")
 
     df = sub.add_parser("diff",
@@ -220,6 +222,7 @@ def main(argv=None):
     gr.add_argument("--features")
     gr.add_argument("--config", action="append", dest="configs")
     gr.add_argument("--pointer-width", type=int, default=64)
+    gr.add_argument("--axes", help="axis profile JSON (analysis only)")
     gr.add_argument("--oracle", help="check matching points in an oracle JSONL")
     gr.add_argument("--inject-edge", action="store_true")
     gr.add_argument("--check-closure", action="store_true")

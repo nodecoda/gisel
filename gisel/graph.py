@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import axes as axesmod
 from . import cases as C
 from . import domain as D
 from . import dsl
@@ -193,8 +194,10 @@ def _mem_type_spellings(node, evaluator, config):
 
 
 def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=(),
-                   expand=None):
+                   expand=None, axis_profile=None):
     rows = list(C._mem_candidates(infos, expand=expand))
+    if axis_profile is not None:
+        rows = axis_profile.apply_mems(rows)
     if not rows:
         rows = [(mty, "", mty, align) for mty, _bits, align in domain_mems]
     out, seen = [], set()
@@ -216,12 +219,13 @@ def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=(),
 
 
 def _candidate_axes(infos, arity, ptypes, domain_types, extra_types, extended,
-                    include_non_pointer=False):
+                    include_non_pointer=False, include_derived=True):
     # Start with every declared value and add the deterministic cut points
     # that cases.py derives from the rules.  These are the finite observation
     # domain, and are also what lets the graph address the existing oracle's
     # boundary queries.  A mutation outside this set is reported as outside.
-    base = C._candidates(infos, arity, 64, list(domain_types))
+    base = (C._candidates(infos, arity, 64, list(domain_types))
+            if include_derived else [[] for _ in range(arity)])
     axes = []
     for index in range(arity):
         values = list(domain_types) + list(base[index]) + list(extra_types)
@@ -378,6 +382,7 @@ class Report:
     closure: dict
     injected_edge: dict | None = None
     class_tables: dict | None = None
+    skipped: list | None = None
 
     def public(self):
         outcomes = collections.Counter(s["outcome"] for s in self.states.values())
@@ -388,7 +393,7 @@ class Report:
             s.get("action") for s in self.states.values()
             if s["outcome"] == "terminal")
         cycles, samples = _find_cycles(self.edges)
-        return {
+        out = {
             "config": self.config,
             "states": len(self.states),
             "edges": sum(len(v) for v in self.edges.values()),
@@ -404,6 +409,22 @@ class Report:
             "closure": self.closure,
             "injected_edge": self.injected_edge,
         }
+        if self.skipped:
+            out["skipped"] = list(self.skipped)
+        return out
+
+
+def _skip_matcher(entries):
+    """Return a predicate for ``profiles.graph.skip`` entries.
+
+    An entry matches an opcode exactly or as a family prefix
+    (``G_INTRINSIC`` skips ``G_INTRINSIC_WO_CHAIN`` as well).
+    """
+    if not entries:
+        return lambda _opcode: False
+    entries = tuple(entries)
+    return lambda opcode: any(opcode == e or opcode.startswith(e + "_")
+                              for e in entries)
 
 
 def _state_key(opcode, type_classes, mem_class):
@@ -412,7 +433,8 @@ def _state_key(opcode, type_classes, mem_class):
 
 def build(source, config, features, *, pointer_width=64, slots=None,
           inject_edge=False, check_closure=False, extra_types=(),
-          extra_mems=(), arity_overrides=None, progress=False):
+          extra_mems=(), arity_overrides=None, progress=False,
+          axis_profile=None):
     """Build one configuration's graph and return a :class:`Report`."""
     doc = C.document(source)
     evaluator = E.Evaluator(doc, features)
@@ -421,10 +443,20 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     extended = evaluator.extended(config)
     declared = _declared_types(source, pointer_width, extended)
     domain_mems = D.domain_axes(source, pointer_width)[1]
+    skip = ()
+    if axis_profile is not None:
+        # The profile is the single value set shared with `cases` and
+        # `domain`; deriving it again here would let the three commands drift.
+        type_texts, domain_mems, _ = D.effective_axes(
+            source, pointer_width, axis_profile)
+        declared = {_parse_type(text, extended) for text in type_texts}
+        skip = tuple(axis_profile.profile("graph").get("skip", ()))
+    skip = _skip_matcher(skip)
     states = {}
     class_tables = {}
     edges = collections.defaultdict(list)
     uncovered = []
+    skipped = set()
     total_classes = 0
     started = time.monotonic()
 
@@ -432,6 +464,9 @@ def build(source, config, features, *, pointer_width=64, slots=None,
         nslots, infos = C.inspect_ruleset(rs)
         atoms = _atoms(rs)
         for opcode in rs["opcodes"]:
+            if skip(opcode):
+                skipped.add(opcode)
+                continue
             arity, ptypes = _opcode_shape(opcode, slots, arity_manifest)
             if arity_overrides and opcode in arity_overrides:
                 arity = arity_overrides[opcode]
@@ -443,13 +478,16 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             else:
                 n = arity
             domain_types = sorted(declared, key=_type_text)
-            axes = _candidate_axes(infos, n, ptypes, domain_types,
-                                   extra_types, extended,
-                                   include_non_pointer=bool(extra_types))
+            axes = _candidate_axes(
+                infos, n, ptypes, domain_types, extra_types, extended,
+                include_non_pointer=bool(extra_types),
+                include_derived=not (axis_profile is not None
+                                     and axis_profile.types_explicit()))
             mem_values = _memory_values(
                 infos, domain_mems, pointer_width, extended, extra_mems,
                 expand=lambda value: _mem_type_spellings(value, evaluator,
-                                                         config))
+                                                         config),
+                axis_profile=axis_profile)
             mem_values = mem_values if any(info.uses_mem for info in infos) else [None]
             type_classes = [_make_classes(axes[i], i, atoms, rs["rules"], axes,
                                           mem_values if mem_values != [None] else [],
@@ -628,7 +666,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                     "to": _node_text(source_node)}
 
     return Report(config, states, dict(edges), total_classes, uncovered,
-                  closure, injected, class_tables)
+                  closure, injected, class_tables, sorted(skipped))
 
 
 def _class_key(tables, opcode, types, mem):
@@ -734,6 +772,7 @@ def main(argv=None):
     parser.add_argument("--features")
     parser.add_argument("--config", action="append", dest="configs")
     parser.add_argument("--pointer-width", type=int, default=64)
+    parser.add_argument("--axes", help="axis profile JSON (analysis only)")
     parser.add_argument("--oracle", help="check matching points in an oracle JSONL")
     parser.add_argument("--inject-edge", action="store_true")
     parser.add_argument("--check-closure", action="store_true")
@@ -743,7 +782,20 @@ def main(argv=None):
     args = parser.parse_args(argv)
     try:
         doc = C.document(args.source)
-        features = _features(doc, args.features, args.configs)
+        axis_profile = axesmod.load(args.axes) if args.axes else None
+        features_path = args.features or (axis_profile.configs_path
+                                          if axis_profile else None)
+        features = _features(doc, features_path, args.configs)
+        if axis_profile is not None:
+            full = (_features(doc, features_path)
+                    if args.configs else features)
+            axis_profile.bind(args.source, doc, full)
+            axis_profile.apply_features(features)
+            state = axis_profile.profile("graph").get("state")
+            if state is not None and set(state) != {"types", "mem"}:
+                raise axesmod.AxisError(
+                    "%s: profiles.graph.state: only ['types', 'mem'] is "
+                    "implemented in this version" % axis_profile.path)
         oracle_types = oracle_mems = ()
         oracle_arities = {}
         if args.oracle:
@@ -759,20 +811,24 @@ def main(argv=None):
             for value in oracle_types:
                 config_oracle_types.append(value if extended
                                            else E.collapse_extended(value))
+            width = (axis_profile.pointer_width(config, args.pointer_width)
+                     if axis_profile is not None else args.pointer_width)
             report = build(args.source, config, features,
-                           pointer_width=args.pointer_width,
+                           pointer_width=width,
                            inject_edge=args.inject_edge,
                            check_closure=args.check_closure,
                            extra_types=config_oracle_types,
                            extra_mems=oracle_mems,
                            arity_overrides=oracle_arities,
-                           progress=args.progress or sys.stderr.isatty())
+                           progress=args.progress or sys.stderr.isatty(),
+                           axis_profile=axis_profile)
             if args.oracle:
                 evaluator = E.Evaluator(doc, features)
                 report.oracle = oracle_check(report, args.oracle, evaluator,
                                              evaluator.extended(config))
             reports.append(report)
-    except (OSError, ValueError, KeyError, json.JSONDecodeError, GraphError) as exc:
+    except (OSError, ValueError, KeyError, json.JSONDecodeError,
+            GraphError, axesmod.AxisError) as exc:
         print("gisel graph: %s" % exc, file=sys.stderr)
         return 2
 
@@ -792,6 +848,8 @@ def main(argv=None):
         print("cycles      : %d" % output["cycles"])
         if output["uncovered"]:
             print("uncovered   : %s" % sorted(set(output["uncovered"])))
+        if output.get("skipped"):
+            print("skipped     : %s" % output["skipped"])
         if output["closure"]["checked"]:
             closure = output["closure"]
             status = "ok" if closure["ok"] else "FAILED"

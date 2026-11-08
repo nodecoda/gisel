@@ -22,6 +22,11 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，
 `--pointer-width` 解析。提供 `--oracle` 时，oracle 中的类型和内存点只作为
 额外候选加入，以便逐点覆盖检查；它们不参与规则语义。
 
+`--axes FILE` 可以把这份值集显式化：explicit 模式下候选轴就是 profile 声明的
+类型/内存，不再追加切点；derive 模式仍保留切点。`profiles.graph.skip` 可跳过
+opcode（精确或家族前缀），输出多一行 `skipped`。schema 与未覆盖项见
+`spec/axes.md`。
+
 ## 状态和类
 
 状态按“类”的笛卡尔积枚举：每个类型槽的候选是 `inspect_ruleset` 给出的切点

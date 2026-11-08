@@ -109,7 +109,14 @@ gisel diff official.answers.jsonl ours.answers.jsonl
 `(config, opcode, types, mem, imms) -> (action, type_idx, new_type)`，不需要
 生成一堆 `.ll`/`.mir`。
 
-## 5 已知边界
+## 5 显式分析轴
+
+`--axes FILE` 用同一份 target 级值集替换/编辑 `_candidates` 和
+`_mem_candidates` 的结果；`profiles.cases` 控制采样上限与边界开关。
+没有 `--axes` 时行为逐字节不变。完整 schema、优先级和未覆盖项见
+`spec/axes.md`。
+
+## 6 已知边界
 
 - `imm` 值不生成（当前 4 份 core 文档没有 `imm` 节点）；引用 `imm` 的规则会
   被统计为 unexercised。

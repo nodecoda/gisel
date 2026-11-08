@@ -40,6 +40,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from . import ast as A
+from . import axes as axesmod
 from . import diff as full_diff
 from . import eval as E
 from .backend import core_json
@@ -527,7 +528,7 @@ def _queries(per, default, mem_entries, uses_mem):
 
 def generate(doc, features, *, configs=None, max_slot_values=16,
              max_outside=2, max_boundary_per_rule=24,
-             max_witnesses_per_rule=4) -> Generation:
+             max_witnesses_per_rule=4, axes=None) -> Generation:
     """Derive the three case kinds from one schema-0.4 document."""
     evaluator = E.Evaluator(doc, features)
     configs = list(configs) if configs else sorted(features.table)
@@ -552,8 +553,12 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         nslots, infos = inspect_ruleset(rs)
         domain = [E.parse_case_llt(t) for t in doc["domain"]["types"]]
         per = _candidates(infos, nslots, max_slot_values, domain)
+        if axes is not None:
+            per = [axes.apply_types(slot) for slot in per]
         default = _defaults(per)
         mem_entries = _mem_candidates(infos)
+        if axes is not None:
+            mem_entries = axes.apply_mems(mem_entries)
         uses_mem = any(info.uses_mem for info in infos)
         queries = _queries(per, default, mem_entries, uses_mem)
 
@@ -964,13 +969,33 @@ def main(argv=None):
     ap.add_argument("--against", help="oracle JSONL to differ against")
     ap.add_argument("--queries", help="complete answerless query JSONL")
     ap.add_argument("--oracle", help="answers for --queries JSONL")
-    ap.add_argument("--max-outside", type=int, default=2)
+    ap.add_argument("--max-outside", type=int, default=None,
+                    help="default: profile value, else 2")
+    ap.add_argument("--axes", help="axis profile JSON (analysis only)")
     ap.add_argument("--json", action="store_true", help="print stats as JSON")
     args = ap.parse_args(argv)
 
     doc = document(args.source)
 
-    features = derive_features(doc, args.features, args.configs)
+    try:
+        axes = axesmod.load(args.axes) if args.axes else None
+        features_path = args.features or (axes.configs_path if axes else None)
+        features = derive_features(doc, features_path, args.configs)
+        if axes is not None:
+            # Validate bindings against the whole table; --config only limits
+            # which rows the analysis visits, not which rows may be named.
+            full = (derive_features(doc, features_path)
+                    if args.configs else features)
+            axes.bind(args.source, doc, full)
+            axes.apply_features(features)
+        cases_profile = axes.profile("cases") if axes is not None else {}
+        max_slot_values = int(cases_profile.get("max_slot_values", 16))
+        boundaries = bool(cases_profile.get("boundaries", True))
+        max_outside = (args.max_outside if args.max_outside is not None
+                       else int(cases_profile.get("max_outside", 2)))
+    except (axesmod.AxisError, ValueError) as exc:
+        print("gisel cases: %s" % exc, file=sys.stderr)
+        return 2
     if not features.table:
         print("cases: no configurations selected", file=sys.stderr)
         return 2
@@ -981,10 +1006,13 @@ def main(argv=None):
     if args.queries:
         generation = generate_from_queries(
             doc, features, args.queries, args.oracle,
-            max_outside=args.max_outside)
+            max_outside=max_outside)
     else:
-        generation = generate(doc, features, configs=sorted(features.table),
-                              max_outside=args.max_outside)
+        generation = generate(
+            doc, features, configs=sorted(features.table),
+            max_slot_values=max_slot_values,
+            max_boundary_per_rule=24 if boundaries else 0,
+            max_outside=max_outside, axes=axes)
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:
