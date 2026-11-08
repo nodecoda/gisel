@@ -174,6 +174,17 @@ gisel eval --doc x.core.json \
 (9632 points) dumped from the in-tree reference; `tests/cases/features.json`
 is the subtarget truth table it was recorded with.
 
+`gisel cases` produces questions, not answers.  To compare the evaluator with a
+compiled legalizer on the same file, pass `--answers` instead of frozen
+expectations; the output is the same JSONL shape a runner writes, so
+`gisel diff` can read both:
+
+```sh
+gisel eval --doc a.core.json --features tests/cases/features.json \
+  --cases queries.jsonl --answers eval.answers.jsonl
+gisel diff runner.answers.jsonl eval.answers.jsonl --json
+```
+
 ## Layout
 
 ```

@@ -213,6 +213,7 @@ def main(argv=None):
     e.add_argument("--doc", required=True)
     e.add_argument("--features", required=True)
     e.add_argument("--cases", required=True)
+    e.add_argument("--answers", metavar="OUT")
     e.add_argument("--verbose", action="store_true")
 
     gr = sub.add_parser("graph", help="find cycles in the legalizer quotient graph")

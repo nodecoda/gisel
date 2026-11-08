@@ -186,3 +186,36 @@ class OneLaneVectors(unittest.TestCase):
             bad = [c.types for c in gen.cases
                    if any(one_lane.search(t) for t in c.types)]
             self.assertEqual(bad, [], source.name)
+
+
+class AnswerMode(unittest.TestCase):
+    """`eval --answers` writes the runner-shaped answer to a bare query."""
+
+    def test_answers_are_parallel_and_agree_with_evaluate(self):
+        with tempfile.TemporaryDirectory() as d:
+            doc = cases.document(write(d, FIXTURE))
+            features = E.Features({"none": {}})
+            evaluator = E.Evaluator(doc, features)
+            queries = Path(d) / "q.jsonl"
+            rows = [
+                {"config": "none", "name": "G_ADD", "types": ["s32"],
+                 "mem": None, "imms": []},
+                {"config": "none", "name": "G_ADD", "types": ["s16"],
+                 "mem": None, "imms": []},
+            ]
+            queries.write_text("".join(json.dumps(r) + "\n" for r in rows))
+            out = Path(d) / "a.jsonl"
+            total, errors, first, counts = E.answer_queries(
+                evaluator, queries, out)
+            self.assertEqual((total, errors, first), (2, 0, None))
+            self.assertEqual(counts, {"Legal": 1, "Unsupported": 1})
+            answers = [json.loads(line) for line in out.read_text().splitlines()]
+            self.assertEqual(len(answers), len(rows))
+            for query, answer in zip(rows, answers):
+                action, type_idx, new_type = E.evaluate(
+                    evaluator, query["config"], query["name"],
+                    [E.parse_case_llt(query["types"][0])], [], [])
+                self.assertEqual(answer["action"], action)
+                self.assertEqual(answer["type_idx"], type_idx)
+                self.assertEqual(answer["new_type"], E.fmt_oracle_llt(new_type))
+                self.assertEqual(answer["types"], query["types"])

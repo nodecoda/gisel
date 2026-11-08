@@ -1051,6 +1051,74 @@ def load_features(path):
         return Features(json.load(f))
 
 
+def prepare_query(evaluator, q):
+    """Parse one query line the way the target's ``LLT::print`` spells it.
+
+    Returns ``(types, mems, imms, collapse)``.  ``collapse`` is the inverse of
+    the extended-kind view, so a caller that compares against a frozen dump
+    normalises its expected type the same way.
+    """
+    ext = evaluator.extended(q["config"])
+    collapse = (lambda t: t) if ext else collapse_extended
+    types = [collapse(parse_case_llt(s)) for s in q["types"]]
+    mems = []
+    if q["mem"] is not None:
+        m = q["mem"]
+        ordering, failure = ((m[2], m[3]) if len(m) >= 4
+                             else ("NotAtomic", "NotAtomic"))
+        mems.append(MemDesc(collapse(parse_case_llt(m[0])), m[1],
+                            ordering, failure))
+    return types, mems, q.get("imms") or [], collapse
+
+
+def answer_queries(evaluator, cases_path, out_path):
+    """Answer expectation-free queries in the A/B runner's JSONL shape.
+
+    ``gisel cases`` emits questions; a compiled legalizer answers them.  This
+    writes the evaluator's answers to the same questions in the same shape, so
+    ``gisel diff`` can tell whether the generated C++ still agrees with the
+    model it was generated from.  A line the evaluator cannot answer is written
+    as ``unanswerable`` so the output stays parallel to the input.
+    """
+    total = 0
+    errors = 0
+    first_failure = None
+    action_counts = {}
+    rows = []
+    with open(cases_path) as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            q = json.loads(line)
+            total += 1
+            types, mems, imms, _collapse = prepare_query(evaluator, q)
+            try:
+                action, type_idx, new_type = evaluate(
+                    evaluator, q["config"], q["name"], types, mems, imms)
+            except EvalError as e:
+                errors += 1
+                if first_failure is None:
+                    first_failure = "%s %s: %s" % (q["config"], q["name"], e)
+                rows.append(json.dumps({
+                    "config": q["config"], "name": q["name"],
+                    "types": q["types"], "mem": q["mem"],
+                    "imms": q.get("imms") or [], "status": "unanswerable",
+                    "reason": str(e)}))
+                continue
+            action_counts[action] = action_counts.get(action, 0) + 1
+            new_type_str = (fmt_oracle_llt(new_type) if new_type is not None
+                            else "LLT_invalid")
+            rows.append(json.dumps({
+                "config": q["config"], "name": q["name"],
+                "types": q["types"], "mem": q["mem"],
+                "imms": q.get("imms") or [], "action": action,
+                "type_idx": type_idx, "new_type": new_type_str}))
+    with open(out_path, "w") as f:
+        f.write("\n".join(rows) + "\n")
+    return total, errors, first_failure, action_counts
+
+
 def run_cases(evaluator, cases_path):
     total = 0
     disagree = 0
@@ -1064,20 +1132,7 @@ def run_cases(evaluator, cases_path):
                 continue
             q = json.loads(line)
             total += 1
-            # The frozen dump spells types the way the target's LLT::print
-            # does; re-parse them through the same extended-kind view the
-            # document literals get.
-            ext = evaluator.extended(q["config"])
-            collapse = (lambda t: t) if ext else collapse_extended
-            types = [collapse(parse_case_llt(s)) for s in q["types"]]
-            mems = []
-            if q["mem"] is not None:
-                m = q["mem"]
-                ordering, failure = ((m[2], m[3]) if len(m) >= 4
-                                     else ("NotAtomic", "NotAtomic"))
-                mems.append(MemDesc(collapse(parse_case_llt(m[0])), m[1],
-                                    ordering, failure))
-            imms = q.get("imms") or []
+            types, mems, imms, collapse = prepare_query(evaluator, q)
             try:
                 action, type_idx, new_type = evaluate(
                     evaluator, q["config"], q["name"], types, mems, imms)
@@ -1106,12 +1161,24 @@ def main(argv=None):
     ap.add_argument("--doc", required=True)
     ap.add_argument("--features", required=True)
     ap.add_argument("--cases", required=True)
+    ap.add_argument("--answers", metavar="OUT", default=None,
+                    help="answer expectation-free cases to OUT instead of "
+                         "checking them against frozen expectations")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args(argv)
 
     doc = load_doc(args.doc)
     features = load_features(args.features)
     evaluator = Evaluator(doc, features)
+
+    if args.answers:
+        total, errors, first_failure, counts = answer_queries(
+            evaluator, args.cases, args.answers)
+        print("cases=%d errors=%d" % (total, errors))
+        print("actions:", json.dumps(counts, sort_keys=True))
+        if first_failure is not None:
+            print("first failure:", first_failure)
+        return 1 if errors else 0
 
     total, disagree, errors, first_failure, counts = run_cases(
         evaluator, args.cases)
