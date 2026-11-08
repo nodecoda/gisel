@@ -94,6 +94,29 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 `terminal`、`opaque`、`outside`、`stuck` 六个键，零值也显式打印，避免读者把
 “没有这个字段”误读成“没有发生”。最多打印 5 条环，每条最多 6 个节点。
 
+## JSON 形态
+
+`--json` 只改变 stdout 的形态，不改变退出码。顶层只有一个键 `reports`，值是
+每个配置一份报告（`--config` 可以重复，因此不假设只有一份）：
+
+| 键 | 类型 | 含义 |
+|---|---|---|
+| `config` | string | 配置名 |
+| `states` / `edges` | int | 状态数 / 边数 |
+| `outcomes` | object | `moves`/`no-rule`/`terminal`/`opaque`/`outside`/`stuck` 六个计数，零值也在 |
+| `terminal` | object | 终结动作名 → 计数 |
+| `opaque` / `outside` | int | 上面两个计数的便捷副本 |
+| `cycles` | int | 找到的环数 |
+| `cycle_samples` | array | 最多 5 条，每条最多 6 个节点 |
+| `classes` | int | 参与建图的类总数 |
+| `uncovered` | array | 没有建图的 opcode |
+| `closure` | object | `{checked, ok, count, violations}`；`checked=false` 时 `cycles` 有前提 |
+| `injected_edge` | array / null | `--inject-edge` 实际注入的边 |
+| `skipped` | array | 只有 `profiles.graph.skip` 跳过 opcode 时出现 |
+| `oracle` | object | 只有传 `--oracle` 时出现 |
+
+文本输出和 JSON 是同一份数据；顶层 `reports` 包装是唯一的形态差异。
+
 ## 负控和闭包
 
 `--inject-edge` 取排序后的第一条真实边 `k -> m`，加入 `m -> k`。没有真实边

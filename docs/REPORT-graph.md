@@ -17,6 +17,13 @@ python3 -m gisel graph SOURCE --emit=core \
 图直接从 `.gisel` 生成 schema 0.4 core 文档，再交给现有 evaluator；没有读取
 原型的 `x86.tables.json`，没有生成 MIR，也没有调用 `llc`、TableGen 或 LLVM。
 
+## 快照
+
+本报告的每一个数字都绑定一棵具体的树：`gisel` 0788fe9（`__version__` 0.3.0），
+2026-11-08。换一棵树重跑，states/edges/opaque 会变；结论（四配置 `cycles=0`、
+RISC-V/WebAssembly 不崩）只在对应快照上成立。每节的命令都可以原样重放，JSON
+输出带 `--json`，SHA-256 是对整份 stdout 取的。
+
 ## 验证
 
 ### 无环和注入边负控
@@ -40,19 +47,18 @@ python3 -m gisel graph /tmp/gisel-followup/graph-fixture.gisel \
 
 ### X86 四配置
 
-命令：
+本报告是快照：`gisel` 0788fe9（0.3.0），2026-11-08。`feature NAME` 成为真正的
+布尔谓词后，原先记在 `opaque` 的状态减少，数字与 0.2.x 时代的 `a6fa9724…`
+不同；结论不变，四个配置仍然 `cycles=0`。
+
+逐配置命令（`--config` 只取一行，输出是单报告）：
 
 ```sh
-python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
-  --features tests/cases/x86-features.json --json \
-  > /tmp/gisel-followup/x86-all-refactor.json
-# rc=0
-```
-
-输出 SHA-256：
-
-```text
-a6fa9724ba3a252fde034051d7b6df702bb956c5efd9102754bcd2c1fddf7cda
+for c in C0 C1 C2 C3; do
+  python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
+    --features tests/cases/x86-features.json --config "$c" --json \
+    > "/tmp/x86-$c.json"        # rc=0
+done
 ```
 
 四个配置的真实结果如下。`outcomes` 始终包含 moves、no-rule、terminal、opaque、
@@ -62,10 +68,19 @@ outside、stuck 六个键，零值也显式打印；`terminal` 是终结动作�
 
 | config | states | edges | moves | no-rule | opaque | outside | stuck | terminal | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| C0 | 73,867 | 26,767 | 26,767 | 25,695 | 1,022 | 4,168 | 0 | 16,215 | 0 |
-| C1 | 73,856 | 25,895 | 25,895 | 26,520 | 1,026 | 3,159 | 0 | 17,256 | 0 |
-| C2 | 73,809 | 25,464 | 25,464 | 26,573 | 1,026 | 3,167 | 0 | 17,579 | 0 |
-| C3 | 73,867 | 26,639 | 26,639 | 25,690 | 1,022 | 4,000 | 0 | 16,516 | 0 |
+| C0 | 73,407 | 26,686 | 26,686 | 25,523 | 1,012 | 4,071 | 0 | 16,115 | 0 |
+| C1 | 73,396 | 25,816 | 25,816 | 26,346 | 1,016 | 3,062 | 0 | 17,156 | 0 |
+| C2 | 73,350 | 25,382 | 25,382 | 26,399 | 1,016 | 3,074 | 0 | 17,479 | 0 |
+| C3 | 73,407 | 26,558 | 26,558 | 25,518 | 1,012 | 3,903 | 0 | 16,416 | 0 |
+
+每个配置的输出 SHA-256（JSON 中 `reports` 只有一行）：
+
+```text
+C0  c624e18d4831a22db61a64a5c7696c3e59860ec80487b2e36debe2112a41dfe2
+C1  a4940f762d766e8ac7e72c5aedea2118c49012cc02f13227832bcfc4d7d4e86e
+C2  fd5fc96fc4c66bb0aefa3fbdd318d048a9806317b336c897320145d8c25f1cc2
+C3  a1b57db8dd78db8285c9f24e18f4b0baaa30b1c5b47c54572d2cebd44ff79b18
+```
 
 ### RISC-V：配置相关的内存类型
 
@@ -84,20 +99,20 @@ evaluator 的查询/domain 枚举取 `s64` 和 `s32` 的并集，`gisel graph` �
 ```sh
 python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
   --features tests/cases/riscv-features.json --config rv64gc --json \
-  > /tmp/gisel-followup/riscv-rv64gc.json
-# rc=0, 98s
-# sha256: 479074995b32123506b83a888ff47226e8b87924358608625a1a9479491aaff1
+  > /tmp/riscv-rv64gc.json
+# rc=0, 2m09s
+# sha256: f18287be050b1aacc0efc69b669fc8647ad14c63cd09e6a2d3bca6e14f8ae5cc
 ```
 
 | config | states | edges | moves | no-rule | opaque | outside | stuck | terminal | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| rv64gc | 433,321 | 38,659 | 38,659 | 322,545 | 14,458 | 7,867 | 0 | 49,792 | 0 |
+| rv64gc | 423,342 | 38,075 | 38,075 | 314,585 | 14,409 | 7,586 | 0 | 48,687 | 0 |
 
 同一语料的其他出口：
 
 ```text
-gisel cases  --features riscv-features.json -> rc=0, 6,137 cases / 8 configs
-gisel domain --features riscv-features.json -> rc=0, 2,261,368 points (282,671/config)
+gisel cases  --features riscv-features.json -> rc=0, 6,148 cases / 8 configs
+gisel domain --features riscv-features.json -> rc=0, 2,264,392 points (283,049/config)
 ```
 
 `mems=31`，说明 8 个配置的 `s32`/`s64` 分支都进了 domain 轴，没有因为入
@@ -131,6 +146,10 @@ LLVM 的 `widenScalarToNextPow2` 本身带 `sizeNotPow2` 谓词
 的 states/edges/opaque 有小幅变化，oracle 仍逐点一致。
 
 ### AArch64（第二个 target，仅 baseline）
+
+这一节的数字是 `feature NAME` 语义与 ordering 轴**之前**的快照，本轮没有
+重跑（单配置约 7 分钟、159 万状态）；它只用于说明“20 个 `G_CTTZ` 自环是
+`same_as` 依赖没进类签名造成的假环”，不是当前的完整覆盖证据。
 
 ```sh
 python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
@@ -174,19 +193,19 @@ RISC-V `rv64gc`（`tests/cases/riscv-features.json`）：
 
 ```sh
 python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel   --features tests/cases/riscv-features.json --config rv64gc --json
-# 433,316 states / 38,659 edges / 14,453 opaque / 7,867 outside /
+# 423,342 states / 38,075 edges / 14,409 opaque / 7,586 outside /
 # uncovered ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']
 
-python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel   --features tests/cases/riscv-features.json --config rv64gc   --axes /tmp/rv-imm.axes.json --json      # {"imms": {"0": [8, 16, 32]}}
-# 433,436 states / 38,685 edges / 14,453 opaque / 7,871 outside /
+python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel   --features tests/cases/riscv-features.json --config rv64gc   --axes /tmp/rv-imm.axes.json --json      # {"version": 1, "imms": {"0": [8, 16, 32]}}
+# 423,460 states / 38,101 edges / 14,409 opaque / 7,590 outside /
 # uncovered ['G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']
 ```
 
-WebAssembly（`--config all`）：无 axis 30,202 states / 19,250 edges，
-`uncovered ['G_SEXT_INREG']`；`imms {0: [8, 16, 32]}` 时 30,272 states /
-19,280 edges，terminal 从 875 升到 915。
+WebAssembly（`--config all`）：无 axis 29,704 states / 18,916 edges，
+`uncovered ['G_SEXT_INREG']`；`imms {0: [8, 16, 32]}` 时 29,774 states /
+18,946 edges，`uncovered` 为空，terminal 从 875 升到 915。
 
-X86 没有 imm 读点，无轴输出不变（SHA `a6fa9724…`）。RISC-V 无轴 SHA 从
+X86 没有 imm 读点，本轮输出只随 `feature NAME` 语义变化（SHA 见上表）。RISC-V 无轴 SHA 从
 `47907499…` 变为 `ad2c60fd…`，差异只有 `G_SEXT_INREG` 从 opaque 变成
 uncovered；这是本次修复的预期变化。
 
