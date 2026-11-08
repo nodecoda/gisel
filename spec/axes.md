@@ -118,8 +118,9 @@ imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内�
 - `domain.full`：本版本只支持 `true`。
 - `graph.skip`：跳过 opcode；精确匹配或家族前缀匹配
   （`G_INTRINSIC` 也跳过 `G_INTRINSIC_WO_CHAIN` 等）。输出多一行 `skipped`。
-- `graph.state`：本版本只支持 `["types", "mem"]`（顺序无关）；`imm`/`ordering`
-  尚未进入状态键，写了会以 rc=2 报错，而不是静默忽略。
+- `graph.state`：可选轴只有 `["types", "mem"]`（顺序无关），写了别的轴会以
+  rc=2 报错。`imm` 不需要列：只要 profile 里有 imm 轴，imm 类就自动进入状态键；
+  ordering 不单独进键，它和 `mty`/`align` 一起进内存类。
 
 ## 2. 三个命令如何使用同一个值集
 
@@ -144,7 +145,7 @@ imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内�
 - mem 行不是四元组、align 不是整数；
 - `imm` 下标没有出现在任何谓词里；
 - `bind.pointer_width` / `bind.extended` 引用了真值表里不存在的配置；
-- `profiles.graph.state` 含有尚未实现的轴。
+- `profiles.graph.state` 含有 `types`/`mem` 以外的轴。
 
 ## 4. 兼容性保证
 
@@ -152,18 +153,48 @@ imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内�
   - X86 四配置 `graph --features tests/cases/x86-features.json --json`
     → `a6fa9724ba3a252fde034051d7b6df702bb956c5efd9102754bcd2c1fddf7cda`
   - RISC-V `graph --features tests/cases/riscv-features.json --config rv64gc --json`
-    → `479074995b32123506b83a888ff47226e8b87924358608625a1a9479491aaff1`
+    → `ad2c60fd18d14e0460ee62a6f405063df0e63b277d008f8a535cccfacae79d17`
+    （imm 轴落地后 `G_SEXT_INREG` 从 `opaque` 变成 `uncovered`，其余不变）
 - 空 profile（`{"version": 1}`）与无 profile 逐字节一致（见
   `tests/test_axes.py`）。
 - `gen`/`check`/`lint`/`eval` 不接受 `--axes`；传入即 argparse rc=2。
 
 ## 5. 未覆盖
 
-- 内存 ordering 的 AArch64 graph 全量数字尚未重跑；cases 侧已确认 8 条
-  ordering 规则中 6 条从 unexercised 变为 witnessed。
+- 内存 ordering 的 AArch64 graph 全量数字尚未重跑；cases 侧四个配置合计：
+  无轴 313 witnessed / 28 shadowed / 402 unexercised，只列四种原子序
+  317 / 29 / 397，再加上 `NotAtomic` 是 319 / 28 / 396（`AArch64_SEXTLOAD#1`
+  和 `#3` 就是被漏掉的那两条普通 load 规则）。
 - `cases` 的按配置指针宽度：仍输出 `p0:*`。
 - `graph` 在 derive 模式下用 `cases._candidates` 生成切点，该函数仍按 64 位解析
   规则字面量指针；`bind.pointer_width` 只作用于声明类型和 explicit 模式。
-- `graph` 的 `state` 轴选择：只支持 `types` + `mem`；`imm`/`ordering` 未实现。
-- 显式轴的漂移检查（profile 漏掉规则使用的类型/imm/ordering 时自动失败）
-  尚未做成独立工具；目前靠 `outside`/`opaque` 计数和 `--oracle` 暴露。
+- 漂移检查是独立工具（见 §6），不是 `gisel` 子命令，也不进入 CI 默认路径；
+  `graph` 的 `uncovered`/`unwitnessed` 仍然是运行时那一侧的信号。
+
+## 6. 漂移检查
+
+`tools/check-axes.py SOURCE --axes FILE [--features FILE] [--json] [--strict]`
+只回答一个问题：这份 profile 还会不会采样到规则自己点名的值。退出码
+0 = 没有缺口，1 = 有缺口，2 = 用法/解析错误。
+
+- **type**：规则里的每个类型拼写都必须能被 profile 解析（未知名字、配置相关的
+  `select` 名字都是缺口）。`derive` 模式下被 `types.remove` 删掉的字面量是缺口；
+  `explicit` 模式下未列出的字面量只打 `info:`，因为显式轴本来就是有意的替换
+  ——`--strict` 才把它升级成缺口。`p0:*` 这类通配指针宽度代表一族具体宽度，
+  只检查可解析性，不要求出现在值集里。
+- **mem**：`(mty, align)` 行同样分 derive/explicit；derive 下被 `mems.remove`
+  删掉是缺口。
+- **imm**：`imm(i) == N`、`in(imm(i), [...])` 里的每个字面量都必须在采样值里；
+  `imm(i) < N` 这类阈值要求采样值在两侧都有，否则比较只有一个分支被走到。
+- **ordering**：每条 `mem_ordering` / `mem_failure_ordering` 比较都必须有一个
+  满足它的采样值；当序格上存在不满足的值时，也必须有一个不满足的采样值。
+
+ordering 这条不是吹毛求疵：`mems.orderings` 一写就是**替换**默认的
+`[("NotAtomic", "NotAtomic")]`。只列 `[Unordered, Acquire, Release,
+SequentiallyConsistent]` 时 `mem_ordering >= Unordered` 恒为真，普通非原子
+load 规则就再也不会被见证——工具会直接把这句话打出来。
+
+无 profile（派生轴）时 X86 / RISC-V / WebAssembly / M68k 都是 0 缺口，因为
+`_candidates` 保证规则字面量一定在候选集里。AArch64 是例外：它的规则读了
+ordering，而派生轴默认只有 `NotAtomic`，工具报 4 条 `is never true`。这正是
+“没显式声明轴”的代价，不是误报。
