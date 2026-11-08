@@ -166,27 +166,17 @@ failure_ordering]`。轴文件 `tests/cases/aarch64-mem-orderings.axes.json` 入
 重跑上面的 `gisel cases` 得到逐字节相同的 10,029 条。
 
 这一轮两个 runner 来自**同一个** explore 构建：`runner.official` 用官方构造
-函数，`runner.ours` 只替换成 gisel 生成的 `AArch64LegalizerInfo.inc`：
+函数，`runner.ours` 只替换成 gisel 生成的 `AArch64LegalizerInfo.inc`。整个
+流程是一条命令（`tools/ab/run-aarch64-end-to-end.sh`，参数和被替换的文件见
+§7.4）：
 
 ```sh
-python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
-  --features tests/cases/features.json \
-  --axes tests/cases/aarch64-mem-orderings.axes.json \
-  --out /tmp/a64-ord-cases3.jsonl --json
-
-TREE=/home/ubuntu/llvm/trees/explore
-BUILD=/home/ubuntu/llvm/builds/explore
-mkdir -p /tmp/a64-fixed
-cp tests/artifacts/aarch64.inc /tmp/a64-fixed/AArch64LegalizerInfo.inc
-tools/ab/build-aarch64-runner.sh "$TREE" "$BUILD" \
-  /tmp/a64-fixed/AArch64LegalizerInfo.inc /tmp/a64-fixed/runner
-python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.official \
-  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/official.jsonl
-python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.ours \
-  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/ours.jsonl
-python3 -m gisel diff /tmp/a64-fixed/official.jsonl \
-  /tmp/a64-fixed/ours.jsonl --json
+tools/ab/run-aarch64-end-to-end.sh "$TREE" "$BUILD" \
+  tests/artifacts/aarch64.inc /tmp/a64-e2e
 ```
+
+脚本内部先跑 `gisel cases`（`--axes tests/cases/aarch64-mem-orderings.axes.json`）
+生成查询，再分别喂给两个 runner，最后 `gisel diff`。
 
 结果分两段。修掉 §7.1 的两个 TypeSize 洞之后是
 `10,005 / 24 / 179`；再把 §7.2 的两条语料 bug 修掉之后是：
@@ -297,15 +287,16 @@ python3 -m gisel gen tests/corpus/AArch64LegalizerInfo.gisel \
 TREE=/home/ubuntu/llvm/trees/explore BUILD=/home/ubuntu/llvm/builds/explore \
   tools/refresh-oracle.sh
 
-# 3) 两个 runner + 10,029 条查询
-tools/ab/build-aarch64-runner.sh "$TREE" "$BUILD" \
-  /tmp/a64-fixed/AArch64LegalizerInfo.inc /tmp/a64-fixed/runner
-python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.official \
-  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/official3.jsonl
-python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.ours \
-  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/ours3.jsonl
-python3 -m gisel diff /tmp/a64-fixed/official3.jsonl \
-  /tmp/a64-fixed/ours3.jsonl --json
+# 3) 一条命令：两个 runner + 10,029 条查询 + diff
+tools/ab/run-aarch64-end-to-end.sh "$TREE" "$BUILD" \
+  tests/artifacts/aarch64.inc /tmp/a64-e2e
+
+# 4) 分母自检（§7.3）
+python3 -m gisel eval --doc tests/artifacts/aarch64.core.json \
+  --features tests/cases/features.json \
+  --cases /tmp/a64-e2e/queries.jsonl --answers /tmp/a64-e2e/eval.answers.jsonl
+python3 -m gisel diff /tmp/a64-e2e/ours.answers.jsonl \
+  /tmp/a64-e2e/eval.answers.jsonl --json
 ```
 
 本轮输入与产物（SHA-256，前 16 位）：
@@ -316,13 +307,25 @@ python3 -m gisel diff /tmp/a64-fixed/official3.jsonl \
 | `tests/artifacts/aarch64.inc` | `67077b8e249266b4…` |
 | `tests/artifacts/aarch64.table.inc` | `20017c2d8a834400d…` |
 | `tests/artifacts/aarch64.core.json` | `cf71476ba00211ae…` |
-| 10,029 条查询 `/tmp/a64-ord-cases3.jsonl` | `bafc3b988ad89b94…` |
+| 10,029 条查询 | `f3419d32581e9575…` |
 | `runner.official` / `runner.ours` | `0af9d83a0a9e9112…` / `04ee725919c496a2…` |
-| official / ours 答案 | `3c12728a57900c0e…`（两侧相同） |
-| eval 答案 | `aa1e3308d467e522…` |
+| official / ours 答案 | `1c590364bd7a51b4…`（两侧逐字节相同） |
+| eval 答案 | `927a2b0a9a5a38a0…` |
 
 llvm-project 侧：`85a4da33012a`（TypeSize 取 known-min）与 `70e7d7b1c209`
 （本轮两条 guard）。两侧 `.td` 与 `.gisel` 用 `-gen-legalizer` 对过，逐字节一致。
+
+查询集是用**修好之后**的语料重生成的，所以个别点换掉了：`G_SMIN` 的 `bf16`
+不再是一条 widen（新语料里它落到 lower），`G_GLOBAL_VALUE` 多出 `bf16`/`f128`
+这些非 `p0` 的类型。条数仍是 10,029。
+
+一个踩过的坑：`aarch64_generated_ctor.cpp` 按名字 include
+`AArch64LegalizerInfo.inc`，而构建目录的 `unittests/Target/AArch64/` 下也有一份
+自己生成的同名文件。第一版 `run-aarch64-end-to-end.sh` 直接把
+`tests/artifacts/aarch64.inc` 传进去，结果先命中的是那份**旧的**生成文件，跑出
+96 条假分歧。现在 `build-aarch64-runner.sh` 先把 `INC` 复制到
+`<OUT>.generated-inc/AArch64LegalizerInfo.inc` 并把这个目录放在 `-I` 最前，
+传什么文件名都不会再串。
 
 ### 7.5 这轮证明了什么，没证明什么
 
