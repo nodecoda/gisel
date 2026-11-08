@@ -312,8 +312,12 @@ python3 -m gisel diff /tmp/a64-e2e/ours.answers.jsonl \
 | official / ours 答案 | `1c590364bd7a51b4…`（两侧逐字节相同） |
 | eval 答案 | `927a2b0a9a5a38a0…` |
 
-llvm-project 侧：`85a4da33012a`（TypeSize 取 known-min）与 `70e7d7b1c209`
-（本轮两条 guard）。两侧 `.td` 与 `.gisel` 用 `-gen-legalizer` 对过，逐字节一致。
+llvm-project 侧：`85a4da33012a`（TypeSize 取 known-min）与 `e88a24a0fe84`
+（本轮两条 guard）。`.td` 不是手改的：它由 `llvm-dev/tools/gisel_td.py gen` 从
+`.gisel` 生成，本轮补上 `dsl_spike` 的 feature 名谓词后，`gen` 对 AArch64 和 X86
+两份 `.td` 都逐字节复现，`check` 通过。AArch64 单元测试的 reviewed domain 因此
+从 1,190 个 table point 变成 1,191（多出 `G_GLOBAL_VALUE` 的 `p0`），两个
+differential test 仍然 0 分歧（1,191 点 × 9 配置，9,641 条可比较）。
 
 查询集是用**修好之后**的语料重生成的，所以个别点换掉了：`G_SMIN` 的 `bf16`
 不再是一条 widen（新语料里它落到 lower），`G_GLOBAL_VALUE` 多出 `bf16`/`f128`
