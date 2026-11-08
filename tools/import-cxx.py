@@ -1422,14 +1422,20 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
     elif method in ("widenScalarToNextPow2", "widenScalarOrEltToNextPow2",
                     "widenScalarOrEltToNextPow2OrMinSize"):
         idx = idx_of(args[0], env)
-        if method == "widenScalarOrEltToNextPow2OrMinSize":
+        if method == "widenScalarOrEltToNextPow2OrMinSize" and len(args) > 1:
             # C++: `ssz < Min || !isPow2(ssz)`, which is exactly the int form.
-            to = tr.int_expr(args[1]) if len(args) > 1 else "pow2"
-            out.append("widen(slot(%d), %s)" % (idx, to))
+            out.append("widen(slot(%d), %s)" % (idx, tr.int_expr(args[1])))
         else:
-            on = "elem_of(slot(%d))" % idx if "OrElt" in method else "slot(%d)" % idx
+            # `widenScalarToNextPow2` guards on `sizeNotPow2` (scalar only),
+            # while both `...OrElt...` forms guard on `scalarOrEltSizeNotPow2`;
+            # collapsing them onto the scalar spelling silently drops vector
+            # rules.  With MinSize == 0 the two `...OrElt...` forms have the
+            # same predicate, so the element form spells both.
+            on = ("elem_of(slot(%d))" % idx if "OrElt" in method
+                  else "slot(%d)" % idx)
             if len(args) > 1:
-                out.append("widen(%s, pow2_min(%s))" % (on, tr.int_expr(args[1])))
+                out.append("widen(%s, pow2_min(%s))"
+                           % (on, tr.int_expr(args[1])))
             else:
                 out.append("widen(%s, pow2)" % on)
     elif method == "widenVectorEltsToVectorMinSize":

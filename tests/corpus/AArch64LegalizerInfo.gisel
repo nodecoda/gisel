@@ -662,7 +662,7 @@ ruleset A_G_FPTOSI: G_FPTOSI G_FPTOUI
     scalarize(slot(1)) when bits_of(slot(1)) > 64
     narrow(slot(0), replace(ty(A_i64))) when (slot(1) == ty(A_f16) and size_of(slot(0)) > 64)
     more(slot(0), pow2)
-    widen(slot(0), pow2)
+    widen(elem_of(slot(0)), pow2)
     widen(slot(0), ty(A_s32))
     widen(slot(1), replace(elt_type_to(slot(1), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
     widen(slot(1), replace(elt_size_to(slot(1), bits_of(slot(0))))) when (bits_of(slot(0)) <= 64 and bits_of(slot(0)) > bits_of(slot(1)))
@@ -701,7 +701,7 @@ ruleset A_G_SITOFP: G_SITOFP G_UITOFP
     scalarize(slot(1)) when bits_of(slot(1)) > 64
     scalarize(slot(0)) when bits_of(slot(0)) > 64
     more(slot(1), pow2)
-    widen(slot(1), pow2)
+    widen(elem_of(slot(1)), pow2)
     widen(slot(1), ty(A_f32))
     lower (sort_of(slot(1)) == vector and bits_of(slot(1)) == 64 and bits_of(slot(0)) == 16)
     widen(slot(0), select(A_HasFP16, 16, 32))

@@ -5939,7 +5939,7 @@ static LegalizeActionStep AEval57(
     auto M = (LegalizeMutations::moreElementsToNextPow2(0))(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if (sizeNotPow2(0)(Q)) {
+  if (scalarOrEltSizeNotPow2(0)(Q)) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(0, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -6202,7 +6202,7 @@ static LegalizeActionStep AEval59(
     auto M = (LegalizeMutations::moreElementsToNextPow2(1))(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if (sizeNotPow2(1)(Q)) {
+  if (scalarOrEltSizeNotPow2(1)(Q)) {
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
