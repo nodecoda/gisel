@@ -37,19 +37,23 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 
 ## 3 证据
 
-生成与对拍（本机，2026-11-07）：
+生成与对拍（本机，2026-11-08 重测）：
 
 | target | configs | cases | eq | boundary | outside | rules | witnessed | shadowed | unexercised | oracle covered | disagree | time |
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
-| X86 | 4（C0–C3） | 2,935 | 946 | 1,717 | 272 | 332 | 290 | 14 | 28 | 365 | 0 | 1.7 s |
-| AArch64 | 9 | 11,847 | 3,279 | 7,629 | 939 | 743 | 363 | 71 | 309 | 663 | 0 | 15 s |
-| M68k | 派生 2 | 82 | 28 | 46 | 8 | 13 | 11 | 2 | 0 | — | — | 0.1 s |
-| WebAssembly | 派生 2 | 884 | 424 | 392 | 68 | 109 | 97 | 8 | 4 | — | — | 2.4 s |
+| X86 | 4（C0–C3） | 3,277 | 1,008 | 1,961 | 308 | 332 | 296 | 14 | 22 | 383 | 0 | 1.8 s |
+| AArch64 | 9 | 9,705 | 2,841 | 5,966 | 898 | 743 | 313 | 28 | 402 | 439 | 0 | 15 s |
+| M68k | 派生 2 | 84 | 28 | 36 | 20 | 13 | 11 | 2 | 0 | — | — | 0.6 s |
+| WebAssembly | 派生 2 | 978 | 426 | 376 | 176 | 109 | 98 | 8 | 3 | — | — | 0.6 s |
 
 对拍口径：只比较生成集与冻结 dump 的交集。
 
-- X86：`covered=365 / agree=365 / disagree=0 / uncovered=2570`
-- AArch64：`covered=663 / agree=663 / disagree=0 / uncovered=11184`
+- X86：`covered=383 / agree=383 / disagree=0 / uncovered=2894`
+- AArch64：`covered=439 / agree=439 / disagree=0 / uncovered=9266`
+
+（2026-11-08 重测。cases 比 2026-11-07 少，因为候选轴不再发明 LLVM 构造不出来的
+类型：固定 1 车道向量归一成元素类型，float 位宽只取 16/32/64/80/128。见
+`spec/axes.md` §4。）
 
 这就是“子集”的准确说法：**在重叠域上，我们的答案与现有系统逐字段一致**。
 `uncovered` 不是通过——它只是还没有 oracle 答案。
@@ -102,18 +106,21 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 
 `mems.orderings` 现在会为读 `mem_ordering` 的 ruleset 乘上
 `(ordering, failure_ordering)` 采样点，导出的查询 `mem` 为 4 元组。AArch64
-（`--features tests/cases/features.json`）的对照：
+（`--features tests/cases/features.json`）的对照（2026-11-08 重测）：
 
 ```sh
 python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json --json --out /tmp/a64-noorder.jsonl
-# witnessed 313 / shadowed 28 / unexercised 402 / cases 10,920
+# witnessed 313 / shadowed 28 / unexercised 402 / cases 9,705
 
 python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json \
   --axes /tmp/a64-order.axes.json --json --out /tmp/a64-order.jsonl
 # mems.orderings = [Unordered, Acquire, Release, SequentiallyConsistent]
-# witnessed 317 / shadowed 29 / unexercised 397 / cases 10,947
+# witnessed 317 / shadowed 29 / unexercised 397 / cases 9,732
+
+# 同上再加 NotAtomic
+# witnessed 319 / shadowed 28 / unexercised 396 / cases 10,029
 ```
 
 8 条读 ordering 的规则里，6 条从 unexercised 变为 witnessed：
@@ -121,7 +128,12 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 `AArch64_INDEXED_LOAD#0`、`AArch64_INDEXED_SEXTLOAD#0` 仍未命中，原因不是
 ordering（可能是类型/谓词组合），留给下一轮定位。
 
-全量 A/B 尚未用 4 元组 mem 重跑。
+**`NotAtomic` 必须显式列出来。** `mems.orderings` 是替换而不是追加，只写四种
+原子序时 `mem_ordering >= Unordered` 恒为真，普通非原子 load 规则
+（`AArch64_SEXTLOAD#1/#3`）就再也不会被见证。`tools/check-axes.py` 会直接把
+这句话打出来，加上 `NotAtomic` 后 witnessed 317 → 319。
+
+端到端对拍见第 7 节。
 
 ## 6 全量端到端 A/B（2026-11-07）
 
@@ -144,3 +156,47 @@ AArch64 使用同一套端到端流程，但题目生成算法固定为 LLVM 的
 `ref=9591 ours=9591 matched=9591 agree=9591`，`disagree=0`，缺失和错误均为
 0。压缩得到 4,168 条回归查询，其中 equivalence 3,159、boundary 656、
 outside 353，`oracle_missing=0`、`evaluator_errors=0`。
+
+## 7 端到端对拍：AArch64 的 4 元组 mem（2026-11-08）
+
+题目不是 LLVM 的 1,190 个 table point，而是 `gisel cases` 生成的 10,029 条
+查询：九个配置，`mems.orderings = [NotAtomic, Unordered, Acquire, Release,
+SequentiallyConsistent]`，其中 1,395 条带 `[mty, align, ordering,
+failure_ordering]`。
+
+两个 runner 来自同一个构建（`.ab/aarch64/final2`）：`runner.official` 用官方
+构造函数，`runner.ours` 链接 gisel 生成的 `AArch64LegalizerInfo.inc`（与 HEAD
+的 corpus 逐字节一致）。官方 runner 能直接回答 4 元组 mem。
+
+```sh
+python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json --axes /tmp/a64-order2.axes.json \
+  --out /tmp/a64-ord.jsonl --json
+python3 tools/ab/run-queries.py .ab/aarch64/final2/runner.official \
+  /tmp/a64-ord.jsonl /tmp/official.jsonl
+python3 tools/ab/run-queries.py .ab/aarch64/final2/runner.ours \
+  /tmp/a64-ord.jsonl /tmp/ours.jsonl
+python3 -m gisel diff /tmp/official.jsonl /tmp/ours.jsonl --json
+```
+
+结果：`queries=10,029 / agree=9,958 / disagree=71 / unanswerable=206 / 0 error`。
+206 条是两个 runner 都触发 LLVM 断言、输出对称 `unanswerable` 的查询（和 X86
+那 1,152 条同一性质），不计入分歧；`tools/ab/run-queries.py` 负责在断言处续跑。
+
+71 条分歧只有四个 opcode，按根因分开：
+
+| 条数 | opcode | official | ours | 根因 |
+|---:|---|---|---|---|
+| 36 | G_LOAD | Unsupported | 断言 | 上游 `.td` emitter 的洞：`isPowerOf2_32(MemoryTy.getSizeInBytes())` 把 `TypeSize` 隐式转成整数，scalable 内存类型直接 fatal。手写 C++ 用的 `memSizeNotByteSizePow2` 是 `getSizeInBytes().getKnownMinValue()`（`LegalityPredicates.cpp:235`）。冻结 oracle `tests/artifacts/aarch64.inc:426` 里是同一写法——那份 `.td` 是按 corpus 生成的，所以这是上游问题，gisel 只是忠实复现。 |
+| 16 | G_SMIN | Lower | WidenScalar→s32 | 语料少了一个 guard：基线是 `.minScalar(HasCSSC, 0, s32)`，我们写成无条件 `widen(slot(0), ty(AArch64_s32))`。bf16 于是被我们加宽，基线直接 lower。 |
+| 11 | G_FPTOSI_SAT | WidenScalar / Lower | 断言 / NarrowScalar | 基线树（ct-instr-trunk，11-03）含 #235676，删掉了饱和转换的 `narrowScalarIf`；语料抄的是 explore（10-26）那一版。属于基线版本差。 |
+| 8 | G_GLOBAL_VALUE | Unsupported | Legal | 语料少了类型约束：基线 `.legalFor({p0})`，我们写成 `legal not AArch64_SmallCodeModel`，把 s32 也判成 Legal。 |
+
+后两条（G_SMIN、G_GLOBAL_VALUE）是真语料 bug；G_FPTOSI_SAT 是版本差；G_LOAD
+是上游 emitter 的洞。三种都没有在本轮改：语料一改，冻结 oracle
+（`tests/artifacts/`）就要跟着 `.td` 一起重生成，而那份 `.td` 在 llvm-project
+那侧、由 corpus 生成。这一步要和 emitter 的修复一起做。
+
+上一轮“全量 A/B 0 分歧”的 34,776 个点仍然是 0 分歧；这一轮新增的 71 条全部
+落在旧点集没有覆盖的形状上（4 元组 mem、`bf16`、非指针的 `G_GLOBAL_VALUE`、
+vector 形参的饱和转换）。
