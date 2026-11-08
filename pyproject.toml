@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "gisel"
-version = "0.3.0"
+dynamic = ["version"]
 description = "A free-form language for GlobalISel legalizer rules"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,6 +18,9 @@ classifiers = [
 
 [project.scripts]
 gisel = "gisel.cli:main"
+
+[tool.setuptools.dynamic]
+version = {attr = "gisel.__version__"}
 
 [tool.setuptools.packages.find]
 include = ["gisel*"]

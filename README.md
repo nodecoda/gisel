@@ -71,6 +71,42 @@ The generated `.inc` is the C++ chain, one call per rule:
 shapes from the same source.  There is no `.td` backend: the C++ `.inc` is the
 product.
 
+## Commands
+
+Seven commands, one product surface; `spec/cli.md` is the normative contract.
+
+| command | what it does |
+|---|---|
+| `gen` | emit one artifact: `--emit=inc\|check\|table\|core` |
+| `check` | does an artifact still match the source? |
+| `lint` | static checks, no artifact |
+| `cases` | answerless test queries: equivalence, boundary, outside |
+| `domain` | the same space as a full Cartesian enumeration |
+| `eval` | answer queries against the schema-0.4 normal form |
+| `graph` | build the quotient graph and look for cycles |
+
+Exit codes are shared by all seven: `0` success, `1` the answer is "no" (stale
+artifact, lint error, disagreeing answer, a cycle), `2` the run could not start
+(usage, IO, syntax).  `2` is never a rule difference.
+
+### The graph, in one command
+
+A legalizer that widens `s24` to `s32` and then narrows it back does not time
+out — it loops.  `graph` builds the finite state space (opcode × the class of
+every type slot) from the normal form and runs a three-colour DFS on it:
+
+```sh
+gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none
+gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
+  --inject-edge                 # negative control: must report a 2-cycle
+gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
+  --check-closure               # the successor must be a function of the state
+```
+
+`spec/graph.md` is the contract, `docs/REPORT-graph.md` the evidence.  When
+`--check-closure` fails, the graph has holes: `cycles=0` is then a statement
+about the partition that was checked, not a proof about the whole domain.
+
 ## Architecture
 
 The front end (`gisel/ast.py`) parses `.gisel` into one model: a `Program` of
@@ -93,22 +129,11 @@ memory size and alignment), and outside probes that fall through to
 `uncovered` is reported separately and is never counted as a pass.
 `spec/cases.md` is the contract, `docs/REPORT-cases.md` the evidence.
 
-For the end-to-end X86 check, first freeze an answerless JSONL query set, then
-run the official build and the build containing the generated `.inc` on that
-same file. The query file is the test set; it does not expand into thousands
-of `.ll` or `.mir` files. `tools/ab/` contains the snapshot, replacement,
-runner, and diff scripts. `run-end-to-end.sh` captures official answers before
-replacing the shared library, then captures ours and runs the full diff. Queries
-that assert in both builds remain in the stream as symmetric `unanswerable`
-results.
-
-For AArch64, the fixed domain comes from LLVM's generated
-`AArch64LegalizerTablePointsForTest.inc`, not from a Cartesian product. The
-algorithm filters each of its 1,190 points by the nine fixed configurations,
-serializes LLTs canonically, removes duplicate
-`(config, opcode, types, mem, imms)` keys, and requires the resulting 9,591
-queries. A changed count stops the run for review. Both answerers then consume
-that saved JSONL file.
+Proving that two legalizer implementations answer the same way is done *with*
+gisel, not by gisel: `tools/ab/` freezes an answerless query set, runs the
+official build and the build carrying the generated `.inc` on that same file,
+and compares the two answer streams.  That workbench has its own report,
+`docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
 
 What it does not do: it does not generate the upstream `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than
@@ -126,16 +151,15 @@ bootstrap reader was removed.
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 34,776-point differential, 0 disagreements | done |
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
-| v0.4 | `import-cxx` | RISCV: 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
-| v0.5 | `cases` | equivalence/boundary/outside; X86 3,278 cases (375 oracle-covered), AArch64 10,920 cases (645 oracle-covered), 0 disagreements | done |
+| v0.4 | RISCV corpus (workbench import) | 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
+| v0.5 | `cases` | equivalence/boundary/outside; X86 3,277 cases (383 oracle-covered), AArch64 9,705 cases (439 oracle-covered), 0 disagreements | done |
 
-`tools/import-inventory.py` answers "what would it cost to migrate target X?" by
-censusing a hand-written constructor (method histogram, chain shapes, guards);
-`tools/import-cxx.py` does the migration itself: it parses a `*LegalizerInfo.cpp`
-constructor and writes `.gisel`, refusing (exit 1) any statement it cannot
-translate.  `docs/REPORT-riscv.md` records both for the largest remaining
-target: 340 builder calls → 402 rules, 0 refusals, and the generated `.inc`
-compiles against the unmodified `LegalizerInfo.h`.
+Migration and A/B tooling is **workbench**, not a gisel function
+(`docs/SCOPE.md`): `tools/import-inventory.py` prices a target,
+`tools/import-cxx.py` turns its constructor into `.gisel` (refusing, exit 1,
+any statement it cannot translate), and `tools/ab/` compares two
+implementations.  The evidence lives in `docs/REPORT-riscv.md` and
+`docs/REPORT-ab.md`.
 
 `tests/artifacts/` holds the eight frozen C++/JSON artifacts and their
 `SHA256`.  They are the oracle every backend is measured against.  The corpus
@@ -145,7 +169,7 @@ re-derive the C++/JSON oracle from a built LLVM tree (development only —
 generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 90 tests, ~12 s
+python3 -m unittest discover -q -s tests      # 168 tests, ~22 s
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
@@ -203,8 +227,10 @@ gisel/eval.py           standalone evaluator (9632 points, 0 disagreements)
 gisel/cases.py          equivalence/boundary/outside case generation
 gisel/answers.py        answer-file reader and full-set comparison
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
+spec/cli.md             the command surface, exit codes, guarantees (normative)
 spec/grammar.md         the .gisel grammar and AST, normative
 spec/cases.md           what a generated case means, and the subset contract
+spec/graph.md           the quotient-graph state, successor and outcomes
 docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
 docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
 docs/REPORT-cases.md    case generation: algorithm, evidence, rejected options

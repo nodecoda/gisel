@@ -458,10 +458,12 @@ class SourceNameIndependence(unittest.TestCase):
 
 class CliSurface(unittest.TestCase):
     def test_module_entrypoint_and_version(self):
+        from gisel import __version__
+
         r = subprocess.run([sys.executable, "-m", "gisel", "--version"],
                            cwd=ROOT, capture_output=True, text=True)
         self.assertEqual(r.returncode, 0, r.stderr)
-        self.assertIn("gisel 0.3.0", r.stdout)
+        self.assertEqual(r.stdout.strip(), f"gisel {__version__}")
 
 
 class SourceErrors(unittest.TestCase):

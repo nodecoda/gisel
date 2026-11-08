@@ -6,6 +6,7 @@ import json
 import sys
 from pathlib import Path
 
+from . import __version__
 from . import ast as A, dsl
 from . import cases as casegen
 from . import domain as domaingen
@@ -152,7 +153,8 @@ def main(argv=None):
                "llvm-tblgen, compiles LLVM or compares two implementations "
                "lives under tools/ and is not part of gisel.  See "
                "docs/SCOPE.md.")
-    ap.add_argument("--version", action="version", version="gisel 0.3.0")
+    ap.add_argument("--version", action="version",
+                    version=f"gisel {__version__}")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     g = sub.add_parser("gen", help="generate a backend artifact")

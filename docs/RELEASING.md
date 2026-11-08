@@ -21,15 +21,16 @@ Optional, better long-term: add a pending trusted publisher on PyPI
 and delete `password:` from the publish job — the action then uses OIDC and
 the token secret can be revoked.
 
-## 1. Bump the version in both places
+## 1. Bump the version in one place
 
 ```
-pyproject.toml        version = "0.2.0"
-gisel/cli.py          version="gisel 0.2.0"
+gisel/__init__.py     __version__ = "0.3.0"
 ```
 
-They are deliberately duplicated so `gisel --version` works without parsing
-packaging metadata; `tests/test_artifacts.py` fails if they drift.
+That is the only copy. `pyproject.toml` declares `dynamic = ["version"]` and
+reads it via `[tool.setuptools.dynamic]`, and `gisel --version` prints it from
+the same constant. `tests/test_cli.py` fails if the two ever disagree or if
+`pyproject.toml` starts hardcoding a version again.
 
 ## 2. Build and check
 
@@ -61,6 +62,20 @@ done
 ```
 
 The five artifacts must match `tests/artifacts/` (core modulo `origin`).
+
+## 3.5. Product-surface checklist
+
+The wheel ships one surface; check it before tagging:
+
+- `gisel --help` lists exactly `gen check cases domain lint eval graph`
+  (`tests/test_cli.py::Commands`), and every verb answers `--help`.
+- `gisel diff` is rejected: that command lives in `tools/ab/diff.py`.
+- The three exit codes mean the same thing everywhere (`spec/cli.md` §2):
+  `0` yes, `1` no, `2` could not start.
+- The wheel contains `gisel/data/generic_opcodes.json` and `gisel/data/opcode-slots.json`,
+  and **no** `tools/`, `tests/` or `docs/` entries.
+- `docs/SCOPE.md` and `spec/cli.md` are the two files a new surface has to
+  update; if a release adds a command without them, it is not ready.
 
 ## 4. Tag and let CI publish
 
