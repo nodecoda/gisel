@@ -46,6 +46,7 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 |---|---|---|---|---|---|---|---|---|---|---|---|---|
 | X86 | 4（C0–C3） | 3,273 | 998 | 1,951 | 324 | 328 | 292 | 14 | 22 | 379 | 0 | 1.8 s |
 | AArch64 | 9 | 9,911 | 2,851 | 6,047 | 1,013 | 743 | 315 | 25 | 403 | 493 | 0 | 10 s |
+| RISC-V | 8 | 6,148 | 1,980 | 3,363 | 805 | 413 | 322 | 9 | 82 | 1,327 | 0 | 18 s |
 | M68k | 派生 2 | 84 | 28 | 36 | 20 | 13 | 11 | 2 | 0 | — | — | 0.6 s |
 | WebAssembly | 派生 2 | 978 | 426 | 376 | 176 | 109 | 98 | 8 | 3 | — | — | 0.6 s |
 
@@ -53,6 +54,7 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 
 - X86：`covered=379 / agree=379 / disagree=0 / uncovered=2894`
 - AArch64：`covered=493 / agree=493 / disagree=0 / uncovered=9418`
+- RISC-V：`covered=1327 / agree=1327 / disagree=0 / uncovered=4821`
 
 （2026-11-08 切 cpp 语料后重测；`docs/ALGORITHM-cases.md` 有同一份数字。
 cases 比 2026-11-07 少，因为候选轴不再发明 LLVM 构造不出来的类型：固定 1 车道

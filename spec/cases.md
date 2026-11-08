@@ -20,6 +20,9 @@ outside      等价类之外（没有规则命中，落到 Unsupported）
 `types` 用 Core IR 拼写（`s32`、`v4s32`、`p0:*`、`nxv4s32`），与 `--emit=core`
 的 domain 一致；`mem` 是 `[memory_ty, align]` 或 `null`。
 
+行的字段、`mem` 的两/四元组归一、答案行与 join 规则见
+`spec/cases-format.md`。
+
 ### 1.1 equivalence
 
 对每个 `(config, rule)`，取第一条命中该规则、且所有更早规则都不命中的查询。

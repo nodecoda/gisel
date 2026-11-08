@@ -1026,11 +1026,9 @@ class Diff:
 
 
 def _oracle_key(q):
-    types = tuple(E.parse_case_llt(t) for t in q["types"])
-    mem = None
-    if q.get("mem"):
-        mem = (E.parse_case_llt(q["mem"][0]), q["mem"][1])
-    return (q["config"], q["name"], types, mem, tuple(q.get("imms") or []))
+    # Use the same reader as every other answer file: it normalizes the
+    # two-element mem spelling to the four-tuple the case key uses.
+    return answer_file.key(q)
 
 
 def index_oracle(path):

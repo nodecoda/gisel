@@ -135,6 +135,15 @@ class FrozenDifferential(unittest.TestCase):
         self.assertEqual(diff.errors, 0, diff.first)
 
 
+class OracleKeyShape(unittest.TestCase):
+    def test_two_and_four_element_mem_share_a_key(self):
+        base = {"config": "C0", "name": "G_LOAD", "types": ["s8", "p0:64"],
+                "imms": []}
+        two = dict(base, mem=["s8", 8])
+        four = dict(base, mem=["s8", 8, "NotAtomic", "NotAtomic"])
+        self.assertEqual(cases._oracle_key(two), cases._oracle_key(four))
+
+
 class FullRunCompression(unittest.TestCase):
     def test_query_oracle_mode_requires_complete_answers(self):
         with tempfile.TemporaryDirectory() as d:

@@ -245,6 +245,7 @@ spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/cli.md             the command surface, exit codes, guarantees (normative)
 spec/grammar.md         the .gisel grammar and AST, normative
 spec/cases.md           what a generated case means, and the subset contract
+spec/cases-format.md    the three JSONL projections and their shared key
 spec/graph.md           the quotient-graph state, successor and outcomes
 docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
 docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text

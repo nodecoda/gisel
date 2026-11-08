@@ -486,6 +486,25 @@ unexercised 403 → 397。
 `f16`/`bf16`/`i32` 是不是独立 kind。AArch64 为 true，X86/RISC-V 为 false，
 所以同一个 `f16` 在 RISC-V 上按 `scalar(16)` 处理。轴相同，值语义不同。
 
+## 10.2 产物格式：一份 key，三种投影
+
+`gisel cases` 写查询，`gisel domain` 写题面，`gisel eval --answers` 或外部
+runner 写答案。三者共用同一个 key：
+
+```text
+(config, name, types, mem, imms)
+```
+
+差别只在附加字段：cases 多 `kind` / `ruleset` / `rule` / `reason`（标注，
+消费者忽略），答案多 `action` / `type_idx` / `new_type` 或
+`status:"unanswerable"`。格式规范见 `spec/cases-format.md`。
+
+标准化的是 key 语义，不是“所有文件一个 schema”：`mem` 读方接受
+`[mty, align]` 与 `[mty, align, ordering, failure_ordering]` 两种写法，
+缺省补 `NotAtomic`；全量对拍要求 key 集合相等，子集对拍只报告交集。
+`p0:*` 仍是一个已知缺口：查询保留通配，答案侧常写具体宽度，这类点只能算
+`uncovered`，不能算通过。
+
 ## 11 规模与实测
 
 命令：
@@ -496,6 +515,9 @@ python3 -m gisel cases tests/corpus/X86LegalizerInfo.gisel \
 
 python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json --out /tmp/a64-cases.jsonl --json
+
+python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel \
+  --features tests/cases/riscv-features.json --out /tmp/rv-cases.jsonl --json
 ```
 
 当前语料实测（2026-11-08）：
@@ -504,12 +526,14 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | X86 | 4 | 3,273 | 998 | 1,951 | 324 | 328 | 292 | 14 | 22 | ~1.7 s |
 | AArch64 | 9 | 9,911 | 2,851 | 6,047 | 1,013 | 743 | 315 | 25 | 403 | ~10 s |
+| RISC-V | 8 | 6,148 | 1,980 | 3,363 | 805 | 413 | 322 | 9 | 82 | ~18 s |
 
 对拍（只比较生成集与冻结 dump 的交集）：
 
 ```text
 X86:     covered=379  agree=379  disagree=0  errors=0  uncovered=2894
 AArch64: covered=493  agree=493  disagree=0  errors=0  uncovered=9418
+RISC-V:  covered=1327 agree=1327 disagree=0  errors=0  uncovered=4821
 ```
 
 `uncovered` 不是通过，只是「oracle 里没有这个点」。真正的不分歧结论只在
@@ -517,7 +541,7 @@ AArch64: covered=493  agree=493  disagree=0  errors=0  uncovered=9418
 
 复杂度上界很粗：`O(configs × Π_slots |B_slot| × rules)`。真正的约束是
 `|B| ≤ 20,000`、每槽 16 个候选、boundary 每条规则 24 条，所以时间是
-秒级到十秒级，不需要 LLVM。
+秒级到十几秒，不需要 LLVM。
 
 ## 12 这个方法证明了什么，没证明什么
 
@@ -543,3 +567,4 @@ AArch64: covered=493  agree=493  disagree=0  errors=0  uncovered=9418
 - 「有界不是随机采样：每个字面量都保留，每条阈值两侧都取代表。」
 - 「equivalence 证明规则可达，boundary 证明动作翻转，outside 证明兜底路径。」
 - 「uncovered 不是通过——它只说明还没有答案。」
+- 「格式标准化的是 key 语义，不是把所有产物合成一个 schema。」
