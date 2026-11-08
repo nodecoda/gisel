@@ -406,14 +406,23 @@ class Translator:
 
     # -- features: any `ST.x()` / `XLen == N` becomes a named feature --------
     def feature(self, cpp_text):
+        # `RISCVSubtarget::getELen()` asserts unless the V extension is on, and
+        # upstream only ever evaluates it under `hasVInstructions()`.  Hoisting
+        # the sub-expression on its own loses that guard, and the generated
+        # constructor then aborts on every non-V subtarget, so the guard stays
+        # on the hoisted name.  The declaration text is the evaluator key, so
+        # the feature table uses the guarded spelling too.
         name = cpp_text
+        key_text = cpp_text
+        if "getELen()" in cpp_text and "hasVInstructions()" not in cpp_text:
+            name = "(ST.hasVInstructions() && %s)" % cpp_text
         if name not in self.features:
-            key = _norm(cpp_text)
+            key = _norm(key_text)
             suffix = FEATURE_NAMES.get(CURRENT_TARGET, {}).get(key)
             if suffix:
                 USED_RENAMES["feature"].add(key)
             else:
-                suffix = re.sub(r"[^0-9A-Za-z]+", "_", cpp_text).strip("_")
+                suffix = re.sub(r"[^0-9A-Za-z]+", "_", key_text).strip("_")
             self.features[name] = PREFIX + suffix
         return self.features[name]
 

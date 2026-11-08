@@ -12,9 +12,9 @@ include "llvm/Target/Target.td"
 
 feature R_XLen_32 = XLen == 32
 feature R_XLen_64 = XLen == 64
-feature R_XLen_le_ELen = XLen <= ST.getELen()
+feature R_XLen_le_ELen = (ST.hasVInstructions() && XLen <= ST.getELen())
 feature R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem()
-feature R_getELen_64 = ST.getELen() == 64
+feature R_getELen_64 = (ST.hasVInstructions() && ST.getELen() == 64)
 feature R_hasStdExtA = ST.hasStdExtA()
 feature R_hasStdExtD = ST.hasStdExtD()
 feature R_hasStdExtF = ST.hasStdExtF()

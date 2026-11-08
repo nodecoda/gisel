@@ -138,7 +138,12 @@ class ReviewedNames(unittest.TestCase):
         self.assertIn("pred R_has64BitScalar =", text)
         self.assertIn("feature R_hasStdExtD = ST.hasStdExtD()", text)
         self.assertIn("feature R_subtargetInfoHasZbb = STI.hasStdExtZbb()", text)
-        self.assertIn("feature R_XLen_le_ELen = XLen <= ST.getELen()", text)
+        # `getELen()` asserts without V, so the hoisted name keeps the guard
+        # that dominates it in the C++ predicate.
+        self.assertIn("feature R_XLen_le_ELen = "
+                      "(ST.hasVInstructions() && XLen <= ST.getELen())", text)
+        self.assertIn("feature R_getELen_64 = "
+                      "(ST.hasVInstructions() && ST.getELen() == 64)", text)
 
 
 class PinnedCounts(unittest.TestCase):
