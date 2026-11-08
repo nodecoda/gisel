@@ -218,6 +218,9 @@ class Types:
         m = re.fullmatch(r"LLT::scalar\(\s*(\d+)\s*\)", cpp.strip())
         if m and "s%s" % m.group(1) in self.by_cpp:
             return self.by_cpp["s%s" % m.group(1)]
+        m = re.fullmatch(r"LLT::integer\(\s*(\d+)\s*\)", cpp.strip())
+        if m and "i%s" % m.group(1) in self.by_cpp:
+            return self.by_cpp["i%s" % m.group(1)]
         m = re.fullmatch(r"LLT::fixed_vector\(\s*(\d+)\s*,\s*LLT::scalar"
                          r"\(\s*(\d+)\s*\)\s*\)", cpp.strip())
         if m and "v%ss%s" % (m.group(1), m.group(2)) in self.by_cpp:
@@ -593,10 +596,13 @@ class Translator:
 
         m = re.fullmatch(r"typeIs\s*\(\s*(\w+)\s*,\s*(.+)\)", text, re.S)
         if m:
-            return "in(slot(%s), %s)" % (idx(m), self.t.name(m.group(2)))
+            # `typeIs` is a free-form LegalityPredicate, not `legalFor`: the
+            # spelling matters because LegalizerInfo marks the whole rule
+            # opaque for coverage, which a type set would not.
+            return "slot(%s) == %s" % (idx(m), self.t.name(m.group(2)))
         m = re.fullmatch(r"typeIsNot\s*\(\s*(\w+)\s*,\s*(.+)\)", text, re.S)
         if m:
-            return "not in(slot(%s), %s)" % (idx(m), self.t.name(m.group(2)))
+            return "slot(%s) != %s" % (idx(m), self.t.name(m.group(2)))
         m = re.fullmatch(r"typeInSet\s*\(\s*(\w+)\s*,\s*\{(.*)\}\)", text, re.S)
         if m:
             return "in(slot(%s), [%s])" % (
@@ -712,7 +718,7 @@ class Translator:
             if mm:
                 return "slot(%s), replace(vec_of(%s, ty(%s)))" % (
                     idx, self.count_expr(mm.group(1)),
-                    self.t.name("LLT::scalar(%s)" % mm.group(2)))
+                    self.t.name("LLT::integer(%s)" % mm.group(2)))
             mm = re.fullmatch(r"LLT::fixed_vector\(\s*(.+?)\s*,\s*(.+?)\s*\)",
                               ty, re.S)
             if mm:

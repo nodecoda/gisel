@@ -20,6 +20,10 @@ DEF_RE = re.compile(
     r"(\{(?:[^{}]|\{[^{}]*\})*\}|;)", re.M)
 TYPE_RE = re.compile(r"(?<![A-Za-z0-9_])type(\d+)\b")
 PTYPE_RE = re.compile(r"(?<![A-Za-z0-9_])ptype(\d+)\b")
+# Only `untyped_imm_N` is a *generic immediate* operand; a bare `$imm` is an
+# operand *name* whose kind is `unknown` (G_CONSTANT, G_FCONSTANT) and it does
+# not add a generic imm slot.
+IMM_RE = re.compile(r"(?<![A-Za-z0-9_])untyped_imm_(\d+)\b")
 
 
 def parse(path):
@@ -29,9 +33,11 @@ def parse(path):
         body = m.group(2)
         slots = sorted(set(int(x) for x in TYPE_RE.findall(body))
                        | set(int(x) for x in PTYPE_RE.findall(body)))
+        imms = [int(x) for x in IMM_RE.findall(body)]
         out[m.group(1)] = {
             "arity": (max(slots) + 1) if slots else None,
             "ptype": sorted(set(int(x) for x in PTYPE_RE.findall(body))),
+            "imm": len(set(imms)),
         }
     return out
 
@@ -59,7 +65,7 @@ def main(argv):
         "schema": 1,
         "source": "llvm/include/llvm/Target/GenericOpcodes.td",
         "note": "arity = highest (p)typeN index + 1; ptype = pointer slot indices; "
-                "null arity = variadic/unknown",
+                "imm = generic immediate slot count; null arity = variadic/unknown",
         "opcodes": opcodes,
     }
     commit = source_commit(src)

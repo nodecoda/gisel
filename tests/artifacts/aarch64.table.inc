@@ -8356,7 +8356,7 @@ static LegalizeActionStep AEval84(
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
   if (Q.Types[0].isPointerVector()) {
-    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1), A_s64)); })(Q);
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1), A_i64)); })(Q);
     return {LegalizeActions::Bitcast, M.first, M.second};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};

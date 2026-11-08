@@ -62,13 +62,17 @@ def _generate(gs, source, emit, prefix=None):
         raise ValueError("line %d: undeclared feature expression %r; declare "
                          "it with `feature NAME = <expr>`" % (line, expr))
     # One table per opcode: a legalizer may build the same opcode twice (the
-    # second chain only answers what the first did not).  The emitted C++
-    # chain and frozen core JSON carry one table per opcode, so the artifact
-    # is canonicalized first.
-    gs = A.Program(gs.decls,
-                   A.canonicalize_rulesets(gs.rulesets),
-                   gs.features, gs.preds, gs.named_types, gs.selects,
-                   gs.setlike)
+    # second chain only answers what the first did not).  The frozen core JSON
+    # carries one table per opcode, so it is canonicalized first.  `inc` keeps
+    # the source's builder boundaries: two `getActionDefinitionsBuilder` calls
+    # for one opcode are exactly what the hand-written constructor does, and
+    # the aliasing they produce is observable through the legalizer-info
+    # verifier.
+    if emit != "inc":
+        gs = A.Program(gs.decls,
+                       A.canonicalize_rulesets(gs.rulesets),
+                       gs.features, gs.preds, gs.named_types, gs.selects,
+                       gs.setlike)
     if emit == "inc":
         return llvm_inc.emit_inc(gs, source)
     if emit == "check":

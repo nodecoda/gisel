@@ -99,7 +99,7 @@ ruleset X_G_CONSTANT: G_CONSTANT
     narrow(slot(0), ty(X_sMaxScalar))
 
 ruleset X_G_LROUND: G_LROUND G_LLROUND
-    widen(slot(1), replace(ty(X_s32))) when in(slot(1), X_s16)
+    widen(slot(1), replace(ty(X_s32))) when slot(1) == X_s16
     libcall true
 
 ruleset X_G_FCOS: G_FCOS G_FCOSH G_FACOS G_FSIN G_FSINH G_FASIN G_FTAN G_FTANH G_FATAN G_FATAN2 G_FPOW G_FEXP G_FEXP2 G_FEXP10 G_FLOG G_FLOG2 G_FLOG10 G_FPOWI G_FSINCOS G_FCEIL G_FFLOOR
@@ -452,8 +452,8 @@ ruleset X_G_FPTOSI: G_FPTOSI
 
 ruleset X_G_UITOFP: G_UITOFP
     legal (X_HasAVX512 and in_pairs(slot(0), slot(1), [[X_s32, X_s32], [X_s32, X_s64], [X_s64, X_s32], [X_s64, X_s64]]))
-    custom (not X_HasAVX512 and ((X_HasSSE1 and in(slot(0), X_s32)) or (X_HasSSE2 and in(slot(0), X_s64))) and (sort_of(slot(1)) == scalar and size_of(slot(1)) < select(X_Is64Bit, 64, 32)))
-    lower (not X_HasAVX512 and ((X_HasSSE1 and in(slot(0), X_s32)) or (X_HasSSE2 and in(slot(0), X_s64))) and (X_Is64Bit and in(slot(1), X_s64)))
+    custom (not X_HasAVX512 and ((X_HasSSE1 and slot(0) == X_s32) or (X_HasSSE2 and slot(0) == X_s64)) and (sort_of(slot(1)) == scalar and size_of(slot(1)) < select(X_Is64Bit, 64, 32)))
+    lower (not X_HasAVX512 and ((X_HasSSE1 and slot(0) == X_s32) or (X_HasSSE2 and slot(0) == X_s64)) and (X_Is64Bit and slot(1) == X_s64))
     widen(slot(0), ty(X_s32))
     narrow(slot(0), ty(X_sse2MaxScalar))
     widen(slot(0), pow2)
@@ -463,8 +463,8 @@ ruleset X_G_UITOFP: G_UITOFP
 
 ruleset X_G_FPTOUI: G_FPTOUI
     legal (X_HasAVX512 and in_pairs(slot(0), slot(1), [[X_s32, X_s32], [X_s32, X_s64], [X_s64, X_s32], [X_s64, X_s64]]))
-    custom (not X_HasAVX512 and ((X_HasSSE1 and in(slot(1), X_s32)) or (X_HasSSE2 and in(slot(1), X_s64))) and (sort_of(slot(0)) == scalar and size_of(slot(0)) < select(X_Is64Bit, 64, 32)))
-    lower (not X_HasAVX512 and ((X_HasSSE1 and in(slot(1), X_s32)) or (X_HasSSE2 and in(slot(1), X_s64))) and (X_Is64Bit and in(slot(0), X_s64)))
+    custom (not X_HasAVX512 and ((X_HasSSE1 and slot(1) == X_s32) or (X_HasSSE2 and slot(1) == X_s64)) and (sort_of(slot(0)) == scalar and size_of(slot(0)) < select(X_Is64Bit, 64, 32)))
+    lower (not X_HasAVX512 and ((X_HasSSE1 and slot(1) == X_s32) or (X_HasSSE2 and slot(1) == X_s64)) and (X_Is64Bit and slot(0) == X_s64))
     widen(slot(0), ty(X_s32))
     narrow(slot(0), ty(X_sMaxScalar))
     widen(slot(0), pow2)

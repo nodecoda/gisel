@@ -63,17 +63,18 @@ class GoldenInc(unittest.TestCase):
 
     def test_terminal_call_count_is_conserved(self):
         """One terminal per rule, plus one `.immIdx` per ImmIdx record."""
-        expected = {"x86": (328, 0), "aarch64": (743, 3)}
+        expected = {"x86": (328, 0), "aarch64": (741, 3)}
         total = 0
         for name, _ in CORPORA:
             text = (TESTS / "artifacts" / f"{name}.inc").read_text()
-            calls = re.findall(r"^      \.([A-Za-z0-9_]+)", text, re.M)
+            # Nested `if` blocks indent the chain one level deeper.
+            calls = re.findall(r"^\s+\.([A-Za-z0-9_]+)", text, re.M)
             imm = [c for c in calls if c == "immIdx"]
             rules, imm_expected = expected[name]
             self.assertEqual(len(calls) - len(imm), rules, name)
             self.assertEqual(len(imm), imm_expected, name)
             total += len(calls)
-        self.assertEqual(total, 1074)
+        self.assertEqual(total, 1072)
 
 
 class GoldenCheckJson(unittest.TestCase):

@@ -1,474 +1,586 @@
 {
- "note": "arity = highest (p)typeN index + 1; ptype = pointer slot indices; null arity = variadic/unknown",
+ "note": "arity = highest (p)typeN index + 1; ptype = pointer slot indices; imm = generic immediate slot count; null arity = variadic/unknown",
  "opcodes": {
   "G_ABDS": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_ABDU": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_ABS": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_ADD": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_ADDRSPACE_CAST": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_AND": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_ANYEXT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_ASHR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_ASSERT_ALIGN": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_ASSERT_SEXT": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_ASSERT_ZEXT": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_ATOMIC_CMPXCHG": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_ATOMIC_CMPXCHG_WITH_SUCCESS": {
    "arity": 3,
+   "imm": 0,
    "ptype": []
   },
   "G_BITCAST": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_BITREVERSE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_BLOCK_ADDR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_BR": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_BRCOND": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_BRINDIRECT": {
    "arity": 1,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_BRJT": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_BSWAP": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_BUILD_VECTOR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_BUILD_VECTOR_TRUNC": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_BZERO": {
    "arity": 2,
+   "imm": 1,
    "ptype": [
     0
    ]
   },
   "G_CLMUL": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_CLMULH": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_CLMULR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_CONCAT_VECTORS": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_CONSTANT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_CONSTANT_FOLD_BARRIER": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_CONSTANT_POOL": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_CTLS": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_CTLZ": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_CTLZ_ZERO_POISON": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_CTPOP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_CTTZ": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_CTTZ_ZERO_POISON": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_DEBUGTRAP": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_DYN_STACKALLOC": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_EXTRACT": {
    "arity": 2,
+   "imm": 1,
    "ptype": []
   },
   "G_EXTRACT_SUBVECTOR": {
    "arity": 2,
+   "imm": 1,
    "ptype": []
   },
   "G_EXTRACT_VECTOR_ELT": {
    "arity": 3,
+   "imm": 0,
    "ptype": []
   },
   "G_FABS": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FACOS": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FADD": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FASIN": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FATAN": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FATAN2": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FCANONICALIZE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FCEIL": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FCMP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FCONSTANT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FCOPYSIGN": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FCOS": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FCOSH": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FDIV": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FENCE": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_FEXP": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FEXP10": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FEXP2": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FFLOOR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FFREXP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FLDEXP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FLOG": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FLOG10": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FLOG2": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMA": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMAD": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMAXIMUM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMAXIMUMNUM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMAXNUM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMAXNUM_IEEE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMINIMUM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMINIMUMNUM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMINNUM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMINNUM_IEEE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMODF": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FMUL": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FNEARBYINT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FNEG": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FPEXT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FPEXTLOAD": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_FPOW": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FPOWI": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FPTOSI": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FPTOSI_SAT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FPTOUI": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FPTOUI_SAT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FPTRUNC": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FPTRUNCSTORE": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_FRAME_INDEX": {
    "arity": 1,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_FREEZE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FREM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FRINT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FSHL": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FSHR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_FSIN": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FSINCOS": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FSINH": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FSQRT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FSUB": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FTAN": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_FTANH": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_GET_FPENV": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_GET_FPMODE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_GET_ROUNDING": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_GLOBAL_VALUE": {
    "arity": 1,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_ICMP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_IMPLICIT_DEF": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_INDEXED_LOAD": {
    "arity": 3,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_INDEXED_SEXTLOAD": {
    "arity": 3,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_INDEXED_STORE": {
    "arity": 3,
+   "imm": 0,
    "ptype": [
     0,
     2
@@ -476,98 +588,121 @@
   },
   "G_INDEXED_ZEXTLOAD": {
    "arity": 3,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_INSERT": {
    "arity": 2,
+   "imm": 1,
    "ptype": []
   },
   "G_INSERT_SUBVECTOR": {
    "arity": 2,
+   "imm": 1,
    "ptype": []
   },
   "G_INSERT_VECTOR_ELT": {
    "arity": 3,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_CONVERGENT": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_CONVERGENT_W_SIDE_EFFECTS": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_FPTRUNC_ROUND": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_LLRINT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_LRINT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_ROUND": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_ROUNDEVEN": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_TRUNC": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_INTRINSIC_W_SIDE_EFFECTS": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_INTTOPTR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_INVOKE_REGION_START": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_IS_FPCLASS": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_JUMP_TABLE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_LLROUND": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_LOAD": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_LROUND": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_LSHR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_MEMCPY": {
    "arity": 3,
+   "imm": 1,
    "ptype": [
     0,
     1
@@ -575,6 +710,7 @@
   },
   "G_MEMCPY_INLINE": {
    "arity": 3,
+   "imm": 0,
    "ptype": [
     0,
     1
@@ -582,6 +718,7 @@
   },
   "G_MEMMOVE": {
    "arity": 3,
+   "imm": 1,
    "ptype": [
     0,
     1
@@ -589,404 +726,500 @@
   },
   "G_MEMSET": {
    "arity": 3,
+   "imm": 1,
    "ptype": [
     0
    ]
   },
   "G_MEMSET_INLINE": {
    "arity": 3,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_MERGE_VALUES": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_MUL": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_OR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_PHI": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_PREFETCH": {
    "arity": 1,
+   "imm": 3,
    "ptype": [
     0
    ]
   },
   "G_PTRAUTH_GLOBAL_VALUE": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_PTRMASK": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_PTRTOINT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_PTR_ADD": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_READCYCLECOUNTER": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_READSTEADYCOUNTER": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_READ_REGISTER": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_RESET_FPENV": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_RESET_FPMODE": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_ROTL": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_ROTR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SADDE": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SADDO": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SADDSAT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SAVGCEIL": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SAVGFLOOR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SBFX": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SCMP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SDIV": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SDIVFIX": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_SDIVFIXSAT": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_SDIVREM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SELECT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SET_FPENV": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SET_FPMODE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SET_ROUNDING": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SEXT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SEXTLOAD": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_SEXT_INREG": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_SHL": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SHUFFLE_VECTOR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SITOFP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SMAX": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SMIN": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SMULFIX": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_SMULFIXSAT": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_SMULH": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SMULO": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SPLAT_VECTOR": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SREM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_SSHLSAT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SSUBE": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SSUBO": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_SSUBSAT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_STACKRESTORE": {
    "arity": 1,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_STACKSAVE": {
    "arity": 1,
+   "imm": 0,
    "ptype": [
     0
    ]
   },
   "G_STEP_VECTOR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_STORE": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     1
    ]
   },
   "G_SUB": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_TRAP": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_TRUNC": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_TRUNC_SSAT_S": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_TRUNC_SSAT_U": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_TRUNC_USAT_U": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UADDE": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UADDO": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UADDSAT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UAVGCEIL": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UAVGFLOOR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UBFX": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UBSANTRAP": {
    "arity": null,
+   "imm": 0,
    "ptype": []
   },
   "G_UCMP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UDIV": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UDIVFIX": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_UDIVFIXSAT": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_UDIVREM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UITOFP": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UMAX": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UMIN": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UMULFIX": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_UMULFIXSAT": {
    "arity": 1,
+   "imm": 1,
    "ptype": []
   },
   "G_UMULH": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_UMULO": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UNMERGE_VALUES": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_UREM": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_USHLSAT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_USUBE": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_USUBO": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_USUBSAT": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_VAARG": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_VASTART": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_VECREDUCE_SEQ_FADD": {
    "arity": 3,
+   "imm": 0,
    "ptype": []
   },
   "G_VECREDUCE_SEQ_FMUL": {
    "arity": 3,
+   "imm": 0,
    "ptype": []
   },
   "G_VECTOR_COMPRESS": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_VSCALE": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_WRITE_REGISTER": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_XOR": {
    "arity": 1,
+   "imm": 0,
    "ptype": []
   },
   "G_ZEXT": {
    "arity": 2,
+   "imm": 0,
    "ptype": []
   },
   "G_ZEXTLOAD": {
    "arity": 2,
+   "imm": 0,
    "ptype": [
     1
    ]

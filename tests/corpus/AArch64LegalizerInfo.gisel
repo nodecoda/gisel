@@ -747,7 +747,7 @@ ruleset A_G_GLOBAL_VALUE_2: G_GLOBAL_VALUE
     legal (not A_SmallCodeModel and in(slot(0), [A_p0]))
 
 ruleset A_G_PTRAUTH_GLOBAL_VALUE: G_PTRAUTH_GLOBAL_VALUE
-    legal (in(slot(0), A_p0) and in(slot(1), A_p0))
+    legal (slot(0) == A_p0 and slot(1) == A_p0)
 
 ruleset A_G_PTRTOINT: G_PTRTOINT
     legal in_pairs(slot(0), slot(1), [[A_i64, A_p0], [A_v2i64, A_v2p0]])
@@ -789,7 +789,7 @@ ruleset A_G_VAARG: G_VAARG
     widen(slot(0), pow2_min(8))
 
 ruleset A_G_ATOMIC_CMPXCHG_WITH_SUCCESS: G_ATOMIC_CMPXCHG_WITH_SUCCESS
-    lower (in(slot(0), [A_s8, A_s16, A_s32, A_s64, A_s128]) and in(slot(2), A_p0))
+    lower (in(slot(0), [A_s8, A_s16, A_s32, A_s64, A_s128]) and slot(2) == A_p0)
 
 ruleset A_G_ATOMIC_CMPXCHG: G_ATOMIC_CMPXCHG
     legal (not A_UseOutlineAtomics and in_pairs(slot(0), slot(1), [[A_s32, A_p0], [A_s64, A_p0]]))
@@ -805,7 +805,7 @@ ruleset A_G_ATOMICRMW_XCHG: G_ATOMICRMW_XCHG G_ATOMICRMW_ADD G_ATOMICRMW_SUB G_A
     narrow(slot(0), ty(A_s64))
 
 ruleset A_G_ATOMICRMW_MIN: G_ATOMICRMW_MIN G_ATOMICRMW_MAX G_ATOMICRMW_UMIN G_ATOMICRMW_UMAX
-    legal (in(slot(0), [A_s32, A_s64]) and in(slot(1), A_p0))
+    legal (in(slot(0), [A_s32, A_s64]) and slot(1) == A_p0)
     widen(slot(0), ty(A_s32))
     narrow(slot(0), ty(A_s64))
 
@@ -897,7 +897,7 @@ ruleset A_G_SHUFFLE_VECTOR: G_SHUFFLE_VECTOR
     clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
     clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
     scalarize(slot(0)) when bits_of(slot(0)) > 64
-    bitcast(slot(0), replace(vec_of(num_elems(slot(0)), ty(A_s64)))) when sort_of(slot(0)) == pointer_vector
+    bitcast(slot(0), replace(vec_of(num_elems(slot(0)), ty(A_i64)))) when sort_of(slot(0)) == pointer_vector
 
 ruleset A_G_CONCAT_VECTORS: G_CONCAT_VECTORS
     legal in_pairs(slot(0), slot(1), [[A_v16s8, A_v8s8], [A_v8s16, A_v4s16], [A_v4s32, A_v2s32]])

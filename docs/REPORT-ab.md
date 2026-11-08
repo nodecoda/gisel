@@ -568,3 +568,150 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --emit=core --features tests/cases/x86-features.json --config C1 \
   --check-closure --refine
 ```
+
+## 6 三个 target 的全量构建 + 全量 check-llvm（2026-11-09）
+
+§1–§5 比的都是 `getAction()` 的答案。这一节换了口径：把 X86、AArch64、RISC-V
+三份 `tests/artifacts/*.inc` 分别替换进现网的 legalizer 构造函数，重新编译，
+然后跑**完整**的 `ninja check-llvm`。判据只有一条：不新增失败。
+
+### 6.1 拦路的那一个测试
+
+基线（没换 `.inc`）的 `check-llvm` 只有 1 个既有红点：
+
+```text
+LLVM-Unit :: Target/X86/X86Tests/X86LegalizerDifferentialTest/ReferenceAnswersAreSpread
+```
+
+换完 `.inc` 之后，AArch64 和 RISC-V 的
+`test/CodeGen/<target>/GlobalISel/legalizer-info-validation.mir` 变红。这个
+测试不看答案，看的是 `LegalizerInfo::verify()` 的调试输出：哪些 type/imm
+index 被规则覆盖了。
+
+根因不是规则不同，是**入口不同**。上游大量使用声明式入口：
+
+```cpp
+.legalFor({s32}).widenScalarToNextPow2(0).clampScalar(0, s32, s64)
+```
+
+它们只给被点名的 type index 记一个已覆盖位。带 predicate 的自由入口
+（`legalIf` / `customIf` / `core*To` …）则调用 `markAllIdxsAsCovered()`，
+把所有位一次性点亮。语料里这两者被展平成同一种规则，第一版 `.inc` 就一律
+生成自由入口，于是 verifier 打印 `SKIPPED: user-defined predicate detected`
+而基线打印 `the first uncovered type index: 2, OK`。两者都 `return true`，
+但文本比对不过——而且丢掉的是“覆盖面”这条信息本身。
+
+### 6.2 生成侧补的三件事（`gisel/backend/llvm_inc.py`）
+
+1. **还原声明式入口。** 规则 guard 恰好是“类型元组成员”时，按形状发
+   `legalFor` / `lowerFor` / `libcallFor` / `customFor` / `unsupportedFor`
+   （`FOR_OVERLOADS` 记录每个名字存在哪些 arity/gate 重载），以及
+   `widenScalarFor`、`clampMinNumElements` / `clampMaxNumElements`。两种拼写都认：
+   `in/inPairs/inTriples`，和 `slot(0) == T and slot(1) == T` 的合取。
+2. **还原构造期 `if`。** `if (ST.hasX()) { build } else { build2 }` 被 importer
+   展平成了逐规则 guard；重新抽出来才能保住 aliasing：只有一边被 build 时，
+   另一个 opcode 保持零规则，组的第一个 opcode 才是 aliasing representative。
+   纯 `if`（没有 else）只在“整组规则携带同一个 gate”时还原——否则那是上游逐规则
+   写的 `legalFor(Pred, ...)`，提升到 builder 层会改变 verifier 的输出、也会让
+   组丢掉 aliasing。嵌套的分支按递归还原（`_group`）。
+3. **覆盖自检。** 上一条一旦判错，就可能把一个 ruleset 拆成“永远存在的一半”
+   和“可能为空的一半”。所以发完之后算一遍：对每个 opcode，把**不在任何 `if`
+   里**的规则覆盖到的 type index 合起来，必须覆盖满 arity 或者一个都没有；否则
+   把涉及该 opcode 的 ruleset 退出“允许提升”集合重发。互补门（`X` / `!X`）算作
+   必然成立，所以 `legalFor(Pred, …)` + `libcallFor(!Pred, …)` 照旧提升。
+   这一条把 RISC-V `G_SPLAT_VECTOR` 那种“`hasVInstructions` 其实是内联谓词而不是
+   构造期开关”的情况挡在了提升之外。
+
+另外两个小口子：
+
+- `gisel/data/opcode-slots.json` 增加了 `imm`（generic 立即数槽数，由
+  `tools/gen-opcode-slots.py` 从 `GenericOpcodes.td` 重新冻结）。`xxxFor` 只记
+  type index，而 `legalIf` 连 imm 一起点亮；像 `G_PREFETCH`（1 type / 3 imm）
+  这种 opcode 换成 `legalFor({p0})` 会让 imm 检查变成 FAIL。
+- `gisel/cli.py` 的 `inc` 出口不再合并同一 opcode 的多个 builder。手写 C++ 本来
+  就会对同一个 opcode 建两次链，这个结构可被 verifier 观测到。
+
+### 6.3 结果
+
+三个 target 的 `.inc` 同时替换（X86 在构建目录里替换，AArch64/RISC-V 在树里
+替换），重新编译后：
+
+```text
+$ ninja check-llvm
+Total Discovered Tests: 80629
+  Passed          : 54919
+  Unsupported     : 25576
+  Skipped         :    62
+  Expectedly Failed:   71
+  Failed          :     1
+Failed Tests (1):
+  LLVM-Unit :: Target/X86/./X86Tests/X86LegalizerDifferentialTest/ReferenceAnswersAreSpread
+```
+
+与基线逐条相同：唯一红点还是那条既有的 X86 unit test。
+
+三个 target 的 GlobalISel lit 目录（`legalizer-info-validation.mir` 在内）：
+
+```text
+$ ./bin/llvm-lit -q test/CodeGen/AArch64/GlobalISel/ \
+    test/CodeGen/RISCV/GlobalISel/ test/CodeGen/X86/GlobalISel/
+Total Discovered Tests: 1534
+Failed: 0
+```
+
+gisel 自身：
+
+```text
+$ python3 -m unittest discover -q -s tests     # 210 tests OK
+$ (cd tests/artifacts && sha256sum -c SHA256)  # 12/12
+```
+
+### 6.4 输入指纹
+
+| 文件 | sha256 |
+|---|---|
+| `tests/artifacts/x86.inc` | `c9b39260bb0e4cd6…` |
+| `tests/artifacts/aarch64.inc` | `dbb97efba96c6f80…` |
+| `tests/artifacts/riscv.inc` | `cbd91241c15878b7…` |
+| `gisel/backend/llvm_inc.py` | `84b4f25a10ad8987…` |
+| `tools/ab/swap-source-ctor.py` | `a2597b8ab96c284a…` |
+| llvm 树 | `e88a24a0fe84` |
+
+复现：
+
+```sh
+cd /home/ubuntu/llvm/gisel
+for t in x86 aarch64 riscv; do
+  python3 -m gisel gen tests/corpus/${t^^}LegalizerInfo.gisel \
+    --emit=inc --out /tmp/swapinc/$t.inc
+done
+python3 tools/ab/swap-source-ctor.py apply --target x86 \
+  --build /home/ubuntu/llvm/builds/explore --inc /tmp/swapinc/x86.inc
+python3 tools/ab/swap-source-ctor.py apply --target aarch64 \
+  --tree /home/ubuntu/llvm/trees/explore --inc /tmp/swapinc/aarch64.inc
+python3 tools/ab/swap-source-ctor.py apply --target riscv \
+  --tree /home/ubuntu/llvm/trees/explore --inc /tmp/swapinc/riscv.inc
+cd /home/ubuntu/llvm/builds/explore && ninja check-llvm
+# 收工
+cd /home/ubuntu/llvm/gisel
+python3 tools/ab/swap-source-ctor.py restore --target x86 --build /home/ubuntu/llvm/builds/explore
+python3 tools/ab/swap-source-ctor.py restore --target aarch64 --tree /home/ubuntu/llvm/trees/explore
+python3 tools/ab/swap-source-ctor.py restore --target riscv --tree /home/ubuntu/llvm/trees/explore
+```
+
+### 6.5 这轮证明了什么，没证明什么
+
+证明的：我们生成的 `.inc` 换掉三个 target 的合法化规则之后，LLVM 的全量测试
+没有新增失败；`legalizer-info-validation.mir` 逐字通过，说明覆盖面（而不只是
+答案）也和现网一致。
+
+没证明的：
+
+- `.inc` 文本和上游手写的 C++ 不逐字节相同，只保证 `getAction()` 的行为和
+  verifier 的报告一致。中间形态（规则顺序之外的结构、变量命名）是等价的另一
+  种写法。
+- 覆盖自检对 `opcode-slots.json` 里没有 arity 的 opcode（ATOMICRMW 家族）跳过，
+  那些 opcode 的提升安全性没有静态论证，只由 lit 覆盖。
+- 判据是“不新增失败”，不是“全绿”：既有的
+  `X86LegalizerDifferentialTest/ReferenceAnswersAreSpread` 与本轮无关，
+  仍是红的。
