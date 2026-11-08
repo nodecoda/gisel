@@ -18,6 +18,44 @@ outside      没有规则命中的补集
 
 产物是**不带答案的查询 JSONL**，不是 MIR，也不跑 `llc`。
 
+## 0.1 术语：轴、维度、长度、槽
+
+这四个词最容易混，先把它们分开：
+
+| 概念 | 定义 | 代码里的名字 | 例子 |
+|---|---|---|---|
+| **轴**（axis） | 查询空间的一个独立坐标；取一个值就确定该坐标 | `per` 的一项、`configs`、`imm_axis`、mem 行 | `slot(0)` 这根类型轴；config 轴 |
+| **维度**（dimension） | 一个 LLT 内部被谓词读取的数值量，只有三种：`bits` / `bytes` / `lanes` | `_dim_of` 返回的 `"bits"/"bytes"/"lanes"`；`_mutate(t, dim, n)` | `bits_of(slot(0)) == 64` 读的是 bits 维 |
+| **长度**（length） | 一根轴上候选值的个数；**不是**类型的位宽，也不是 lane 数 | `len(per[i])`、`_product_size(per)` | “slot 0 的轴长是 16” |
+| **槽**（slot） | 类型元组的下标；一个槽就是一根类型轴 | `slot(i)`、`nslots`、`_slot_of` | `slot(0)` / `slot(1)` |
+| **候选集** | 一根轴上的有限取值集合 | `_candidates`、`_mem_candidates`、`imm_candidates` | `B_slot0 = {s8, s16, ...}` |
+| **切点** | 谓词真值翻转的阈值 `N` | `RuleInfo.thresholds` | `N = 64` |
+| **点 / 查询** | 每根轴各取一个具体值组成的元组 | `Case`、`q` | `(C1, G_ADD, [s32, s32], None, ())` |
+| **类** | 等价关系下的一个等价类 | `graph` 的 class id；cases 的首命中区域 | “`s31` 和 `s32` 不一定同类” |
+| **商** | 所有类构成的集合 | `B / ~` | 用例就是从商里挑代表 |
+| **状态** | 每根轴取一个**类 id** 的元组（graph 用） | graph 的 state key | `(opcode, class0, class1, mem_class)` |
+
+三句话记住区别：
+
+1. **轴是坐标，维度是尺子，长度是刻度数。**
+   `slot(0)` 是轴；`bits` 是维度；这根轴上有 16 个候选值是长度。
+2. **lane 数不是“长度”，是类型的一个维度。**
+   `v4s32` 的 lane 数是 4；说“v4s32 的长度是 4”会和“轴长”混淆。
+3. **点的数量、商的大小、用例的数量是三回事。**
+   `|B| = Π 轴长`；`|B/~|` 是类数，`≤ |B|`；用例数只数被 emit 的
+   equivalence/boundary/outside，通常远小于 `|B|`。
+
+还有一个容易忽略的区别：
+
+- **`opcode` 不是轴**，它是 ruleset 的标签。一个 ruleset 固定在一个或几个
+  opcode 上，轴是它内部的类型槽、config、mem、imm。
+- **`--axes` 文件不是“新增一类轴”**，它是每根轴取值的策略：`explicit`
+  替换候选集，`derive` 在推导结果上增删。
+
+例子（X86 `G_ADD`）：只有一根类型轴，轴长 16，`|B| = 16`；`G_LOAD` 有两根
+类型轴（16 × 16 = 256），再乘上 mem 行；RISC-V `G_SEXT_INREG` 多一根
+`imm(0)` 轴（10 个值），总点数 16 × 10。
+
 ## 1 问题：为什么不能靠采样
 
 LLT 的空间是无限的：`s1`、`s3`、`s24`、`s31`、`s33`、`v3s32`、`nxv4s32`、
