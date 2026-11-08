@@ -424,3 +424,132 @@ python3 tools/ab/ab.py run --target aarch64 \
   逐个取栈才能说是 LLVM 的问题。
 - 查询仍只覆盖 `gisel cases` 的等价类 / 边界 / 域外，不是任意 LLT。
 - 配置仍是 `tests/cases/features.json` 的 9 个，不是全部 subtarget 组合。
+
+## 5 单步一致为什么能推出多轮一致（2026-11-09）
+
+前面的对拍只比 `getAction()` 一次返回值（§3），不比合法化跑完的最终结果。
+这一节说明为什么**在这个模型里前者足以推出后者**，以及这个推导成立需要的
+前提；前提没满足的部分单独列出，不并进结论。
+
+### 5.1 命题
+
+记一个状态
+
+```text
+S = (opcode, 类型向量, mem)
+getAction(S) = (action, type_idx, new_type)      # 单步，已逐条比过
+T(S)         = 把 mutation 作用到 S 上得到的新状态
+```
+
+合法化就是反复迭代 `T`，直到 `action` 是终结动作（`Legal` / `Lower` /
+`Libcall` / `Custom` / `Unsupported`）。
+
+> **命题**：若对所有可达状态 `S` 都有
+> `getAction_ours(S) = getAction_ref(S)`，且 `T` 在两边是同一个函数，
+> 则两边的整条合法化序列逐项相同，最终结果相同。
+
+证明是归纳：首项相同 → 状态相同 → 下一项相同 → …；终止条件只由
+`action` 决定，而 `action` 相同。
+
+### 5.2 `T` 为什么是同一个函数
+
+不是假设，是构造上的：AArch64 / RISC-V 的 ours runner 只多链了一个替身
+构造函数（§3.1），`LegalizerHelper`、各 `legalize*`、`Custom` 回调、
+`Libcall` 展开全部来自官方 `.so`。`T` 的输入只有
+`(action, type_idx, new_type, 原指令)`，这四项我们逐项比过。
+
+X86 的 `swap-library` 策略换的是整张表，但 `LegalizerHelper` 同样没动。
+
+所以 §5.1 的第二个条件在三个 target 上都是白送的；真正要验的是第一个。
+
+### 5.3 第一个条件的三个子前提
+
+| # | 前提 | 含义 | 现状 |
+|---|---|---|---|
+| ① | 覆盖 | 可达状态都落在枚举出来的图里 | X86 93–94%，RISC-V 94.9%，AArch64 81.1% |
+| ② | 闭包 | `T` 把同一个类映到同一个类 | **未通过** |
+| ③ | 谓词可判定 | 类划分不是猜的 | opaque 状态占比见表 |
+
+①②③ 缺一，命题就只在“已建图且闭包成立”的子集上成立，不能外推。
+
+### 5.4 已证覆盖的实测数字
+
+`covered = states - opaque - outside`，`outside` 是后继跑出声明域的状态，
+它们的边没建，所以归纳在那里断掉。
+
+| target | config | states | opaque | outside | covered | 比例 |
+|---|---|---:|---:|---:|---:|---:|
+| X86 | C0 | 73,431 | 1,012 | 4,071 | 68,348 | 93.1% |
+| X86 | C1 | 73,420 | 1,016 | 3,062 | 69,342 | 94.4% |
+| X86 | C2 | 73,350 | 1,016 | 3,074 | 69,260 | 94.4% |
+| X86 | C3 | 73,431 | 1,012 | 3,903 | 68,516 | 93.3% |
+| AArch64 | baseline | 763,488 | 128,581 | 15,605 | 619,302 | 81.1% |
+| RISC-V | rv64gc | 423,342 | 14,409 | 7,358 | 401,575 | 94.9% |
+
+八个 RISC-V 配置的 `cycles` 全为 0、`stuck` 全为 0；X86 四个配置同理。
+
+`--check-closure` 的结果：
+
+| target | config | 违例 | rc |
+|---|---|---:|---:|
+| X86 | C1 | 3,372 | 1 |
+| RISC-V | rv64gc | 7,365 | 1 |
+| AArch64 | baseline | 未跑 | — |
+
+X86 的头几条都是 `G_ANYEXT` 的 `multiple target classes`：同一个源类被
+mutation 推到多个目标类，商图的后继不是函数。这就是 ② 未通过的直接含义。
+
+### 5.5 所以多轮对拍不是下一步
+
+在 ② 修好、① 的 `outside` 收进图之前，造 MIR 跑一遍 `llc` 得到的是
+“另一份实现比对”，不是“证明”。而命题一旦成立，多轮结果由单步唯一决定，
+再跑一遍不增加信息。
+
+多轮仍有独立价值，但那是另一个目的：**给上游找缺陷**（见 §5.6），不是给
+本项目做 A/B 结论。
+
+### 5.6 这份语料对上游的价值
+
+查询集本身就是给现网的回归语料，不依赖“我们和现网一致”这个结论：
+
+- 每条查询是 `(config, opcode, 类型, mem, imms)` 的一个点，与实现无关；
+- 规模：X86 3,273 / AArch64 10,244 / RISC-V 6,140；
+- 可直接落成 `.mir`，用 `llc -run-pass=legalizer` 跑（已在本树验证可行：
+
+  ```sh
+  llc -mtriple=aarch64 -run-pass=legalizer q.mir
+  ```
+
+  MIR 里 GlobalISel 类型写成 `<16 x s8>` / `<vscale x 16 x i64>`，不是
+  `v16s8`）。
+
+这条路径能暴露单步对拍看不到的两类问题：`mutationIsSane` 失败（§4.5 的
+224 条对称断言里有实例）和合法化不收敛。它属于工作台，不属于 gisel 本体。
+
+### 5.7 指纹与复现
+
+| 文件 | sha256 |
+|---|---|
+| `tests/corpus/X86LegalizerInfo.gisel` | `04841d45f101b629…` |
+| `tests/corpus/AArch64LegalizerInfo.gisel` | `df5a0d8d1020b9c5…` |
+| `tests/corpus/RISCVLegalizerInfo.gisel` | `ea5d23f8ec814b4b…` |
+| `gisel/graph.py` | `efe5d9b75b851a65…` |
+| `gisel/eval.py` | `15a953dc67c45bfb…` |
+| `gisel/cases.py` | `63b0db408275fb4c…` |
+
+```sh
+# 覆盖率与环检测
+python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
+  --emit=core --features tests/cases/x86-features.json --config C1 --json
+
+python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
+  --emit=core --features tests/cases/features.json --config baseline --json
+
+python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
+  --emit=core --features tests/cases/riscv-features.json --config rv64gc --json
+
+# 闭包（失败时 rc=1 并打印反例）
+python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
+  --emit=core --features tests/cases/x86-features.json --config C1 \
+  --check-closure
+```
