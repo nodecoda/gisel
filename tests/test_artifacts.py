@@ -1,7 +1,9 @@
-"""Artifact gates: the checked-in .gisel reproduces the checked-in C++/JSON.
+"""Artifact gates: the checked-in .gisel reproduces the frozen artifacts.
 
-The .td renderer was removed; ``--emit=inc`` is the C++ chain, byte for byte,
-with no llvm-tblgen run.
+The artifacts are gisel's own output (a drift baseline), not a second
+implementation's: the ``-gen-legalizer`` backend and the ``.td`` it read are
+retired.  Rule fidelity is the answer gate in ``EvaluatorCorpus`` below and in
+``docs/CORPORA.md``.
 """
 
 import hashlib
@@ -16,10 +18,9 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 TESTS = ROOT / "tests"
-# Output of this project's `-gen-legalizer*` backend on our `.td`: byte oracles
-# for the Python emitter (docs/CORPORA.md).
+# All three corpora are cpp -> .gisel; the artifacts below are frozen from
+# gisel itself (docs/CORPORA.md).
 CORPORA = (("x86", "X86LegalizerInfo"), ("aarch64", "AArch64LegalizerInfo"))
-# No upstream TableGen emitter: frozen from gisel itself (docs/CORPORA.md).
 SELF_BASELINE = (("riscv", "RISCVLegalizerInfo"),)
 
 
@@ -29,7 +30,7 @@ def run(*args, env=None):
 
 
 class GoldenInc(unittest.TestCase):
-    """M1: `gisel gen --emit=inc` is byte-identical to -gen-legalizer."""
+    """M1: `gisel gen --emit=inc` is byte-identical to the frozen .inc."""
 
     def test_generated_inc_matches_golden(self):
         for name, src in CORPORA:
@@ -62,7 +63,7 @@ class GoldenInc(unittest.TestCase):
 
     def test_terminal_call_count_is_conserved(self):
         """One terminal per rule, plus one `.immIdx` per ImmIdx record."""
-        expected = {"x86": (332, 0), "aarch64": (743, 3)}
+        expected = {"x86": (328, 0), "aarch64": (743, 3)}
         total = 0
         for name, _ in CORPORA:
             text = (TESTS / "artifacts" / f"{name}.inc").read_text()
@@ -72,11 +73,11 @@ class GoldenInc(unittest.TestCase):
             self.assertEqual(len(calls) - len(imm), rules, name)
             self.assertEqual(len(imm), imm_expected, name)
             total += len(calls)
-        self.assertEqual(total, 1078)
+        self.assertEqual(total, 1074)
 
 
 class GoldenCheckJson(unittest.TestCase):
-    """M2: `gisel gen --emit=check` is byte-identical to -gen-legalizer-check."""
+    """M2: `gisel gen --emit=check` is byte-identical to the frozen JSON."""
 
     def test_generated_check_matches_golden(self):
         for name, src in CORPORA:
@@ -104,7 +105,7 @@ class GoldenCheckJson(unittest.TestCase):
 
 
 class GoldenTable(unittest.TestCase):
-    """M3: `gisel gen --emit=table` is byte-identical to -gen-legalizer-table."""
+    """M3: `gisel gen --emit=table` is byte-identical to the frozen fragment."""
 
     def test_generated_table_matches_golden(self):
         for name, src in CORPORA:
@@ -139,9 +140,9 @@ from gisel.backend.core_json import strip_origin as _strip_origin  # noqa: E402
 
 
 class SelfBaseline(unittest.TestCase):
-    """RISC-V has no upstream emitter, so the artifact is our own output.
+    """RISC-V's four artifacts are frozen from gisel (same as X86/AArch64 now).
 
-    The gate still catches corpus or generator drift; it does not claim byte
+    The gate catches corpus or generator drift; it does not claim byte
     equality with `llvm-tblgen` (`docs/CORPORA.md`).
     """
 

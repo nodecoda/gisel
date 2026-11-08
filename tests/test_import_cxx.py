@@ -16,11 +16,19 @@ RISCV_SRC = Path(os.environ.get(
     "GS_RISCV_SRC",
     "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/RISCV/GISel/"
     "RISCVLegalizerInfo.cpp"))
+X86_SRC = Path(os.environ.get(
+    "GS_X86_SRC",
+    "/home/ubuntu/llvm/trees/pr-lane/llvm/lib/Target/X86/GISel/"
+    "X86LegalizerInfo.cpp"))
+AARCH64_SRC = Path(os.environ.get(
+    "GS_AARCH64_SRC",
+    "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/AArch64/GISel/"
+    "AArch64LegalizerInfo.cpp"))
 
 
-def run(*args):
+def run(*args, env=None):
     return subprocess.run([sys.executable, str(TOOL), *args],
-                          cwd=ROOT, capture_output=True, text=True)
+                          cwd=ROOT, env=env, capture_output=True, text=True)
 
 
 def body(text):
@@ -67,6 +75,58 @@ class Fixture(unittest.TestCase):
             self.assertIn("TOTAL", r.stdout)
             total = [l for l in r.stdout.splitlines() if l.startswith("TOTAL")][0]
             self.assertEqual(total.split()[-2:], ["5", "6"])
+
+
+class ReimportedCorpora(unittest.TestCase):
+    """Every pinned constructor reproduces its checked-in `.gisel`."""
+
+    def test_x86_and_aarch64_reimport(self):
+        for target, src, rulesets, rules in (
+                ("X86", X86_SRC, 63, 328),
+                ("AArch64", AARCH64_SRC, 117, 744)):
+            if not src.exists():
+                continue
+            with self.subTest(target=target), \
+                    tempfile.TemporaryDirectory() as d:
+                out = Path(d) / "T.gisel"
+                r = run(target, str(src), "--out", str(out))
+                self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+                self.assertIn("%d rulesets, %d rules, 0 refused"
+                              % (rulesets, rules), r.stdout)
+                self.assertEqual(
+                    body(out.read_text()),
+                    body((CORPUS / ("%sLegalizerInfo.gisel" % target)).read_text()))
+
+
+class AllTargets(unittest.TestCase):
+    @unittest.skipUnless(
+        all(p.exists() for p in (X86_SRC, AARCH64_SRC, RISCV_SRC)),
+        "pinned constructors not all present")
+    def test_all_check_reproduces_every_corpus(self):
+        env = dict(os.environ,
+                   GS_X86_SRC=str(X86_SRC),
+                   GS_AARCH64_SRC=str(AARCH64_SRC),
+                   GS_RISCV_SRC=str(RISCV_SRC))
+        r = run("--all", "--check", env=env)
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+        self.assertEqual(r.stdout.count(": matches"), 3, r.stdout)
+
+
+class PinnedCounts(unittest.TestCase):
+    def test_drift_fails_loudly(self):
+        """A file with the pinned name but different rules must not pass."""
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "AArch64LegalizerInfo.cpp"
+            src.write_text(FIXTURE.read_text())
+            out = Path(d) / "T.gisel"
+            r = run("AArch64", str(src), "--out", str(out))
+            self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+            self.assertIn("DRIFT", r.stdout)
+
+    def test_all_is_pinned_or_explicit_source_only(self):
+        r = run("X86", "--all")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("exactly one of TARGET or --all", r.stderr)
 
 
 class RisCvCorpus(unittest.TestCase):

@@ -361,7 +361,7 @@
       .coreMinScalar([=](const LegalityQuery &Query) { return R_ST_hasStdExtZmmul; }, 0, R_sXLen)
       .coreLowerIf([=](const LegalityQuery &Query) { return R_ST_hasStdExtZmmul; })
       .coreMinScalar([=](const LegalityQuery &Query) { return !(R_ST_hasStdExtZmmul); }, 0, R_sXLen)
-      .coreMinScalar([=](const LegalityQuery &Query) { return (!(R_ST_hasStdExtZmmul)) && ((Query.Types[0] == R_sXLen)); }, 0, R_sDoubleXLen)
+      .coreWidenTo([=](const LegalityQuery &Query) { return (!(R_ST_hasStdExtZmmul)) && ((Query.Types[0] == R_sXLen)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, R_sDoubleXLen); })
       .coreLowerIf([=](const LegalityQuery &Query) { return !(R_ST_hasStdExtZmmul); });
   getActionDefinitionsBuilder({G_SDIV, G_UDIV, G_UREM})
       .coreLegalIf([=](const LegalityQuery &Query) { return (R_ST_hasStdExtM) && ((Query.Types[0] == R_sXLen)); })
@@ -474,9 +474,9 @@
       .coreCustomIf([=](const LegalityQuery &Query) { return ((R_ST_is64Bit) && (R_ST_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, R_s32)
-      .coreMinScalar([=](const LegalityQuery &Query) { return ((Query.Types[1] == R_f16)) && (!(R_ST_hasStdExtZfh)) && ((R_ST_is64Bit) || ((Query.Types[0] == R_s32))); }, 1, R_s32)
+      .coreWidenTo([=](const LegalityQuery &Query) { return ((Query.Types[1] == R_f16)) && (!(R_ST_hasStdExtZfh)) && ((R_ST_is64Bit) || ((Query.Types[0] == R_s32))); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, R_s32); })
       .coreLibcallIf([=](const LegalityQuery &Query) { return (!(R_ST_hasStdExtZfhmin)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Query)); })
-      .coreMaxScalar([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Query); }, 0, R_s32)
+      .coreNarrowTo([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Query); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, R_s32); })
       .coreLibcallIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}, {R_s64, R_s32}, {R_s32, R_s64}, {R_s64, R_s64}})(Query); })
       .coreLibcallIf([=](const LegalityQuery &Query) { return (R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s128}, {R_s64, R_s128}})(Query)); })
       .coreLibcallIf([=](const LegalityQuery &Query) { return (R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}, {R_s128, R_s128}})(Query)); });
@@ -487,7 +487,7 @@
       .coreCustomIf([=](const LegalityQuery &Query) { return ((R_ST_is64Bit) && (R_ST_hasStdExtF)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}})(Query)); })
       .coreCustomIf([=](const LegalityQuery &Query) { return ((R_ST_is64Bit) && (R_ST_hasStdExtD)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s64}})(Query)); })
       .coreCustomIf([=](const LegalityQuery &Query) { return ((R_ST_is64Bit) && (R_ST_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Query)); })
-      .coreMinScalar([=](const LegalityQuery &Query) { return (Query.Types[1] == R_s16); }, 1, R_s32)
+      .coreWidenTo([=](const LegalityQuery &Query) { return (Query.Types[1] == R_s16); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, R_s32); })
       .coreLowerIf([=](const LegalityQuery &Query) { return (Query.Types[0].isScalar()) && (Query.Types[1].isScalar()); });
   getActionDefinitionsBuilder({G_LROUND, G_LLROUND})
       .coreLegalIf([=](const LegalityQuery &Query) { return (R_ST_hasStdExtF) && (LegalityPredicates::typePairInSet(0, 1, {{R_sXLen, R_s32}})(Query)); })
@@ -510,7 +510,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (R_ST_hasStdExtD) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_sXLen}})(Query)); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (R_ST_hasStdExtZfh) && (LegalityPredicates::typePairInSet(0, 1, {{R_s16, R_sXLen}})(Query)); })
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1)
-      .coreMinScalar([=](const LegalityQuery &Query) { return (Query.Types[0].isScalar()) && (Query.Types[1].isScalar()) && (((Query.Types[1]).getSizeInBits().getKnownMinValue() < (R_XLen_64 ? 64 : 32))) && (((R_ST_hasStdExtF) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() == 32))) || ((R_ST_hasStdExtD) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() == 64))) || ((R_ST_hasStdExtZfh) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() == 16)))); }, 1, R_sXLen)
+      .coreWidenTo([=](const LegalityQuery &Query) { return (Query.Types[0].isScalar()) && (Query.Types[1].isScalar()) && (((Query.Types[1]).getSizeInBits().getKnownMinValue() < (R_XLen_64 ? 64 : 32))) && (((R_ST_hasStdExtF) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() == 32))) || ((R_ST_hasStdExtD) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() == 64))) || ((R_ST_hasStdExtZfh) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() == 16)))); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, R_sXLen); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, R_s32)
       .coreLibcallIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}, {R_s64, R_s32}, {R_s32, R_s64}, {R_s64, R_s64}})(Query); })
       .coreLibcallIf([=](const LegalityQuery &Query) { return (R_ST_is64Bit) && (LegalityPredicates::typePairInSet(0, 1, {{R_s128, R_s32}, {R_s128, R_s64}})(Query)); })

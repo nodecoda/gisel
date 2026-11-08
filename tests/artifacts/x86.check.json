@@ -3,11 +3,11 @@
   "overloads": 64,
   "entries": 64,
   "rule_sets": 63,
-  "rules": 332,
+  "rules": 328,
   "escapes": 0,
   "entries_without_table_translation": 0,
   "rule_sets_without_table_translation": 0,
-  "core_rules": 332,
+  "core_rules": 328,
   "legacy_rules": 0,
   "coverage": 0,
   "core_operators": ["bitcast", "custom", "fewer", "legal", "libcall", "lower", "more", "narrow", "scalarize", "unsupported", "widen"]

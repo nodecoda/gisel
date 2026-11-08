@@ -28,8 +28,8 @@ def lint_source(text):
 
 class LintCorpus(unittest.TestCase):
     def test_both_corpora_have_no_errors(self):
-        for name, nrules in (("X86LegalizerInfo", 332),
-                             ("AArch64LegalizerInfo", 743)):
+        for name, nrules in (("X86LegalizerInfo", 328),
+                             ("AArch64LegalizerInfo", 741)):
             r = run("lint", str(CORPUS / f"{name}.gisel"))
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertIn("0 error(s)", r.stdout)
@@ -70,7 +70,7 @@ class LintCorpus(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         doc = json.loads(r.stdout)
         self.assertEqual(doc["errors"], [])
-        self.assertEqual(doc["rules"], 743)
+        self.assertEqual(doc["rules"], 741)
         # Variadic opcodes are the only ones without a fixed arity.
         self.assertTrue(doc["warnings"])
         self.assertTrue(all("arity unknown" in w["message"]

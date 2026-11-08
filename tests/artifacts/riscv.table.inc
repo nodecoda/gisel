@@ -4846,8 +4846,8 @@ static LegalizeActionStep REval44(
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_sXLen))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((!(R_ST_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen))) && (scalarNarrowerThan(0, (R_sDoubleXLen).getSizeInBits())(Q))) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, R_sDoubleXLen))(Q);
+  if ((!(R_ST_hasStdExtZmmul)) && ((Q.Types[0] == R_sXLen))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), R_sDoubleXLen); })(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
   if (!(R_ST_hasStdExtZmmul)) {
@@ -6882,15 +6882,15 @@ static LegalizeActionStep REval66(
     auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if ((((Q.Types[1] == R_f16)) && (!(R_ST_hasStdExtZfh)) && ((R_ST_is64Bit) || ((Q.Types[0] == R_s32)))) && (scalarNarrowerThan(1, (R_s32).getSizeInBits())(Q))) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, R_s32))(Q);
+  if (((Q.Types[1] == R_f16)) && (!(R_ST_hasStdExtZfh)) && ((R_ST_is64Bit) || ((Q.Types[0] == R_s32)))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(1), R_s32); })(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
   if ((!(R_ST_hasStdExtZfhmin)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Q))) {
     return {LegalizeActions::Libcall, 0, LLT{}};
   }
-  if ((LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Q)) && (scalarWiderThan(0, (R_s32).getSizeInBits())(Q))) {
-    auto M = (LegalizeMutations::changeElementSizeTo(0, R_s32))(Q);
+  if (LegalityPredicates::typePairInSet(0, 1, {{R_s64, R_f16}})(Q)) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), R_s32); })(Q);
     return {LegalizeActions::NarrowScalar, M.first, M.second};
   }
   if (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s32}, {R_s64, R_s32}, {R_s32, R_s64}, {R_s64, R_s64}})(Q)) {
@@ -7000,8 +7000,8 @@ static LegalizeActionStep REval67(
   if (((R_ST_is64Bit) && (R_ST_hasStdExtZfh)) && (LegalityPredicates::typePairInSet(0, 1, {{R_s32, R_s16}})(Q))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (((Q.Types[1] == R_s16)) && (scalarNarrowerThan(1, (R_s32).getSizeInBits())(Q))) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, R_s32))(Q);
+  if ((Q.Types[1] == R_s16)) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(1), R_s32); })(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
   if ((Q.Types[0].isScalar()) && (Q.Types[1].isScalar())) {
@@ -7305,8 +7305,8 @@ static LegalizeActionStep REval70(
     auto M = (LegalizeMutations::widenScalarOrEltToNextPow2(1, 0))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((Q.Types[0].isScalar()) && (Q.Types[1].isScalar()) && (((Q.Types[1]).getSizeInBits().getKnownMinValue() < (R_XLen_64 ? 64 : 32))) && (((R_ST_hasStdExtF) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 32))) || ((R_ST_hasStdExtD) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64))) || ((R_ST_hasStdExtZfh) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 16))))) && (scalarNarrowerThan(1, (R_sXLen).getSizeInBits())(Q))) {
-    auto M = (LegalizeMutations::changeElementSizeTo(1, R_sXLen))(Q);
+  if ((Q.Types[0].isScalar()) && (Q.Types[1].isScalar()) && (((Q.Types[1]).getSizeInBits().getKnownMinValue() < (R_XLen_64 ? 64 : 32))) && (((R_ST_hasStdExtF) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 32))) || ((R_ST_hasStdExtD) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64))) || ((R_ST_hasStdExtZfh) && (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 16))))) {
+    auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(1), R_sXLen); })(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
   if (scalarNarrowerThan(1, (R_s32).getSizeInBits())(Q)) {

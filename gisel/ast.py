@@ -791,23 +791,24 @@ def canonicalize_rulesets(rulesets: list[RuleSet]) -> list[RuleSet]:
     if all(n == 1 for n in seen.values()):
         # Nothing to consolidate; keep the artifact byte-identical.
         return list(rulesets)
-    seq, first = {}, {}
+    seq, first, covered = {}, {}, {}
     for rs in rulesets:
         for op in rs.opcodes:
             first.setdefault(op, rs.name)
             seq.setdefault(op, []).extend(rs.rules)
+            covered.setdefault(op, set()).update(rs.coverage)
     last = rulesets[-1]
     groups, order = {}, []
     for op, rules in seq.items():
         key = json.dumps([_rule_key(r) for r in rules], sort_keys=True)
         if key not in groups:
             groups[key] = RuleSet(first[op], [], list(rules),
-                                  list(last.comments), sorted(last.coverage),
+                                  list(last.comments), sorted(covered[op]),
                                   last.line)
             order.append(key)
         g = groups[key]
         g.opcodes.append(op)
-        g.coverage = sorted(set(g.coverage) | set(last.coverage))
+        g.coverage = sorted(set(g.coverage) | covered[op])
     out, used = [], set()
     for key in order:
         g = groups[key]
