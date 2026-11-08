@@ -6,7 +6,7 @@
 A query that trips an LLVM assertion kills the process, and a buffered tail
 would be lost.  The runner flushes per answer, so we restart after the query
 that aborted and mark it `unanswerable` in the output.  The answer file stays
-parallel to the query file, which is what `gisel diff` needs.
+parallel to the query file, which is what `tools/ab/diff.py` needs.
 """
 
 from __future__ import annotations

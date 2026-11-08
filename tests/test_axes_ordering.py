@@ -5,7 +5,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gisel import axes, cases, diff, domain, graph
+from gisel import answers, axes, cases, domain, graph
 
 FIXTURE = """\
 type S8 = LLT::scalar(8)
@@ -121,11 +121,11 @@ class Ordering(unittest.TestCase):
                 "imms": []}
         left = dict(base, mem=["s32", 8, "Unordered", "NotAtomic"], action="Legal")
         right = dict(base, mem=["s32", 8, "Acquire", "NotAtomic"], action="Lower")
-        self.assertNotEqual(diff._key(left), diff._key(right))
+        self.assertNotEqual(answers.key(left), answers.key(right))
         legacy = dict(base, mem=["s32", 8], action="Legal")
         same = dict(base, mem=["s32", 8, "NotAtomic", "NotAtomic"],
                     action="Legal")
-        self.assertEqual(diff._key(legacy), diff._key(same))
+        self.assertEqual(answers.key(legacy), answers.key(same))
 
 
 if __name__ == "__main__":

@@ -29,5 +29,5 @@ fi
   "$OUT/runner.ours" shipping
 "$OUT/runner.ours" --queries "$QUERIES" > "$OUT/ours.answers.jsonl"
 
-python3 -m gisel diff "$OUT/official.answers.jsonl" \
+python3 "$ROOT/tools/ab/diff.py" "$OUT/official.answers.jsonl" \
   "$OUT/ours.answers.jsonl" --json | tee "$OUT/diff.json"

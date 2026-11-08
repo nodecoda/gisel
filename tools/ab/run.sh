@@ -12,5 +12,5 @@ OURS=${4:-${AB_OURS_RUNNER:-$ROOT/.ab/runner.shipping}}
 mkdir -p "$OUT"
 "$REF" --queries "$QUERIES" > "$OUT/reference.answers.jsonl"
 "$OURS" --queries "$QUERIES" > "$OUT/ours.answers.jsonl"
-python3 -m gisel diff "$OUT/reference.answers.jsonl" \
+python3 "$ROOT/tools/ab/diff.py" "$OUT/reference.answers.jsonl" \
   "$OUT/ours.answers.jsonl" --json | tee "$OUT/diff.json"

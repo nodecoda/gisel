@@ -8,7 +8,6 @@ from pathlib import Path
 
 from . import ast as A, dsl
 from . import cases as casegen
-from . import diff as diffgen
 from . import domain as domaingen
 from .backend import check_json, core_json, llvm_inc, table
 
@@ -149,10 +148,10 @@ def main(argv=None):
         epilog="gisel does two things: turn a .gisel file into rule artifacts "
                "(gen/check/lint) and generate test cases (cases/domain).  "
                "eval answers queries for the case generator; graph analyses "
-               "the normal form.  diff is the one workbench verb here: it "
-               "compares answer files produced elsewhere.  Everything that "
-               "reads LLVM sources, runs llvm-tblgen or compiles LLVM lives "
-               "under tools/ and is not part of gisel.  See docs/SCOPE.md.")
+               "the normal form.  Everything that reads LLVM sources, runs "
+               "llvm-tblgen, compiles LLVM or compares two implementations "
+               "lives under tools/ and is not part of gisel.  See "
+               "docs/SCOPE.md.")
     ap.add_argument("--version", action="version", version="gisel 0.3.0")
     sub = ap.add_subparsers(dest="cmd", required=True)
 
@@ -202,12 +201,6 @@ def main(argv=None):
     d.add_argument("--slots", help="opcode slot table (default: bundled)")
     d.add_argument("--axes", help="axis profile JSON (analysis only)")
     d.add_argument("--json", action="store_true", help="print stats as JSON")
-
-    df = sub.add_parser("diff",
-                        help="workbench: compare two full-answer JSONL files")
-    df.add_argument("ref")
-    df.add_argument("ours")
-    df.add_argument("--json", action="store_true", help="print the report as JSON")
 
     l = sub.add_parser("lint", help="static checks over a source file (no LLVM)")
     l.add_argument("source")
@@ -315,8 +308,6 @@ def main(argv=None):
         return 1 if errors else 0
     if args.cmd == "domain":
         return domaingen.main(argv[1:])
-    if args.cmd == "diff":
-        return diffgen.main(argv[1:])
     if args.cmd == "cases":
         return casegen.main(argv[1:])
     if args.cmd == "graph":

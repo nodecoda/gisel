@@ -56,7 +56,7 @@ tools/ab/run-aarch64-end-to-end.sh "$TREE" "$BUILD" \
 ```
 
 脚本内部先跑 `gisel cases`（`--axes tests/cases/aarch64-mem-orderings.axes.json`）
-生成查询，再分别喂给两个 runner，最后 `gisel diff`。
+生成查询，再分别喂给两个 runner，最后 `tools/ab/diff.py`。
 
 结果分两段。修掉 §2.1 的两个 TypeSize 洞之后是
 `10,005 / 24 / 179`；再把 §2.2 的两条语料 bug 修掉之后是：
@@ -144,11 +144,11 @@ llvm/lib/Target/AArch64/GISel/AArch64LegalizerInfo.td:960
 ```sh
 python3 -m gisel eval --doc tests/artifacts/aarch64.core.json \
   --features tests/cases/features.json \
-  --cases /tmp/a64-ord-cases3.jsonl \
-  --answers /tmp/a64-fixed/eval.answers.jsonl
+  --cases /tmp/a64-e2e/queries.jsonl \
+  --answers /tmp/a64-e2e/eval.answers.jsonl
 
-python3 -m gisel diff /tmp/a64-fixed/ours3.jsonl \
-  /tmp/a64-fixed/eval.answers.jsonl --json
+python3 tools/ab/diff.py /tmp/a64-e2e/ours.answers.jsonl \
+  /tmp/a64-e2e/eval.answers.jsonl --json
 ```
 
 结果：9,850 条两侧都有答案的查询 **0 分歧**；剩下 179 条是 C++ 侧断言、
@@ -175,7 +175,7 @@ tools/ab/run-aarch64-end-to-end.sh "$TREE" "$BUILD" \
 python3 -m gisel eval --doc tests/artifacts/aarch64.core.json \
   --features tests/cases/features.json \
   --cases /tmp/a64-e2e/queries.jsonl --answers /tmp/a64-e2e/eval.answers.jsonl
-python3 -m gisel diff /tmp/a64-e2e/ours.answers.jsonl \
+python3 tools/ab/diff.py /tmp/a64-e2e/ours.answers.jsonl \
   /tmp/a64-e2e/eval.answers.jsonl --json
 ```
 

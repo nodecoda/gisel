@@ -184,12 +184,12 @@ is the subtarget truth table it was recorded with.
 `gisel cases` produces questions, not answers.  To compare the evaluator with a
 compiled legalizer on the same file, pass `--answers` instead of frozen
 expectations; the output is the same JSONL shape a runner writes, so
-`gisel diff` can read both:
+`tools/ab/diff.py` can read both:
 
 ```sh
 gisel eval --doc a.core.json --features tests/cases/features.json \
   --cases queries.jsonl --answers eval.answers.jsonl
-gisel diff runner.answers.jsonl eval.answers.jsonl --json
+python3 tools/ab/diff.py runner.answers.jsonl eval.answers.jsonl --json
 ```
 
 ## Layout
@@ -201,6 +201,7 @@ gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / table.py / core_json.py   M2 / M3 / M4
 gisel/eval.py           standalone evaluator (9632 points, 0 disagreements)
 gisel/cases.py          equivalence/boundary/outside case generation
+gisel/answers.py        answer-file reader and full-set comparison
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/grammar.md         the .gisel grammar and AST, normative
 spec/cases.md           what a generated case means, and the subset contract

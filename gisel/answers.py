@@ -1,22 +1,23 @@
-#!/usr/bin/env python3
-"""Compare two answer JSONL files over the full query set.
+"""Read and compare answer JSONL files.
 
-Unlike ``gisel cases --against``, this is not an intersection report: a key
-present on one side and absent on the other is a failure.  The contract is
-"same queries, same answers", which is what an A/B legalizer comparison needs.
+An answer file pairs a query key with what a legalizer answered.  This module
+is the reader and the comparison; the command that prints the report is a
+workbench tool (``tools/ab/diff.py``), see ``docs/SCOPE.md``.
+
+Unlike ``gisel cases --against``, :func:`compare` is not an intersection
+report: a key present on one side and absent on the other is a failure.  The
+contract is "same queries, same answers".
 """
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
-from pathlib import Path
 
 from . import eval as E
 
 
-def _key(q):
+def key(q):
     mem = None
     if q.get("mem"):
         m = q["mem"]
@@ -27,7 +28,7 @@ def _key(q):
             mem, tuple(q.get("imms") or []))
 
 
-def _answer(q):
+def answer(q):
     if q.get("status") == "unanswerable":
         return ("unanswerable", q.get("reason", ""))
     new = q.get("new_type")
@@ -35,7 +36,7 @@ def _answer(q):
             E.parse_case_llt(new) if isinstance(new, str) else ("invalid",))
 
 
-def _load(path):
+def load(path):
     out = {}
     errors = 0
     with open(path) as f:
@@ -45,8 +46,8 @@ def _load(path):
                 continue
             try:
                 q = json.loads(line)
-                k = _key(q)
-                a = _answer(q)
+                k = key(q)
+                a = answer(q)
             except (ValueError, KeyError, TypeError, E.EvalError) as exc:
                 print("%s:%d: %s" % (path, lineno, exc), file=sys.stderr)
                 errors += 1
@@ -91,43 +92,3 @@ def compare(ref, ours):
         "missing_ref_keys": sorted(set(ours) - set(ref), key=repr)[:20],
         "missing_ours_keys": sorted(set(ref) - set(ours), key=repr)[:20],
     }
-
-
-def main(argv=None):
-    ap = argparse.ArgumentParser(
-        prog="gisel diff",
-        description="compare two full-answer JSONL files")
-    ap.add_argument("ref")
-    ap.add_argument("ours")
-    ap.add_argument("--json", action="store_true")
-    args = ap.parse_args(argv)
-
-    ref, e1 = _load(args.ref)
-    ours, e2 = _load(args.ours)
-    result = compare(ref, ours)
-    result["errors"] = e1 + e2
-    if args.json:
-        print(json.dumps(result, indent=1, sort_keys=True))
-    else:
-        print("ref=%d ours=%d matched=%d agree=%d unanswerable=%d disagree=%d "
-              "missing_ref=%d missing_ours=%d errors=%d"
-              % (result["ref"], result["ours"], result["matched"],
-                 result["agree"], result["unanswerable"], result["disagree"],
-                 result["missing_ref"], result["missing_ours"],
-                 result["errors"]))
-        for key, a, b in result["first"]:
-            print("MISMATCH %r: ref=%r ours=%r" % (key, a, b))
-        for key in result["missing_ref_keys"][:5]:
-            print("MISSING in ref: %r" % (key,))
-        for key in result["missing_ours_keys"][:5]:
-            print("MISSING in ours: %r" % (key,))
-    if result["errors"]:
-        return 2
-    if (result["missing_ref"] or result["missing_ours"]
-            or result["disagree"]):
-        return 1
-    return 0
-
-
-if __name__ == "__main__":
-    sys.exit(main())

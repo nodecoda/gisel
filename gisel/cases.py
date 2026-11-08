@@ -41,7 +41,7 @@ from pathlib import Path
 
 from . import ast as A
 from . import axes as axesmod
-from . import diff as full_diff
+from . import answers as answer_file
 from . import eval as E
 from .backend import core_json
 
@@ -871,7 +871,7 @@ def generate_from_queries(doc, features, queries_path, oracle_path,
     run instead of making it the equivalence proof.
     """
     evaluator = E.Evaluator(doc, features)
-    oracle, oracle_errors = full_diff._load(oracle_path)
+    oracle, oracle_errors = answer_file.load(oracle_path)
     records = []
     missing = 0
     unanswerable = 0
@@ -882,7 +882,7 @@ def generate_from_queries(doc, features, queries_path, oracle_path,
                 continue
             try:
                 q = json.loads(line)
-                key = full_diff._key(q)
+                key = answer_file.key(q)
             except (ValueError, KeyError, TypeError, E.EvalError) as exc:
                 print("%s:%d: %s" % (queries_path, lineno, exc),
                       file=sys.stderr)

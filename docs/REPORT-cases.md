@@ -91,8 +91,9 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 - shadowed/unexercised 是相对给定 config 集合的判断，不是全局不可达证明。
 - outside 是查询形状，不保证是合法 MIR 指令。
 - 生成文件是“查询”，不是 oracle；`gisel eval --cases` 需要
-  `action/type_idx/new_type` 三列，所以不能直接吃这种文件。对拍入口是
-  `gisel diff`；`gisel cases --queries --oracle` 只负责压缩已完成的全量结果。
+  `action/type_idx/new_type` 三列，所以不能直接吃这种文件。对拍入口是工作台的
+  `tools/ab/diff.py`；`gisel cases --queries --oracle` 只负责压缩已完成的全量
+  结果。
 
 ## 5.1 imm 轴补充（2026-11-08）
 
