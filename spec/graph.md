@@ -24,6 +24,12 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，
 
 ## 状态和类
 
+状态按“类”的笛卡尔积枚举：每个类型槽的候选是 `inspect_ruleset` 给出的切点
+类型所属的类，而不是具体类型点。状态保存每轴的类 id，具体成员在需要时由
+`_state_members` 展开；这样状态数由类数量决定，不再把同一类里的每个类型点
+重复建节点。传入 `--oracle` 时，oracle 类型只扩展候选轴，使每个 dumped 点都能
+定位到某个类。
+
 一个状态键是：
 
 ```text
@@ -33,6 +39,12 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，
 只有 ruleset 的谓词递归读取 `memSlot`/内存描述时才有 `mem_class`。内存候选
 来自 `in_mem_desc` 的行，并保存 memory type 和 alignment；不读内存的 ruleset
 不携带这个轴。
+
+memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
+`if XLen == 64 then s64 else s32`）。没有 evaluator 时，候选轴取两个分支的
+并集，确保查询生成和 domain 枚举覆盖所有配置；`gisel graph` 在具体配置下
+按 `--features` 的真值表只保留所选分支，因此同一个状态键不会混入另一个配置
+的内存类型。类型槽里的 `select` 类型同理，先展开成 LLT 拼写再进入候选集合。
 
 一个类型类是该 ruleset 所有**原子谓词节点**的三值观察向量，加上每条带变异的
 规则**隐式 shim guard** 的取值向量，两者都相同的类型集合。
@@ -68,7 +80,9 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，
 
 边标签包含 action、type index 和 `(ruleset_index, rule_index)`。DFS 使用三色
 标记，文本和 JSON 都输出 `config`、`states`、`edges`、`outcomes`、`terminal`、
-`opaque`、`outside`、`cycles`。最多打印 5 条环，每条最多 6 个节点。
+`opaque`、`outside`、`cycles`。`outcomes` 始终包含 `moves`、`no-rule`、
+`terminal`、`opaque`、`outside`、`stuck` 六个键，零值也显式打印，避免读者把
+“没有这个字段”误读成“没有发生”。最多打印 5 条环，每条最多 6 个节点。
 
 ## 负控和闭包
 
@@ -78,7 +92,10 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，
 `--check-closure` 对每个有变异的状态枚举该状态的全部成员。每个成员必须使用
 同一条规则并映射到同一个目标状态类；变异推出有限域、规则变化、stuck 或得到
 多个目标类，都会打印成员和原因并返回 1。审计扫描全部状态，输出最多保留 20
-条样例，`count` 记录真实违规总数；不会因为样例满额而提前停止。该选项不改变
+条样例，`count` 记录真实违规总数；不会因为样例满额而提前停止。文本输出把每个
+样例压成单行（`state`、`member`、`mutation`、`targets`、`reason`），不打印
+Python dict。`outside` 状态本身也计入违例，因此 `count` 同时覆盖“代表状态在
+域外”和“某个成员被变异推出域外”两种情况。该选项不改变
 类划分，也不实现默认细化；因此它是对“后继是状态函数”前提的审计。完整 X86
 语料仍有 `multiple target classes` 违规，因为 widen 的新类型依赖具体位宽
 （`pow2ceil`），同一个 guard 类里的 `s3` 和 `s33` 会分别落到 `s32` 和 `s64`；

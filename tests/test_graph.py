@@ -7,7 +7,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from gisel import cases, eval as E, graph
+from gisel import cases, domain, eval as E, graph
 
 ROOT = Path(__file__).resolve().parents[1]
 
@@ -87,7 +87,8 @@ class GraphFixture(unittest.TestCase):
         public = report.public()
         self.assertEqual(public["cycles"], 0)
         self.assertTrue(report.closure["ok"], report.closure)
-        classes = [{cases.llt_text(member[0][0]) for member in state["members"]}
+        classes = [{cases.llt_text(member[0][0])
+                    for member in graph._state_members(state)}
                    for state in report.states.values()]
         self.assertTrue(any("s3" in group for group in classes), classes)
         self.assertTrue(any("s32" in group for group in classes), classes)
@@ -128,6 +129,73 @@ class OracleAlignment(unittest.TestCase):
         self.assertEqual(result["total"], 2)
         self.assertEqual(result["uncovered"], 0)
         self.assertEqual(result["disagree"], 0)
+
+
+MEM_FIXTURE = """\
+type S8 = LLT::scalar(8)
+type S32 = LLT::scalar(32)
+type S64 = LLT::scalar(64)
+type P0 = LLT::pointer(0, 64)
+feature XLen64 = XLen == 64
+select Sel = if XLen64 then S64 else S32
+
+ruleset G_STORE: G_STORE
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(S32, P0, Sel, 8)])
+    lower true
+"""
+
+
+class ConfigDependentMemory(unittest.TestCase):
+    """A memory type selected per configuration must not break the axes."""
+
+    def test_select_memory_type_expands_per_configuration(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_source(directory, MEM_FIXTURE)
+            doc = cases.document(source)
+            features = cases.derive_features(doc)
+            # Without an evaluator both branches are kept: a sound union.
+            rows = []
+            for ruleset in doc["rulesets"]:
+                _, infos = cases.inspect_ruleset(ruleset)
+                rows.extend(cases._mem_candidates(infos))
+            self.assertEqual({"s32", "s64"}, {row[2] for row in rows})
+
+            def mems_for(config):
+                report = graph.build(source, config, features)
+                return {str(state["mem"]) for state in report.states.values()}
+
+            self.assertEqual({str(("s32", 8))}, mems_for("none"))
+            self.assertEqual({str(("s64", 8))}, mems_for("all"))
+
+            _, mem_axis, _ = domain.domain_axes(source)
+            self.assertEqual({"s32", "s64"}, {text for text, _bits, _align in mem_axis})
+
+    def test_riscv_memory_rows_are_hashable(self):
+        # RISCVLegalizerInfo.gisel carries a configuration-selected memory type;
+        # feeding it to a set used to raise `TypeError: unhashable type: 'dict'`.
+        source = ROOT / "tests" / "corpus" / "RISCVLegalizerInfo.gisel"
+        doc = cases.document(source)
+        rows = []
+        for ruleset in doc["rulesets"]:
+            _, infos = cases.inspect_ruleset(ruleset)
+            rows.extend(cases._mem_candidates(infos))
+        self.assertTrue(rows)
+        memory_types = {row[2] for row in rows}
+        self.assertIn("s32", memory_types)
+        self.assertIn("s64", memory_types)
+        _types, mem_axis, _doc = domain.domain_axes(source)
+        self.assertTrue(mem_axis)
+
+    def test_outcomes_always_reports_every_bucket(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_source(directory, FIXTURE)
+            doc = cases.document(source)
+            features = cases.derive_features(doc)
+            outcomes = graph.build(source, "none", features).public()["outcomes"]
+        self.assertEqual(
+            {"moves", "no-rule", "terminal", "opaque", "outside", "stuck"},
+            set(outcomes),
+        )
 
 
 if __name__ == "__main__":

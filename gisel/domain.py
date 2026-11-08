@@ -83,14 +83,15 @@ def _walk_mem_rows(node, out, pointer_width):
             if len(args) >= 4 and isinstance(args[3], dict):
                 for row in args[3].get("elems", []):
                     if isinstance(row, (list, tuple)) and len(row) >= 4:
-                        mty = _resolve(str(row[2]), pointer_width)
-                        try:
-                            t = E.parse_case_llt(mty)
-                        except E.EvalError:
-                            continue
-                        bits = _bits(t)
-                        if bits:
-                            out.add((mty, bits, int(row[3])))
+                        for text in C.type_value_spellings(row[2]):
+                            mty = _resolve(text, pointer_width)
+                            try:
+                                t = E.parse_case_llt(mty)
+                            except E.EvalError:
+                                continue
+                            bits = _bits(t)
+                            if bits:
+                                out.add((mty, bits, int(row[3])))
         for value in node.values():
             _walk_mem_rows(value, out, pointer_width)
     elif isinstance(node, list):

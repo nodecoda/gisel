@@ -12,6 +12,7 @@ import collections
 import itertools
 import json
 import sys
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -43,6 +44,24 @@ def _type_text(t):
 def _representative_key(t):
     return (_SENTINEL_RANK.get(_type_text(t), len(_SENTINEL_RANK)),
             _type_text(t))
+
+
+def _violation_text(violation):
+    """One-line closure sample; never a raw Python dict."""
+    parts = [str(violation.get("state", ""))]
+    member = violation.get("member")
+    if member:
+        parts.append("member=" + ",".join(member))
+    mutation = violation.get("mutation")
+    if mutation:
+        parts.append("mutation=" + mutation)
+    targets = violation.get("targets")
+    if targets:
+        parts.append("targets=" + " | ".join(targets))
+    reason = violation.get("reason")
+    if reason:
+        parts.append("reason=" + reason)
+    return " ".join(part for part in parts if part)
 
 
 def _node_text(node):
@@ -153,8 +172,29 @@ def _declared_types(source, pointer_width, extended):
     return {_parse_type(text, extended) for text in types}
 
 
-def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=()):
-    rows = list(C._mem_candidates(infos))
+def _mem_type_spellings(node, evaluator, config):
+    """Resolve a memory-type value for one configuration.
+
+    An unresolved select falls back to both branches: dropping the row would
+    silently shrink the memory axis, which is worse than keeping a sound union.
+    """
+    if isinstance(node, str):
+        return [node]
+    if isinstance(node, dict):
+        select = node.get("select")
+        if isinstance(select, dict):
+            try:
+                branch = ("then" if evaluator.bool_value(
+                    select["cond"], [], None, config) else "else")
+            except Exception:
+                return C.type_value_spellings(node)
+            return _mem_type_spellings(select.get(branch), evaluator, config)
+    return C.type_value_spellings(node)
+
+
+def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=(),
+                   expand=None):
+    rows = list(C._mem_candidates(infos, expand=expand))
     if not rows:
         rows = [(mty, "", mty, align) for mty, _bits, align in domain_mems]
     out, seen = [], set()
@@ -337,10 +377,13 @@ class Report:
     uncovered: list
     closure: dict
     injected_edge: dict | None = None
-    member_index: dict | None = None
+    class_tables: dict | None = None
 
     def public(self):
         outcomes = collections.Counter(s["outcome"] for s in self.states.values())
+        for name in ("moves", "no-rule", "terminal", "opaque", "outside",
+                     "stuck"):
+            outcomes.setdefault(name, 0)
         terminal = collections.Counter(
             s.get("action") for s in self.states.values()
             if s["outcome"] == "terminal")
@@ -369,7 +412,7 @@ def _state_key(opcode, type_classes, mem_class):
 
 def build(source, config, features, *, pointer_width=64, slots=None,
           inject_edge=False, check_closure=False, extra_types=(),
-          extra_mems=(), arity_overrides=None):
+          extra_mems=(), arity_overrides=None, progress=False):
     """Build one configuration's graph and return a :class:`Report`."""
     doc = C.document(source)
     evaluator = E.Evaluator(doc, features)
@@ -379,10 +422,11 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     declared = _declared_types(source, pointer_width, extended)
     domain_mems = D.domain_axes(source, pointer_width)[1]
     states = {}
-    member_index = {}
+    class_tables = {}
     edges = collections.defaultdict(list)
     uncovered = []
     total_classes = 0
+    started = time.monotonic()
 
     for rs_idx, rs in enumerate(doc["rulesets"]):
         nslots, infos = C.inspect_ruleset(rs)
@@ -402,8 +446,10 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             axes = _candidate_axes(infos, n, ptypes, domain_types,
                                    extra_types, extended,
                                    include_non_pointer=bool(extra_types))
-            mem_values = _memory_values(infos, domain_mems, pointer_width,
-                                        extended, extra_mems)
+            mem_values = _memory_values(
+                infos, domain_mems, pointer_width, extended, extra_mems,
+                expand=lambda value: _mem_type_spellings(value, evaluator,
+                                                         config))
             mem_values = mem_values if any(info.uses_mem for info in infos) else [None]
             type_classes = [_make_classes(axes[i], i, atoms, rs["rules"], axes,
                                           mem_values if mem_values != [None] else [],
@@ -413,25 +459,40 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                                              evaluator, config)
                            if mem_values != [None] else None)
             total_classes += sum(len(x.members) for x in type_classes)
-            for types in itertools.product(*axes):
-                for mem in mem_values:
-                    tc = tuple(type_classes[i].class_of[types[i]]
-                               for i in range(n))
-                    mc = mem_classes.class_of[mem] if mem_classes else None
-                    key = _state_key(opcode, tc, mc)
-                    representative = tuple(type_classes[i].members[tc[i]][0]
-                                           for i in range(n))
-                    representative_mem = (mem_classes.members[mc][0]
-                                          if mem_classes else None)
-                    state = states.setdefault(key, {
-                        "key": key, "members": [], "types": representative,
-                        "mem": representative_mem, "outcome": None, "action": None,
-                        "type_idx": 0, "rule": None,
-                    })
-                    member = (tuple(types), mem)
-                    if member not in state["members"]:
-                        state["members"].append(member)
-                    member_index[(opcode, tuple(types), mem)] = key
+            class_tables[opcode] = (type_classes, mem_classes)
+            # Enumerate one state per class tuple, not one per concrete type
+            # tuple.  Every class is non-empty and the classes partition each
+            # axis, so this is the same state set with a far smaller product
+            # (AArch64's 50x50x50 slot products collapse to a few classes).
+            ranges = [range(len(tc.members)) for tc in type_classes]
+            for cls in itertools.product(*ranges):
+                mem_range = (range(len(mem_classes.members))
+                             if mem_classes else [None])
+                for mc in mem_range:
+                    key = _state_key(opcode, cls, mc)
+                    if key in states:
+                        continue
+                    states[key] = {
+                        "key": key,
+                        "pools": [type_classes[i].members[cls[i]]
+                                  for i in range(n)],
+                        "mem_pool": (mem_classes.members[mc]
+                                     if mem_classes else None),
+                        "types": tuple(type_classes[i].members[cls[i]][0]
+                                       for i in range(n)),
+                        "mem": (mem_classes.members[mc][0]
+                                if mem_classes else None),
+                        "tables": (type_classes, mem_classes),
+                        "outcome": None, "action": None, "type_idx": 0,
+                        "rule": None,
+                    }
+
+        if progress:
+            print("[%d/%d] %s: %d state(s), %.1fs"
+                  % (rs_idx + 1, len(doc["rulesets"]),
+                     ",".join(rs["opcodes"][:3]), len(states),
+                     time.monotonic() - started),
+                  file=sys.stderr, flush=True)
 
     for key, state in states.items():
         opcode, _classes, _mem_class = key
@@ -472,7 +533,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             continue
         target = list(types)
         target[type_idx] = new_type
-        target_key = _lookup_key(member_index, opcode, tuple(target), mem)
+        target_key = _class_key(state["tables"], opcode, tuple(target), mem)
         if target_key is None:
             state["outcome"] = "outside"
             continue
@@ -504,7 +565,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             if state["outcome"] != "moves":
                 continue
             targets = set()
-            for types, mem in state["members"]:
+            for types, mem in _state_members(state):
                 try:
                     action, type_idx, new_type, rule = E.evaluate_with_rule(
                         evaluator, config, key[0], list(types),
@@ -533,8 +594,8 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                     })
                     continue
                 target[type_idx] = new_type
-                target_key = _lookup_key(member_index, key[0], tuple(target),
-                                         mem)
+                target_key = _class_key(state["tables"], key[0],
+                                        tuple(target), mem)
                 if target_key is None:
                     record({
                         "state": _node_text(key),
@@ -567,11 +628,33 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                     "to": _node_text(source_node)}
 
     return Report(config, states, dict(edges), total_classes, uncovered,
-                  closure, injected, member_index)
+                  closure, injected, class_tables)
 
 
-def _lookup_key(member_index, opcode, types, mem):
-    return member_index.get((opcode, types, mem))
+def _class_key(tables, opcode, types, mem):
+    """State key for concrete types/mem, or None when outside the finite axes."""
+    type_classes, mem_classes = tables
+    if len(types) != len(type_classes):
+        return None
+    try:
+        classes = tuple(type_classes[i].class_of[types[i]]
+                        for i in range(len(types)))
+        mc = mem_classes.class_of[mem] if mem_classes else None
+    except (KeyError, TypeError):
+        return None
+    return _state_key(opcode, classes, mc)
+
+
+def _state_members(state):
+    """Concrete (types, mem) members of one state, expanded on demand."""
+    pools = state["pools"]
+    mem_pool = state["mem_pool"]
+    for types in itertools.product(*pools):
+        if mem_pool is None:
+            yield types, None
+        else:
+            for mem in mem_pool:
+                yield types, mem
 
 
 def oracle_check(report, oracle_path, evaluator, extended):
@@ -589,8 +672,9 @@ def oracle_check(report, oracle_path, evaluator, extended):
             mem = None
             if query.get("mem") is not None:
                 mem = (query["mem"][0], int(query["mem"][1]))
-            key = _lookup_key(report.member_index or {}, query["name"], types, mem)
-            if key is None:
+            tables = (report.class_tables or {}).get(query["name"])
+            key = _class_key(tables, query["name"], types, mem) if tables else None
+            if key is None or key not in report.states:
                 result["uncovered"] += 1
                 continue
             result["matched"] += 1
@@ -653,6 +737,8 @@ def main(argv=None):
     parser.add_argument("--oracle", help="check matching points in an oracle JSONL")
     parser.add_argument("--inject-edge", action="store_true")
     parser.add_argument("--check-closure", action="store_true")
+    parser.add_argument("--progress", action="store_true",
+                        help="print per-ruleset progress on stderr")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
@@ -679,7 +765,8 @@ def main(argv=None):
                            check_closure=args.check_closure,
                            extra_types=config_oracle_types,
                            extra_mems=oracle_mems,
-                           arity_overrides=oracle_arities)
+                           arity_overrides=oracle_arities,
+                           progress=args.progress or sys.stderr.isatty())
             if args.oracle:
                 evaluator = E.Evaluator(doc, features)
                 report.oracle = oracle_check(report, args.oracle, evaluator,
@@ -706,9 +793,16 @@ def main(argv=None):
         if output["uncovered"]:
             print("uncovered   : %s" % sorted(set(output["uncovered"])))
         if output["closure"]["checked"]:
-            print("closure     : %s" % ("ok" if output["closure"]["ok"] else "FAILED"))
-            for violation in output["closure"]["violations"][:3]:
-                print("  closure: %s" % violation)
+            closure = output["closure"]
+            status = "ok" if closure["ok"] else "FAILED"
+            print("closure     : %s (%d violation(s), %d shown)"
+                  % (status, closure.get("count", len(closure["violations"])),
+                     min(3, len(closure["violations"]))))
+            for violation in closure["violations"][:3]:
+                print("  closure: %s" % _violation_text(violation))
+        else:
+            print("closure     : not checked (cycles=0 is conditional on the "
+                  "class partition being closed)")
         if args.oracle:
             print("oracle      : %s" % output["oracle"])
         for cycle in output["cycle_samples"]:

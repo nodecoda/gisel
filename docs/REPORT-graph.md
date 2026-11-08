@@ -7,7 +7,7 @@
 ```sh
 python3 -m gisel graph SOURCE --emit=core \
   [--features FEATURES] [--config CONFIG] [--json] \
-  [--inject-edge] [--check-closure] [--oracle ORACLE]
+  [--inject-edge] [--check-closure] [--oracle ORACLE] [--progress]
 ```
 
 实现位于 `gisel/graph.py`，CLI 注册在 `gisel/cli.py`。`gisel/eval.py` 增加了
@@ -27,13 +27,13 @@ python3 -m gisel graph SOURCE --emit=core \
 python3 -m gisel graph /tmp/gisel-followup/graph-fixture.gisel \
   --config none --json > /tmp/gisel-followup/fixture-normal.json
 # rc=0
-# sha256: 7a6b2066c52bacfb2440ececf92eaeebca1fa7cac55dbfcaccee2109102cdffa
+# sha256: c75b0ca0fa254f78e1dc3d893764e27ce716cb7bb58e8143a64fc60d1ea496d7
 # states=3 edges=1 cycles=0
 
 python3 -m gisel graph /tmp/gisel-followup/graph-fixture.gisel \
   --config none --inject-edge --json > /tmp/gisel-followup/fixture-inject.json
 # rc=1
-# sha256: 02975f8579e9aab779b7460e026bfb045f75287c561ad20bd026946ec3f2df47
+# sha256: 055c5d30347dd1756056411984f75b833d02fe246025b2e896b3befd2bb7a743
 # states=3 edges=2 cycles=1
 # injected edge: G_ADD[2] -> G_ADD[1]
 ```
@@ -45,27 +45,63 @@ python3 -m gisel graph /tmp/gisel-followup/graph-fixture.gisel \
 ```sh
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --json \
-  > /tmp/gisel-followup/x86-all-final4.json
+  > /tmp/gisel-followup/x86-all-refactor.json
 # rc=0
 ```
 
 输出 SHA-256：
 
 ```text
-b4be6a4babfdfcbc0c5150558d93be89cefe4e5b7089edb6a94d7dfdc5960f3e
+a6fa9724ba3a252fde034051d7b6df702bb956c5efd9102754bcd2c1fddf7cda
 ```
 
-四个配置的真实结果如下。`outcomes` 的五类是 moves、no-rule、opaque、outside、
-terminal；`terminal` 是终结动作分布。`uncovered` 始终是两个 variadic opcode，
-因为 bundled opcode manifest 没有固定槽数：`G_INTRINSIC`、
-`G_INTRINSIC_W_SIDE_EFFECTS`。
+四个配置的真实结果如下。`outcomes` 始终包含 moves、no-rule、terminal、opaque、
+outside、stuck 六个键，零值也显式打印；`terminal` 是终结动作分布。`uncovered`
+始终是两个 variadic opcode，因为 bundled opcode manifest 没有固定槽数：
+`G_INTRINSIC`、`G_INTRINSIC_W_SIDE_EFFECTS`。
 
-| config | states | edges | moves | no-rule | opaque | outside | terminal | cycles |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|
-| C0 | 73,867 | 26,767 | 26,767 | 25,695 | 1,022 | 4,168 | 16,215 | 0 |
-| C1 | 73,856 | 25,895 | 25,895 | 26,520 | 1,026 | 3,159 | 17,256 | 0 |
-| C2 | 73,809 | 25,464 | 25,464 | 26,573 | 1,026 | 3,167 | 17,579 | 0 |
-| C3 | 73,867 | 26,639 | 26,639 | 25,690 | 1,022 | 4,000 | 16,516 | 0 |
+| config | states | edges | moves | no-rule | opaque | outside | stuck | terminal | cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| C0 | 73,867 | 26,767 | 26,767 | 25,695 | 1,022 | 4,168 | 0 | 16,215 | 0 |
+| C1 | 73,856 | 25,895 | 25,895 | 26,520 | 1,026 | 3,159 | 0 | 17,256 | 0 |
+| C2 | 73,809 | 25,464 | 25,464 | 26,573 | 1,026 | 3,167 | 0 | 17,579 | 0 |
+| C3 | 73,867 | 26,639 | 26,639 | 25,690 | 1,022 | 4,000 | 0 | 16,516 | 0 |
+
+### RISC-V：配置相关的内存类型
+
+RISC-V 的 `mem_desc` 里，memory type 是一个配置相关的 select：
+
+```json
+{"select": {"cond": {"kind": "leaf", "name": "hasFeature", "args": ["XLen == 64"]},
+            "then": "s64", "else": "s32"}}
+```
+
+旧实现把它原样放进 `set`，`gisel graph`、`gisel cases`、`gisel domain` 都会在
+`TypeError: unhashable type: 'dict'` 上崩掉。现在先在候选阶段展开：不带
+evaluator 的查询/domain 枚举取 `s64` 和 `s32` 的并集，`gisel graph` 再按当前
+配置只保留一个分支。RISC-V corpus 因此可以完整跑通：
+
+```sh
+python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
+  --features tests/cases/riscv-features.json --config rv64gc --json \
+  > /tmp/gisel-followup/riscv-rv64gc.json
+# rc=0, 98s
+# sha256: 479074995b32123506b83a888ff47226e8b87924358608625a1a9479491aaff1
+```
+
+| config | states | edges | moves | no-rule | opaque | outside | stuck | terminal | cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| rv64gc | 433,321 | 38,659 | 38,659 | 322,545 | 14,458 | 7,867 | 0 | 49,792 | 0 |
+
+同一语料的其他出口：
+
+```text
+gisel cases  --features riscv-features.json -> rc=0, 6,137 cases / 8 configs
+gisel domain --features riscv-features.json -> rc=0, 2,261,368 points (282,671/config)
+```
+
+`mems=31`，说明 8 个配置的 `s32`/`s64` 分支都进了 domain 轴，没有因为入
+`set` 而丢行。
 
 ### 更正：早先的 6 个自环是假环
 
@@ -99,8 +135,8 @@ LLVM 的 `widenScalarToNextPow2` 本身带 `sizeNotPow2` 谓词
 ```sh
 python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json --config baseline --json \
-  > /tmp/gisel-followup/aarch64-baseline2.json
-# rc=0, 16m05s
+  > /tmp/gisel-followup/aarch64-baseline-refactor.json
+# rc=0, 7m04s（旧枚举 16m05s）
 # sha256: 78b05352e5e7b13b2b0b377fe7e885d2f3dae7d4c4d0579aa13eb9bbf52bc200
 ```
 
@@ -116,8 +152,13 @@ python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
 而不是 `str > int` 崩溃。
 
 只跑了 baseline 一个配置；另外四个配置和 `--check-closure` 没有跑，AArch64
-的闭包状态属于未覆盖。AArch64 图有 159 万状态、单配置 16 分钟，主要成本是
-每个槽的候选域取全集（含指针和浮点），后续需要按 ruleset 的类型集合收窄。
+的闭包状态属于未覆盖。AArch64 图有 159 万状态、单配置 7 分钟。把状态枚举从
+“具体类型笛卡尔积”改成“类笛卡尔积 + 成员按需展开”后，耗时从 16m05s 降到
+7m04s，RSS 从 1.6 GB 降到约 1.4 GB；输出 SHA 与旧实现逐字节相同
+（`78b05352…`），说明状态、边和计数没有因为重构改变。剩下的主要成本是逐状态
+求值，而不是枚举本身。
+
+`--progress` 可以按 ruleset 看到进度和耗时；非 tty 默认关闭。
 
 ### Oracle 对拍
 
@@ -127,7 +168,7 @@ X86 C1 的完整 oracle 对拍命令：
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --config C1 \
   --oracle tests/cases/x86_ref_dump.jsonl --json \
-  > /tmp/gisel-followup/x86-oracle-final4.json
+  > /tmp/gisel-followup/x86-oracle-refactor.json
 # rc=0
 ```
 
@@ -162,16 +203,23 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 # rc=1, closure=FAILED, count=3465 (stored 20)
 ```
 
-全部是 `multiple target classes`，例如：
+构成不是单一原因：3,159 条是代表状态本身落在有限域外（`outside`），
+82 条是某个成员被变异推出域外（`outside` + `mutation`），224 条是同一状态类
+映射到多个目标类，例如：
 
 ```text
 G_ANYEXT[1,0] -> G_ANYEXT[0,0], G_ANYEXT[6,0], G_ANYEXT[7,0]
 ```
 
-原因是 widen 的目标类型是 `pow2ceil(具体位宽)`：同一个 guard 类里的 `s3` 和
-`s33` 分别落到 `s32` 和 `s64`。这是 mutation 粒度，不是谓词粒度。按规范默认
-不自动细化，`--refine` 尚未实现；因此当前的 `cycles=0` 只覆盖代表点后继，
-闭包失败的状态不能拿这张图证明无环。
+多目标类的原因是 widen 的目标类型是 `pow2ceil(具体位宽)`：同一个 guard 类里
+的 `s3` 和 `s33` 分别落到 `s32` 和 `s64`。这是 mutation 粒度，不是谓词粒度。
+按规范默认不自动细化，`--refine` 尚未实现；因此当前的 `cycles=0` 只覆盖代表
+点后继，闭包失败的状态不能拿这张图证明无环。文本输出把违例压成单行，例如：
+
+```text
+closure     : FAILED (3465 violation(s), 3 shown)
+  closure: G_ANYEXT[1,0] targets=G_ANYEXT[0,0] | G_ANYEXT[6,0] | G_ANYEXT[7,0] reason=multiple target classes
+```
 
 ## 与 `sim/graph.py` 的差异
 
@@ -188,13 +236,20 @@ G_ANYEXT[1,0] -> G_ANYEXT[0,0], G_ANYEXT[6,0], G_ANYEXT[7,0]
 - variadic opcode 没有固定类型槽数，当前明确列在 `uncovered`，没有拿零槽图冒充
   完整覆盖。
 - memory 轴使用 ruleset 中 `in_mem_desc` 的有限 rows；没有显式内存描述的任意
-  ordering/descriptor 域不会被凭空枚举。
+  ordering/descriptor 域不会被凭空枚举。memory type 为配置相关 `select` 时先
+  按分支展开，RISC-V 的 `s32`/`s64` 两个分支都进了轴；`gisel graph` 再按配置
+  收敛到一个分支。
+- 状态按类的笛卡尔积枚举，成员在闭包和 oracle 定位时按需展开；这减少了重复
+  状态，但不会改变类划分，也不会把未声明的具体类型凭空加进图。
+- `--progress` 在每个 ruleset 结束后向 stderr 打印 `[i/N] opcode: states, 秒数`；
+  非 tty 默认关闭。AArch64 的瓶颈仍是逐状态求值，不是枚举本身。
 - `--refine` 尚未实现，默认分区不会被自动修改。
 - AArch64 只验证了 baseline 配置；其余配置和 AArch64 的闭包审计未跑。单配置
-  16 分钟、159 万状态，候选域还没有按 ruleset 收窄。
-- X86 C1 的闭包审计仍有 3,465 条 `multiple target classes`；在这些状态上
-  后继不是类函数，`cycles=0` 不能外推成“整个语料无死循环”的证明。要闭合这个
-  缺口，需要实现按 mutation 目标细化的 `--refine`，并重新跑四配置。
+  7 分钟、159 万状态，候选域还没有按 ruleset 收窄。
+- X86 C1 的闭包审计仍有 3,465 条违例（3,159 条 outside 状态、82 条成员
+  outside、224 条 `multiple target classes`）；在这些状态上后继不是类函数，
+  `cycles=0` 不能外推成“整个语料无死循环”的证明。要闭合这个缺口，需要实现
+  按 mutation 目标细化的 `--refine`，并重新跑四配置。
 - 早先报告的 6 个“自然环”已确认是类划分漏掉隐式 guard 造成的假环，不是
   LLVM 规则的真实死循环。
 

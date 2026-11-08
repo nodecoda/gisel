@@ -453,18 +453,45 @@ def _defaults(per):
                  for values in per)
 
 
-def _mem_candidates(infos):
+def type_value_spellings(value):
+    """LLT spellings denoted by a core type value.
+
+    A type value is a string, or a feature-selected pair
+    ``{"select": {"cond": ..., "then": ..., "else": ...}}``.  A caller with
+    an evaluator can pick one branch; without one, both branches are the
+    sound union, because the query generator covers every configuration.
+    """
+    if isinstance(value, str):
+        return [value]
+    if isinstance(value, dict):
+        select = value.get("select")
+        if isinstance(select, dict):
+            out = []
+            for key in ("then", "else"):
+                for text in type_value_spellings(select.get(key)):
+                    if text not in out:
+                        out.append(text)
+            return out
+    return []
+
+
+def _mem_candidates(infos, expand=None):
+    """Memory descriptor rows, with selected memory types made hashable."""
+    expand = expand or type_value_spellings
     entries = []
     for info in infos:
         entries.extend(info.mem_entries)
     out = []
     seen = set()
     for t0, t1, mty, align in entries:
-        key = (t0, t1, mty, align)
-        if key in seen:
-            continue
-        seen.add(key)
-        out.append(key)
+        for a in expand(t0):
+            for b in expand(t1):
+                for c in expand(mty):
+                    key = (a, b, c, align)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    out.append(key)
     return out
 
 
