@@ -33,11 +33,12 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 | `llvm-dev/tools/gisel_td.py` | `.gisel` → `.td`（给 llvm-tblgen 用） | 复用 `gisel/ast.py` 的 AST |
 | `tools/refresh-oracle.sh` | 跑 `llvm-tblgen` 刷新 `tests/artifacts/` | 校验 `gen` 的字节一致 |
 | `tools/ab/*` | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
-| `tools/ab/diff.py` | 比较两个答案文件，出行/JSON 报告和退出码 | 读 `gisel/answers.py`（答案文件模型），输入是两个 runner 的输出 |
+| `tools/ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.answers`；比较与退出码在本文件 |
 
 这一层的共同特征：**输入或对照物来自 gisel 之外**（LLVM 源码、llvm-tblgen、
-编译产物、另一个实现的答案）。它们证明的是“两条规则实现相同”，不是“gisel
-有这个能力”。
+编译产物、另一个实现的答案）。它们是 gisel 产物的**消费者**：gisel 出 `.inc`
+和无答案查询，工作台拿这两样去和 LLVM 对拍。它们证明的是“两条规则实现相同”，
+不是“gisel 有这个能力”。对拍本身——比较、归因、退出码——不属于 gisel。
 
 物理边界：`pyproject.toml` 只打包 `gisel*`，`tools/` 和 `docs/` 不随 wheel
 发布。工作台脚本是仓库内的开发工具，不是产品面。
@@ -60,11 +61,11 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 | 位置 | 越界形态 | 处置 |
 |---|---|---|
 | `docs/REPORT-cases.md` §6–§7 | 对拍结果住在用例生成报告里，读起来像 gisel 的能力 | 已整体搬到 `docs/REPORT-ab.md`，并在文首写明是工作台报告 |
-| `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令在 `tools/ab/diff.py`，`gisel/answers.py` 只留读/比较，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
+| `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令和比较逻辑都在 `tools/ab/diff.py`；`gisel/answers.py` 只留读取器，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
 | `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 不随 wheel 发布；本文第 2 节列明它是目标端工具 |
 | `cases --against <llvm dump>` | 看起来像运行时依赖 LLVM | 它读的是冻结在 `tests/` 的 oracle，不是运行时依赖 |
 | `eval --answers` | 为对拍加的出口 | 属于求值器本身（答案就是它的输出），归本体 |
-| `gisel/answers.py` | 曾经是 `gisel/diff.py` 连同 CLI 一起 | 只留答案文件的读/比较，命令搬到工作台，依赖方向保持“工具 → 库” |
+| `gisel/answers.py` | 曾经是 `gisel/diff.py` 连同 CLI 一起 | 只留答案文件读取器；比较和命令都在工作台，依赖方向保持“工具 → 库” |
 
 ## 5 一句话
 

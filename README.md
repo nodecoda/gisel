@@ -169,7 +169,7 @@ re-derive the C++/JSON oracle from a built LLVM tree (development only —
 generation never runs llvm-tblgen).
 
 ```sh
-python3 -m unittest discover -q -s tests      # 178 tests, ~34 s
+python3 -m unittest discover -q -s tests      # 180 tests
 (cd tests/artifacts && sha256sum -c SHA256)   # 8/8
 ```
 
@@ -225,7 +225,7 @@ gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / table.py / core_json.py   M2 / M3 / M4
 gisel/eval.py           standalone evaluator (34,776 frozen points, 0 disagreements)
 gisel/cases.py          equivalence/boundary/outside case generation
-gisel/answers.py        answer-file reader and full-set comparison
+gisel/answers.py        answer-file reader (the A/B comparison is tools/ab/diff.py)
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/cli.md             the command surface, exit codes, guarantees (normative)
 spec/grammar.md         the .gisel grammar and AST, normative

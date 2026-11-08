@@ -1,12 +1,9 @@
-"""Read and compare answer JSONL files.
+"""Read answer JSONL files.
 
-An answer file pairs a query key with what a legalizer answered.  This module
-is the reader and the comparison; the command that prints the report is a
-workbench tool (``tools/ab/diff.py``), see ``docs/SCOPE.md``.
-
-Unlike ``gisel cases --against``, :func:`compare` is not an intersection
-report: a key present on one side and absent on the other is a failure.  The
-contract is "same queries, same answers".
+An answer file pairs a query key with what a legalizer answered.  gisel reads
+these files for `cases --queries`/`--oracle`; it does **not** compare two
+implementations.  The full-set A/B comparison is a workbench concern and lives
+with its command in ``tools/ab/diff.py`` — see ``docs/SCOPE.md``.
 """
 
 from __future__ import annotations
@@ -53,7 +50,13 @@ def load(path):
                 errors += 1
                 continue
             if k in out:
-                print("%s:%d: duplicate key %r" % (path, lineno, k),
+                # The frozen dumps repeat a query when a target builds the
+                # same opcode twice.  An identical repeat is not an error; a
+                # repeat with a different answer is, because then one of the
+                # two rows would be silently dropped.
+                if out[k] == a:
+                    continue
+                print("%s:%d: conflicting duplicate key %r" % (path, lineno, k),
                       file=sys.stderr)
                 errors += 1
                 continue
@@ -61,34 +64,3 @@ def load(path):
     return out, errors
 
 
-def compare(ref, ours):
-    keys = sorted(set(ref) | set(ours), key=repr)
-    matched = [k for k in keys if k in ref and k in ours]
-    agree = 0
-    unanswerable = 0
-    disagree = []
-    for k in matched:
-        a, b = ref[k], ours[k]
-        same_unanswerable = (a[0] == b[0] == "unanswerable"
-                             and a[1] == b[1])
-        same_answer = (a[0] == b[0] == "answered"
-                       and a[1] == b[1] and a[2] == b[2]
-                       and E.values_equal(a[3], b[3]))
-        if same_unanswerable or same_answer:
-            agree += 1
-            unanswerable += int(same_unanswerable)
-        else:
-            disagree.append((k, a, b))
-    return {
-        "ref": len(ref),
-        "ours": len(ours),
-        "matched": len(matched),
-        "agree": agree,
-        "unanswerable": unanswerable,
-        "disagree": len(disagree),
-        "missing_ref": len(set(ours) - set(ref)),
-        "missing_ours": len(set(ref) - set(ours)),
-        "first": disagree[:20],
-        "missing_ref_keys": sorted(set(ours) - set(ref), key=repr)[:20],
-        "missing_ours_keys": sorted(set(ref) - set(ours), key=repr)[:20],
-    }

@@ -85,6 +85,19 @@ class NoExternalSideEffects(unittest.TestCase):
         self.assertEqual(found, [], "tools/ imports gisel, not the other way round")
 
 
+class WorkbenchBoundary(unittest.TestCase):
+    """A/B comparison is done *with* gisel, not by gisel (docs/SCOPE.md §2)."""
+
+    def test_the_package_does_not_compare_implementations(self):
+        from gisel import answers
+        self.assertFalse(hasattr(answers, "compare"),
+                         "the full-set comparison belongs to tools/ab/diff.py")
+
+    def test_the_workbench_owns_the_comparison(self):
+        text = (ROOT / "tools" / "ab" / "diff.py").read_text()
+        self.assertIn("def compare(", text)
+
+
 class BundledData(unittest.TestCase):
     """The wheel ships snapshots of LLVM tables; each must name its origin."""
 
