@@ -16,6 +16,10 @@ spec = importlib.util.spec_from_file_location("ab_harness", AB / "ab.py")
 ab = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(ab)
 
+spec = importlib.util.spec_from_file_location("ab_attribute", AB / "attribute.py")
+attribute = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(attribute)
+
 
 def write_jsonl(rows):
     handle = tempfile.NamedTemporaryFile("w", suffix=".jsonl", delete=False)
@@ -80,6 +84,39 @@ class CompareMode(unittest.TestCase):
         rc, result = self.run_diff(ref, ours, "action")
         self.assertEqual(rc, 1)
         self.assertEqual(result["first_details"][0]["class"], "action")
+
+
+class Matrix(unittest.TestCase):
+    def ans(self, action="Legal", new_type=("invalid",), type_idx=0):
+        return ("answered", action, type_idx, new_type)
+
+    def unanswerable(self):
+        return ("unanswerable", "asserted")
+
+    def test_all_agree(self):
+        a = self.ans()
+        self.assertEqual(attribute.matrix_class(a, a, a), "all_agree")
+
+    def test_both_assert(self):
+        a = self.unanswerable()
+        self.assertEqual(attribute.matrix_class(a, a, self.ans()),
+                         "both_assert")
+
+    def test_official_assert(self):
+        self.assertEqual(attribute.matrix_class(
+            self.unanswerable(), self.ans(), self.ans()), "official_assert")
+
+    def test_ours_assert(self):
+        self.assertEqual(attribute.matrix_class(
+            self.ans(), self.unanswerable(), self.ans()), "ours_assert")
+
+    def test_translation_rule_and_evaluator(self):
+        a = self.ans()
+        b = self.ans(new_type=("scalar", 64))
+        c = self.ans(action="Unsupported")
+        self.assertEqual(attribute.matrix_class(a, b, a), "translation")
+        self.assertEqual(attribute.matrix_class(a, b, b), "rule")
+        self.assertEqual(attribute.matrix_class(a, a, b), "evaluator")
 
 
 class Queries(unittest.TestCase):

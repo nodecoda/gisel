@@ -21,7 +21,22 @@ ROOT = Path(__file__).resolve().parents[2]
 sys.path.insert(0, str(ROOT))
 
 from gisel import answers as A  # noqa: E402
+from gisel import cases as C  # noqa: E402
 from gisel import eval as E  # noqa: E402
+
+
+def _key_fields(key):
+    config, name, types, mem, imms = key
+    fields = {
+        "config": config,
+        "name": name,
+        "types": [C.llt_text(t) for t in types],
+        "mem": None,
+        "imms": list(imms),
+    }
+    if mem is not None:
+        fields["mem"] = [C.llt_text(mem[0]), mem[1], mem[2], mem[3]]
+    return fields
 
 
 def _classify(a, b):
@@ -35,7 +50,7 @@ def _classify(a, b):
     return "new_type"
 
 
-def compare(ref, ours, mode="full"):
+def compare(ref, ours, mode="full", details_limit=100):
     """Full-set comparison: a key on one side only is a failure.
 
     ``mode="action"`` is the coarse smoke gate: it compares only the action
@@ -67,9 +82,10 @@ def compare(ref, ours, mode="full"):
         else:
             disagree.append((k, a, b))
     details = [
-        {"key": repr(k), "class": _classify(a, b),
+        {"key": repr(k), "key_fields": _key_fields(k),
+         "class": _classify(a, b),
          "ref": list(a), "ours": list(b)}
-        for k, a, b in disagree[:100]
+        for k, a, b in disagree[:details_limit]
     ]
     return {
         "mode": mode,
@@ -97,11 +113,13 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true")
     ap.add_argument("--compare", choices=("action", "full"), default="full",
                     help="action: coarse smoke gate; full: acceptance")
+    ap.add_argument("--details", type=int, default=100,
+                    help="maximum first_details entries (default 100)")
     args = ap.parse_args(argv)
 
     ref, e1 = A.load(args.ref)
     ours, e2 = A.load(args.ours)
-    result = compare(ref, ours, args.compare)
+    result = compare(ref, ours, args.compare, args.details)
     result["errors"] = e1 + e2
     if args.json:
         print(json.dumps(result, indent=1, sort_keys=True))

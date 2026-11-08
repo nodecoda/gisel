@@ -32,6 +32,9 @@ sys.path.insert(0, str(ROOT))
 from gisel import answers as A  # noqa: E402
 from gisel import eval as E  # noqa: E402
 
+sys.path.insert(0, str(ROOT / "tools" / "ab"))
+import attribute  # noqa: E402
+
 TARGET_DIR = ROOT / "tools" / "ab" / "targets"
 NINJA = os.environ.get("NINJA", "ninja")
 
@@ -50,6 +53,10 @@ def sha256(path: Path) -> str:
 
 def read_json(path: Path):
     return json.loads(path.read_text())
+
+
+def sha256_text(text: str) -> str:
+    return hashlib.sha256(text.encode()).hexdigest()
 
 
 def load_target(name: str) -> dict:
@@ -272,9 +279,27 @@ def restore_inc(target: dict, tree: Path, build: Path, baseline: Path,
                            "(%s != %s)" % (got[:12], prov["inc_sha256"][:12]))
 
 
+def generate_core(target: dict, source: Path, out: Path) -> Path:
+    dest = out / "core.json"
+    run_checked([sys.executable, "-m", "gisel", "gen", source,
+                 "--emit=core", "--out", dest])
+    return dest
+
+
+def run_eval(core: Path, features: Path, queries: Path, out: Path) -> tuple[Path, int]:
+    dest = out / "eval.answers.jsonl"
+    proc = run_capture([sys.executable, "-m", "gisel", "eval",
+                        "--doc", core, "--features", features,
+                        "--cases", queries, "--answers", dest])
+    if proc.returncode not in (0, 1):
+        raise HarnessError("gisel eval failed: %s" % proc.stderr.strip())
+    return dest, proc.returncode
+
+
 def compare(target: dict, ref: Path, ours: Path, out: Path, mode: str):
     proc = run_capture([sys.executable, ROOT / "tools" / "ab" / "diff.py",
-                        ref, ours, "--json", "--compare", mode])
+                        ref, ours, "--json", "--compare", mode,
+                        "--details", "1000000"])
     (out / "diff.json").write_text(proc.stdout)
     if proc.returncode == 2:
         raise HarnessError("diff failed: %s" % proc.stderr.strip())
@@ -340,6 +365,14 @@ def cmd_run(args) -> int:
             "query_count": count,
             "compare": args.compare,
         }
+        core = None
+        if not args.no_eval:
+            if args.core:
+                core = Path(args.core).resolve()
+            elif args.inc:
+                raise HarnessError("--core is required with --inc when eval is on")
+            else:
+                core = generate_core(target, source, out)
         if args.dry_run:
             print("target=%s strategy=%s tree=%s build=%s"
                   % (target["name"], target["strategy"], tree, build))
@@ -347,17 +380,39 @@ def cmd_run(args) -> int:
             print("baseline_inc_sha256=%s" % prov["inc_sha256"][:16])
             print("queries=%s count=%d compare=%s"
                   % (queries, count, args.compare))
+            print("eval=%s core=%s" % (not args.no_eval, core))
             print("out=%s state=%s" % (out, state))
             return 0
 
         official = out / "official.answers.jsonl"
         ours = out / "ours.answers.jsonl"
+        cache_dir = state / "cache" / "official"
+        cache_dir.mkdir(parents=True, exist_ok=True)
+        runner_source = ROOT / target["runner"]["source"]
+        cache_key = sha256_text(json.dumps({
+            "target": target["name"],
+            "git_head": prov["git_head"],
+            "baseline_inc_sha256": prov["inc_sha256"],
+            "lib_sha256": prov.get("lib_sha256"),
+            "build_config": (sha256(build / "CMakeCache.txt")
+                             if (build / "CMakeCache.txt").exists() else None),
+            "query_sha256": sha256(queries),
+            "runner_source_sha256": sha256(runner_source),
+        }, sort_keys=True))
+        cache_path = cache_dir / (cache_key + ".jsonl")
+        cache_hit = (not args.no_cache) and cache_path.exists()
+        record["official_cache"] = "off" if args.no_cache else (
+            "hit" if cache_hit else "miss")
         rc = 0
         if target["strategy"] == "swap-library":
-            runner = build_swap_runner(target, tree, build, out,
-                                       "runner.official")
-            answer(runner, queries, official)
-            record["official_runner_sha256"] = sha256(runner)
+            if cache_hit:
+                shutil.copyfile(cache_path, official)
+            else:
+                runner = build_swap_runner(target, tree, build, out,
+                                           "runner.official")
+                answer(runner, queries, official)
+                record["official_runner_sha256"] = sha256(runner)
+                shutil.copyfile(official, cache_path)
             body_error = None
             try:
                 install_inc(target, tree, build, inc)
@@ -378,12 +433,31 @@ def cmd_run(args) -> int:
                 target, tree, build, inc, out)
             record["official_runner_sha256"] = sha256(runner_official)
             record["ours_runner_sha256"] = sha256(runner_ours)
-            answer(runner_official, queries, official)
+            if cache_hit:
+                shutil.copyfile(cache_path, official)
+            else:
+                answer(runner_official, queries, official)
+                shutil.copyfile(official, cache_path)
             answer(runner_ours, queries, ours)
         else:
             raise HarnessError("unknown strategy %r" % target["strategy"])
 
         rc, result = compare(target, official, ours, out, args.compare)
+        if not args.no_eval:
+            eval_answers, eval_rc = run_eval(core, features, queries, out)
+            record["eval_rc"] = eval_rc
+            query_map = attribute.load_queries(queries)
+            official_map, e1 = A.load(official)
+            ours_map, e2 = A.load(ours)
+            eval_map, e3 = A.load(eval_answers)
+            bundle = attribute.build_bundle(
+                result, json.loads(core.read_text()), E.load_features(features),
+                query_map, official_map, ours_map, eval_map)
+            bundle["summary"]["reader_errors"] = e1 + e2 + e3
+            bundle_dir = Path(args.bundle).resolve() if args.bundle else (out / "bundle")
+            attribute.write_bundle(bundle, bundle_dir)
+            record["bundle"] = str(bundle_dir)
+            record["matrix"] = bundle["summary"]["matrix"]
         record["diff"] = {
             key: result[key] for key in
             ("mode", "ref", "ours", "matched", "agree", "disagree",
@@ -452,6 +526,13 @@ def build_parser():
                      help="replace a stale baseline snapshot")
     run.add_argument("--dry-run", action="store_true",
                      help="validate inputs, generate inc, print plan")
+    run.add_argument("--core", help="prebuilt core JSON (default: gisel gen)")
+    run.add_argument("--bundle",
+                     help="bundle directory (default: OUT/bundle)")
+    run.add_argument("--no-eval", action="store_true",
+                     help="skip the three-way eval matrix")
+    run.add_argument("--no-cache", action="store_true",
+                     help="do not reuse official answers")
     run.set_defaults(func=cmd_run)
 
     verify = sub.add_parser("verify", help="check the build is back on baseline")

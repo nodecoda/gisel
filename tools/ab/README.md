@@ -46,6 +46,21 @@ Assertions do not kill the run: `run-queries.py` restarts the runner and writes
 `status:"unanswerable"` for the query that aborted.  A one-sided assertion is a
 difference, not agreement.
 
+## Triage
+
+`bundle.json` groups differences by `owner`:
+
+| owner | meaning | action |
+|---|---|---|
+| `ours` | translation / ours assertion / evaluator | fix the rule, importer, emitter or evaluator |
+| `ours-or-upstream` | rule answer differs | check the source revision before deciding |
+| `llvm-or-query` | official asserts, a rule did fire | validate the query first, then record upstream |
+| `query` | official asserts, no rule fired | fix the generator/axes |
+
+A confirmed LLVM defect is recorded under
+`/home/ubuntu/admin/upstream-issues/` first, per `admin/AGENTS.md` §4.1; do not
+open a GitHub issue directly.
+
 ## Status
 
 First smoke (2026-11-08): X86 400 queries, full compare, 0 disagreements;

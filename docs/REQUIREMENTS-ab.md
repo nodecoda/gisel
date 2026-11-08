@@ -104,10 +104,25 @@
 
 ### Stage 7 归因 bundle
 
-- 按 `(opcode, config, ruleset, rule, action)` 分组。
+- 按 `(owner, matrix, diff class, opcode, config, ruleset, rule)` 分组。
 - 每条给：最小查询、官方答案、ours 答案、eval 答案、规则号/源位置。
 - 输出机器可读 JSON + 人类可读 Markdown。
 - 不调用 LLM；AI 读 bundle 后给修改建议。
+
+`owner` 是归因方向，不是结论：
+
+| owner | 典型矩阵类 | 处理 |
+|---|---|---|
+| `ours` | `translation` / `ours_assert` / `evaluator` | 改 `.gisel`、importer、inc emitter 或 evaluator；重跑 |
+| `ours-or-upstream` | `rule` | 先对源文件修订；确认是转写漂移还是上游变化 |
+| `llvm-or-query` | `official_assert`（有规则命中） | 先验查询合法性；确认是上游缺陷再记录 |
+| `query` | `official_assert`（无规则命中） | 改 generator/axes/过滤；不要先怪 LLVM |
+| `unknown` | `multiple` / `missing` | 保留在 bundle，不急着改 |
+
+**LLVM 侧问题落盘**：确认是 LLVM 的问题后，先按
+`/home/ubuntu/admin/AGENTS.md` §4.1 写到 `/home/ubuntu/admin/upstream-issues/`，
+不要直接开 GitHub issue。记录至少包含：tree HEAD、build 配置、target/config、
+最小查询、official/ours/eval 三方答案、inc/runner sha、断言栈或复现命令。
 
 ### Stage 8 ledger / loop
 
