@@ -118,8 +118,9 @@ gisel diff official.answers.jsonl ours.answers.jsonl
 
 ## 6 已知边界
 
-- `imm` 值不生成（当前 4 份 core 文档没有 `imm` 节点）；引用 `imm` 的规则会
-  被统计为 unexercised。
+- `imm` 值从规则自身的 `imm(i) == N` / `in(imm(i), [...])` 字面量推导，
+  并补 `0` 和 `±1`；profile 的 `imms` 可按下标替换。没有 imm 字面量的规则
+  仍无法生成该维度的点。
 - mem 用例只从 `inMemDesc` 的字面量表派生；用其它方式读 mem 的规则可能
   unexercised。
 - 采样域是有限的：字面量、其 `±1` 邻居、一组 sentinel 类型。boundary 只证明

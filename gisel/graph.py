@@ -66,8 +66,10 @@ def _violation_text(violation):
 
 
 def _node_text(node):
-    opcode, classes, mem = node
+    opcode, classes, mem = node[0], node[1], node[2]
     suffix = ",m%s" % mem if mem is not None else ""
+    if len(node) > 3 and node[3] is not None:
+        suffix += ",i%s" % node[3]
     return "%s[%s%s]" % (opcode, ",".join(map(str, classes)), suffix)
 
 
@@ -98,7 +100,7 @@ def _atoms(ruleset):
 
 
 def _dependencies(node):
-    slots, mem = set(), False
+    slots, mem, imms = set(), False, set()
 
     def walk(value):
         nonlocal mem
@@ -107,6 +109,8 @@ def _dependencies(node):
                 slots.add(value["index"])
             elif value.get("kind") == "memSlot":
                 mem = True
+            elif value.get("kind") == "imm":
+                imms.add(value["index"])
             for child in value.values():
                 walk(child)
         elif isinstance(value, (list, tuple)):
@@ -114,7 +118,7 @@ def _dependencies(node):
                 walk(child)
 
     walk(node)
-    return slots, mem
+    return slots, mem, imms
 
 
 def _mutation_slots(node):
@@ -240,10 +244,10 @@ def _candidate_axes(infos, arity, ptypes, domain_types, extra_types, extended,
     return axes
 
 
-def _atom_value(evaluator, atom, types, mem, config):
+def _atom_value(evaluator, atom, types, mem, config, imms=()):
     try:
         value = evaluator.bool_value(atom, types, _mem_desc(mem, evaluator.extended(config)),
-                                     config, ())
+                                     config, imms)
         if value is None:
             return None
         return bool(value)
@@ -271,12 +275,16 @@ def _make_classes(values, axis, atoms, rules, axes, mem_values,
         types[axis] = value
         signature = []
         for atom in atoms:
-            slots, has_mem = _dependencies(atom)
+            slots, has_mem, has_imm = _dependencies(atom)
             if (slots - {axis}) or has_mem:
                 # A relation involving another slot cannot be represented by
                 # a unary class without losing information.  Preserve the
                 # concrete value; closure checking still audits the result.
                 signature.append(["raw", _type_text(value)])
+            elif has_imm:
+                # The imm axis is a separate dimension; keeping the value
+                # here would make the type class depend on it.
+                signature.append(["raw-imm", _type_text(value)])
             else:
                 signature.append(_atom_value(evaluator, atom, tuple(types),
                                               base_mem, config))
@@ -288,9 +296,9 @@ def _make_classes(values, axis, atoms, rules, axes, mem_values,
         for rule in rules:
             if rule.get("on") is None:
                 continue
-            slots, has_mem = _dependencies(rule.get("predicate"))
+            slots, has_mem, has_imm = _dependencies(rule.get("predicate"))
             to_slots = _mutation_slots(rule.get("to"))
-            if (slots - {axis}) or has_mem or (to_slots - {axis}):
+            if (slots - {axis}) or has_mem or has_imm or (to_slots - {axis}):
                 signature.append(["raw-guard", _type_text(value)])
             else:
                 signature.append(E.rule_matches(
@@ -317,8 +325,8 @@ def _make_mem_classes(mem_values, atoms, axes, evaluator, config):
     for value in mem_values:
         signature = []
         for atom in atoms:
-            slots, has_mem = _dependencies(atom)
-            if slots or not has_mem:
+            slots, has_mem, has_imm = _dependencies(atom)
+            if slots or not has_mem or has_imm:
                 signature.append(["raw", value])
             else:
                 signature.append(_atom_value(evaluator, atom, tuple(baseline),
@@ -338,8 +346,39 @@ def _make_mem_classes(mem_values, atoms, axes, evaluator, config):
                        {cid: sig for cid, _group, sig in ordered})
 
 
-def _opaque(evaluator, atoms, types, mem, config):
-    return any(_atom_value(evaluator, atom, types, mem, config) is None
+def _make_imm_classes(values, atoms, evaluator, config):
+    """Classify immediate tuples by the predicate values that read only them."""
+    signatures = {}
+    for value in values:
+        signature = []
+        for atom in atoms:
+            slots, has_mem, has_imm = _dependencies(atom)
+            if not has_imm:
+                continue
+            if slots or has_mem:
+                # Cannot be a function of imm alone; keep the value distinct
+                # so the quotient never merges two different imm points.
+                signature.append(["raw", list(value)])
+            else:
+                signature.append(_atom_value(evaluator, atom, (), None,
+                                              config, value))
+        signatures[value] = tuple(signature)
+    groups = collections.defaultdict(list)
+    for value, signature in signatures.items():
+        groups[_json_key(signature)].append(value)
+    class_of, members, ordered = {}, {}, []
+    for cid, key in enumerate(sorted(groups)):
+        group = sorted(groups[key])
+        members[cid] = group
+        ordered.append((cid, group, json.loads(key)))
+        for value in group:
+            class_of[value] = cid
+    return AxisClasses(list(values), class_of, members,
+                       {cid: sig for cid, _group, sig in ordered})
+
+
+def _opaque(evaluator, atoms, types, mem, config, imms=()):
+    return any(_atom_value(evaluator, atom, types, mem, config, imms) is None
                for atom in atoms)
 
 
@@ -427,8 +466,12 @@ def _skip_matcher(entries):
                               for e in entries)
 
 
-def _state_key(opcode, type_classes, mem_class):
-    return (opcode, tuple(type_classes), mem_class)
+def _state_key(opcode, type_classes, mem_class, imm_class=None):
+    # Keep the historical three-tuple when the ruleset does not read imm, so
+    # no-imm graphs keep their exact text and keys.
+    if imm_class is None:
+        return (opcode, tuple(type_classes), mem_class)
+    return (opcode, tuple(type_classes), mem_class, imm_class)
 
 
 def build(source, config, features, *, pointer_width=64, slots=None,
@@ -463,6 +506,13 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     for rs_idx, rs in enumerate(doc["rulesets"]):
         nslots, infos = C.inspect_ruleset(rs)
         atoms = _atoms(rs)
+        imm_axis = C.imm_candidates(infos, axis_profile)
+        imm_tuples = C._imm_tuples(imm_axis) if imm_axis else [()]
+        imm_spec = axis_profile.imms() if axis_profile is not None else {}
+        # The graph does not invent imm values: without an explicit axis the
+        # opcode is reported as uncovered instead of every state turning
+        # opaque on an IndexError.
+        imm_covered = all(index in imm_spec for index in imm_axis)
         for opcode in rs["opcodes"]:
             if skip(opcode):
                 skipped.add(opcode)
@@ -471,6 +521,9 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             if arity_overrides and opcode in arity_overrides:
                 arity = arity_overrides[opcode]
             if arity is None:
+                uncovered.append(opcode)
+                continue
+            if imm_axis and not imm_covered:
                 uncovered.append(opcode)
                 continue
             if arity != nslots:
@@ -496,8 +549,11 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             mem_classes = (_make_mem_classes(mem_values, atoms, axes,
                                              evaluator, config)
                            if mem_values != [None] else None)
+            imm_classes = (_make_imm_classes(imm_tuples, atoms, evaluator,
+                                             config)
+                           if imm_axis else None)
             total_classes += sum(len(x.members) for x in type_classes)
-            class_tables[opcode] = (type_classes, mem_classes)
+            class_tables[opcode] = (type_classes, mem_classes, imm_classes)
             # Enumerate one state per class tuple, not one per concrete type
             # tuple.  Every class is non-empty and the classes partition each
             # axis, so this is the same state set with a far smaller product
@@ -506,24 +562,32 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             for cls in itertools.product(*ranges):
                 mem_range = (range(len(mem_classes.members))
                              if mem_classes else [None])
+                imm_range = (range(len(imm_classes.members))
+                             if imm_classes else [None])
                 for mc in mem_range:
-                    key = _state_key(opcode, cls, mc)
-                    if key in states:
-                        continue
-                    states[key] = {
-                        "key": key,
-                        "pools": [type_classes[i].members[cls[i]]
-                                  for i in range(n)],
-                        "mem_pool": (mem_classes.members[mc]
-                                     if mem_classes else None),
-                        "types": tuple(type_classes[i].members[cls[i]][0]
-                                       for i in range(n)),
-                        "mem": (mem_classes.members[mc][0]
-                                if mem_classes else None),
-                        "tables": (type_classes, mem_classes),
-                        "outcome": None, "action": None, "type_idx": 0,
-                        "rule": None,
-                    }
+                    for ic in imm_range:
+                        key = _state_key(opcode, cls, mc, ic)
+                        if key in states:
+                            continue
+                        states[key] = {
+                            "key": key,
+                            "pools": [type_classes[i].members[cls[i]]
+                                      for i in range(n)],
+                            "mem_pool": (mem_classes.members[mc]
+                                         if mem_classes else None),
+                            "imm_pool": (imm_classes.members[ic]
+                                         if imm_classes else None),
+                            "types": tuple(type_classes[i].members[cls[i]][0]
+                                           for i in range(n)),
+                            "mem": (mem_classes.members[mc][0]
+                                    if mem_classes else None),
+                            "imm": (imm_classes.members[ic][0]
+                                    if imm_classes else None),
+                            "tables": (type_classes, mem_classes,
+                                       imm_classes),
+                            "outcome": None, "action": None, "type_idx": 0,
+                            "rule": None,
+                        }
 
         if progress:
             print("[%d/%d] %s: %d state(s), %.1fs"
@@ -533,8 +597,8 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                   file=sys.stderr, flush=True)
 
     for key, state in states.items():
-        opcode, _classes, _mem_class = key
-        types, mem = state["types"], state["mem"]
+        opcode = key[0]
+        types, mem, imm = state["types"], state["mem"], state["imm"]
         # Re-find the ruleset atoms for this opcode.  Canonical gisel files
         # have one ruleset per opcode; the fallback keeps duplicate-opcode
         # fixtures safe by taking the union of their atoms.
@@ -546,12 +610,13 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                 k = _json_key(atom)
                 if k not in seen:
                     seen.add(k); atoms.append(atom)
-        if _opaque(evaluator, atoms, types, mem, config):
+        if _opaque(evaluator, atoms, types, mem, config, imm):
             state["outcome"] = "opaque"
             continue
         try:
             action, type_idx, new_type, rule = E.evaluate_with_rule(
-                evaluator, config, opcode, list(types), _mem_desc(mem, extended))
+                evaluator, config, opcode, list(types), _mem_desc(mem, extended),
+                imm or ())
         except (E.EvalError, IndexError, KeyError, TypeError, ValueError,
                 ZeroDivisionError, AssertionError):
             state["outcome"] = "opaque"
@@ -571,7 +636,8 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             continue
         target = list(types)
         target[type_idx] = new_type
-        target_key = _class_key(state["tables"], opcode, tuple(target), mem)
+        target_key = _class_key(state["tables"], opcode, tuple(target), mem,
+                                imm)
         if target_key is None:
             state["outcome"] = "outside"
             continue
@@ -603,11 +669,11 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             if state["outcome"] != "moves":
                 continue
             targets = set()
-            for types, mem in _state_members(state):
+            for types, mem, imm in _state_members(state):
                 try:
                     action, type_idx, new_type, rule = E.evaluate_with_rule(
                         evaluator, config, key[0], list(types),
-                        _mem_desc(mem, extended))
+                        _mem_desc(mem, extended), imm or ())
                 except Exception as exc:
                     record({
                         "state": _node_text(key),
@@ -633,7 +699,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                     continue
                 target[type_idx] = new_type
                 target_key = _class_key(state["tables"], key[0],
-                                        tuple(target), mem)
+                                        tuple(target), mem, imm)
                 if target_key is None:
                     record({
                         "state": _node_text(key),
@@ -669,30 +735,35 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                   closure, injected, class_tables, sorted(skipped))
 
 
-def _class_key(tables, opcode, types, mem):
-    """State key for concrete types/mem, or None when outside the finite axes."""
-    type_classes, mem_classes = tables
+def _class_key(tables, opcode, types, mem, imms=None):
+    """State key for concrete types/mem/imm, or None when outside the axes."""
+    type_classes, mem_classes, imm_classes = tables
     if len(types) != len(type_classes):
         return None
     try:
         classes = tuple(type_classes[i].class_of[types[i]]
                         for i in range(len(types)))
         mc = mem_classes.class_of[mem] if mem_classes else None
+        if imm_classes:
+            ic = imm_classes.class_of[tuple(imms or ())]
+        else:
+            ic = None
     except (KeyError, TypeError):
         return None
-    return _state_key(opcode, classes, mc)
+    if imm_classes and ic is None:
+        return None
+    return _state_key(opcode, classes, mc, ic)
 
 
 def _state_members(state):
-    """Concrete (types, mem) members of one state, expanded on demand."""
+    """Concrete (types, mem, imm) members of one state, expanded on demand."""
     pools = state["pools"]
-    mem_pool = state["mem_pool"]
+    mem_pool = state["mem_pool"] or [None]
+    imm_pool = state.get("imm_pool") or [None]
     for types in itertools.product(*pools):
-        if mem_pool is None:
-            yield types, None
-        else:
-            for mem in mem_pool:
-                yield types, mem
+        for mem in mem_pool:
+            for imm in imm_pool:
+                yield types, mem, imm
 
 
 def oracle_check(report, oracle_path, evaluator, extended):
@@ -710,8 +781,10 @@ def oracle_check(report, oracle_path, evaluator, extended):
             mem = None
             if query.get("mem") is not None:
                 mem = (query["mem"][0], int(query["mem"][1]))
+            imms = tuple(query.get("imms") or ())
             tables = (report.class_tables or {}).get(query["name"])
-            key = _class_key(tables, query["name"], types, mem) if tables else None
+            key = (_class_key(tables, query["name"], types, mem, imms)
+                   if tables else None)
             if key is None or key not in report.states:
                 result["uncovered"] += 1
                 continue
@@ -719,7 +792,7 @@ def oracle_check(report, oracle_path, evaluator, extended):
             try:
                 action, type_idx, new_type = E.evaluate(
                     evaluator, report.config, query["name"], list(types),
-                    _mem_desc(mem, extended))
+                    _mem_desc(mem, extended), imms)
                 want = query.get("new_type", "LLT_invalid")
                 got = "LLT_invalid" if new_type == ("invalid",) else _type_text(new_type)
                 if (action, type_idx, got) == (query.get("action"),
@@ -787,7 +860,7 @@ def main(argv=None):
                                           if axis_profile else None)
         features = _features(doc, features_path, args.configs)
         if axis_profile is not None:
-            full = (_features(doc, features_path)
+            full = (_features(doc, features_path, None)
                     if args.configs else features)
             axis_profile.bind(args.source, doc, full)
             axis_profile.apply_features(features)

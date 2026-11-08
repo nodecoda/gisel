@@ -78,8 +78,9 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 
 ## 5 已知边界
 
-- `imm` 不生成（4 份 core 文档当前都没有 `imm` 节点）；引用 `imm` 的规则会被
-  统计为 unexercised。
+- `imm` 值从规则的 `imm(i) == N` / `in(imm(i), [...])` 字面量推导，并补
+  `0` 和 `±1`。2026-11-08 起 `Wasm_SEXT_INREG#0` 已能命中；见
+  `tests/test_axes_imm.py`。
 - mem 用例只从 `inMemDesc` 字面量派生；其它读 mem 的方式可能 unexercised。
 - 采样域有限：字面量、`±1` 邻居、一组 sentinel。boundary 证明“这条边翻转”，
   不证明“没有别的边”。
@@ -88,6 +89,14 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 - 生成文件是“查询”，不是 oracle；`gisel eval --cases` 需要
   `action/type_idx/new_type` 三列，所以不能直接吃这种文件。对拍入口是
   `gisel diff`；`gisel cases --queries --oracle` 只负责压缩已完成的全量结果。
+
+## 5.1 imm 轴补充（2026-11-08）
+
+`gisel cases` 现在会为读 `imm(i)` 的规则生成 `imms` 非空的查询，
+`gisel domain` 也会把同一组 imm 值并进笛卡尔积。WebAssembly 的
+`G_SEXT_INREG` 从 unexercised 变为 witnessed（`imms=[8]` 命中规则 0）。
+全量 A/B 数字尚未用新查询重跑，上表的 `cases/covered` 仍是 2026-11-07 的
+结果；重跑后需要同时更新第 6 节。
 
 ## 6 全量端到端 A/B（2026-11-07）
 

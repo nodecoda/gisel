@@ -168,6 +168,9 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
 
     for rs in doc["rulesets"]:
         uses_mem = any(_reads_mem(rule["predicate"]) for rule in rs["rules"])
+        _nslots, infos = C.inspect_ruleset(rs)
+        imm_axis = C.imm_candidates(infos, axes)
+        imm_tuples = C._imm_tuples(imm_axis)
         for opcode in rs["opcodes"]:
             info = slots.get(opcode, {})
             arity = info.get("arity")
@@ -179,18 +182,19 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
             ptype = set(info.get("ptype", ()))
             for config in configs:
                 width, cfg_types, cfg_mems = per_config[config]
-                axes = [[_resolve("p0:*", width)] if i in ptype else cfg_types
-                        for i in range(arity)]
+                slot_axes = [[_resolve("p0:*", width)] if i in ptype
+                             else cfg_types for i in range(arity)]
                 mem_axis = list(cfg_mems) if uses_mem else [None]
-                for combo in itertools.product(*axes):
+                for combo in itertools.product(*slot_axes):
                     for mem in mem_axis:
-                        yield {
-                            "config": config,
-                            "name": opcode,
-                            "types": list(combo),
-                            "mem": [mem[0], mem[2]] if mem else None,
-                            "imms": [],
-                        }
+                        for imms in imm_tuples:
+                            yield {
+                                "config": config,
+                                "name": opcode,
+                                "types": list(combo),
+                                "mem": [mem[0], mem[2]] if mem else None,
+                                "imms": list(imms),
+                            }
     if skipped:
         # Surface rather than silently narrowing the domain.
         sys.stderr.write("domain: skipped %d opcode(s) with unknown arity: %s\n"

@@ -7,7 +7,7 @@ unchanged.
 
 The profile separates two things:
 
-* **values** (``types``, ``mems``) -- a target-specific finite set;
+* **values** (``types``, ``mems``, ``imms``) -- a target-specific finite set;
 * **sampling** (``profiles``) -- what each analysis backend does with it.
 
 Absent fields keep the current derivation.  ``mode: "derive"`` edits the
@@ -351,6 +351,11 @@ class Axes:
         return features
 
     # -- application -----------------------------------------------------
+
+    def apply_imms(self, index, values):
+        """Profile values replace the derived ones for one imm index."""
+        spec = self._imm_spec()
+        return list(spec[index]) if index in spec else list(values)
 
     def apply_types(self, values, pointer_only=False):
         types = self._types()

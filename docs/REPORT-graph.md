@@ -160,6 +160,36 @@ python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
 
 `--progress` 可以按 ruleset 看到进度和耗时；非 tty 默认关闭。
 
+### imm 轴（2026-11-08）
+
+`gisel graph` 以前遇到读 `imm(i)` 的规则会把状态算成 `opaque`（`IndexError`
+被当成不可判定的洞）。现在：
+
+- 没有 `--axes` 提供该下标时，opcode 写入 `uncovered`，不再和 opaque 混在
+  一起；
+- 提供 `imms` 后，imm 成为一个独立的类轴
+  `(opcode, type_classes, mem_class?, imm_class?)`，谓词按 imm 取值分类。
+
+RISC-V `rv64gc`（`tests/cases/riscv-features.json`）：
+
+```sh
+python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel   --features tests/cases/riscv-features.json --config rv64gc --json
+# 433,316 states / 38,659 edges / 14,453 opaque / 7,867 outside /
+# uncovered ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']
+
+python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel   --features tests/cases/riscv-features.json --config rv64gc   --axes /tmp/rv-imm.axes.json --json      # {"imms": {"0": [8, 16, 32]}}
+# 433,436 states / 38,685 edges / 14,453 opaque / 7,871 outside /
+# uncovered ['G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']
+```
+
+WebAssembly（`--config all`）：无 axis 30,202 states / 19,250 edges，
+`uncovered ['G_SEXT_INREG']`；`imms {0: [8, 16, 32]}` 时 30,272 states /
+19,280 edges，terminal 从 875 升到 915。
+
+X86 没有 imm 读点，无轴输出不变（SHA `a6fa9724…`）。RISC-V 无轴 SHA 从
+`47907499…` 变为 `ad2c60fd…`，差异只有 `G_SEXT_INREG` 从 opaque 变成
+uncovered；这是本次修复的预期变化。
+
 ### Oracle 对拍
 
 X86 C1 的完整 oracle 对拍命令：

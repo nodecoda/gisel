@@ -14,7 +14,8 @@ legalizer 变异是否可能形成环。它只使用 `gisel.eval` 的 LLT、谓�
 
 opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，缺失时
 回退到 generic opcode manifest。没有固定 arity 的 opcode 不建图，写入
-`uncovered`；它们不能被假装成零槽状态。
+`uncovered`；规则读取 `imm(i)` 但 `--axes` 没有提供该下标时同样写入
+`uncovered`。它们不能被假装成零槽状态或 opaque。
 
 每个 ruleset 的类型候选来自 `cases.inspect_ruleset` 和 `cases._candidates`：
 声明的 core 类型、规则中的字面量、阈值两侧的切点和稳定的哨兵类型。候选集合
@@ -38,10 +39,12 @@ opcode（精确或家族前缀），输出多一行 `skipped`。schema 与未覆
 一个状态键是：
 
 ```text
-(opcode, type_class_0, ..., type_class_n, mem_class?)
+(opcode, type_class_0, ..., type_class_n, mem_class?, imm_class?)
 ```
 
-只有 ruleset 的谓词递归读取 `memSlot`/内存描述时才有 `mem_class`。内存候选
+只有 ruleset 的谓词递归读取 `memSlot`/内存描述时才有 `mem_class`；只有
+提供 `--axes` 且规则读取 `imm(i)` 时才有 `imm_class`（否则该 opcode 写入
+`uncovered`）。内存候选
 来自 `in_mem_desc` 的行，并保存 memory type 和 alignment；不读内存的 ruleset
 不携带这个轴。
 

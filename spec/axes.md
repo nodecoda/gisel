@@ -60,16 +60,32 @@ python3 -m gisel graph SOURCE --emit=core \
 - mem 行沿用 `mem_desc(t0, t1, mty, align)` 四元组；只有 `mty` 和 `align`
   进入查询，`t0/t1` 参与规则匹配。
 
-### imms / orderings（当前未采样）
+### imms
 
-`imms` 的 key 必须是规则里真实读取的 `imm(i)` 下标，值必须是 int 列表。
+`imms` 的 key 必须是规则里真实读取的 `imm(i)` 下标，值必须是 int 列表；
+profile 给某个下标的值会**替换**该下标的推导值。
+
+`cases` 和 `domain` 默认从规则自身的字面量推导 imm 值：`imm(0) == 32`、
+`in(imm(0), [8, 16])` 给出 `{8, 16, 32}`，再补 `0` 和每个字面量的 `±1`。
+因此 `G_SEXT_INREG` 这类规则现在会被真正执行，而不是统计成 unexercised。
+单个 ruleset 的 imm 组合上限为 32，超出时按排序后的前 32 个值取样。
+
+`graph` 不默认发明 imm 值：没有 `--axes` 提供该下标时，读 imm 的 opcode 写入
+`uncovered`（不是把每个状态算成 `opaque`）。提供 axis 后，imm 进入状态键：
+
+```text
+(opcode, type_class_0, ..., mem_class?, imm_class?)
+```
+
+imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内存和 imm 的谓词会把
+每个 imm 点单独成类（保守但不会误并）。
+
+### orderings（当前未采样）
+
 `mems.orderings`/`failure_orderings` 必须是已知标签（`NotAtomic`、`Unordered`、
-`Acquire`、`Release` 等）。
-
-**本版本只校验、不采样这两个轴。** 它们不会进入 `cases` 的查询、`domain` 的
-笛卡尔积或 `graph` 的状态键。这是明确的覆盖缺口，不是“已经支持”。补齐分别
-在后续阶段实现；在那之前，规则里的 `imm`、内存 ordering 依赖仍按 `opaque`
-处理。
+`Acquire`、`Release` 等）。**这两个轴仍然只校验、不采样**：它们不会进入
+`cases` 的查询、`domain` 的笛卡尔积或 `graph` 的状态键。规则里的 ordering
+依赖仍按 `opaque` 处理，后续阶段补齐。
 
 ### bind
 
@@ -132,7 +148,6 @@ python3 -m gisel graph SOURCE --emit=core \
 
 ## 5. 未覆盖
 
-- `imm` 轴：schema 已校验，尚未进入查询和状态键。
 - 内存 ordering / failure ordering：schema 已校验，尚未进入 `MemDesc` 和状态键。
 - `cases` 的按配置指针宽度：仍输出 `p0:*`。
 - `graph` 在 derive 模式下用 `cases._candidates` 生成切点，该函数仍按 64 位解析

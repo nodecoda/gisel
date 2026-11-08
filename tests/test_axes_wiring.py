@@ -77,7 +77,7 @@ class Wiring(unittest.TestCase):
 
         report = graph.build(self.source, "none", self.features,
                              axis_profile=profile)
-        type_classes, mem_classes = report.class_tables["G_LOAD"]
+        type_classes, mem_classes, _imm_classes = report.class_tables["G_LOAD"]
         self.assertEqual({type_text(v) for v in type_classes[0].values}, want)
         self.assertNotIn("s3", {type_text(v) for v in type_classes[0].values})
         self.assertEqual({v[0] for v in mem_classes.values}, {"s8"})
