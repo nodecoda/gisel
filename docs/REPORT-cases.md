@@ -188,12 +188,23 @@ python3 -m gisel diff /tmp/a64-fixed/official.jsonl \
   /tmp/a64-fixed/ours.jsonl --json
 ```
 
-结果：`queries=10,029 / agree=10,005 / disagree=24 / unanswerable=179 / 0 error`。
-179 条在两个 runner 上完全同位置，是同一批 LLVM 断言，输出对称的
-`unanswerable`，不计入分歧。上一轮报告的 206 不能逐条对比：那一轮官方 runner
-链的是 ct-instr-trunk，这一轮两侧都换成 explore 同一棵树。
+结果分两段。修掉 §7.1 的两个 TypeSize 洞之后是
+`10,005 / 24 / 179`；再把 §7.2 的两条语料 bug 修掉之后是：
 
-### 7.1 本轮修掉的两个 TypeSize 洞
+```text
+queries=10,029  agree=10,029  disagree=0  unanswerable=179  errors=0
+```
+
+`agree` 把两边都答不了的 179 条也算作一致，所以 10,029 = 9,850 条真题 + 179
+条对称的 `unanswerable`。两个答案文件 `official3.jsonl` 与 `ours3.jsonl` 的
+SHA-256 相同（`3c12728a…`）：不是“语义等价”，是逐字节相同的输出。
+
+179 条在两个 runner 上完全同位置，是同一批 LLVM 断言（`G_ADD` 的 scalable
+向量等），输出对称的 `unanswerable`，不计入分歧。上一轮报告的 206 不能逐条
+对比：那一轮官方 runner 链的是 ct-instr-trunk，这一轮两侧都换成 explore
+同一棵树。
+
+### 7.1 修掉的两个 TypeSize 洞
 
 | 条数 | opcode | 修复前 | 根因 |
 |---:|---|---|---|
@@ -212,29 +223,119 @@ python3 -m gisel diff /tmp/a64-fixed/official.jsonl \
 为 `SortInt`；gisel 的 evaluator 也一直按 known-min 整数比较。生成代码和参考
 实现现在都遵守这条契约，而不是依赖 `TypeSize` 的隐式转换。
 
-验证：
+验证（explore 树 + 对应构建）：
 
 ```text
-python3 -m unittest discover -q -s tests                  # 150 tests OK
+python3 -m unittest discover -q -s tests                  # 151 tests OK
 llvm-lit -s -j24 llvm/test/TableGen                      # 544 passed
 GlobalISelTests --gtest_filter='LegalizerInfoTest.*'     # 4 passed
-gisel gen HEAD-AArch64 --emit=inc | cmp aarch64.inc      # 逐字节一致
 llvm-tblgen -gen-legalizer ... | cmp aarch64.inc         # 逐字节一致
+llvm-tblgen -gen-legalizer-table ... | cmp aarch64.table.inc  # 逐字节一致
 ```
 
-`tests/artifacts/` 里 `aarch64.inc`、`x86.inc`、两份 `.table.inc` 的 SHA 变了；
-`.check.json` 和 `.core.json` 没变（core 只差 `origin`）。X86 没有 scalable
-类型，`getKnownMinValue()` 在 fixed 类型上返回同一个值，所以 X86 的答案不变。
+### 7.2 修掉的两条语料 bug（剩 24 条）
 
-### 7.2 还剩 24 条：都是语料 bug
-
-| 条数 | opcode | official | ours | 根因 |
+| 条数 | opcode | official | ours（修复前） | 根因 |
 |---:|---|---|---|---|
-| 16 | G_SMIN | Lower | WidenScalar→s32 | 语料少了一个 guard：基线是 `.minScalar(HasCSSC, 0, s32)`，我们写成无条件 `widen(slot(0), ty(AArch64_s32))`。bf16 于是被我们加宽，基线直接 lower。 |
-| 8 | G_GLOBAL_VALUE | Unsupported | Legal | 语料少了类型约束：基线 `.legalFor({p0})`，我们写成 `legal not AArch64_SmallCodeModel`，把 s32 也判成 Legal。 |
+| 16 | G_SMIN | Lower | WidenScalar→s32 | 基线是 `.minScalar(HasCSSC, 0, s32)`：`minScalar(bool,...)` 是**构造期**开关，非 CSSC 配置里这条 widen 根本不存在。语料写成无条件 widen，于是 `bf16`、`i8` 被我们加宽，基线直接 lower。 |
+| 8 | G_GLOBAL_VALUE | Unsupported | Legal | 基线 `.legalFor({p0})`，语料写成 `legal not AArch64_SmallCodeModel`，漏了类型约束，把 `s32` 也判成 Legal。 |
 
-这两条没有在本轮改：语料一改，冻结 oracle（`tests/artifacts/`）就要跟着
-llvm-project 那侧的 `.td` 一起重生成。修复要和 oracle 刷新放在同一个提交里。
+改动（语料 + 生成侧 `.td` 必须同时改，否则 oracle 会用旧规则生成）：
 
-上一轮“全量 A/B 0 分歧”的 34,776 个点仍然是 0 分歧；这一轮剩下的 24 条全部
-是旧点集没有覆盖的形状（`bf16` 的 `G_SMIN`、非指针的 `G_GLOBAL_VALUE`）。
+```text
+tests/corpus/AArch64LegalizerInfo.gisel:321
+-    widen(slot(0), ty(AArch64_s32))
++    widen(slot(0), ty(AArch64_s32)) when all_of(AArch64_HasCSSC)
+
+tests/corpus/AArch64LegalizerInfo.gisel:928
+-    legal not AArch64_SmallCodeModel
++    legal (not AArch64_SmallCodeModel and slot(0) == ty(AArch64_p0))
+
+llvm/lib/Target/AArch64/GISel/AArch64LegalizerInfo.td:326
+-    CoreWiden<(Slot 0), (Ty AArch64_s32)>,
++    CoreWidenIf<(Slot 0), (Ty AArch64_s32), (CoreAll AArch64_HasCSSC)>,
+
+llvm/lib/Target/AArch64/GISel/AArch64LegalizerInfo.td:960
+-    CoreLegal<(CoreNot AArch64_SmallCodeModel)>,
++    CoreLegal<(CoreAll (CoreNot AArch64_SmallCodeModel), (CoreEq (Slot 0), (Ty AArch64_p0)))>,
+```
+
+写成 `all_of(...)` 而不是裸 `AArch64_HasCSSC`、写成 `slot(0) == ty(...)` 而不是
+`in(slot(0), ...)` 不是为了好看：core 正常形要求 guard 是 dag，单类型成员是
+`eq`；两个出口（`--emit=inc` 和 tblgen 的 `-gen-legalizer`）要逐字节对上，语料
+就得跟 `.td` 同一种拼写。
+
+### 7.3 分母自检：eval 的答案 vs 跑起来的 inc
+
+对拍最怕“题目和答案都来自同一处”。补一条 gate：把同一份 10,029 条查询直接喂
+给 `gisel eval`，再和 `runner.ours`（真的把 `aarch64.inc` 编译进去的那一个）
+逐条 diff：
+
+```sh
+python3 -m gisel eval --doc tests/artifacts/aarch64.core.json \
+  --features tests/cases/features.json \
+  --cases /tmp/a64-ord-cases3.jsonl \
+  --answers /tmp/a64-fixed/eval.answers.jsonl
+
+python3 -m gisel diff /tmp/a64-fixed/ours3.jsonl \
+  /tmp/a64-fixed/eval.answers.jsonl --json
+```
+
+结果：9,850 条两侧都有答案的查询 **0 分歧**；剩下 179 条是 C++ 侧断言、
+evaluator 侧照常回答，diff 把它们记成 disagree —— 这是预期的，它们就是 §7
+里那批对称 `unanswerable`，不是规则分歧。`--answers` 是这一轮给 `gisel eval`
+新增的模式（`--cases` 里没有期望值时用）。
+
+### 7.4 复现与指纹
+
+```sh
+# 1) 语料 → .inc/.core
+python3 -m gisel gen tests/corpus/AArch64LegalizerInfo.gisel \
+  --emit=inc --out /tmp/a64-fixed/AArch64LegalizerInfo.inc
+
+# 2) oracle 跟着 .td 重生成（llvm-tblgen 来自同一个 explore 构建）
+TREE=/home/ubuntu/llvm/trees/explore BUILD=/home/ubuntu/llvm/builds/explore \
+  tools/refresh-oracle.sh
+
+# 3) 两个 runner + 10,029 条查询
+tools/ab/build-aarch64-runner.sh "$TREE" "$BUILD" \
+  /tmp/a64-fixed/AArch64LegalizerInfo.inc /tmp/a64-fixed/runner
+python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.official \
+  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/official3.jsonl
+python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.ours \
+  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/ours3.jsonl
+python3 -m gisel diff /tmp/a64-fixed/official3.jsonl \
+  /tmp/a64-fixed/ours3.jsonl --json
+```
+
+本轮输入与产物（SHA-256，前 16 位）：
+
+| 文件 | sha256 |
+|---|---|
+| `tests/corpus/AArch64LegalizerInfo.gisel` | `0a54f35444177f78b…` |
+| `tests/artifacts/aarch64.inc` | `67077b8e249266b4…` |
+| `tests/artifacts/aarch64.table.inc` | `20017c2d8a834400d…` |
+| `tests/artifacts/aarch64.core.json` | `cf71476ba00211ae…` |
+| 10,029 条查询 `/tmp/a64-ord-cases3.jsonl` | `bafc3b988ad89b94…` |
+| `runner.official` / `runner.ours` | `0af9d83a0a9e9112…` / `04ee725919c496a2…` |
+| official / ours 答案 | `3c12728a57900c0e…`（两侧相同） |
+| eval 答案 | `aa1e3308d467e522…` |
+
+llvm-project 侧：`85a4da33012a`（TypeSize 取 known-min）与 `70e7d7b1c209`
+（本轮两条 guard）。两侧 `.td` 与 `.gisel` 用 `-gen-legalizer` 对过，逐字节一致。
+
+### 7.5 这轮证明了什么，没证明什么
+
+证明的：在同一棵 explore 树、同一批 10,029 条查询上，我们转写的 AArch64 规则
+生成的 C++ 与现网手写 legalizer 逐条一致；oracle 的 C++ 与我们生成的 C++
+`cmp` 逐字节相同；evaluator 与编译出来的生成代码也逐条一致。这是一条能对外
+展示的“不差于现网基线 + 三处口径互相钉死”的证据。
+
+没证明的：
+
+- 规则**本身**对不对。语料是照着现网转写的，这轮只证明转写忠实；上游规则是否
+  漏了某个类型组合，对拍看不见。
+- 179 条 C++ 断言没有归因。它们在两侧同位置，说明不是规则分歧，但断言本身
+  是 LLVM 的问题，本轮未覆盖。
+- 配置只覆盖 `tests/cases/features.json` 的 9 个，不是全部 subtarget 组合；
+  查询形状只覆盖 `gisel cases` 的等价类 + 边界 + 域外，不是任意 LLT。

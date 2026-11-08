@@ -1949,7 +1949,7 @@ static LegalizeActionStep AArch64Eval14(
   if ((AArch64_HasCSSC) && ((Q.Types[0] == AArch64_i32 || Q.Types[0] == AArch64_i64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if (scalarNarrowerThan(0, (AArch64_s32).getSizeInBits())(Q)) {
+  if (((AArch64_HasCSSC)) && (scalarNarrowerThan(0, (AArch64_s32).getSizeInBits())(Q))) {
     auto M = (LegalizeMutations::changeElementSizeTo(0, AArch64_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
@@ -6524,7 +6524,7 @@ static LegalizeActionStep AArch64Eval63(
   if ((AArch64_SmallCodeModel)) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if (!(AArch64_SmallCodeModel)) {
+  if ((!(AArch64_SmallCodeModel)) && ((Q.Types[0] == AArch64_p0))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};

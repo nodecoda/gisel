@@ -318,7 +318,7 @@ ruleset AArch64_SMULFIX: G_SMULFIX G_UMULFIX G_SMULFIXSAT G_UMULFIXSAT
 ruleset AArch64_SMIN: G_SMIN G_SMAX G_UMIN G_UMAX
     legal in(slot(0), AArch64_IntVecNoV2i64Set)
     legal (AArch64_HasCSSC and in(slot(0), AArch64_I32OrI64Set))
-    widen(slot(0), ty(AArch64_s32))
+    widen(slot(0), ty(AArch64_s32)) when all_of(AArch64_HasCSSC)
     clamp_min(0, AArch64_s8, 8)
     clamp_max(0, AArch64_s8, 16)
     clamp_min(0, AArch64_s16, 4)
@@ -925,7 +925,7 @@ ruleset AArch64_FRAME_INDEX: G_FRAME_INDEX
 
 ruleset AArch64_GLOBAL_VALUE: G_GLOBAL_VALUE
     custom all_of(AArch64_SmallCodeModel)
-    legal not AArch64_SmallCodeModel
+    legal (not AArch64_SmallCodeModel and slot(0) == ty(AArch64_p0))
 
 ruleset AArch64_PTRAUTH_GLOBAL_VALUE: G_PTRAUTH_GLOBAL_VALUE
     legal (slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_p0))

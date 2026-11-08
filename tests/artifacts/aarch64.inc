@@ -217,7 +217,7 @@
   getActionDefinitionsBuilder({G_SMIN, G_SMAX, G_UMIN, G_UMAX})
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == AArch64_v8i8 || Query.Types[0] == AArch64_v16i8 || Query.Types[0] == AArch64_v4i16 || Query.Types[0] == AArch64_v8i16 || Query.Types[0] == AArch64_v2i32 || Query.Types[0] == AArch64_v4i32); })
       .coreLegalIf([=](const LegalityQuery &Query) { return (AArch64_HasCSSC) && ((Query.Types[0] == AArch64_i32 || Query.Types[0] == AArch64_i64)); })
-      .coreMinScalar([](const LegalityQuery &) { return true; }, 0, AArch64_s32)
+      .coreMinScalar([=](const LegalityQuery &Query) { return (AArch64_HasCSSC); }, 0, AArch64_s32)
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == AArch64_s8)) && (((Query.Types[0]).getNumElements() < 8)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector(8, (Query.Types[0]).getElementType())); })
       .coreFewerTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == AArch64_s8)) && (((Query.Types[0]).getNumElements() > 16)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::scalarOrVector(ElementCount::getFixed(16), (Query.Types[0]).getElementType())); })
       .coreMoreTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())) && (((Query.Types[0]).getElementType() == AArch64_s16)) && (((Query.Types[0]).getNumElements() < 4)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector(4, (Query.Types[0]).getElementType())); })
@@ -655,7 +655,7 @@
       .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == AArch64_p0); });
   getActionDefinitionsBuilder(G_GLOBAL_VALUE)
       .coreCustomIf([=](const LegalityQuery &Query) { return (AArch64_SmallCodeModel); })
-      .coreLegalIf([=](const LegalityQuery &Query) { return !(AArch64_SmallCodeModel); });
+      .coreLegalIf([=](const LegalityQuery &Query) { return (!(AArch64_SmallCodeModel)) && ((Query.Types[0] == AArch64_p0)); });
   getActionDefinitionsBuilder(G_PTRAUTH_GLOBAL_VALUE)
       .coreLegalIf([=](const LegalityQuery &Query) { return ((Query.Types[0] == AArch64_p0)) && ((Query.Types[1] == AArch64_p0)); });
   getActionDefinitionsBuilder(G_PTRTOINT)
