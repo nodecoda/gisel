@@ -251,6 +251,7 @@ docs/REPORT-ast.md      the AST migration: removals, rejected options, boundarie
 docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
 docs/ALGORITHM-cases.md  case generation as a bounded quotient (article source)
 docs/REPORT-cases.md    case generation: evidence, rejected options
+docs/REQUIREMENTS-ab.md  workbench: the differential-testing requirement
 docs/REPORT-ab.md       workbench: end-to-end A/B (not a gisel feature)
 docs/SCOPE.md           what gisel is, what only uses it
 spec/semantics.md       what a rule means (and what the evaluator does)
