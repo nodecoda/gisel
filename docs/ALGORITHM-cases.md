@@ -56,6 +56,38 @@ outside      没有规则命中的补集
 类型轴（16 × 16 = 256），再乘上 mem 行；RISC-V `G_SEXT_INREG` 多一根
 `imm(0)` 轴（10 个值），总点数 16 × 10。
 
+### 0.2 展平：多维的 LLT 值，单根的槽轴
+
+一个 LLT 不是一个标量，它内部有 kind（scalar / vector / pointer）、bits、
+lanes、element、address space。我们**不为这些内部维度各开一根轴**，而是：
+
+1. 用规则的切点在这个多维值空间里取有限个**完整 LLT**；
+2. 每个 slot 得到一根离散轴，轴上的值是完整 LLT；
+3. 谓词求值时再把这些值投影到 bits / bytes / lanes 维度上比较。
+
+所以：
+
+```text
+展平：LLT 多维值空间  ->  每个 slot 一根候选列表
+维度：值内部的数值投影，也是 boundary 的移动方向
+轴：  查询积里的一列，不是维度
+```
+
+为什么不能把维度拆成轴：
+
+- kind × bits × lanes 不独立：`v4s32` 的 bits 就是 `4 × 32`，lane 数和元素
+  位宽不能自由组合；拆开会产生大量不可达的非法 LLT。
+- 跨槽谓词（`in_pairs`、`typeDiffersFromMemDesc`、`same_as`）同时读多个槽，
+  维度不属于某一根轴。
+- 规则只观察少数投影；把每个投影都升成轴，等于把采样问题变成组合爆炸。
+
+一个容易误解的地方：`RuleInfo.thresholds` 写成 `slot -> {(dim, N)}`，看起来
+像“维度是槽的属性”。其实它是**这个 ruleset 的谓词在该槽上的观察**，不是轴
+的固有属性；换一个 ruleset，同一个槽的阈值集合可以完全不同。
+
+一个副作用：boundary 的 `N±1` 是沿维度对“值”做局部移动，可能落在候选集
+`B` 之外。`B` 只约束 equivalence/outside 的枚举，不限制 boundary 的探测。
+
 ## 1 问题：为什么不能靠采样
 
 LLT 的空间是无限的：`s1`、`s3`、`s24`、`s31`、`s33`、`v3s32`、`nxv4s32`、
