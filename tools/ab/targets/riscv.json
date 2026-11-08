@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "name": "riscv",
+  "source": "tests/corpus/RISCVLegalizerInfo.gisel",
+  "strategy": "generated-ctor",
+  "baseline_inc": null,
+  "swap_inc": null,
+  "inc_name": "RISCVLegalizerInfo.inc",
+  "library": "lib/libLLVMRISCVCodeGen.so.24.0git",
+  "ninja_target": null,
+  "touch_source": "llvm/lib/Target/RISCV/GISel/RISCVLegalizerInfo.cpp",
+  "runner": {
+    "source": "tools/ab/riscv_query_runner.cpp",
+    "builder": "tools/ab/build-riscv-runner.sh",
+    "mode": "dual"
+  },
+  "features": "tests/cases/riscv-features.json",
+  "query_count": 6140
+}

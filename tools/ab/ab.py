@@ -176,15 +176,18 @@ def validate_queries(path: Path, features_path: Path, expected=None) -> int:
 def ensure_baseline(target: dict, tree: Path, build: Path, state: Path,
                     refresh: bool = False) -> tuple[Path, dict]:
     base = state / "baseline"
-    inc = build / target["baseline_inc"]
-    if not inc.exists():
+    # Hand-written legalizers (RISCV) have no generated inc in the build; the
+    # official constructor lives in the library, so that sha is the anchor.
+    rel_inc = target.get("baseline_inc")
+    inc = build / rel_inc if rel_inc else None
+    if inc is not None and not inc.exists():
         raise HarnessError("baseline inc not found: %s" % inc)
     lib = build / target["library"]
     current = {
         "tree": str(tree),
         "build": str(build),
         "git_head": git_head(tree),
-        "inc_sha256": sha256(inc),
+        "inc_sha256": sha256(inc) if inc is not None else None,
         "lib_sha256": sha256(lib) if lib.exists() else None,
     }
     prov_path = base / "provenance.json"
@@ -208,7 +211,8 @@ def ensure_baseline(target: dict, tree: Path, build: Path, state: Path,
                    (current["lib_sha256"] or "?")[:12]))
         return base, prov
     base.mkdir(parents=True, exist_ok=True)
-    shutil.copyfile(inc, base / target["inc_name"])
+    if inc is not None:
+        shutil.copyfile(inc, base / target["inc_name"])
     if lib.exists():
         shutil.copyfile(lib, base / lib.name)
     prov_path.write_text(json.dumps(current, indent=2) + "\n")
@@ -446,7 +450,8 @@ def cmd_run(args) -> int:
         if not args.no_eval:
             eval_answers, eval_rc = run_eval(core, features, queries, out)
             record["eval_rc"] = eval_rc
-            query_map = attribute.load_queries(queries)
+            query_map = attribute.load_queries(queries,
+                                              E.load_features(features))
             official_map, e1 = A.load(official)
             ours_map, e2 = A.load(ours)
             eval_map, e3 = A.load(eval_answers)

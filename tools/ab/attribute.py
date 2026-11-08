@@ -73,13 +73,36 @@ def matrix_class(official, ours, evaluator):
     return "multiple"
 
 
-def load_queries(path):
+def load_queries(path, features=None):
+    """Query keys, plus a resolved alias for configuration-width pointers.
+
+    `p0:*` is a wildcard in the query file, but both runners answer with the
+    concrete width, so the diff key carries `p0:32`/`p0:64`.  Without the
+    alias the bundle would lose the ruleset for every pointer query.
+    """
     out = {}
     for line in path.read_text().splitlines():
         if not line.strip():
             continue
         query = json.loads(line)
         out[A.key(query)] = query
+        widths = set()
+        for text in list(query.get("types") or []) + [
+                (query.get("mem") or [None])[0]]:
+            if isinstance(text, str) and text.endswith(":*"):
+                widths.add(text)
+        if not widths or features is None:
+            continue
+        xlen = features.table.get(query["config"], {}).get("_xlen")
+        if not xlen:
+            continue
+        resolved = dict(query)
+        resolved["types"] = [t.replace(":*", ":%d" % xlen)
+                             for t in query.get("types") or []]
+        if query.get("mem"):
+            resolved["mem"] = [query["mem"][0].replace(":*", ":%d" % xlen)] + \
+                              list(query["mem"][1:])
+        out.setdefault(A.key(resolved), query)
     return out
 
 
@@ -242,7 +265,7 @@ def main(argv=None):
     diff = json.loads(Path(args.diff).read_text())
     doc = json.loads(Path(args.doc).read_text())
     features = E.load_features(args.features)
-    queries = load_queries(Path(args.queries))
+    queries = load_queries(Path(args.queries), features)
     official, e1 = A.load(args.official)
     ours, e2 = A.load(args.ours)
     evaluator, e3 = A.load(args.eval) if args.eval else ({}, 0)
