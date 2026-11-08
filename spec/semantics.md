@@ -134,7 +134,11 @@ C++ 的 `getActionDefinitionsBuilder(Op)` 每调用一次就追加一张表，`g
 契约的 `--emit=core`）需要一 opcode 一表。`canonicalize_rulesets` 因此是 AST 上
 的一个显式变换，注释里写明了它为什么存在。
 
-- AArch64（114 表 / 743 条）、X86（63 / 332）没有重复 opcode → 恒等变换，golden 不变。
+- X86（63 表 / 328 条）没有重复 opcode → 恒等变换。
+- AArch64（117 表 / 741 条）有 6 个重复 opcode（`G_GLOBAL_VALUE` / `G_SPLAT_VECTOR`
+  的双 builder，以及 `G_BZERO` / `G_MEMSET` / `G_MEMCPY` / `G_MEMMOVE` 的 MOPS 与
+  非 MOPS 两条链）→ 合并后 114 表 / 743 条（共享规则只复制一次）；`imm_idx`
+  覆盖标记按 opcode 取并集。
 - RISCV 有 11 个重复 opcode（`G_CTLZ` 的 Zbb / 非 Zbb 两条链）→ **96 表 / 402 条
   变成 91 表 / 413 条**（共享的 Zbb 规则只复制一次）；`19512 / 0 / 0` 不变。
 

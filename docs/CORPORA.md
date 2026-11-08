@@ -10,57 +10,94 @@
 `-gen-legalizer`。所有 target 的合法化规则都写在 `*LegalizerInfo.cpp` 的构造
 函数里（`getActionDefinitionsBuilder(...)` 链）：X86、AArch64、RISC-V 都一样。
 
-我们的 LLVM 分支加了两样东西：
-
-- `include/llvm/Target/LegalizerInfo.td` + `utils/TableGen/LegalizerInfoEmitter.cpp`
-- `llvm-tblgen -gen-legalizer{,-core,-check,-table}`
-
-所以 X86/AArch64 的 `.td` **是我们引入的中间格式**，由手写 C++ 链逐条重述而来
-（文件头写着 “Converted from the former hand-written chains ... reviewed rule by
-rule”）。RISC-V 没走这条中间格式，直接从 C++ 提取。
+我们的 LLVM 分支曾经加过一个中间格式（`include/llvm/Target/LegalizerInfo.td`
++ `utils/TableGen/LegalizerInfoEmitter.cpp` + `-gen-legalizer*`）。**这条链路
+已经不走**：语料直接从手写 C++ 构造函数转录。
 
 ## 链路
 
 ```text
-上游 X86/AArch64LegalizerInfo.cpp（手写 builder 链）
-  -> 我们的 .td（逐条重述）
-  -> gisel_td.py bootstrap -> .gisel
-  -> gisel_td.py gen       -> .td（与重述版逐字节相同）
-  -> llvm-tblgen -gen-legalizer -> .inc
-
-上游 RISCVLegalizerInfo.cpp（手写 builder 链）
+上游 X86/AArch64/RISCVLegalizerInfo.cpp（手写 builder 链）
   -> tools/import-cxx.py -> .gisel
+  -> gisel gen --emit={inc,check,table,core}
 ```
+
+`tools/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
+构造函数用到的那一小撮写法，认不出来就带行号拒绝（rc=1），绝不静默丢规则。
+X86 的两条偏离写在工具里（`X86_DEVIATIONS`），每条都会断言上游文本仍在，改了
+上游就报错而不是悄悄失效：
+
+| 偏离 | 原因 |
+|---|---|
+| `G_BUILD_VECTOR` 去掉最小 lane clamp | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 会死循环；只留最大 clamp，窄 build vector 走 Unsupported |
+| `G_CTPOP` 增加 VPOPCNTDQ 的向量 legal | 我们的语料带上了向量 legalization，冻结答案里这些点是 Legal |
+
+## 复现：一条命令，钉住计数
+
+导入器是**一次性转录工具**，不是通用 C++ 解析器：目标只有三个，路径和规则数
+写死在 `TARGETS` 里，认不出的语句带行号拒绝。重新生成并逐字节对照仓库里的
+语料：
+
+```sh
+GS_X86_SRC=.../X86LegalizerInfo.cpp \
+GS_AARCH64_SRC=.../AArch64LegalizerInfo.cpp \
+GS_RISCV_SRC=.../RISCVLegalizerInfo.cpp \
+  python3 tools/import-cxx.py --all --check
+```
+
+`--check` 只比对、不写盘；任一目标计数漂移或文本不同都返回 1。生成的 `.gisel`
+头部记录源文件的 sha256，所以“这份语料来自哪份 cpp”不靠记忆。只跑一个目标：
+
+```sh
+python3 tools/import-cxx.py X86 .../X86LegalizerInfo.cpp \
+    --out tests/corpus/X86LegalizerInfo.gisel
+```
+
+钉住的基线（源 sha256 / 规则集 / 规则）：
+
+| 目标 | 源 sha256（前 12 位） | rulesets | rules |
+|---|---|---:|---:|
+| X86 | `79f2376096c3` | 63 | 328 |
+| AArch64 | `2b5377c3eedd` | 117 | 744 |
+| RISC-V | `ad529e1f1a9e` | 96 | 402 |
+
+换上游修订不是改参数，而是改工具：计数断言会立刻报 `DRIFT`。
 
 | 语料 | 上游规则在哪 | 我们的提取路径 | 冻结对照物 | 能证明 |
 |---|---|---|---|---|
-| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → 我们的 `.td` → bootstrap → `.gisel` | 我们的 `-gen-legalizer*` 输出 | 生成器保真（Python vs 我们的 C++ emitter） |
+| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | 无 emitter；gisel 自己的输出（**自基线**）+ 冻结答案 | 生成器回归；规则保真靠 `tests/cases/x86_ref_dump.jsonl` 与工作台对拍 |
 | AArch64 | `AArch64/GISel/AArch64LegalizerInfo.cpp` | 同上 | 同上 | 同上 |
-| RISC-V | `RISCV/GISel/RISCVLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | 没有 emitter；gisel 自己的输出（**自基线**） | 生成器回归；行为靠编译对拍 |
+| RISC-V | `RISCV/GISel/RISCVLegalizerInfo.cpp` | 同上 | 同上 | 同上 |
 | M68k | `M68kLegalizerInfo.cpp` | 人工转写（探针，13 条） | 无 | 语法可表达性 |
 | WebAssembly | `WebAssemblyLegalizerInfo.cpp` | 人工转写（探针，108 条） | 无 | 语法可表达性 |
 
-## 两层证据，别混
+## 证据分三层，别混
 
-1. **生成器保真（字节门）**：同一份 `.td`，gisel 的
-   `--emit={inc,check,table,core}` 和我们的 C++ `-gen-legalizer*` 必须逐字节
-   一致。它证明 Python 实现没有偏离 C++ emitter；**不**证明 C++ emitter 或
-   规则本身和上游行为一致。
-2. **规则保真（行为门，工作台）**：把生成的 `.inc` 编进 target，和原手写 C++
-   构造函数在同一批查询上对拍。这一步才是“规则没抄错”的证据，属于工作台
-   （`tools/ab/`、differential 测试），不属于 gisel。
+1. **转录保真（语料层）**：`tools/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
+   并且重新导入能逐字节复现仓库里的 `.gisel`（`tests/test_import_cxx.py`）。
+   有偏离的地方在工具里点名，不是暗改。
+2. **规则保真（行为门，工作台）**：每个语料在 `tests/cases/*_ref_dump.jsonl`
+   的全部冻结查询上 `gisel eval` 必须一致——X86 5632 点、AArch64 9632 点、
+   RISC-V 19512 点全部 agree。更强的证据是把生成的 `.inc` 编进 target、和原
+   手写 C++ 构造函数端到端对拍（`tools/ab/`）。
+3. **生成器回归（自基线）**：`tests/artifacts/` 是 gisel 自己的冻结输出，用来
+   抓语料/生成器漂移。它**不是**“与上游逐字节一致”的证据：`-gen-legalizer`
+   那条对照链路已随 `.td` 中间格式一起退役。
 
-RISC-V 没有上游 emitter，所以只有第 2 层能对上游负责；它的冻结产物只是第 1 层
-的自基线。把自基线说成“与上游逐字节一致”就是越界。
-
-要证明“新规则也能表达”，需要一份不来自上游的独立手写规则集。目前没有，本文
-不假装有。
+把自基线说成“与上游逐字节一致”就是越界。历史上 X86/AArch64 的 `.inc` 确实是
+`llvm-tblgen -gen-legalizer` 的逐字节输出；切到 cpp 直连后这个字节 oracle 没有
+了，证据换成上面第 1、2 层。
 
 ## 撤掉的工具
 
 `.td` bootstrap reader 和 `--emit=td` 都已删除，原因与保留项见
 `docs/REPORT-no-td.md`。`tools/import-cxx.py` 留在工作台（`docs/SCOPE.md` §2），
 只负责把目标端 C++ 转成 `.gisel`；它不是 gisel 的运行时依赖。
+
+`tools/refresh-oracle.sh`（调 `llvm-tblgen -gen-legalizer*` 刷新 `tests/artifacts/`）
+已不再适用：产物现在由 `gisel gen` 自己生成。LLVM 分支里的 `.td` 和
+`-gen-legalizer*` 因此只剩历史价值，删除它们不影响 gisel；
+`docs/REPORT-cxx-corpus.md` 记录这次切换。
 
 语料是冻结输入：改规则等于改语料，必须重新过产物门（`tests/test_artifacts.py`、
 `tests/artifacts/SHA256`）。

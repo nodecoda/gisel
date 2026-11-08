@@ -29,7 +29,7 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 
 | 工具 | 做什么 | 用 gisel 的哪个出口 |
 |---|---|---|
-| `tools/import-cxx.py` | 解析 LLVM 手写 legalizer C++ → `.gisel` | 目标端：产出 gisel 的输入 |
+| `tools/import-cxx.py` | 一次性转录三个钉住的 legalizer C++ 构造函数 → `.gisel` | 目标端：产出 gisel 的输入 |
 | `llvm-dev/tools/gisel_td.py` | `.gisel` → `.td`（给 llvm-tblgen 用） | 复用 `gisel/ast.py` 的 AST |
 | `tools/refresh-oracle.sh` | 跑 `llvm-tblgen` 刷新 `tests/artifacts/` | 校验 `gen` 的字节一致 |
 | `tools/ab/*` | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |

@@ -9,10 +9,10 @@ turns it into LLVM artifacts **without `llvm-tblgen`**.
 
 gisel has two functions: turn a `.gisel` file into rule artifacts
 (`gen`/`check`/`lint`) and generate test cases (`cases`/`domain`).  Importing
-LLVM's hand-written legalizer into `.gisel`, regenerating the `.td`, and the
-two-implementation A/B all live in the workbench (`tools/`) and are not part of
-gisel — see [docs/SCOPE.md](docs/SCOPE.md) for the boundary and the rule that
-keeps it fixed.
+LLVM's hand-written legalizer into `.gisel` and the two-implementation A/B
+live in the workbench (`tools/`) and are not part of gisel — see
+[docs/SCOPE.md](docs/SCOPE.md) for the boundary and the rule that keeps it
+fixed.
 
 ```sh
 # from a checkout: the corpus and frozen artifacts ship with the repo,
@@ -139,19 +139,21 @@ What it does not do: it does not generate the `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than
 guessing, and none of the five corpora is an independent hand-written second
 statement -- they were extracted from LLVM's hand-written C++ constructors
-with our own tooling as a preparation for self-proof, before the bootstrap
-reader was removed (X86/AArch64 passed through a `.td` this project added).
-`docs/CORPORA.md` says, per corpus, which upstream file it was extracted from
-and what its frozen artifacts can and cannot prove (X86/AArch64 are byte
-oracles; RISC-V is a self-baseline).
+with our own tooling as a preparation for self-proof.  All three go straight
+from the hand-written `.cpp` constructor to `.gisel`
+(`tools/import-cxx.py`); the `.td` this project once added in between is no
+longer used.  `docs/CORPORA.md` says, per corpus, which upstream file it was
+extracted from, which reviewed deviations it carries, and what its frozen
+artifacts can and cannot prove (all three are self-baselines; rule fidelity is
+the frozen answer dumps).
 
 ## Status
 
 | milestone | backend | gate | state |
 |---|---|---|---|
-| M1 | `--emit=inc` | byte-identical to `-gen-legalizer` | done |
-| M2 | `--emit=check` | the `-gen-legalizer-check` JSON | done |
-| M3 | `--emit=table` | the `-gen-legalizer-table` fragment | done |
+| M1 | `--emit=inc` | self-baseline + frozen answers (was: byte-identical to `-gen-legalizer`) | done |
+| M2 | `--emit=check` | self-baseline counters (was: the `-gen-legalizer-check` JSON) | done |
+| M3 | `--emit=table` | self-baseline fragment (was: the `-gen-legalizer-table` output) | done |
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 34,776-point differential, 0 disagreements | done |
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
@@ -164,26 +166,26 @@ upstream-main feature; `docs/CORPORA.md` has the full chain.
 
 Migration and A/B tooling is **workbench**, not a gisel function
 (`docs/SCOPE.md`): `tools/import-inventory.py` prices a target,
-`tools/import-cxx.py` turns its constructor into `.gisel` (refusing, exit 1,
+`tools/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
 any statement it cannot translate), and `tools/ab/` compares two
-implementations.  The evidence lives in `docs/REPORT-riscv.md` and
+implementations.  `import-cxx` is a one-shot transcriber for the three pinned
+constructors, not a general C++ parser: `--all --check` re-transcribes them
+and diffs the checked-in corpora, and a rule-count drift fails loudly.  The evidence lives in `docs/REPORT-riscv.md` and
 `docs/REPORT-ab.md`.
 
 `tests/artifacts/` holds the twelve frozen C++/JSON artifacts and their
 `SHA256`: four each for X86, AArch64 and RISC-V.  Upstream LLVM main has no
 legalizer `.td` and no `-gen-legalizer`; the rules live in hand-written
-`*LegalizerInfo.cpp` constructors.  X86/AArch64 were restated in a `.td` that
-this project introduced, so their four files are that TableGen backend's
-output (byte oracles for the Python emitter); RISC-V has no emitter at all, so
-its four files are a self-baseline.  `docs/CORPORA.md` has the chain.  The corpus
-is frozen as historical input; the `.td` bootstrap reader was removed, so the
-corpus is no longer regenerated from `.td`.  `tools/refresh-oracle.sh` can
-re-derive the C++/JSON oracle from a built LLVM tree (development only —
-generation never runs llvm-tblgen).
+`*LegalizerInfo.cpp` constructors, and the corpora are transcribed from those.
+The artifacts are therefore gisel's own frozen output — a drift baseline, not
+a byte oracle against a second implementation.  What replaces the byte oracle
+is the answer gate: every corpus has to agree with its frozen query dump
+(`tests/cases/*_ref_dump.jsonl`, 5632 / 9632 / 19512 points).  `docs/CORPORA.md`
+has the chain and the reviewed deviations.
 
 ```sh
 python3 -m unittest discover -q -s tests      # 181 tests
-(cd tests/artifacts && sha256sum -c SHA256)   # 8/8
+(cd tests/artifacts && sha256sum -c SHA256)   # 12/12
 ```
 
 `gisel lint` runs the J1/J2b/J3a/J3b checks over the normal form and prints

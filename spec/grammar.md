@@ -2,13 +2,13 @@
 
 状态: 规范性。实现: `gisel/ast.py`（`parse_program`，文件级 AST）与
 `gisel/dsl.py`（`Parser`，规则体）。语料: `tests/corpus/*.gisel`
-（778 + 1310 行，1075 条规则，有冻结的 C++/JSON 对照）；
+（X86 328 条 / AArch64 741 条，由 `tools/import-cxx.py` 从手写 C++
+构造函数转录，有冻结答案对照）；
 另有两份探针语料 `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
 `WebAssemblyLegalizerInfo.gisel`（228 行 / 108 条），见 `docs/REPORT-wasm.md`。
-另有导入器产物 `RISCVLegalizerInfo.gisel`（402 条规则 / 96 个 ruleset，由
-`tools/import-cxx.py` 从 C++ 构造函数生成，见 `docs/REPORT-riscv.md` §7）；
-上游没有 TableGen emitter，所以它的冻结产物是**自基线**
-（`tests/artifacts/riscv.*`），证据性质见 `docs/CORPORA.md`。
+三份主语料走同一条链路：手写 C++ 构造函数 → `tools/import-cxx.py` →
+`.gisel`（RISC-V 402 条 / 96 个 ruleset）。上游没有 legalizer 的 TableGen
+emitter，所以 `tests/artifacts/*` 是**自基线**，证据性质见 `docs/CORPORA.md`。
 任何语法改动都必须让这几份语料 round-trip。
 
 ## 1 词法
@@ -94,7 +94,7 @@ clamp      := ("clamp_min"|"clamp_max") "(" INT "," type "," expr ")"
 
 - 一个 `ruleset` 可以挂多个 opcode；规则按书写顺序匹配（`evaluate:860`）。
 - `note` 是注释的载体（进 `.inc` 的注释）；`imm_idx(n)` 是覆盖标记，
-  不是 core 规则（`tests/test_artifacts.py:90` 计数 1078 = 1075 + 3）。
+  不是 core 规则（`tests/test_artifacts.py` 计数 1074 = 1071 + 3）。
 - `clamp_min/max` 是**语法糖**，前端展开成一条 `more`/`fewer` 规则：四个 guard
   （是向量、不是可伸缩向量、元素类型相等、lane 数越界）加
   `replace(vec_of(n, elem_of(slot(i))))`（`dsl.py:478-497`）。
