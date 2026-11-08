@@ -488,22 +488,32 @@ X86 的 `swap-library` 策略换的是整张表，但 `LegalizerHelper` 同样�
 
 八个 RISC-V 配置的 `cycles` 全为 0、`stuck` 全为 0；X86 四个配置同理。
 
-`--check-closure` 的结果：
+`--check-closure` 把违例分成两类：`partition`（同一个类被推到多个目标类，
+即 ② 不成立）和 `outside`（变异把类型推出声明域，即 ① 的缺口）。
 
-| target | config | 违例 | rc |
-|---|---|---:|---:|
-| X86 | C1 | 3,372 | 1 |
-| RISC-V | rv64gc | 7,365 | 1 |
-| AArch64 | baseline | 未跑 | — |
+| target | config | 默认 partition / outside | `--refine` 后 | classes |
+|---|---|---:|---:|---:|
+| X86 | C1 | 224 / 3,148 | **0** / 3,148 | 3,853 → 3,878 |
+| RISC-V | rv64gc | 7 / 7,358 | **0** / 7,358 | 7,536 → 7,548 |
+| AArch64 | baseline | 27 / 15,605 | **0** / 15,605 | 13,328 → 13,413 |
 
-X86 的头几条都是 `G_ANYEXT` 的 `multiple target classes`：同一个源类被
-mutation 推到多个目标类，商图的后继不是函数。这就是 ② 未通过的直接含义。
+② 在三个 target 上已经可以关掉。默认分区确实把 `s3` 和 `s129` 并成一类
+（widen 的目标依赖具体位宽，`pow2ceil` 让同一个 guard 类里的成员落到不同
+宽度），`--refine` 按“成员落在哪个目标类”把它们分开，后继就重新成为类的
+函数。X86 C1 的 224 条 `multiple target classes` 全部消失。
+
+剩下的全是 ①：`outside`。例如 `G_ANYEXT s129 → s256`，`s256` 不在声明类型
+里，图不为它建格。这不是分区问题，扩大声明域或加轴才能收掉，细化无能为力。
+
+`--refine` 默认关闭，因为它改变第 2 篇的“原子”定义；命令行必须显式写。
 
 ### 5.5 所以多轮对拍不是下一步
 
-在 ② 修好、① 的 `outside` 收进图之前，造 MIR 跑一遍 `llc` 得到的是
-“另一份实现比对”，不是“证明”。而命题一旦成立，多轮结果由单步唯一决定，
-再跑一遍不增加信息。
+② 已经修好（`--refine`），① 还留着 6%–19% 的口子。所以现在能说的是：
+**在已覆盖的那部分状态上，多轮结果由单步唯一决定**；剩下的 `outside` 是
+覆盖面缺口，不是等价性问题。
+
+在这个前提下造 MIR 跑一遍 `llc`，得到的是“另一份实现比对”，不是新的信息。
 
 多轮仍有独立价值，但那是另一个目的：**给上游找缺陷**（见 §5.6），不是给
 本项目做 A/B 结论。
@@ -552,4 +562,9 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --emit=core --features tests/cases/x86-features.json --config C1 \
   --check-closure
+
+# 闭包 + 细化（partition 违规归零，只剩 outside）
+python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
+  --emit=core --features tests/cases/x86-features.json --config C1 \
+  --check-closure --refine
 ```
