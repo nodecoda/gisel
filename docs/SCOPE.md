@@ -10,7 +10,7 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 
 | # | 功能 | 入口 | 输入 → 输出 |
 |---|---|---|---|
-| 1 | **转译**：把规则文本变成规则产物 | `gen --emit={inc,check,table,core}`、`check`、`lint` | `.gisel` → C++ / JSON / TableGen 文本；`check` 只比对字节，`lint` 只报诊断 |
+| 1 | **转译**：把规则文本变成规则产物 | `gen --emit={inc,check,core}`、`check`、`lint` | `.gisel` → C++ / JSON；`check` 只比对字节，`lint` 只报诊断 |
 | 2 | **用例生成**：把规则空间变成有限的题 | `cases`、`domain` | `.gisel` + feature 真值表 + 轴 → 无答案查询 JSONL（等价类 / 边界 / 域外） |
 
 具体命令、参数和退出码是规范：`spec/cli.md`。加一个命令等于加一块产品面，

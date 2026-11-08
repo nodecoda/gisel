@@ -30,7 +30,11 @@ table  AST -> C++ type-class/table .inc
 core   AST -> schema-0.4 JSON -> eval
 ```
 
-`gisel gen` 的默认 `--emit` 改为 `inc`；`--emit` 的合法值只有这四个。
+`gisel gen` 的默认 `--emit` 改为 `inc`；当时 `--emit` 的合法值是这四个。
+
+> 2026-11-09 更新：`table` 也已删除（`gisel/backend/table.py`、`--emit=table`、
+> `tests/artifacts/*.table.inc`、`tests/artifacts/SHA256` 里对应的三行）。
+> 现在只剩 `inc` / `check` / `core`，产品就是 `inc`。
 
 ## 2 为什么还看得见 `.td` / TableGen 字样
 

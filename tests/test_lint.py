@@ -176,7 +176,7 @@ class NegativeControl(unittest.TestCase):
             r = run("lint", str(src))
             self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
             self.assertIn(":3:", r.stderr)
-            for emit in ("inc", "check", "table", "core"):
+            for emit in ("inc", "check", "core"):
                 r = run("gen", str(src), f"--emit={emit}",
                         "--out", str(Path(d) / f"x.{emit}"))
                 self.assertEqual(r.returncode, 2, f"{emit}: {r.stdout}{r.stderr}")

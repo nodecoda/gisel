@@ -1,5 +1,8 @@
 # M3: `--emit=table` -- DONE
 
+> 2026-11-09: `--emit=table` 已移除。本文保留为当时的范围记录；现在只有
+> `inc` / `check` / `core`。
+
 Result (2026-11-06): `gisel gen --emit=table` reproduces both fragments byte
 for byte -- `x86.table.inc` 4982 lines, `aarch64.table.inc` 10765 lines -- from
 `gisel/backend/table.py` (one module, ~470 lines) with no `llvm-tblgen` and no `.td` input.

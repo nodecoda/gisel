@@ -10,29 +10,13 @@ from . import __version__
 from . import ast as A, dsl
 from . import cases as casegen
 from . import domain as domaingen
-from .backend import check_json, core_json, llvm_inc, table
+from .backend import check_json, core_json, llvm_inc
 
-BACKENDS = ("inc", "check", "table", "core")
+BACKENDS = ("inc", "check", "core")
 # The product surface, in one place.  `spec/cli.md` is the prose contract,
 # `tests/test_cli.py` checks the parser against it, and `tests/test_scope.py`
 # checks the spec table against this tuple.
 COMMANDS = ("gen", "check", "cases", "domain", "lint", "eval", "graph")
-
-
-def _table_prefix(source, explicit, gs=None):
-    """The table backend's prefix, defaulted from the source file name.
-
-    Deriving it from `X86LegalizerInfo.gisel` keeps the generated C++ table
-    self-contained; ``--prefix`` still overrides.
-    """
-    if explicit:
-        return explicit
-    if gs is not None:
-        for rs in gs.rulesets:
-            if "_" in rs.name:
-                return rs.name.split("_", 1)[0]
-    stem = Path(source).stem
-    return stem[:-len("LegalizerInfo")] if stem.endswith("LegalizerInfo") else stem
 
 
 def _read_text(path):
@@ -52,7 +36,7 @@ def _source_error(source, exc):
     return 2
 
 
-def _generate(gs, source, emit, prefix=None):
+def _generate(gs, source, emit):
     # One gate for all four backends: a feature expression the file did not
     # declare cannot be spelled by any of them (`core` and `inc` used to be
     # the only two that noticed, and only at their own stage).
@@ -77,8 +61,6 @@ def _generate(gs, source, emit, prefix=None):
         return llvm_inc.emit_inc(gs, source)
     if emit == "check":
         return check_json.emit_check(gs)
-    if emit == "table":
-        return table.emit_table(gs, _table_prefix(source, prefix, gs))
     if emit == "core":
         return core_json.emit_core(gs, source, Path(source).read_text())
     raise ValueError(f"unknown backend {emit!r}")
@@ -168,10 +150,9 @@ def main(argv=None):
     g = sub.add_parser("gen", help="generate a backend artifact")
     g.add_argument("source")
     g.add_argument("--emit", default="inc", choices=BACKENDS,
-                   help="backend: inc (-gen-legalizer), check (-gen-legalizer-check), "
-                        "table (-gen-legalizer-table), core (-gen-legalizer-core)")
+                   help="backend: inc (-gen-legalizer), check "
+                        "(-gen-legalizer-check), core (-gen-legalizer-core)")
     g.add_argument("--out", required=True)
-    g.add_argument("--prefix", help="table prefix (default: from the file name)")
 
     c = sub.add_parser("check", help="verify a generated artifact is up to date")
     c.add_argument("source")
@@ -253,7 +234,7 @@ def main(argv=None):
             return 2
         try:
             gs = A.parse_program(source_text)
-            text = _generate(gs, args.source, args.emit, getattr(args, "prefix", None))
+            text = _generate(gs, args.source, args.emit)
         except ValueError as e:
             return _source_error(args.source, e)
         try:

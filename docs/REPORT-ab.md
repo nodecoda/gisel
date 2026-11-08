@@ -669,14 +669,14 @@ total                    1408
 
 | 轮 | 替换的 target | `ninja all` | Total | Passed | Failed | `check-llvm` rc |
 |---|---|---:|---:|---:|---:|---:|
-| 基线 | 无（三份都是官方实现） | 0 | 80,629 | 54,920 | 0 | 0 |
-| 1 | X86 | 0 | 80,629 | 54,920 | 0 | 0 |
-| 2 | AArch64 | 0 | 80,629 | 54,920 | 0 | 0 |
-| 3 | RISC-V | 0 | 80,629 | 54,920 | 0 | 0 |
-| 4 | 三个同时 | 0 | 80,629 | 54,920 | 0 | 0 |
+| 基线 | 无（三份都是官方实现） | 0 | 80,621 | 54,912 | 0 | 0 |
+| 1 | X86 | 0 | 80,621 | 54,912 | 0 | 0 |
+| 2 | AArch64 | 0 | 80,621 | 54,912 | 0 | 0 |
+| 3 | RISC-V | 0 | 80,621 | 54,912 | 0 | 0 |
+| 4 | 三个同时 | 0 | 80,621 | 54,912 | 0 | 0 |
 
-`ninja all` 每次都真的重编了受影响的 target（X86 轮 53 步、AArch64 轮 58 步、
-RISC-V 轮 53 步、三合一 53 步，都包含 `libclang-cpp` 重链接），不是空转。
+`ninja all` 每次都真的重编了受影响的 target（每轮 50–60 步，都包含
+`libclang-cpp` 重链接），不是空转。
 
 五轮的 `Skipped 62 / Unsupported 25,576 / Expectedly Failed 71` 也逐条相同。
 也就是说：三个 target 分别替换、以及三个同时替换，全量结果和基线**逐条相同**，
@@ -689,17 +689,19 @@ $ ./bin/llvm-lit -q test/CodeGen/AArch64/GlobalISel/ \
     test/CodeGen/RISCV/GlobalISel/ test/CodeGen/X86/GlobalISel/
 Total Discovered Tests: 1534          # 0 failed
 
-$ ./unittests/Target/X86/X86Tests --gtest_filter='*Legalizer*'
-[  PASSED  ] 3 tests.
-X86 legalizer differential: 1408 points x 10 configs, 14080 compared
 ```
 
 gisel 自身：
 
 ```text
-$ python3 -m unittest discover -q -s tests     # 210 tests OK
-$ (cd tests/artifacts && sha256sum -c SHA256)  # 12/12 OK
+$ python3 -m unittest discover -q -s tests     # 206 tests OK
+$ (cd tests/artifacts && sha256sum -c SHA256)  # 9/9 OK
 ```
+
+（这两个数在 2026-11-09 的 table 清理之后变小了：`--emit=table` 连同三个
+`*.table.inc` 一起删除，测试从 210 降到 206，产物从 12 份降到 9 份。上面这张表
+是清理之后重跑的，所以全量测试数从 80,629 变成 80,621、通过数从 54,920 变成
+54,912——少掉的 8 条正是被删掉的 table 测试，不是新的失败。）
 
 ### 6.5 输入指纹
 
@@ -710,7 +712,7 @@ $ (cd tests/artifacts && sha256sum -c SHA256)  # 12/12 OK
 | `tests/artifacts/riscv.inc` | `cbd91241c15878b7…` |
 | `gisel/backend/llvm_inc.py` | `bcf46945678cd661…` |
 | `tools/ab/swap-source-ctor.py` | `a2597b8ab96c284a…` |
-| llvm 树 | `e88a24a0fe84` |
+| llvm 树 | `e88a24a0fe84` + 工作区（table 后端删除等，尚未提交） |
 
 三份 `.inc` 都是本轮从 `tests/corpus/*.gisel` 重新 `gisel gen --emit=inc` 出来的，
 和 `tests/artifacts/` 里入库的产物逐字节相同（`sha256sum` 一致）之后才拿去替换。
@@ -760,7 +762,7 @@ python3 tools/ab/swap-source-ctor.py restore --target riscv   --tree  /home/ubun
 ### 6.7 这轮证明了什么，没证明什么
 
 证明的：我们生成的 `.inc` 换掉三个 target 的合法化规则之后，`ninja all` 全量
-构建 rc=0，全量测试和基线逐条相同——`80,629` 条发现、`54,920` 通过、`0` 失败，
+构建 rc=0，全量测试和基线逐条相同——`80,621` 条发现、`54,912` 通过、`0` 失败，
 分别换和一起换都是这个数。`legalizer-info-validation.mir` 逐字通过，说明覆盖面
 （不只是答案）也和现网一致。
 
@@ -772,4 +774,21 @@ python3 tools/ab/swap-source-ctor.py restore --target riscv   --tree  /home/ubun
 - 覆盖自检对 `opcode-slots.json` 里没有 arity 的 opcode（ATOMICRMW 家族）跳过，
   那些 opcode 的提升安全性没有静态论证，只由 lit 覆盖。
 - 判据是“与基线完全相同”，不是“规则本身正确”。两边一起错的情况这套对拍抓不到。
-- X86 的差分单测修复还在 explore 分支的工作区里，没有单独提交。
+
+### 6.8 同日清理：table 方向整体移除
+
+这轮之后把“table 化”引入的东西删干净了，产品只剩 `gisel -> inc`：
+
+| 侧 | 删除项 |
+|---|---|
+| LLVM 树 | `-gen-legalizer-table`、`-gen-legalizer-table-points`、`-gen-legalizer-rule-index` 三个后端（`LegalizerInfoEmitter.cpp` 少 2,951 行）；`legalizer-table-core-guard.td`、`legalizer-table-core-replace.td`、`legalizer-core-slot-beyond-probe.td` 三个 lit 测试；`X86LegalizerInfoDifferentialTest.cpp`、`AArch64LegalizerInfoDifferentialTest.cpp` 两个单测；两个单测 CMakeLists 里的 tablegen/mutant 接线 |
+| gisel | `--emit=table`、`gisel/backend/table.py`、`tests/artifacts/*.table.inc` 三份、`SHA256` 里对应三行、四个 table 测试 |
+
+清理后重跑：`ninja all` rc=0，`check-llvm` `80,621 / 54,912 / 0 failed`，
+三个 GlobalISel lit 目录 `1534 / 0`，gisel `206 tests OK`、artifacts `9/9`。
+
+代价要写清楚：**X86 那 1,408 个点、AArch64 那 1,190 个点的差分单测没有了**。
+它们的分母来自 `-gen-legalizer-table-points`，正是这次删掉的东西。现在这三个
+target 的等价性证据只剩两条：全量 `check-llvm`（端到端行为）和 `tools/ab/` 的
+两条实现逐条对拍（答案级）。要把“上游规则一条都没漏”重新变成可检查的命题，
+分母必须改由 C++ 导入器生成——这是下一步，不在这轮的清理里。

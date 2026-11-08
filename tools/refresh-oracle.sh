@@ -26,14 +26,10 @@ for T in X86 AArch64; do
   "$TBLGEN" -gen-legalizer       "${INC[@]}" "$TD" -o "$OUT/$L.inc"
   "$TBLGEN" -gen-legalizer-check "${INC[@]}" "$TD" -o "$OUT/$L.check.json"
   "$TBLGEN" -gen-legalizer-core  "${INC[@]}" "$TD" -o "$OUT/$L.core.json"
-  # The table emitter's default prefix is X86 (LegalizerInfoEmitter.cpp:5048),
-  # so AArch64 must pass its own; a missing flag yields 376 "X86" spellings.
-  "$TBLGEN" -gen-legalizer-table -legalizer-table-prefix="$T" \
-    "${INC[@]}" "$TD" -o "$OUT/$L.table.inc"
 done
 
-( cd "$OUT" && sha256sum aarch64.inc aarch64.table.inc aarch64.check.json \
-    aarch64.core.json x86.inc x86.table.inc x86.check.json x86.core.json > SHA256 )
+( cd "$OUT" && sha256sum aarch64.inc aarch64.check.json aarch64.core.json \
+    x86.inc x86.check.json x86.core.json > SHA256 )
 
 echo "oracle refreshed in $OUT"
 echo "review \`git diff tests/artifacts\`: the frozen C++/JSON oracle changed,"

@@ -8,7 +8,7 @@ python3 -m gisel graph SOURCE --emit=core \
 ```
 
 它只影响**分析**，不进入代码生成：`gen`/`check`/`lint`/`eval` 以及
-`inc`/`check`/`table`/`core` 四个出口都不读它，`tests/artifacts/*.core.json`
+`inc`/`check`/`core` 三个出口都不读它，`tests/artifacts/*.core.json`
 保持冻结。没有 `--axes` 时，三个命令的行为与引入本文件之前逐字节一致。
 
 文件解决的是“同一个 target 的类型/内存值集被三个后端各自重新推导”的问题：

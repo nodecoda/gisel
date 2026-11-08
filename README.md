@@ -67,8 +67,8 @@ The generated `.inc` is the C++ chain, one call per rule:
       .scalarize(0);
 ```
 
-`--emit=check`, `--emit=table` and `--emit=core` give the other three
-shapes from the same source.  There is no `.td` backend: the C++ `.inc` is the
+`--emit=check` and `--emit=core` give the other two shapes from the same
+source.  There is no `.td` backend and no table backend: the C++ `.inc` is the
 product.
 
 ## Commands
@@ -77,7 +77,7 @@ Seven commands, one product surface; `spec/cli.md` is the normative contract.
 
 | command | what it does |
 |---|---|
-| `gen` | emit one artifact: `--emit=inc\|check\|table\|core` |
+| `gen` | emit one artifact: `--emit=inc\|check\|core` |
 | `check` | does an artifact still match the source? |
 | `lint` | static checks, no artifact |
 | `cases` | answerless test queries: equivalence, boundary, outside |
@@ -153,7 +153,7 @@ the frozen answer dumps).
 |---|---|---|---|
 | M1 | `--emit=inc` | self-baseline + frozen answers (was: byte-identical to `-gen-legalizer`) | done |
 | M2 | `--emit=check` | self-baseline counters (was: the `-gen-legalizer-check` JSON) | done |
-| M3 | `--emit=table` | self-baseline fragment (was: the `-gen-legalizer-table` output) | done |
+| M3 | ~~`--emit=table`~~ | removed 2026-11-09: the table direction is gone, `inc` is the product | dropped |
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 34,776-point differential, 0 disagreements | done |
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |

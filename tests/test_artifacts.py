@@ -105,37 +105,6 @@ class GoldenCheckJson(unittest.TestCase):
                              c["core_rules"] + c["legacy_rules"] + c["coverage"])
 
 
-class GoldenTable(unittest.TestCase):
-    """M3: `gisel gen --emit=table` is byte-identical to the frozen fragment."""
-
-    def test_generated_table_matches_golden(self):
-        for name, src in CORPORA:
-            with tempfile.TemporaryDirectory() as d:
-                out = Path(d) / f"{name}.table.inc"
-                r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
-                        "--emit=table", "--out", str(out))
-                self.assertEqual(r.returncode, 0, r.stderr)
-                self.assertEqual(
-                    out.read_bytes(),
-                    (TESTS / "artifacts" / f"{name}.table.inc").read_bytes(),
-                    f"{name}: table fragment differs from golden")
-
-    def test_translation_table_covers_every_shim(self):
-        sys.path.insert(0, str(ROOT))
-        from gisel.backend import llvm_inc as inc
-        from gisel.backend import table
-
-        self.assertEqual(set(table.TRANSLATION), set(inc.SHIM_TABLE))
-
-    def test_prefix_defaults_from_the_file_name(self):
-        """Deriving the table prefix from the file name removes a footgun."""
-        from gisel.cli import _table_prefix
-
-        self.assertEqual(_table_prefix("X86LegalizerInfo.gisel", None), "X86")
-        self.assertEqual(_table_prefix("AArch64LegalizerInfo.gisel", None), "AArch64")
-        self.assertEqual(_table_prefix("X.gisel", "Custom"), "Custom")
-
-
 sys.path.insert(0, str(ROOT))
 from gisel.backend.core_json import strip_origin as _strip_origin  # noqa: E402
 
@@ -150,8 +119,8 @@ class SelfBaseline(unittest.TestCase):
     def test_all_four_outputs_match_the_frozen_files(self):
         for name, src in SELF_BASELINE:
             with tempfile.TemporaryDirectory() as d:
-                for emit, suffix in (("inc", "inc"), ("check", "check.json"),
-                                     ("table", "table.inc")):
+                for emit, suffix in (("inc", "inc"),
+                                     ("check", "check.json")):
                     out = Path(d) / f"{name}.{suffix}"
                     r = run("gen", str(TESTS / "corpus" / f"{src}.gisel"),
                             f"--emit={emit}", "--out", str(out))
@@ -413,7 +382,7 @@ class ProbeCorpus(unittest.TestCase):
 
     def test_all_backends_accept_the_probe(self):
         for name, _, nrules in self.PROBES:
-            for emit in ("inc", "check", "table", "core"):
+            for emit in ("inc", "check", "core"):
                 with tempfile.TemporaryDirectory() as d:
                     out = Path(d) / "probe"
                     r = run("gen", "--emit=" + emit, "--out", str(out),
@@ -481,17 +450,6 @@ class ProbeCorpus(unittest.TestCase):
 
 class SourceNameIndependence(unittest.TestCase):
     """Renaming a source must not change what the backends emit."""
-
-    def test_artifacts_do_not_depend_on_the_file_name(self):
-        for name, src in CORPORA:
-            with tempfile.TemporaryDirectory() as d:
-                g = Path(d) / "scratch.gisel"
-                g.write_text((TESTS / "corpus" / f"{src}.gisel").read_text())
-                tbl = Path(d) / "x.inc"
-                self.assertEqual(run("gen", str(g), "--emit=table", "--out", str(tbl)).returncode, 0)
-                self.assertEqual(tbl.read_text(),
-                                 (TESTS / "artifacts" / f"{name}.table.inc").read_text(), name)
-
 
 class CliSurface(unittest.TestCase):
     def test_module_entrypoint_and_version(self):
@@ -563,7 +521,7 @@ class ArtifactIntegrity(unittest.TestCase):
             self.assertEqual(hashlib.sha256(p.read_bytes()).hexdigest(),
                              digest, p.name)
             seen += 1
-        self.assertEqual(seen, 12)
+        self.assertEqual(seen, 9)
 
 
 class ShimCoverage(unittest.TestCase):
