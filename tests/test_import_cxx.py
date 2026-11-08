@@ -38,15 +38,15 @@ class Fixture(unittest.TestCase):
             text = out.read_text()
             # `if (ST.hasStdExtZbb()) { legalFor } else { maxScalar }`
             self.assertIn(
-                'legal (feature("ST.hasStdExtZbb()") and '
+                'legal (R_ST_hasStdExtZbb and '
                 "in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))", text)
             self.assertIn(
                 'narrow(slot(0), ty(R_s32)) when not '
-                'feature("ST.hasStdExtZbb()")', text)
+                'R_ST_hasStdExtZbb', text)
             # `minScalar(pred, 0, s32)` is a gated widen, not an unconditional one.
             self.assertIn(
                 'widen(slot(0), ty(R_s32)) when '
-                'feature("ST.hasStdExtZbb()")', text)
+                'R_ST_hasStdExtZbb', text)
             self.assertIn("lower true", text)
 
     def test_predicate_first_mutations_are_gated(self):
@@ -55,7 +55,7 @@ class Fixture(unittest.TestCase):
         # non-Zbb case too.
         text = (CORPUS / "RISCVLegalizerInfo.gisel").read_text()
         self.assertIn('widen(slot(0), ty(R_sXLen)) when '
-                      'feature("ST.hasStdExtZbb()")', text)
+                      'R_ST_hasStdExtZbb', text)
 
     def test_every_statement_is_either_emitted_or_refused(self):
         with tempfile.TemporaryDirectory() as d:

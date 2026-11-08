@@ -11,7 +11,8 @@ schema-0.4 normal form used by the C++/JSON backends.
           | clamp_min ( INT , TYPE , <expr> )
           | clamp_max ( INT , TYPE , <expr> )        # lanes: int or select(...)
     pred := or of ( and of ( not | primary ) )
-    primary := true | ( pred ) | feature ( STR ) | in ( expr , [TYPE,...] | TYPE )
+    primary := true | ( pred ) | feature ( STR ) | FEATURE_NAME
+            | in ( expr , [TYPE,...] | TYPE )
             | expr ( ==|!=|<|<=|>|>= ) expr
     expr  := INT | TYPE | KIND | call ( ... )
           | select ( <expr> , <expr> , <expr> )        # int select

@@ -120,8 +120,11 @@ pred       := conj { "or" conj }
 conj       := unary { "and" unary }
 unary      := "not" unary | primary
 primary    := "(" pred ")" | "true" | "feature" "(" STRING ")"
+            | FEATURE_NAME
             | membership | expr ("=="|"!="|"<"|"<="|">"|">=") expr
             | expr                              // 布尔观察子可单独作谓词
+
+FEATURE_NAME := 与任一 "feature" ID "=" ... 声明同名的标识符
 
 membership := "in" "(" expr "," (type | "[" (type | INT) {"," (type | INT)} "]") ")"
             | "in_pairs"   "(" expr "," expr "," "[" pair {"," pair} "]" ")"
@@ -134,6 +137,10 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 ```
 
 - `or`/`and`/`all_of`/`any_of` 都是 n 元、扁平（对应 `CoreAny`/`CoreAll`）。
+- 已声明的 `feature` 名可在规则谓词里当布尔量直接使用：`HasAVX` 与
+  `feature("Subtarget.hasAVX()")` 完全等价，两者都编译成同一个
+  `leaf("hasFeature", [C++ expr])` 节点。`feature("...")` 仍保留，仅为
+  向后兼容；新语料应写名字，避免重复拼写 C++ 表达式。
 - 规则里的类型**必须是已声明的名字**：`type` / `select` / `type_set` 任一。
   `in(slot(0), i32)` 里的 `i32` 是 LLT 字面拼写，不是名字，J1 报
   `unknown type name 'i32'`。这条不是风格要求——三个发射后端都要把名字解析回
@@ -189,7 +196,10 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 - `feature` 右侧**不检查**：它是 target 特定的任意 C++ bool 表达式，gisel
   不持有 `Subtarget` 接口；错误只能由 C++ 编译期暴露。
 - 规则里的 `feature("...")` 必须与某个 `feature NAME = ...` 的表达式文本完全
-  一致，否则 `gen --emit=inc` 报 `undeclared feature expression`。
+  一致，否则 `gen --emit=inc` 报 `undeclared feature expression`；直接写
+  `feature` 名（`HasAVX`）时，前端把它解析成同一表达式的 `hasFeature` 叶子，
+  因此未声明名会在规则体解析期报错（`expected comparison` / `guard must be Bool`），
+  而不是在 `gen` 出口才报。
 - 顶层声明顺序即 C++ prologue 中的声明顺序；`include` 行被忽略。
 - `type_set X = Y.Elems` 是引用，不是拷贝（`ast.parse_program` 的
   `resolve_setlike`）。

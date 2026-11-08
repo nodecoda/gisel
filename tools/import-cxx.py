@@ -237,7 +237,7 @@ class Translator:
         if text not in ("XLen", "ST.getXLen()", "STI.getXLen()", "ST.getELen()",
                         "STI.getELen()") and "Query." not in text and \
                 re.fullmatch(r"(ST|STI|XLen)\b[\w.()\s<>=!&|+\-]*", text):
-            return 'feature("%s")' % cpp_text_for(self.features, self.feature(text))
+            return self.feature(text)
         cmp = self._split_cmp(text)
         if cmp is not None:
             lhs, op, rhs = cmp
@@ -248,7 +248,7 @@ class Translator:
         # Subtarget reads and XLen comparisons are cached features.
         if re.fullmatch(r"(ST|STI)\.\w+\(\)", text) or \
                 re.fullmatch(r"XLen\s*==\s*\d+", text):
-            return 'feature("%s")' % cpp_text_for(self.features, self.feature(text))
+            return self.feature(text)
         raise Refuse(text)
 
 
@@ -362,13 +362,13 @@ class Translator:
         if re.fullmatch(r"-?\d+", t):
             return t
         if t in ("XLen", "ST.getXLen()", "STI.getXLen()"):
-            return 'select(feature("XLen == 64"), 64, 32)'
+            return 'select(%s, 64, 32)' % self.feature("XLen == 64")
         if t.replace(" ", "") in ("2*XLen", "XLen*2"):
-            return 'select(feature("XLen == 64"), 128, 64)'
+            return 'select(%s, 128, 64)' % self.feature("XLen == 64")
         if t in ("ST.getELen()", "STI.getELen()"):
-            return 'select(feature("ST.getELen() == 64"), 64, 32)'
+            return 'select(%s, 64, 32)' % self.feature("ST.getELen() == 64")
         if re.fullmatch(r"[A-Za-z_][\w.()]*", t):
-            return 'select(feature("%s"), 64, 32)' % t
+            return 'select(%s, 64, 32)' % self.feature(t)
         raise Refuse(text)
 
     def expr_text(self, text):
@@ -385,7 +385,7 @@ class Translator:
             return self.int_expr(text)
         m = re.fullmatch(r"(ST|STI)\..+", text)
         if m:
-            return 'feature("%s")' % cpp_text_for(self.features, self.feature(text))
+            return self.feature(text)
         if "Query." in text:
             return self.query_body(text)
         if re.fullmatch(r"[A-Za-z_]\w*\s*\(.*\)", text, re.S):
@@ -464,14 +464,6 @@ def _subst(text, sub):
     for k, v in sub.items():
         text = re.sub(r"\b%s\b" % re.escape(k), v, text)
     return text
-
-
-def cpp_text_for(features, name):
-    for k, v in features.items():
-        if v == name:
-            return k
-    raise KeyError(name)
-
 
 
 def parse_helpers(source):

@@ -125,7 +125,7 @@ ruleset Wasm_TRUNC: G_TRUNC
     narrow(slot(1), ty(Wasm_s64))
 
 ruleset Wasm_SEXT_INREG: G_SEXT_INREG
-    legal (feature("Subtarget.hasSignExt()") and in(slot(0), [Wasm_i32, Wasm_i64]) and (in(imm(0), [8, 16]) or (in(slot(0), Wasm_i64) and imm(0) == 32)))
+    legal (Wasm_HasSignExt and in(slot(0), [Wasm_i32, Wasm_i64]) and (in(imm(0), [8, 16]) or (in(slot(0), Wasm_i64) and imm(0) == 32)))
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
     lower true

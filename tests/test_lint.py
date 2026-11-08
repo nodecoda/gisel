@@ -144,6 +144,22 @@ class NegativeControl(unittest.TestCase):
                         "    legal in(slot(0), [X_v])\n")
         self.assertEqual(r.returncode, 0, r.stderr)
 
+    def test_declared_feature_name_is_a_boolean_primary(self):
+        """`feature NAME = ...` is usable as `NAME`, not just `feature("...")`."""
+        r = lint_source("feature HasAVX = Subtarget.hasAVX()\n"
+                        "type X86_Vec256 = LLT::fixed_vector(8, 32)\n"
+                        "ruleset X_ADD: G_ADD\n"
+                        "    legal (HasAVX and in(slot(0), X86_Vec256))\n")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertIn("0 error(s)", r.stdout)
+
+    def test_undeclared_feature_name_is_rejected(self):
+        r = lint_source("type X86_Vec256 = LLT::fixed_vector(8, 32)\n"
+                        "ruleset X_ADD: G_ADD\n"
+                        "    legal (HasAVX and in(slot(0), X86_Vec256))\n")
+        self.assertNotEqual(r.returncode, 0)
+        self.assertIn("expected comparison", r.stderr)
+
     def test_undeclared_feature_is_a_diagnostic(self):
         """Every layer says it, not just the one that happened to build first.
 

@@ -29,7 +29,7 @@
 // ty(t), same_as(k), min_vector_size(n), int_of_size(n), elt_type_to(t,t),
 // elt_size_to(t,n), div_lanes(t,n), vec_of(n,t), scalar_or_vec_of(n,t),
 // replace(t), select(p,a,b), mul(a,b), urem(a,b), udiv(a,b).
-// Predicates: feature("<C++ bool expression>"), true, A and B, A or B, not A,
+// Predicates: declared feature names (AArch64_HasSVE) or feature("<C++ bool expr>"), true, A and B, A or B, not A,
 // a == b (and !=, <, <=, >, >=), in(slot(t)|[t,...]), in_pairs, in_triples,
 // in_mem_desc.
 //
@@ -208,7 +208,7 @@ ruleset AArch64_EXTRACT: G_EXTRACT
 
 ruleset AArch64_ADD: G_ADD G_SUB G_AND G_OR G_XOR
     legal in(slot(0), AArch64_I32Or64OrIntVecSet)
-    legal (feature("Subtarget.hasSVE()") and in(slot(0), AArch64_SVEIntVecSet))
+    legal (AArch64_HasSVE and in(slot(0), AArch64_SVEIntVecSet))
     widen(slot(0), pow2)
     widen(slot(0), ty(AArch64_s32))
     narrow(slot(0), ty(AArch64_s64))
@@ -317,7 +317,7 @@ ruleset AArch64_SMULFIX: G_SMULFIX G_UMULFIX G_SMULFIXSAT G_UMULFIXSAT
 
 ruleset AArch64_SMIN: G_SMIN G_SMAX G_UMIN G_UMAX
     legal in(slot(0), AArch64_IntVecNoV2i64Set)
-    legal (feature("Subtarget.hasCSSC()") and in(slot(0), AArch64_I32OrI64Set))
+    legal (AArch64_HasCSSC and in(slot(0), AArch64_I32OrI64Set))
     widen(slot(0), ty(AArch64_s32))
     clamp_min(0, AArch64_s8, 8)
     clamp_max(0, AArch64_s8, 16)
@@ -328,7 +328,7 @@ ruleset AArch64_SMIN: G_SMIN G_SMAX G_UMIN G_UMAX
     lower true
 
 ruleset AArch64_ABS: G_ABS
-    legal (feature("Subtarget.hasCSSC()") and in(slot(0), AArch64_I32OrI64Set))
+    legal (AArch64_HasCSSC and in(slot(0), AArch64_I32OrI64Set))
     legal in(slot(0), AArch64_PackedVectorOrV2p0Set)
     custom (sort_of(slot(0)) == scalar and size_of(slot(0)) < 128)
     widen(slot(0), replace(ty(AArch64_v4i16))) when slot(0) == ty(AArch64_v4s8)
@@ -377,11 +377,11 @@ ruleset AArch64_SBFX: G_SBFX G_UBFX
             AArch64_s64]])
 
 ruleset AArch64_CTPOP: G_CTPOP
-    legal (feature("Subtarget.hasCSSC()") and in_pairs(slot(0), slot(1), [[AArch64_i32,
+    legal (AArch64_HasCSSC and in_pairs(slot(0), slot(1), [[AArch64_i32,
             AArch64_i32], [AArch64_i64, AArch64_i64]]))
     legal in_pairs(slot(0), slot(1), [[AArch64_v8i8, AArch64_v8i8], [AArch64_v16i8,
             AArch64_v16i8]])
-    custom (not feature("Subtarget.hasCSSC()") and in_pairs(slot(0), slot(1),
+    custom (not AArch64_HasCSSC and in_pairs(slot(0), slot(1),
             [[AArch64_s32, AArch64_s32], [AArch64_s64, AArch64_s64]]))
     custom in_pairs(slot(0), slot(1), [[AArch64_s128, AArch64_s128], [AArch64_v4s16,
             AArch64_v4s16], [AArch64_v8s16, AArch64_v8s16], [AArch64_v2s32, AArch64_v2s32],
@@ -436,8 +436,8 @@ ruleset AArch64_CTTZ: G_CTTZ
     narrow(slot(1), ty(AArch64_s64))
     widen(slot(0), same_as(1))
     narrow(slot(0), same_as(1))
-    legal (feature("Subtarget.hasCSSC()") and in(slot(0), AArch64_S32Or64Set))
-    custom (not feature("Subtarget.hasCSSC()") and in(slot(0), AArch64_S32Or64Set))
+    legal (AArch64_HasCSSC and in(slot(0), AArch64_S32Or64Set))
+    custom (not AArch64_HasCSSC and in(slot(0), AArch64_S32Or64Set))
 
 ruleset AArch64_CTTZ_ZERO_POISON: G_CTTZ_ZERO_POISON
     lower true
@@ -478,7 +478,7 @@ ruleset AArch64_BSWAP: G_BSWAP
 
 ruleset AArch64_UADDSAT: G_UADDSAT G_SADDSAT G_USUBSAT G_SSUBSAT
     legal in(slot(0), AArch64_UaddsatTypesSet)
-    legal (feature("Subtarget.hasSVE()") and in(slot(0), AArch64_SVEIntVecSet))
+    legal (AArch64_HasSVE and in(slot(0), AArch64_SVEIntVecSet))
     clamp_min(0, AArch64_s8, 8)
     clamp_max(0, AArch64_s8, 16)
     clamp_min(0, AArch64_s16, 4)
@@ -492,11 +492,11 @@ ruleset AArch64_UADDSAT: G_UADDSAT G_SADDSAT G_USUBSAT G_SSUBSAT
 
 ruleset AArch64_FADD: G_FADD G_FSUB G_FMUL G_FDIV G_FMA G_FSQRT G_FMAXNUM G_FMINNUM G_FMAXIMUM G_FMINIMUM G_FCEIL G_FFLOOR G_FRINT G_FNEARBYINT G_INTRINSIC_TRUNC G_INTRINSIC_ROUND G_INTRINSIC_ROUNDEVEN
     legal in(slot(0), AArch64_FPScalarOrVecSet)
-    legal (feature("Subtarget.hasFullFP16()") and in(slot(0), AArch64_F16OrV4V8F16Set))
+    legal (AArch64_HasFP16 and in(slot(0), AArch64_F16OrV4V8F16Set))
     libcall in(slot(0), AArch64_f128)
     scalarize(slot(0)) when bits_of(slot(0)) > 64
     widen(slot(0), replace(elt_type_to(slot(0),
-            ty(AArch64_f32)))) when ((not feature("Subtarget.hasFullFP16()") and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+            ty(AArch64_f32)))) when ((not AArch64_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
     clamp_min(0, AArch64_s16, 4)
     clamp_max(0, AArch64_s16, 8)
     clamp_min(0, AArch64_s32, 2)
@@ -507,7 +507,7 @@ ruleset AArch64_FADD: G_FADD G_FSUB G_FMUL G_FDIV G_FMA G_FSQRT G_FMAXNUM G_FMIN
 
 ruleset AArch64_FABS: G_FABS G_FNEG
     legal in(slot(0), AArch64_FPScalarOrVecSet)
-    legal (feature("Subtarget.hasFullFP16()") and in(slot(0), AArch64_F16OrBF16VecSet))
+    legal (AArch64_HasFP16 and in(slot(0), AArch64_F16OrBF16VecSet))
     scalarize(slot(0)) when bits_of(slot(0)) > 64
     lower bits_of(slot(0)) > 64
     clamp_min(0, AArch64_s16, 4)
@@ -535,7 +535,7 @@ ruleset AArch64_FPOWI: G_FPOWI G_FLDEXP
 ruleset AArch64_LROUND: G_LROUND G_INTRINSIC_LRINT
     legal in_pairs(slot(0), slot(1), [[AArch64_i32, AArch64_f32], [AArch64_i32,
             AArch64_f64], [AArch64_i64, AArch64_f32], [AArch64_i64, AArch64_f64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_i32,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_i32,
             AArch64_f16], [AArch64_i64, AArch64_f16]]))
     widen(slot(1), ty(AArch64_s32))
     libcall in_pairs(slot(0), slot(1), [[AArch64_s64, AArch64_s128]])
@@ -544,7 +544,7 @@ ruleset AArch64_LROUND: G_LROUND G_INTRINSIC_LRINT
 ruleset AArch64_LLROUND: G_LLROUND G_INTRINSIC_LLRINT
     legal in_pairs(slot(0), slot(1), [[AArch64_i64, AArch64_f32], [AArch64_i64,
             AArch64_f64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_i64,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_i64,
             AArch64_f16]]))
     widen(slot(0), ty(AArch64_s64))
     widen(slot(1), ty(AArch64_s32))
@@ -560,7 +560,7 @@ ruleset AArch64_FMAD: G_FMAD
     lower true
 
 ruleset AArch64_LOAD: G_LOAD
-    custom (feature("Subtarget.hasRCPC3()") and slot(0) == ty(AArch64_s128) and mem_ordering(mem_slot(0)) == ordering_acquire)
+    custom (AArch64_HasRCPC3 and slot(0) == ty(AArch64_s128) and mem_ordering(mem_slot(0)) == ordering_acquire)
     custom (slot(0) == ty(AArch64_s128) and mem_ordering(mem_slot(0)) >= ordering_unordered)
     legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(AArch64_s8, AArch64_p0,
             AArch64_s8, 8), mem_desc(AArch64_s16, AArch64_p0, AArch64_s16, 8),
@@ -597,7 +597,7 @@ ruleset AArch64_LOAD: G_LOAD
     scalarize(slot(0)) when bits_of(slot(0)) > 64
 
 ruleset AArch64_STORE: G_STORE
-    custom (feature("Subtarget.hasRCPC3()") and slot(0) == ty(AArch64_s128) and mem_ordering(mem_slot(0)) == ordering_release)
+    custom (AArch64_HasRCPC3 and slot(0) == ty(AArch64_s128) and mem_ordering(mem_slot(0)) == ordering_release)
     custom (slot(0) == ty(AArch64_s128) and mem_ordering(mem_slot(0)) >= ordering_unordered)
     widen(slot(0), ty(AArch64_s32)) when mem_ordering(mem_slot(0)) >= ordering_release
     legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(AArch64_s8, AArch64_p0,
@@ -706,13 +706,13 @@ ruleset AArch64_FCMP: G_FCMP
     legal in_pairs(slot(0), slot(1), [[AArch64_i32, AArch64_f32], [AArch64_i32,
             AArch64_f64], [AArch64_v4i32, AArch64_v4f32], [AArch64_v2i32, AArch64_v2f32],
             [AArch64_v2i64, AArch64_v2f64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_i32,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_i32,
             AArch64_f16], [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))
     widen(elem_of(slot(1)), pow2)
     widen(slot(0), ty(AArch64_s32))
     narrow(slot(0), ty(AArch64_s32))
     widen(slot(1), replace(elt_type_to(slot(1),
-            ty(AArch64_f32)))) when ((not feature("Subtarget.hasFullFP16()") and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
+            ty(AArch64_f32)))) when ((not AArch64_HasFP16 and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
     scalarize(slot(1)) when bits_of(slot(1)) > 64
     widen(slot(0),
             same_as(1)) when (sort_of(slot(0)) == vector and not sort_of(slot(1)) == pointer_vector and elem_of(slot(0)) != elem_of(slot(1)))
@@ -781,7 +781,7 @@ ruleset AArch64_FPTRUNC: G_FPTRUNC
     legal in_pairs(slot(0), slot(1), [[AArch64_f16, AArch64_f32], [AArch64_f16,
             AArch64_f64], [AArch64_f32, AArch64_f64], [AArch64_v4f16, AArch64_v4f32],
             [AArch64_v2f32, AArch64_v2f64]])
-    legal (feature("Subtarget.hasBF16()") and in_pairs(slot(0), slot(1), [[AArch64_bf16,
+    legal (AArch64_HasBF16 and in_pairs(slot(0), slot(1), [[AArch64_bf16,
             AArch64_f32], [AArch64_v4bf16, AArch64_v4f32]]))
     libcall in_pairs(slot(0), slot(1), [[AArch64_f16, AArch64_f128], [AArch64_f32,
             AArch64_f128], [AArch64_f64, AArch64_f128]])
@@ -816,7 +816,7 @@ ruleset AArch64_FPTOSI: G_FPTOSI G_FPTOUI
             AArch64_f32], [AArch64_i32, AArch64_f64], [AArch64_i64, AArch64_f64],
             [AArch64_v2i32, AArch64_v2f32], [AArch64_v4i32, AArch64_v4f32], [AArch64_v2i64,
             AArch64_v2f64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_i32,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_i32,
             AArch64_f16], [AArch64_i64, AArch64_f16], [AArch64_v4i16, AArch64_v4f16],
             [AArch64_v8i16, AArch64_v8f16]]))
     scalarize(slot(0)) when bits_of(slot(0)) > 64
@@ -827,7 +827,7 @@ ruleset AArch64_FPTOSI: G_FPTOSI G_FPTOUI
     widen(elem_of(slot(0)), pow2)
     widen(slot(0), ty(AArch64_s32))
     widen(slot(1), replace(elt_type_to(slot(1),
-            ty(AArch64_f32)))) when ((not feature("Subtarget.hasFullFP16()") and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
+            ty(AArch64_f32)))) when ((not AArch64_HasFP16 and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
     widen(slot(1), same_as(0)) when bits_of(slot(0)) <= 64
     widen(slot(0), same_as(1)) when bits_of(slot(1)) <= 64
     clamp_min(0, AArch64_s16, 4)
@@ -844,7 +844,7 @@ ruleset AArch64_FPTOSI_SAT: G_FPTOSI_SAT G_FPTOUI_SAT
             AArch64_f32], [AArch64_i32, AArch64_f64], [AArch64_i64, AArch64_f64],
             [AArch64_v2i32, AArch64_v2f32], [AArch64_v4i32, AArch64_v4f32], [AArch64_v2i64,
             AArch64_v2f64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_i16,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_i16,
             AArch64_f16], [AArch64_i32, AArch64_f16], [AArch64_i64, AArch64_f16],
             [AArch64_v4i16, AArch64_v4f16], [AArch64_v8i16, AArch64_v8f16]]))
     scalarize(slot(0)) when bits_of(slot(0)) > 64
@@ -856,7 +856,7 @@ ruleset AArch64_FPTOSI_SAT: G_FPTOSI_SAT G_FPTOUI_SAT
     widen(slot(0), pow2_min(32))
     widen(slot(0), ty(AArch64_s32))
     widen(slot(1), replace(elt_type_to(slot(1),
-            ty(AArch64_f32)))) when ((not feature("Subtarget.hasFullFP16()") and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
+            ty(AArch64_f32)))) when ((not AArch64_HasFP16 and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
     widen(slot(1),
             same_as(0)) when (bits_of(slot(0)) == 16 or bits_of(slot(0)) == 32 or bits_of(slot(0)) == 64)
     widen(slot(0),
@@ -873,7 +873,7 @@ ruleset AArch64_SITOFP: G_SITOFP G_UITOFP
             AArch64_i32], [AArch64_f32, AArch64_i64], [AArch64_f64, AArch64_i64],
             [AArch64_v2f32, AArch64_v2i32], [AArch64_v4f32, AArch64_v4i32], [AArch64_v2f64,
             AArch64_v2i64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_f16,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_f16,
             AArch64_i32], [AArch64_f16, AArch64_i64], [AArch64_v4f16, AArch64_v4i16],
             [AArch64_v8f16, AArch64_v8i16]]))
     unsupported is_bfloat16(scalar_of(slot(0)))
@@ -883,7 +883,7 @@ ruleset AArch64_SITOFP: G_SITOFP G_UITOFP
     widen(elem_of(slot(1)), pow2)
     widen(slot(1), ty(AArch64_f32))
     lower (sort_of(slot(1)) == vector and bits_of(slot(1)) == 64 and bits_of(slot(0)) == 16)
-    widen(slot(0), select(feature("Subtarget.hasFullFP16()"), 16, 32))
+    widen(slot(0), select(AArch64_HasFP16, 16, 32))
     scalarize(slot(0)) when (bits_of(slot(0)) == 32 and bits_of(slot(1)) == 64)
     widen(slot(0), same_as(1)) when bits_of(slot(1)) <= 64
     widen(slot(1), same_as(0)) when bits_of(slot(0)) <= 64
@@ -924,8 +924,8 @@ ruleset AArch64_FRAME_INDEX: G_FRAME_INDEX
     legal in(slot(0), AArch64_p0)
 
 ruleset AArch64_GLOBAL_VALUE: G_GLOBAL_VALUE
-    custom all_of(feature("TM.getCodeModel() == CodeModel::Small"))
-    legal not feature("TM.getCodeModel() == CodeModel::Small")
+    custom all_of(AArch64_SmallCodeModel)
+    legal not AArch64_SmallCodeModel
 
 ruleset AArch64_PTRAUTH_GLOBAL_VALUE: G_PTRAUTH_GLOBAL_VALUE
     legal (slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_p0))
@@ -976,20 +976,20 @@ ruleset AArch64_ATOMIC_CMPXCHG_WITH_SUCCESS: G_ATOMIC_CMPXCHG_WITH_SUCCESS
     lower (in(slot(0), AArch64_S8To128Set) and slot(2) == ty(AArch64_p0))
 
 ruleset AArch64_ATOMIC_CMPXCHG: G_ATOMIC_CMPXCHG
-    legal (not feature("Subtarget.outlineAtomics() && !Subtarget.hasLSE()") and in_pairs(slot(0),
+    legal (not AArch64_UseOutlineAtomics and in_pairs(slot(0),
             slot(1), [[AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))
-    custom (not feature("Subtarget.outlineAtomics() && !Subtarget.hasLSE()") and in_pairs(slot(0),
+    custom (not AArch64_UseOutlineAtomics and in_pairs(slot(0),
             slot(1), [[AArch64_s128, AArch64_p0]]))
-    libcall (feature("Subtarget.outlineAtomics() && !Subtarget.hasLSE()") and in_pairs(slot(0),
+    libcall (AArch64_UseOutlineAtomics and in_pairs(slot(0),
             slot(1), [[AArch64_s8, AArch64_p0], [AArch64_s16, AArch64_p0], [AArch64_s32,
             AArch64_p0], [AArch64_s64, AArch64_p0], [AArch64_s128, AArch64_p0]]))
     widen(slot(0), ty(AArch64_s32))
     narrow(slot(0), ty(AArch64_s64))
 
 ruleset AArch64_ATOMICRMW_XCHG: G_ATOMICRMW_XCHG G_ATOMICRMW_ADD G_ATOMICRMW_SUB G_ATOMICRMW_AND G_ATOMICRMW_OR G_ATOMICRMW_XOR
-    legal (not feature("Subtarget.outlineAtomics() && !Subtarget.hasLSE()") and in_pairs(slot(0),
+    legal (not AArch64_UseOutlineAtomics and in_pairs(slot(0),
             slot(1), [[AArch64_s32, AArch64_p0], [AArch64_s64, AArch64_p0]]))
-    libcall (feature("Subtarget.outlineAtomics() && !Subtarget.hasLSE()") and in_pairs(slot(0),
+    libcall (AArch64_UseOutlineAtomics and in_pairs(slot(0),
             slot(1), [[AArch64_s8, AArch64_p0], [AArch64_s16, AArch64_p0], [AArch64_s32,
             AArch64_p0], [AArch64_s64, AArch64_p0]]))
     widen(slot(0), ty(AArch64_s32))
@@ -1004,7 +1004,7 @@ ruleset AArch64_BLOCK_ADDR: G_BLOCK_ADDR
     legal in(slot(0), AArch64_p0)
 
 ruleset AArch64_EXTRACT_VECTOR_ELT: G_EXTRACT_VECTOR_ELT
-    legal (feature("Subtarget.hasSVE()") and in_triples(slot(0), slot(1), slot(2),
+    legal (AArch64_HasSVE and in_triples(slot(0), slot(1), slot(2),
             [[AArch64_s16, AArch64_nxv16s8, AArch64_s64], [AArch64_s16, AArch64_nxv8s16,
             AArch64_s64], [AArch64_s32, AArch64_nxv4s32, AArch64_s64], [AArch64_s64,
             AArch64_nxv2s64, AArch64_s64]]))
@@ -1030,7 +1030,7 @@ ruleset AArch64_EXTRACT_VECTOR_ELT: G_EXTRACT_VECTOR_ELT
 
 ruleset AArch64_INSERT_VECTOR_ELT: G_INSERT_VECTOR_ELT
     legal in(slot(0), AArch64_PackedVectorCoreSet)
-    legal (feature("Subtarget.hasSVE()") and in_triples(slot(0), slot(1), slot(2),
+    legal (AArch64_HasSVE and in_triples(slot(0), slot(1), slot(2),
             [[AArch64_nxv16s8, AArch64_s32, AArch64_s64], [AArch64_nxv8s16, AArch64_s32,
             AArch64_s64], [AArch64_nxv4s32, AArch64_s32, AArch64_s64], [AArch64_nxv2s64,
             AArch64_s64, AArch64_s64]]))
@@ -1070,7 +1070,7 @@ ruleset AArch64_SPLAT_VECTOR: G_SPLAT_VECTOR
             AArch64_s16], [AArch64_v8s16, AArch64_s32], [AArch64_v2s32, AArch64_s32],
             [AArch64_v4s32, AArch64_s32], [AArch64_v2s64, AArch64_s64], [AArch64_v2p0,
             AArch64_p0]])
-    legal (feature("Subtarget.hasSVE()") and in_pairs(slot(0), slot(1), [[AArch64_nxv4s32,
+    legal (AArch64_HasSVE and in_pairs(slot(0), slot(1), [[AArch64_nxv4s32,
             AArch64_s32], [AArch64_nxv2s64, AArch64_s64]]))
 
 ruleset AArch64_SHUFFLE_VECTOR: G_SHUFFLE_VECTOR
@@ -1130,34 +1130,34 @@ ruleset AArch64_STACKSAVE: G_STACKSAVE G_STACKRESTORE
     lower true
 
 ruleset AArch64_BZERO: G_BZERO
-    unsupported all_of(feature("Subtarget.hasMOPS()"))
-    libcall not feature("Subtarget.hasMOPS()")
+    unsupported all_of(AArch64_HasMOPS)
+    libcall not AArch64_HasMOPS
 
 ruleset AArch64_MEMSET: G_MEMSET
-    legal (feature("Subtarget.hasMOPS()") and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s64) and slot(2) == ty(AArch64_s64))
-    custom (feature("Subtarget.hasMOPS()") and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s8) and slot(2) == ty(AArch64_s64))
-    libcall not feature("Subtarget.hasMOPS()")
+    legal (AArch64_HasMOPS and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s64) and slot(2) == ty(AArch64_s64))
+    custom (AArch64_HasMOPS and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s8) and slot(2) == ty(AArch64_s64))
+    libcall not AArch64_HasMOPS
     imm_idx(0)
 
 ruleset AArch64_MEMCPY: G_MEMCPY G_MEMMOVE
-    legal (feature("Subtarget.hasMOPS()") and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_p0) and slot(2) == ty(AArch64_s64))
-    libcall not feature("Subtarget.hasMOPS()")
+    legal (AArch64_HasMOPS and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_p0) and slot(2) == ty(AArch64_s64))
+    libcall not AArch64_HasMOPS
     imm_idx(0)
 
 ruleset AArch64_MEMCPY_INLINE: G_MEMCPY_INLINE
-    legal (feature("Subtarget.hasMOPS()") and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_p0) and slot(2) == ty(AArch64_s64))
+    legal (AArch64_HasMOPS and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_p0) and slot(2) == ty(AArch64_s64))
 
 ruleset AArch64_MEMSET_INLINE: G_MEMSET_INLINE
-    legal (feature("Subtarget.hasMOPS()") and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s64) and slot(2) == ty(AArch64_s64))
-    custom (feature("Subtarget.hasMOPS()") and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s8) and slot(2) == ty(AArch64_s64))
+    legal (AArch64_HasMOPS and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s64) and slot(2) == ty(AArch64_s64))
+    custom (AArch64_HasMOPS and slot(0) == ty(AArch64_p0) and slot(1) == ty(AArch64_s8) and slot(2) == ty(AArch64_s64))
 
 ruleset AArch64_VECREDUCE_FADD: G_VECREDUCE_FADD
     legal in_pairs(slot(0), slot(1), [[AArch64_f32, AArch64_v2f32], [AArch64_f32,
             AArch64_v4f32], [AArch64_f64, AArch64_v2f64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_f16,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_f16,
             AArch64_v4f16], [AArch64_f16, AArch64_v8f16]]))
     widen(slot(0), replace(elt_type_to(slot(0),
-            ty(AArch64_f32)))) when ((not feature("Subtarget.hasFullFP16()") and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+            ty(AArch64_f32)))) when ((not AArch64_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
     clamp_max(1, AArch64_s64, 2)
     clamp_max(1, AArch64_s32, 4)
     clamp_max(1, AArch64_s16, 8)
@@ -1167,7 +1167,7 @@ ruleset AArch64_VECREDUCE_FADD: G_VECREDUCE_FADD
 
 ruleset AArch64_VECREDUCE_FMUL: G_VECREDUCE_FMUL
     widen(slot(0), replace(elt_type_to(slot(0),
-            ty(AArch64_f32)))) when ((not feature("Subtarget.hasFullFP16()") and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+            ty(AArch64_f32)))) when ((not AArch64_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
     clamp_max(1, AArch64_s64, 2)
     clamp_max(1, AArch64_s32, 4)
     clamp_max(1, AArch64_s16, 8)
@@ -1196,10 +1196,10 @@ ruleset AArch64_VECREDUCE_ADD: G_VECREDUCE_ADD
 ruleset AArch64_VECREDUCE_FMIN: G_VECREDUCE_FMIN G_VECREDUCE_FMAX G_VECREDUCE_FMINIMUM G_VECREDUCE_FMAXIMUM
     legal in_pairs(slot(0), slot(1), [[AArch64_f32, AArch64_v2f32], [AArch64_f32,
             AArch64_v4f32], [AArch64_f64, AArch64_v2f64]])
-    legal (feature("Subtarget.hasFullFP16()") and in_pairs(slot(0), slot(1), [[AArch64_f16,
+    legal (AArch64_HasFP16 and in_pairs(slot(0), slot(1), [[AArch64_f16,
             AArch64_v4f16], [AArch64_f16, AArch64_v8f16]]))
     widen(slot(0), replace(elt_type_to(slot(0),
-            ty(AArch64_f32)))) when ((not feature("Subtarget.hasFullFP16()") and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+            ty(AArch64_f32)))) when ((not AArch64_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
     clamp_max(1, AArch64_s64, 2)
     clamp_max(1, AArch64_s32, 4)
     clamp_max(1, AArch64_s16, 8)

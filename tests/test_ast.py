@@ -71,6 +71,36 @@ class RendererNames(unittest.TestCase):
                     self.assertEqual(names.value_name(d.llt), d.name)
 
 
+class FeatureNamePredicates(unittest.TestCase):
+    """A declared `feature NAME` is a boolean primary in rule predicates."""
+
+    def test_feature_name_equals_inline_feature_call(self):
+        src = (
+            "feature HasAVX = Subtarget.hasAVX()\n"
+            "type X86_Vec256 = LLT::fixed_vector(8, 32)\n"
+            "ruleset X_ADD: G_ADD\n"
+            "    legal (HasAVX and in(slot(0), X86_Vec256))\n"
+        )
+        prog = A.parse_program(src)
+        pred = prog.rulesets[0].rules[0].predicate
+        self.assertEqual(pred["kind"], "all")
+        leaf = pred["args"][0]
+        self.assertEqual(leaf, {"kind": "leaf", "name": "hasFeature",
+                                "args": ["Subtarget.hasAVX()"]})
+
+    def test_feature_name_matches_inline_spelling_semantics(self):
+        by_name = A.parse_program(
+            "feature HasAVX = Subtarget.hasAVX()\n"
+            "ruleset X: G_ADD\n"
+            "    legal HasAVX\n")
+        by_inline = A.parse_program(
+            "feature HasAVX = Subtarget.hasAVX()\n"
+            "ruleset X: G_ADD\n"
+            '    legal feature("Subtarget.hasAVX()")\n')
+        self.assertEqual(by_name.rulesets[0].rules[0].predicate,
+                         by_inline.rulesets[0].rules[0].predicate)
+
+
 class Canonicalisation(unittest.TestCase):
     def test_one_rule_set_per_opcode(self):
         for name in CORPORA:
