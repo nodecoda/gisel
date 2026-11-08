@@ -52,7 +52,7 @@ KINDS = ("equivalence", "boundary", "outside")
 # before the exotic shapes; the list is a fallback, not a preference.
 _SENTINELS = (
     "s32", "s64", "s8", "s16", "s128", "s1", "s3", "s7", "s24", "s31",
-    "s33", "s63", "s65", "v4s32", "v2s64", "v16s8", "v1s8", "v3s32",
+    "s33", "s63", "s65", "v4s32", "v2s64", "v16s8", "nxv1s8", "v3s32",
     "nxv4s32", "p0:64", "p0:32", "p0:128", "p0:*", "f16", "f32", "f64",
     "bf16",
 )
@@ -110,6 +110,11 @@ def _lanes(t):
 # configuration space cannot contain.
 _POINTER_BITS = (16, 32, 64, 128)
 
+# LLVM IR has a closed set of float widths.  `f31`/`f33` are spellable LLTs
+# (LLT::floatIEEE takes any size) but no IR produces one, and a target
+# legalizer asserts when asked to legalize it, so a probe there is noise.
+_FLOAT_BITS = (16, 32, 64, 80, 128)
+
 
 def _resize_bits(t, bits):
     """Same shape, scalar/element/pointer width set to ``bits``."""
@@ -118,6 +123,8 @@ def _resize_bits(t, bits):
     if t[0] in ("scalar", "integer"):
         return (t[0], bits)
     if t[0] == "float":
+        if bits not in _FLOAT_BITS:
+            return None
         return ("float", bits)
     if t[0] == "pointer":
         if bits not in _POINTER_BITS:
@@ -132,6 +139,8 @@ def _resize_bits(t, bits):
 def _relane(t, lanes):
     if t[0] != "vector" or lanes <= 0:
         return None
+    if lanes == 1 and not t[2]:
+        return t[3]          # a fixed one-lane vector is the element type
     return ("vector", lanes, t[2], t[3])
 
 
@@ -150,9 +159,12 @@ def _neighbours(t):
     out = set()
     bits = _scalar_bits(t)
     if bits is not None:
-        if bits > 1:
-            out.add(_resize_bits(t, bits - 1))
-        out.add(_resize_bits(t, bits + 1))
+        if t[0] == "float":
+            out.update(("float", n) for n in _FLOAT_BITS if n != bits)
+        else:
+            if bits > 1:
+                out.add(_resize_bits(t, bits - 1))
+            out.add(_resize_bits(t, bits + 1))
     lanes = _lanes(t)
     if lanes is not None:
         if lanes > 1:

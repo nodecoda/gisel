@@ -326,6 +326,9 @@ int main(int Argc, char **Argv) {
       continue;
     if (int Rc = answerLine(Line, Sigmas, outs()))
       return Rc;
+    // Flush per answer: a query that makes LLVM assert aborts the process,
+    // and a buffered tail would be lost.  Answers before the crash stay.
+    outs().flush();
     ++N;
   }
   errs() << "answered " << N << " queries\n";

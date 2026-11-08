@@ -197,7 +197,8 @@ def change_element_count_div(t, n):
 
 
 def fixed_vector(lanes, elem):
-    return ("vector", lanes, False, elem)
+    # `vec_of(1, T)` is T, for the same reason `scalarOrVecOf` collapses it.
+    return scalar_or_vector(lanes, False, elem)
 
 
 def scalable_vector(lanes, elem):
@@ -292,7 +293,11 @@ def _parse_core_llt(s, extended):
         lanes = int(m.group(2))
         scalable = m.group(1) == "nxv"
         elem = _parse_elem_spelling(m.group(3), oracle=False)
-        t = ("vector", lanes, scalable, elem)
+        # A fixed one-lane vector *is* the element type: LLT::vector() asserts
+        # on ElementCount::getFixed(1) (isScalar() is true), so `v1s8` never
+        # reaches a target.  Normalise instead of keeping an unanswerable type.
+        t = elem if (lanes == 1 and not scalable) else (
+            "vector", lanes, scalable, elem)
         return t if extended else collapse_extended(t)
     m = _CORE_PTR_RE.match(s)
     if m:
@@ -317,7 +322,10 @@ def parse_oracle_llt(s):
         else:
             lanes = int(head)
             scalable = False
-        return ("vector", lanes, scalable, _parse_elem_spelling(elem, oracle=True))
+        elem_t = _parse_elem_spelling(elem, oracle=True)
+        if lanes == 1 and not scalable:
+            return elem_t
+        return ("vector", lanes, scalable, elem_t)
     return _parse_elem_spelling(s, oracle=True)
 
 

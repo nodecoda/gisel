@@ -160,3 +160,29 @@ class FullRunCompression(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class OneLaneVectors(unittest.TestCase):
+    """`LLT::vector` asserts on one fixed lane: `v1s8` is really `s8`."""
+
+    def test_parse_collapses_a_fixed_one_lane_vector(self):
+        self.assertEqual(E.parse_case_llt("v1s8"), E.parse_case_llt("s8"))
+        self.assertEqual(E.parse_case_llt("v1p0:64"), E.parse_case_llt("p0:64"))
+        self.assertEqual(cases.llt_text(E.parse_case_llt("nxv1s8")),
+                         "nxv1s8")
+
+    def test_vec_of_one_is_the_element_type(self):
+        self.assertEqual(E.fixed_vector(1, E.parse_case_llt("s8")),
+                         E.parse_case_llt("s8"))
+
+    def test_no_generated_case_names_a_fixed_one_lane_vector(self):
+        import re
+        one_lane = re.compile(r"^v1(?!\d)")
+        for source in sorted(CORPUS.glob("*.gisel")):
+            doc = cases.document(source)
+            features = cases.derive_features(doc)
+            configs = sorted(features.table)[:1]
+            gen = cases.generate(doc, features, configs=configs)
+            bad = [c.types for c in gen.cases
+                   if any(one_lane.search(t) for t in c.types)]
+            self.assertEqual(bad, [], source.name)
