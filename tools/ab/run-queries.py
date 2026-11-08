@@ -35,6 +35,11 @@ def run(runner, queries, out, report=None):
         answers.extend(got)
         if proc.returncode == 0:
             break
+        if proc.returncode not in (-6, -11, 134, 139):   # SIGABRT/SIGSEGV
+            print("%s: exit %d on query %d:\n%s"
+                  % (runner, proc.returncode, start + len(got) + 1,
+                     proc.stderr.strip()), file=sys.stderr)
+            return aborted
         bad = start + len(got)
         if bad >= len(lines):
             bad = start        # the runner died before answering anything
@@ -68,9 +73,9 @@ def main(argv=None):
     parser.add_argument("out")
     parser.add_argument("--report")
     args = parser.parse_args(argv)
-    aborted = run(Path(args.runner), Path(args.queries), Path(args.out),
-                  Path(args.report) if args.report else None)
-    return 0 if not aborted else 0
+    run(Path(args.runner), Path(args.queries), Path(args.out),
+        Path(args.report) if args.report else None)
+    return 0
 
 
 if __name__ == "__main__":
