@@ -396,39 +396,39 @@ static LegalizeActionStep XEval0(
     auto M = (LegalizeMutations::moreElementsToNextPow2(0))(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() < (X_v16s8).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v16s8).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v16s8).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s8MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() < (X_v8s16).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v8s16).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v8s16).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s16MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() < (X_v4s32).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v4s32).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v4s32).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s32MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() < (X_v2s64).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v2s64).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v2s64).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s64MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_p0)) && (((Q.Types[0]).getNumElements() > (X_Is64Bit ? (X_s64MaxVector).getNumElements() : (X_s32MaxVector).getNumElements())))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_p0)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_Is64Bit ? (X_s64MaxVector).getNumElements() : (X_s32MaxVector).getNumElements())))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_Is64Bit ? (X_s64MaxVector).getNumElements() : (X_s32MaxVector).getNumElements())), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
@@ -1123,35 +1123,35 @@ static LegalizeActionStep XEval10(
   if ((X_HasBWI) && ((Q.Types[0] == X_v64s8 || Q.Types[0] == X_v32s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() < 16))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < 16))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(16, (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() < 8))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < 8))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(8, (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() < 4))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < 4))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(4, (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() < 2))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < 2))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(2, (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_HasBWI ? 64 : (X_HasAVX2 ? 32 : 16))))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_HasBWI ? 64 : (X_HasAVX2 ? 32 : 16))))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_HasBWI ? 64 : (X_HasAVX2 ? 32 : 16))), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_HasBWI ? 32 : (X_HasAVX2 ? 16 : 8))))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_HasBWI ? 32 : (X_HasAVX2 ? 16 : 8))))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_HasBWI ? 32 : (X_HasAVX2 ? 16 : 8))), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_HasAVX512 ? 16 : (X_HasAVX2 ? 8 : 4))))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_HasAVX512 ? 16 : (X_HasAVX2 ? 8 : 4))))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_HasAVX512 ? 16 : (X_HasAVX2 ? 8 : 4))), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_HasAVX512 ? 8 : (X_HasAVX2 ? 4 : 2))))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_HasAVX512 ? 8 : (X_HasAVX2 ? 4 : 2))))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_HasAVX512 ? 8 : (X_HasAVX2 ? 4 : 2))), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
@@ -1344,27 +1344,27 @@ static LegalizeActionStep XEval12(
   if ((X_HasBWI) && ((Q.Types[0] == X_v32s16))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() < 8))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < 8))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(8, (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() < 4))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < 4))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector(4, (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() < (X_HasVLX ? 2 : 8)))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_HasVLX ? 2 : 8)))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_HasVLX ? 2 : 8), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_HasBWI ? 32 : (X_HasAVX2 ? 16 : 8))))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_HasBWI ? 32 : (X_HasAVX2 ? 16 : 8))))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_HasBWI ? 32 : (X_HasAVX2 ? 16 : 8))), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_HasAVX512 ? 16 : (X_HasAVX2 ? 8 : 4))))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_HasAVX512 ? 16 : (X_HasAVX2 ? 8 : 4))))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_HasAVX512 ? 16 : (X_HasAVX2 ? 8 : 4))), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > 8))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > 8))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed(8), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
@@ -1692,35 +1692,35 @@ static LegalizeActionStep XEval16(
   if ((X_HasAVX512) && ((Q.Types[0] == X_v64s8 || Q.Types[0] == X_v32s16 || Q.Types[0] == X_v16s32 || Q.Types[0] == X_v8s64))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() < (X_v16s8).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v16s8).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v16s8).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s8MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() < (X_v8s16).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v8s16).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v8s16).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s16MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() < (X_v4s32).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v4s32).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v4s32).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s32MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() < (X_v2s64).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) < (X_v2s64).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::fixed_vector((X_v2s64).getNumElements(), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::MoreElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s64MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
@@ -4371,19 +4371,19 @@ static LegalizeActionStep XEval51(
   if (((X_HasSSE1) && ((Q.Types[0] == X_v4s32))) || ((X_HasSSE2) && ((Q.Types[0] == X_v2s64 || Q.Types[0] == X_v8s16 || Q.Types[0] == X_v16s8))) || ((X_HasAVX) && ((Q.Types[0] == X_v4s64 || Q.Types[0] == X_v8s32 || Q.Types[0] == X_v16s16 || Q.Types[0] == X_v32s8))) || ((X_HasAVX512) && ((Q.Types[0] == X_v8s64 || Q.Types[0] == X_v16s32 || Q.Types[0] == X_v32s16 || Q.Types[0] == X_v64s8)))) {
     return {LegalizeActions::Custom, 0, LLT{}};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && (((Q.Types[0]).getNumElements() > (X_s8MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s8)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s8MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s8MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && (((Q.Types[0]).getNumElements() > (X_s16MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s16)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s16MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s16MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && (((Q.Types[0]).getNumElements() > (X_s32MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s32)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s32MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s32MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
-  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && (((Q.Types[0]).getNumElements() > (X_s64MaxVector).getNumElements()))) {
+  if ((Q.Types[0].isVector()) && (!(Q.Types[0].isScalableVector())) && (((Q.Types[0]).getElementType() == X_s64)) && ((((Q.Types[0]).isVector() ? (Q.Types[0]).getElementCount().getKnownMinValue() : 1) > (X_s64MaxVector).getNumElements()))) {
     auto M = ([=](const LegalityQuery &Q) { return std::make_pair(unsigned(0), LLT::scalarOrVector(ElementCount::getFixed((X_s64MaxVector).getNumElements()), (Q.Types[0]).getElementType())); })(Q);
     return {LegalizeActions::FewerElements, M.first, M.second};
   }
