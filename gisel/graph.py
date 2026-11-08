@@ -24,6 +24,7 @@ from . import eval as E
 
 
 TERMINAL = {"Legal", "Lower", "Libcall", "Custom", "Unsupported"}
+_CLOSURE_SAMPLE_LIMIT = 20
 _SENTINEL_TEXT = ("s3", "s7", "s24", "s33", "s63", "s65",
                   "v3s8", "v5s8", "v3s32", "v5s32")
 _SENTINEL_RANK = {text: i for i, text in enumerate(_SENTINEL_TEXT)}
@@ -394,6 +395,82 @@ def _make_imm_classes(values, atoms, evaluator, config):
                        {cid: sig for cid, _group, sig in ordered})
 
 
+def _rebuild_classes(table, groups):
+    """Renumber a partition after a refinement split."""
+    groups = [sorted(group, key=_representative_key) for group in groups]
+    groups = [group for group in groups if group]
+    groups.sort(key=lambda group: _representative_key(group[0]))
+    class_of, members, signatures = {}, {}, {}
+    for cid, group in enumerate(groups):
+        members[cid] = group
+        signatures[cid] = ["refined", cid]
+        for value in group:
+            class_of[value] = cid
+    return AxisClasses(list(table.values), class_of, members, signatures)
+
+
+def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
+                    config, extended, max_rounds=8):
+    """Split each axis class until one class has one successor class.
+
+    This is opt-in.  The default partition is the atom `spec/graph.md`
+    defines; refining it changes what "atom" means, so it never happens on
+    its own and the class count before/after is reported.
+    """
+
+    def target_of(axis, value):
+        types = list(baseline)
+        types[axis] = value
+        try:
+            action, type_idx, new_type, rule = E.evaluate_with_rule(
+                evaluator, config, opcode, types,
+                _mem_desc(base_mem, extended), ())
+        except Exception:
+            return None
+        if rule is None or action in TERMINAL:
+            return None
+        if type_idx != axis or new_type == value:
+            return None
+        return new_type
+
+    for _round in range(max_rounds):
+        changed = False
+        refined = []
+        for axis, table in enumerate(type_classes):
+            seen = {}
+            for cid, members in table.members.items():
+                for value in members:
+                    new_type = target_of(axis, value)
+                    if new_type is None:
+                        seen[value] = None
+                    else:
+                        seen[value] = table.class_of.get(new_type)
+            by_class = collections.defaultdict(list)
+            for value, target in seen.items():
+                by_class[table.class_of[value]].append(value)
+            groups = []
+            for cid in sorted(by_class):
+                values = by_class[cid]
+                keys = sorted({seen[v] for v in values
+                               if seen[v] is not None})
+                if len(keys) <= 1:
+                    groups.append(values)
+                    continue
+                changed = True
+                default = keys[0]
+                buckets = collections.defaultdict(list)
+                for value in values:
+                    key = seen[value] if seen[value] is not None else default
+                    buckets[key].append(value)
+                for key in sorted(buckets):
+                    groups.append(buckets[key])
+            refined.append(_rebuild_classes(table, groups))
+        type_classes = refined
+        if not changed:
+            break
+    return type_classes
+
+
 def _opaque(evaluator, atoms, types, mem, config, imms=()):
     return any(_atom_value(evaluator, atom, types, mem, config, imms) is None
                for atom in atoms)
@@ -439,6 +516,7 @@ class Report:
     injected_edge: dict | None = None
     class_tables: dict | None = None
     skipped: list | None = None
+    classes_before: int | None = None
 
     def public(self):
         outcomes = collections.Counter(s["outcome"] for s in self.states.values())
@@ -461,6 +539,8 @@ class Report:
             "cycle_samples": [[_node_text(x) for x in sample]
                               for sample in samples],
             "classes": self.classes,
+            **({"classes_before": self.classes_before}
+               if self.classes_before is not None else {}),
             "uncovered": self.uncovered,
             "closure": self.closure,
             "injected_edge": self.injected_edge,
@@ -494,7 +574,7 @@ def _state_key(opcode, type_classes, mem_class, imm_class=None):
 def build(source, config, features, *, pointer_width=64, slots=None,
           inject_edge=False, check_closure=False, extra_types=(),
           extra_mems=(), arity_overrides=None, progress=False,
-          axis_profile=None):
+          axis_profile=None, refine=False):
     """Build one configuration's graph and return a :class:`Report`."""
     doc = C.document(source)
     evaluator = E.Evaluator(doc, features)
@@ -518,6 +598,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     uncovered = []
     skipped = set()
     total_classes = 0
+    classes_before = 0
     started = time.monotonic()
 
     for rs_idx, rs in enumerate(doc["rulesets"]):
@@ -573,6 +654,12 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                                           mem_values if mem_values != [None] else [],
                                           evaluator, config)
                             for i in range(n)]
+            if refine:
+                classes_before += sum(len(tc.members) for tc in type_classes)
+                type_classes = _refine_classes(
+                    type_classes, opcode, [items[0] for items in axes],
+                    mem_values[0] if mem_values != [None] else None,
+                    evaluator, config, extended)
             mem_classes = (_make_mem_classes(mem_values, atoms, axes,
                                              evaluator, config)
                            if mem_values != [None] else None)
@@ -674,13 +761,17 @@ def build(source, config, features, *, pointer_width=64, slots=None,
         }))
 
     closure = {"checked": bool(check_closure), "ok": True,
-               "violations": [], "count": 0}
+               "violations": [], "count": 0,
+               "kinds": {"partition": 0, "outside": 0}}
     if check_closure:
-        limit = 20
+        limit = _CLOSURE_SAMPLE_LIMIT
 
         def record(entry):
             closure["count"] += 1
             closure["ok"] = False
+            kind = ("outside" if entry.get("reason") == "outside"
+                    else "partition")
+            closure["kinds"][kind] += 1
             if len(closure["violations"]) < limit:
                 closure["violations"].append(entry)
 
@@ -759,7 +850,8 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                     "to": _node_text(source_node)}
 
     return Report(config, states, dict(edges), total_classes, uncovered,
-                  closure, injected, class_tables, sorted(skipped))
+                  closure, injected, class_tables, sorted(skipped),
+                  classes_before if refine else None)
 
 
 def _class_key(tables, opcode, types, mem, imms=None):
@@ -882,6 +974,9 @@ def main(argv=None):
     parser.add_argument("--oracle", help="check matching points in an oracle JSONL")
     parser.add_argument("--inject-edge", action="store_true")
     parser.add_argument("--check-closure", action="store_true")
+    parser.add_argument("--refine", action="store_true",
+                        help="split classes until a class has one "
+                             "successor class (opt-in; changes the atom)")
     parser.add_argument("--progress", action="store_true",
                         help="print per-ruleset progress on stderr")
     parser.add_argument("--json", action="store_true")
@@ -923,6 +1018,7 @@ def main(argv=None):
                            pointer_width=width,
                            inject_edge=args.inject_edge,
                            check_closure=args.check_closure,
+                           refine=args.refine,
                            extra_types=config_oracle_types,
                            extra_mems=oracle_mems,
                            arity_overrides=oracle_arities,
@@ -947,6 +1043,10 @@ def main(argv=None):
         print("config      : %s" % output["config"])
         print("states      : %d" % output["states"])
         print("edges       : %d" % output["edges"])
+        print("classes     : %d" % output["classes"])
+        if "classes_before" in output:
+            print("refined     : %d -> %d class(es)"
+                  % (output["classes_before"], output["classes"]))
         print("outcomes    : %s" % output["outcomes"])
         print("terminal    : %s" % output["terminal"])
         print("opaque      : %d" % output["opaque"])
@@ -962,6 +1062,10 @@ def main(argv=None):
             print("closure     : %s (%d violation(s), %d shown)"
                   % (status, closure.get("count", len(closure["violations"])),
                      min(3, len(closure["violations"]))))
+            kinds = closure.get("kinds") or {}
+            if kinds:
+                print("  closure kinds: partition=%d outside=%d"
+                      % (kinds.get("partition", 0), kinds.get("outside", 0)))
             for violation in closure["violations"][:3]:
                 print("  closure: %s" % _violation_text(violation))
         else:

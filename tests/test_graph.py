@@ -53,6 +53,19 @@ ruleset G_UMIN: G_UMIN
 """
 
 
+REFINABLE = """\
+type S3 = LLT::scalar(3)
+type S8 = LLT::scalar(8)
+type S24 = LLT::scalar(24)
+type S32 = LLT::scalar(32)
+type S64 = LLT::scalar(64)
+
+ruleset G_ADD: G_ADD
+    legal in(slot(0), S64)
+    widen(slot(0), pow2_min(8))
+"""
+
+
 class GraphFixture(unittest.TestCase):
     def build(self, text=FIXTURE, **kwargs):
         with tempfile.TemporaryDirectory() as directory:
@@ -94,6 +107,28 @@ class GraphFixture(unittest.TestCase):
         self.assertTrue(any("s32" in group for group in classes), classes)
         self.assertFalse(any({"s3", "s32"} <= group for group in classes),
                          classes)
+
+    def test_refine_splits_a_class_with_two_targets(self):
+        # s3 and s24 are one class (same predicates, same shim guard) but
+        # widen(pow2_min(8)) sends them to s8 and s32.  The quotient is not a
+        # function until the class is split; --refine is the opt-in that does
+        # it, and the class count before/after is reported.
+        plain = self.build(REFINABLE, check_closure=True)
+        self.assertFalse(plain.closure["ok"])
+        self.assertEqual(plain.closure["kinds"]["partition"], 1)
+        self.assertIsNone(plain.public().get("classes_before"))
+
+        refined = self.build(REFINABLE, check_closure=True, refine=True)
+        public = refined.public()
+        self.assertTrue(refined.closure["ok"], refined.closure)
+        self.assertEqual(refined.closure["kinds"]["partition"], 0)
+        self.assertEqual(public["classes_before"], plain.classes)
+        self.assertGreater(public["classes"], public["classes_before"])
+        self.assertGreater(public["states"], plain.public()["states"])
+
+    def test_refine_is_not_the_default(self):
+        plain = self.build(FIXTURE)
+        self.assertNotIn("classes_before", plain.public())
 
     def test_opaque_is_a_separate_outcome(self):
         text = ('feature F = Subtarget.hasF()\n'

@@ -234,6 +234,7 @@ def main(argv=None):
     gr.add_argument("--oracle", help="check matching points in an oracle JSONL")
     gr.add_argument("--inject-edge", action="store_true")
     gr.add_argument("--check-closure", action="store_true")
+    gr.add_argument("--refine", action="store_true")
     gr.add_argument("--progress", action="store_true")
     gr.add_argument("--json", action="store_true")
 

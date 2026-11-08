@@ -109,8 +109,9 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 | `cycles` | int | 找到的环数 |
 | `cycle_samples` | array | 最多 5 条，每条最多 6 个节点 |
 | `classes` | int | 参与建图的类总数 |
+| `classes_before` | int | 只有 `--refine` 时出现：细化前的类总数 |
 | `uncovered` | array | 没有建图的 opcode |
-| `closure` | object | `{checked, ok, count, violations}`；`checked=false` 时 `cycles` 有前提 |
+| `closure` | object | `{checked, ok, count, kinds, violations}`；`checked=false` 时 `cycles` 有前提 |
 | `injected_edge` | array / null | `--inject-edge` 实际注入的边 |
 | `skipped` | array | 只有 `profiles.graph.skip` 跳过 opcode 时出现 |
 | `oracle` | object | 只有传 `--oracle` 时出现 |
@@ -127,12 +128,20 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 多个目标类，都会打印成员和原因并返回 1。审计扫描全部状态，输出最多保留 20
 条样例，`count` 记录真实违规总数；不会因为样例满额而提前停止。文本输出把每个
 样例压成单行（`state`、`member`、`mutation`、`targets`、`reason`），不打印
-Python dict。`outside` 状态本身也计入违例，因此 `count` 同时覆盖“代表状态在
-域外”和“某个成员被变异推出域外”两种情况。该选项不改变
-类划分，也不实现默认细化；因此它是对“后继是状态函数”前提的审计。完整 X86
-语料仍有 `multiple target classes` 违规，因为 widen 的新类型依赖具体位宽
-（`pow2ceil`），同一个 guard 类里的 `s3` 和 `s33` 会分别落到 `s32` 和 `s64`；
-在 `--refine` 实现之前，这类状态的“0 环”只覆盖代表点后继。
+Python dict。
+
+`closure.kinds` 把两类违规分开计：`partition`（规则变化、stuck、多个目标类）
+和 `outside`（变异把类型推出有限域，含代表状态本身在域外）。`outside` 也使
+`ok=false` 并计入 `count`，因为它同样打断“后继是状态函数”这条前提；但两类
+性质不同——`partition` 说明分区不够细，`outside` 说明覆盖面不够广。该选项
+本身不改变类划分。
+
+`--refine` 是**默认关闭**的细化：对每个类，把变异作用到该类的所有成员上，
+按落到的目标类把它们分开，重复到不动点（最多 8 轮）。它改变第 2 篇的“原子”
+定义，所以不会自动发生；输出同时打印细化前后的类数
+（`classes_before` → `classes`）。在 X86 C1 上，细化把 `partition` 从 224 降到
+0（`outside` 仍有 3,148）；RISC-V rv64gc 从 7 降到 0（`outside` 7,358）。
+剩下的 `outside` 是覆盖面问题，要靠扩大声明域或加轴解决，不是靠细化。
 
 ## Oracle 和退出码
 
