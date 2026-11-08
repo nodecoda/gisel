@@ -872,7 +872,7 @@ static LegalizeActionStep X86Eval7(
     auto M = (LegalizeMutations::changeElementSizeTo(0, X86_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((((Q.Types[0]).getSizeInBits() == 16)) || (((Q.Types[0]).getSizeInBits() == 32)) || (((Q.Types[0]).getSizeInBits() == 64)) || (((Q.Types[0]).getSizeInBits() == 128)) || (((Q.Types[0]).getSizeInBits() == 256)) || (((Q.Types[0]).getSizeInBits() == 512))) && ((((Q.Types[1]).getSizeInBits() == 8)) || (((Q.Types[1]).getSizeInBits() == 16)) || (((Q.Types[1]).getSizeInBits() == 32)) || (((Q.Types[1]).getSizeInBits() == 64)) || (((Q.Types[1]).getSizeInBits() == 128)) || (((Q.Types[1]).getSizeInBits() == 256)))) {
+  if (((((Q.Types[0]).getSizeInBits().getKnownMinValue() == 16)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 32)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 128)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 256)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 512))) && ((((Q.Types[1]).getSizeInBits().getKnownMinValue() == 8)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 16)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 32)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 64)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 128)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 256)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};
@@ -945,7 +945,7 @@ static LegalizeActionStep X86Eval8(
     auto M = (LegalizeMutations::changeElementSizeTo(1, X86_s32))(Q);
     return {LegalizeActions::WidenScalar, M.first, M.second};
   }
-  if (((((Q.Types[1]).getSizeInBits() == 16)) || (((Q.Types[1]).getSizeInBits() == 32)) || (((Q.Types[1]).getSizeInBits() == 64)) || (((Q.Types[1]).getSizeInBits() == 128)) || (((Q.Types[1]).getSizeInBits() == 256)) || (((Q.Types[1]).getSizeInBits() == 512))) && ((((Q.Types[0]).getSizeInBits() == 8)) || (((Q.Types[0]).getSizeInBits() == 16)) || (((Q.Types[0]).getSizeInBits() == 32)) || (((Q.Types[0]).getSizeInBits() == 64)) || (((Q.Types[0]).getSizeInBits() == 128)) || (((Q.Types[0]).getSizeInBits() == 256)))) {
+  if (((((Q.Types[1]).getSizeInBits().getKnownMinValue() == 16)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 32)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 64)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 128)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 256)) || (((Q.Types[1]).getSizeInBits().getKnownMinValue() == 512))) && ((((Q.Types[0]).getSizeInBits().getKnownMinValue() == 8)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 16)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 32)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 64)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 128)) || (((Q.Types[0]).getSizeInBits().getKnownMinValue() == 256)))) {
     return {LegalizeActions::Legal, 0, LLT{}};
   }
   return {LegalizeActions::Unsupported, 0, LLT{}};

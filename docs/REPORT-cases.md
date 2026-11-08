@@ -162,41 +162,79 @@ outside 353，`oracle_missing=0`、`evaluator_errors=0`。
 题目不是 LLVM 的 1,190 个 table point，而是 `gisel cases` 生成的 10,029 条
 查询：九个配置，`mems.orderings = [NotAtomic, Unordered, Acquire, Release,
 SequentiallyConsistent]`，其中 1,395 条带 `[mty, align, ordering,
-failure_ordering]`。
+failure_ordering]`。轴文件 `tests/cases/aarch64-mem-orderings.axes.json` 入库，
+重跑上面的 `gisel cases` 得到逐字节相同的 10,029 条。
 
-两个 runner 来自同一个构建（`.ab/aarch64/final2`）：`runner.official` 用官方
-构造函数，`runner.ours` 链接 gisel 生成的 `AArch64LegalizerInfo.inc`（与 HEAD
-的 corpus 逐字节一致）。官方 runner 能直接回答 4 元组 mem。
+这一轮两个 runner 来自**同一个** explore 构建：`runner.official` 用官方构造
+函数，`runner.ours` 只替换成 gisel 生成的 `AArch64LegalizerInfo.inc`：
 
 ```sh
 python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
-  --features tests/cases/features.json --axes /tmp/a64-order2.axes.json \
-  --out /tmp/a64-ord.jsonl --json
-python3 tools/ab/run-queries.py .ab/aarch64/final2/runner.official \
-  /tmp/a64-ord.jsonl /tmp/official.jsonl
-python3 tools/ab/run-queries.py .ab/aarch64/final2/runner.ours \
-  /tmp/a64-ord.jsonl /tmp/ours.jsonl
-python3 -m gisel diff /tmp/official.jsonl /tmp/ours.jsonl --json
+  --features tests/cases/features.json \
+  --axes tests/cases/aarch64-mem-orderings.axes.json \
+  --out /tmp/a64-ord-cases3.jsonl --json
+
+TREE=/home/ubuntu/llvm/trees/explore
+BUILD=/home/ubuntu/llvm/builds/explore
+mkdir -p /tmp/a64-fixed
+cp tests/artifacts/aarch64.inc /tmp/a64-fixed/AArch64LegalizerInfo.inc
+tools/ab/build-aarch64-runner.sh "$TREE" "$BUILD" \
+  /tmp/a64-fixed/AArch64LegalizerInfo.inc /tmp/a64-fixed/runner
+python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.official \
+  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/official.jsonl
+python3 tools/ab/run-queries.py /tmp/a64-fixed/runner.ours \
+  /tmp/a64-ord-cases3.jsonl /tmp/a64-fixed/ours.jsonl
+python3 -m gisel diff /tmp/a64-fixed/official.jsonl \
+  /tmp/a64-fixed/ours.jsonl --json
 ```
 
-结果：`queries=10,029 / agree=9,958 / disagree=71 / unanswerable=206 / 0 error`。
-206 条是两个 runner 都触发 LLVM 断言、输出对称 `unanswerable` 的查询（和 X86
-那 1,152 条同一性质），不计入分歧；`tools/ab/run-queries.py` 负责在断言处续跑。
+结果：`queries=10,029 / agree=10,005 / disagree=24 / unanswerable=179 / 0 error`。
+179 条在两个 runner 上完全同位置，是同一批 LLVM 断言，输出对称的
+`unanswerable`，不计入分歧。上一轮报告的 206 不能逐条对比：那一轮官方 runner
+链的是 ct-instr-trunk，这一轮两侧都换成 explore 同一棵树。
 
-71 条分歧只有四个 opcode，按根因分开：
+### 7.1 本轮修掉的两个 TypeSize 洞
+
+| 条数 | opcode | 修复前 | 根因 |
+|---:|---|---|---|
+| 36 | G_LOAD | official `Unsupported`，ours 断言 | gisel 的 `.inc` 和 `.td` emitter 都把 `SizeInBytesOf` 渲染成 `getSizeInBytes()`，再交给 `isPowerOf2_32`。`LLT` 返回 `TypeSize`，scalable 时隐式转整数直接 `reportFatalInternalError`。 |
+| 36 | G_STORE | 修完上面后 official 单边断言 | 手写 C++ 的 `memSizeInBytesNotPow2` 也在把 `TypeSize` 往 `has_single_bit<uint32_t>` 里塞；同一个洞，只是这次在参考实现里。 |
+
+两处都改成先取 known minimum，语义与 `memSizeNotByteSizePow2` 一致：
+
+- `gisel/backend/llvm_inc.py`：`SizeOf` / `SizeInBytesOf` 输出
+  `getSizeInBits().getKnownMinValue()` / `getSizeInBytes().getKnownMinValue()`。
+- `utils/TableGen/LegalizerInfoEmitter.cpp`：同样两个 observer。
+- `lib/CodeGen/GlobalISel/LegalityPredicates.cpp`：
+  `memSizeInBytesNotPow2` 使用 `getSizeInBytes().getKnownMinValue()`。
+
+为什么是 known minimum：`LegalizerCore.td` 把 `SizeOf` 和 `SizeInBytesOf` 都声明
+为 `SortInt`；gisel 的 evaluator 也一直按 known-min 整数比较。生成代码和参考
+实现现在都遵守这条契约，而不是依赖 `TypeSize` 的隐式转换。
+
+验证：
+
+```text
+python3 -m unittest discover -q -s tests                  # 150 tests OK
+llvm-lit -s -j24 llvm/test/TableGen                      # 544 passed
+GlobalISelTests --gtest_filter='LegalizerInfoTest.*'     # 4 passed
+gisel gen HEAD-AArch64 --emit=inc | cmp aarch64.inc      # 逐字节一致
+llvm-tblgen -gen-legalizer ... | cmp aarch64.inc         # 逐字节一致
+```
+
+`tests/artifacts/` 里 `aarch64.inc`、`x86.inc`、两份 `.table.inc` 的 SHA 变了；
+`.check.json` 和 `.core.json` 没变（core 只差 `origin`）。X86 没有 scalable
+类型，`getKnownMinValue()` 在 fixed 类型上返回同一个值，所以 X86 的答案不变。
+
+### 7.2 还剩 24 条：都是语料 bug
 
 | 条数 | opcode | official | ours | 根因 |
 |---:|---|---|---|---|
-| 36 | G_LOAD | Unsupported | 断言 | 上游 `.td` emitter 的洞：`isPowerOf2_32(MemoryTy.getSizeInBytes())` 把 `TypeSize` 隐式转成整数，scalable 内存类型直接 fatal。手写 C++ 用的 `memSizeNotByteSizePow2` 是 `getSizeInBytes().getKnownMinValue()`（`LegalityPredicates.cpp:235`）。冻结 oracle `tests/artifacts/aarch64.inc:426` 里是同一写法——那份 `.td` 是按 corpus 生成的，所以这是上游问题，gisel 只是忠实复现。 |
 | 16 | G_SMIN | Lower | WidenScalar→s32 | 语料少了一个 guard：基线是 `.minScalar(HasCSSC, 0, s32)`，我们写成无条件 `widen(slot(0), ty(AArch64_s32))`。bf16 于是被我们加宽，基线直接 lower。 |
-| 11 | G_FPTOSI_SAT | WidenScalar / Lower | 断言 / NarrowScalar | 基线树（ct-instr-trunk，11-03）含 #235676，删掉了饱和转换的 `narrowScalarIf`；语料抄的是 explore（10-26）那一版。属于基线版本差。 |
 | 8 | G_GLOBAL_VALUE | Unsupported | Legal | 语料少了类型约束：基线 `.legalFor({p0})`，我们写成 `legal not AArch64_SmallCodeModel`，把 s32 也判成 Legal。 |
 
-后两条（G_SMIN、G_GLOBAL_VALUE）是真语料 bug；G_FPTOSI_SAT 是版本差；G_LOAD
-是上游 emitter 的洞。三种都没有在本轮改：语料一改，冻结 oracle
-（`tests/artifacts/`）就要跟着 `.td` 一起重生成，而那份 `.td` 在 llvm-project
-那侧、由 corpus 生成。这一步要和 emitter 的修复一起做。
+这两条没有在本轮改：语料一改，冻结 oracle（`tests/artifacts/`）就要跟着
+llvm-project 那侧的 `.td` 一起重生成。修复要和 oracle 刷新放在同一个提交里。
 
-上一轮“全量 A/B 0 分歧”的 34,776 个点仍然是 0 分歧；这一轮新增的 71 条全部
-落在旧点集没有覆盖的形状上（4 元组 mem、`bf16`、非指针的 `G_GLOBAL_VALUE`、
-vector 形参的饱和转换）。
+上一轮“全量 A/B 0 分歧”的 34,776 个点仍然是 0 分歧；这一轮剩下的 24 条全部
+是旧点集没有覆盖的形状（`bf16` 的 `G_SMIN`、非指针的 `G_GLOBAL_VALUE`）。

@@ -196,10 +196,17 @@ class IncEmitter:
             a = n["args"]
             return "(%s ? %s : %s)" % (self.boolean(a[0]), self.value(a[1]),
                                        self.value(a[2]))
-        if k in ("elemOf", "scalarOf", "numElems", "bitsOf", "sizeInBytesOf"):
+        if k == "sizeInBytesOf":
+            # LegalizerCore.td gives SizeInBytesOf sort Int.  LLT's observer
+            # returns TypeSize, and TypeSize's implicit conversion to an
+            # integer is a fatal error for a scalable vector; take the known
+            # minimum, exactly like LegalityPredicates::memSizeNotByteSizePow2.
+            return ("(%s).getSizeInBytes().getKnownMinValue()"
+                    % self.value(n["args"][0]))
+        if k in ("elemOf", "scalarOf", "numElems", "bitsOf"):
             method = {"elemOf": "getElementType", "scalarOf": "getScalarType",
-                      "numElems": "getNumElements", "bitsOf": "getScalarSizeInBits",
-                      "sizeInBytesOf": "getSizeInBytes"}[k]
+                      "numElems": "getNumElements",
+                      "bitsOf": "getScalarSizeInBits"}[k]
             return "(%s).%s()" % (self.value(n["args"][0]), method)
         if k == "isByteSized":
             return "(%s).isByteSized()" % self.value(n["args"][0])
@@ -210,11 +217,15 @@ class IncEmitter:
         if k == "isPow2":
             return "llvm::isPowerOf2_32(%s)" % self.value(n["args"][0])
         if k == "sizeOf":
+            # SizeOf also has sort Int in LegalizerCore.td.  LLT returns a
+            # TypeSize, so read the known minimum before using it as a number.
             inner = n["args"][0]
             if inner.get("kind") == "memSlot":
                 # MemDesc::AlignInBits is an alignment, not a size.
-                return "(%s).MemoryTy.getSizeInBits()" % self.value(inner)
-            return "(%s).getSizeInBits()" % self.value(inner)
+                return ("(%s).MemoryTy.getSizeInBits().getKnownMinValue()"
+                        % self.value(inner))
+            return ("(%s).getSizeInBits().getKnownMinValue()"
+                    % self.value(inner))
         if k == "alignOf":
             return "(%s).AlignInBits" % self.value(n["args"][0])
         if k == "addrSpace":

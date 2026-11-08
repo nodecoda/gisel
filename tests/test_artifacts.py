@@ -619,5 +619,34 @@ class RemovedSurface(unittest.TestCase):
                              (TESTS / "artifacts" / "x86.inc").read_bytes())
 
 
+class SizeObservers(unittest.TestCase):
+    """SizeOf/SizeInBytesOf have sort Int, but LLT returns a TypeSize.
+
+    TypeSize's implicit conversion to an integer is a fatal error for a
+    scalable vector.  The chain is instantiated for AArch64, so every size
+    observer in the frozen chain must spell out getKnownMinValue() instead of
+    leaving the conversion to whatever integer consumer follows it.
+    """
+
+    def test_chain_size_observers_take_known_min(self):
+        for name, _ in CORPORA:
+            text = (TESTS / "artifacts" / f"{name}.inc").read_text()
+            for call in ("getSizeInBits()", "getSizeInBytes()"):
+                start = 0
+                while True:
+                    i = text.find(call, start)
+                    if i < 0:
+                        break
+                    tail = text[i + len(call):]
+                    self.assertTrue(
+                        tail.startswith(".getKnownMinValue()"),
+                        f"{name}: {call} must take getKnownMinValue(): "
+                        f"{text[max(0, i - 80):i + len(call) + 20]}")
+                    start = i + len(call)
+        aarch64 = (TESTS / "artifacts" / "aarch64.inc").read_text()
+        self.assertIn("getSizeInBits().getKnownMinValue()", aarch64)
+        self.assertIn("getSizeInBytes().getKnownMinValue()", aarch64)
+
+
 if __name__ == "__main__":
     unittest.main()
