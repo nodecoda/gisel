@@ -19,11 +19,17 @@
 ```text
 上游 X86/AArch64/RISCVLegalizerInfo.cpp（手写 builder 链）
   -> tools/import-cxx.py -> .gisel
-  -> gisel gen --emit={inc,check,table,core}
+  -> gisel gen --emit={inc,check,core}
 ```
 
 `tools/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
 构造函数用到的那一小撮写法，认不出来就带行号拒绝（rc=1），绝不静默丢规则。
+**AArch64 的 pin 指向 `trees/explore` 上打过一个小补丁的源文件**：原文在谓词里
+对非向量 / scalable 类型调 `LLT::getNumElements()` 和 `getSizeInBits()`，断言构建
+在合法查询上直接 abort（见 `2026-11-09-13`）。补丁只把这两类观察改成显式语义
+（`numElements()` + `getKnownMinValue()`），**规则内容一字未变**——重新导入与
+入库语料逐字节相同。
+
 X86 的两条偏离写在工具里（`X86_DEVIATIONS`），每条都会断言上游文本仍在，改了
 上游就报错而不是悄悄失效：
 

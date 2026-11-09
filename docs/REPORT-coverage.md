@@ -47,8 +47,8 @@ one_lane_vector` 抓个正着。
 
 | target | 规则 | 修复前 有见证 | 修复后 有见证 | shadowed | unexercised | 查询数 |
 |---|---:|---:|---:|---:|---:|---:|
-| X86 | 328 | 292 (89.0%) | **319 (97.3%)** | 4 | 5 | 3,291 |
-| AArch64 | 743 | 312 (42.0%) | **572 (77.0%)** | 36 | 135 | 13,217 |
+| X86 | 328 | 292 (89.0%) | **319 (97.3%)** | 4 | 5 | 3,282 |
+| AArch64 | 743 | 312 (42.0%) | **572 (77.0%)** | 36 | 135 | 13,199 |
 | RISC-V | 413 | 320 (77.5%) | **355 (85.9%)** | 12 | 46 | 6,301 |
 
 另外加了一次**定向搜索**：全局候选集没找到见证时，单独用该规则自己命名的类型
@@ -103,11 +103,13 @@ does not cover every rule
 
 ## 7 第一次跑出来的东西：一条真分歧
 
-新的见证集第一次跑端到端（X86，3,276 条有效查询）时，`disagree = 1`：
+新的见证集第一次跑端到端（X86，3,276 个去重 key）时，`disagree = 1`：
 
 ```text
-C1  G_UITOFP  (s32, v4s32)   ref(.td) = Custom   ours(gisel) = Unsupported
+C1  G_UITOFP  (s32, v4s32)   official = Custom   ours(gisel) = Unsupported
 ```
+
+这里的 `official` 是本分支 `.td` 渲染出来的构造函数，不是上游手写 C++；见 §8.4。
 
 两边的规则都在这儿：
 
@@ -139,3 +141,79 @@ CoreCustom<(CoreAll (CoreNot HasAVX512), ..., (CoreLt (BitsOf (Slot 1)), ...))>
 这个组合没有作为任何规则的见证出现。新的见证集让它变成了 `disagree = 1`。
 
 结论：`.td` 路径不仅多余，而且已经和手写代码不一致。这也解释了为什么它该被删。
+
+## 8 第二、第三个 target 的端到端（2026-11-09）
+
+同一条链：`cpp -> import-cxx -> .gisel -> cases -> 查询 -> 两侧 runner`。
+`official` 一侧是构建树里的**手写 C++** 构造函数；`ours` 一侧把
+`gisel gen --emit=inc` 的片段编进同一个类，其余代码仍来自官方共享库。
+两边读同一份查询 JSONL，比 `(action, type_idx, new_type)`。
+
+| target | 查询行 | 去重 key | 两侧都答 | 一致 | 分歧 | 两侧都断言 |
+|---|---:|---:|---:|---:|---:|---:|
+| AArch64 | 13,199 | 13,199 | 13,082 | 13,082 | **0** | 117 |
+| RISC-V | 6,301 | 6,299 | 6,299 | 6,299 | **0** | 0 |
+| X86（对手是本分支 `.td` 渲染） | 3,282 | 3,276 | 3,276 | 3,275 | **1** | 0 |
+
+复现命令：
+
+```sh
+tools/ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc OUT STATE
+tools/ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc  OUT STATE
+tools/ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
+```
+
+### 8.1 这一轮修掉的四个问题
+
+跑 AArch64 第一次就炸了，四个都不是"两边规则不一样"：
+
+1. **runner 不解析 `p0:*`**（AArch64）。`p0:*` 是"宽度由 config 决定"，RISC-V runner
+   早就按 subtarget 解析，AArch64 runner 直接 `return 2`。13,199 条里第一批
+   `outside` 查询就撞上。修法与 RISC-V 相同：按 config 的指针宽度解析。
+2. **runner 不传 `imms`**（三个 runner 都有）。`G_SEXT_INREG` 这类规则会读
+   `Query.Immediates`，而 runner 构造 `LegalityQuery` 时没给，规则索引空数组
+   → `ArrayRef` 越界断言。RISC-V 的 20 条 unanswerable 全是它，修完是 0。
+3. **`num_elems(slot)` 对非向量吐 1**（`gisel/backend/llvm_inc.py`）。
+   `eval.num_elems` 和 release 构建的 `LLT` 都是 0（标量/指针带的
+   `ElementCount` 就是 0），emit 却写 `: 1`。两处 gisel 自己不一致。
+4. **`f80` 被当成可构造的类型**（`gisel/cases.py`）。`x86_fp80` 在 LLT 里是
+   `scalar(80)`，`LLT::floatIEEE(80)` 是 `llvm_unreachable`；查询还没问就崩。
+   `_FLOAT_BITS` 去掉 80。
+
+### 8.2 117 条两侧都断言：上游 `mutationIsSane`
+
+`llvm/lib/CodeGen/GlobalISel/LegalizerInfo.cpp:200`。两侧断言文本相同，说明是
+**同一条规则产出了同一条"不合法"的 mutation**，不是我们翻译错了：
+
+```text
+G_CONCAT_VECTORS 90   G_SHL 9   G_FPTOSI_SAT 9   G_SHUFFLE_VECTOR 9
+```
+
+`mutationIsSane` 校验的是 `NarrowScalar`/`WidenScalar` 必须真的改变标量位宽、
+向量必须保持 lane 数。具体是哪条规则、为什么产出不合法 mutation，**本轮未定性**。
+它不影响 `disagree = 0` 的结论（两侧都没答出来，不是答案不同），但它是
+"13,199 条里 117 条没被真正问出答案"的缺口。下一步：按 `--refine`/图上规则号定位。
+
+### 8.3 AArch64 上游缺陷：`getNumElements()` 的调用面
+
+修 runner 之前，官方一侧有 **133 条**直接 abort，全部是
+`AArch64LegalizerInfo.cpp` 的谓词在标量或 scalable 向量上调
+`LLT::getNumElements()` / `getSizeInBits()`。已落到
+`/home/ubuntu/admin/upstream-issues/2026-11-09-13-gisel-aarch64-element-count-assert.md`。
+
+本机在 `trees/explore` 上按建议补丁修了（`numElements()` helper +
+`getKnownMinValue()`），AArch64 才从 133 条 abort 变成 0。**这是本地补丁**，
+提交上游前必须先搜重；语料 pin 的 sha 已随之指向打过补丁的源文件，规则内容未变
+（重新导入逐字节相同）。
+
+### 8.4 X86 的"对手"是问题
+
+X86 这一轮仍然拿本分支的 `.td` 渲染当 official——`lib/Target/X86/X86LegalizerInfo.inc`
+是 `-gen-legalizer` 从 `.td` 生成的，而 `.td` 正是这次要删的中间格式。
+所以 X86 那 1 条分歧（`G_UITOFP (s32, v4s32)`：`.td` 侧 `Custom`，gisel 侧
+`Unsupported`）**不能直接说成"现网 vs 我们"**：它证明的是 `.td` 转写错了，
+手写 C++（上游 `X86LegalizerInfo.cpp`）与 gisel 一致。
+
+要让 X86 也变成"手写 C++ vs gisel"，需要把构建树里的 X86 构造函数恢复成上游
+手写版本，再用 `swap-source-ctor.py` 那种"替换构造体为 include"的方式编 ours。
+**本轮未做**：当前 X86 树文件还是 inc-only 状态，`-gen-legalizer` 后端也还在。

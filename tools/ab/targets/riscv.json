@@ -15,5 +15,5 @@
     "mode": "dual"
   },
   "features": "tests/cases/riscv-features.json",
-  "query_count": 6140
+  "query_count": 6301
 }

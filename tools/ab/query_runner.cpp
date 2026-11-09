@@ -281,6 +281,25 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
     Types.push_back(*Ty);
   }
 
+  // Immediate operands are part of the query: a rule may read Q.Immediates
+  // (e.g. LegalizePredicates::immIs).  Dropping them makes the rule index the
+  // empty array and abort, which would look like an answer difference.
+  SmallVector<int64_t, 2> Imms;
+  if (json::Array *ImmArr = Obj->getArray("imms"))
+    for (const json::Value &V : *ImmArr) {
+      auto I = V.getAsInteger();
+      if (!I)
+        return 2;
+      Imms.push_back(*I);
+    }
+  std::string ImmsText = "[";
+  for (size_t I = 0; I != Imms.size(); ++I) {
+    if (I)
+      ImmsText += ",";
+    ImmsText += std::to_string(Imms[I]);
+  }
+  ImmsText += "]";
+
   SmallVector<LegalityQuery::MemDesc, 1> MMOs;
   std::string MemText = "null";
   if (json::Array *Mem = Obj->getArray("mem")) {
@@ -344,19 +363,19 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
         << ",\"name\":" << jsonString(*Name)
         << ",\"types\":" << Tj
         << ",\"mem\":" << MemText
-        << ",\"imms\":[]"
+        << ",\"imms\":" << ImmsText
         << ",\"status\":\"unanswerable\",\"reason\":\"asserted\"}\n";
     return 0;
   }
 
-  LegalityQuery Q(Opcode, Types, MMOs);
+  LegalityQuery Q(Opcode, Types, MMOs, Imms);
   LegalizeActionStep Step = S.L->getAction(Q);
 
   Out << "{\"config\":" << jsonString(*ConfigName)
       << ",\"name\":" << jsonString(*Name)
       << ",\"types\":" << Tj
       << ",\"mem\":" << MemText
-      << ",\"imms\":[]"
+      << ",\"imms\":" << ImmsText
       << ",\"action\":" << jsonString(actionName(Step.Action))
       << ",\"type_idx\":" << (unsigned)Step.TypeIdx
       << ",\"new_type\":" << jsonString(lltStr(Step.NewType))

@@ -135,7 +135,9 @@ static unsigned opcodeFor(StringRef Name) {
       .Default(0);
 }
 
-static std::optional<LLT> parseLLT(StringRef S) {
+// `p0:*` is the configuration-dependent pointer width; the subtarget decides
+// it (LP64 -> 64, ILP32 -> 32), exactly as it does for RISC-V's XLen.
+static std::optional<LLT> parseLLT(StringRef S, unsigned PointerBits = 0) {
   if (S == "bf16")
     return LLT::bfloat16();
   if (S.starts_with("nxv") || S.starts_with("v")) {
@@ -147,7 +149,7 @@ static std::optional<LLT> parseLLT(StringRef S) {
     unsigned N = 0;
     if (I == 0 || S.substr(0, I).getAsInteger(10, N))
       return std::nullopt;
-    auto Elem = parseLLT(S.drop_front(I));
+    auto Elem = parseLLT(S.drop_front(I), PointerBits);
     if (!Elem)
       return std::nullopt;
     return LLT::vector(Scalable ? ElementCount::getScalable(N)
@@ -159,6 +161,11 @@ static std::optional<LLT> parseLLT(StringRef S) {
     if (Colon == StringRef::npos ||
         S.substr(1, Colon - 1).getAsInteger(10, AS))
       return std::nullopt;
+    if (S.drop_front(Colon + 1) == "*") {
+      if (!PointerBits)
+        return std::nullopt;
+      return LLT::pointer(AS, PointerBits);
+    }
     unsigned Bits = 0;
     if (S.drop_front(Colon + 1).getAsInteger(10, Bits))
       return std::nullopt;
@@ -219,16 +226,36 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
   if (It == Sigmas.end())
     return 2;
   Sigma &S = *It->second;
+  unsigned PtrBits = S.TM->createDataLayout().getPointerSizeInBits(0);
   SmallVector<LLT, 4> Types;
   for (const json::Value &V : *TypeArr) {
     auto Text = V.getAsString();
     if (!Text)
       return 2;
-    auto Ty = parseLLT(*Text);
+    auto Ty = parseLLT(*Text, PtrBits);
     if (!Ty)
       return 2;
     Types.push_back(*Ty);
   }
+
+  // Immediate operands are part of the query: a rule may read Q.Immediates
+  // (e.g. LegalizePredicates::immIs).  Dropping them makes the rule index the
+  // empty array and abort, which would look like an answer difference.
+  SmallVector<int64_t, 2> Imms;
+  if (json::Array *ImmArr = Obj->getArray("imms"))
+    for (const json::Value &V : *ImmArr) {
+      auto I = V.getAsInteger();
+      if (!I)
+        return 2;
+      Imms.push_back(*I);
+    }
+  std::string ImmsText = "[";
+  for (size_t I = 0; I != Imms.size(); ++I) {
+    if (I)
+      ImmsText += ",";
+    ImmsText += std::to_string(Imms[I]);
+  }
+  ImmsText += "]";
 
   SmallVector<LegalityQuery::MemDesc, 1> MMOs;
   std::string MemText = "null";
@@ -239,7 +266,7 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
     auto Align = (*Mem)[1].getAsInteger();
     if (!TyText || !Align)
       return 2;
-    auto Ty = parseLLT(*TyText);
+    auto Ty = parseLLT(*TyText, PtrBits);
     if (!Ty)
       return 2;
     AtomicOrdering Ordering = AtomicOrdering::NotAtomic;
@@ -270,7 +297,7 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
   unsigned Opcode = opcodeFor(*Name);
   if (!Opcode)
     return 2;
-  LegalityQuery Q(Opcode, Types, MMOs);
+  LegalityQuery Q(Opcode, Types, MMOs, Imms);
   LegalizeActionStep Step = S.L->getAction(Q);
   Out << "{\"config\":" << jsonString(*ConfigName)
       << ",\"name\":" << jsonString(*Name) << ",\"types\":[";
@@ -279,7 +306,7 @@ static int answerLine(StringRef Line, const StringMap<Sigma *> &Sigmas,
       Out << ',';
     Out << jsonString(lltStr(Types[I]));
   }
-  Out << "],\"mem\":" << MemText << ",\"imms\":[]"
+  Out << "],\"mem\":" << MemText << ",\"imms\":" << ImmsText
       << ",\"action\":" << jsonString(actionName(Step.Action))
       << ",\"type_idx\":" << (unsigned)Step.TypeIdx
       << ",\"new_type\":" << jsonString(lltStr(Step.NewType)) << "}\n";

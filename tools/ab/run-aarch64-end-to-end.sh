@@ -13,7 +13,7 @@ INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 STATE=${5:-$ROOT/.ab/aarch64}
-EXPECTED_QUERIES=10029
+EXPECTED_QUERIES=13199
 mkdir -p "$OUT" "$STATE"
 
 "$ROOT/tools/ab/build-aarch64-runner.sh" "$TREE" "$BUILD" "$INC" \
