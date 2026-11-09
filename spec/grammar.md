@@ -161,7 +161,8 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
   `feature("Subtarget.hasAVX()")` 完全等价，两者都编译成同一个
   `leaf("hasFeature", [C++ expr])` 节点。`feature("...")` 仍保留，仅为
   向后兼容；新语料应写名字，避免重复拼写 C++ 表达式。
-- `opaque("...")` 是**受控逃逸点**：宿主 C++ 谓词原样转抄，gisel 不求值、不推理。
+- `opaque("...")` 是**受控逃逸点**（完整契约见 `spec/escape-points.md`）：
+  宿主 C++ 谓词原样转抄，gisel 不求值、不推理。
   三个出口的分工是：`--emit=inc` 把它拼回 `return (<expr>);`，`Query` 是规则
   lambda 的参数，`ST`/`STI` 来自构造函数；`--emit=core` 把所有 `opaque` 表达式
   去重后写进顶层 `escapes`；`gisel eval` 遇到它抛
@@ -221,10 +222,12 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
   `fixed_vector/scalable_vector/float*`，可嵌套；无法规范化时
   `ast._parse_llt` 直接拒绝（exit 2）。任意 C++ 常量表达式（如 `LLT::scalar(8*4)`）会被拒——
   这是刻意的：能规范化才能进 core JSON 与 C++ 的 `const LLT` 声明。
-- `feature` 右侧**不检查**：它是 target 特定的任意 C++ bool 表达式，gisel
-  不持有 `Subtarget` 接口；错误只能由 C++ 编译期暴露。`opaque("...")` 同理，
-  而且范围更大：它不承诺是 Bool、不进配置轴、不参与等价类划分，只在
-  `--emit=core` 的 `escapes` 里留名。
+- `feature` 右侧只做**作用域检查**：整标识符不得是 `Query`/`MMODescr`/
+  `MMO`/`MI`/`MRI`/`MF`（它们只存在于规则查询期，见
+  `ast.feature_scope_error`），否则解析期报错。它不是完整 C++ 解析器；
+  target 特定的成员名、是否返回 Bool 仍只能由 C++ 编译期暴露。
+  `opaque("...")` 的范围更大：它不承诺是 Bool、不进配置轴、不参与等价类划分，
+  只在 `--emit=core` 的 `escapes` 里留名；完整边界见 `spec/escape-points.md`。
 - 规则里的 `feature("...")` 必须与某个 `feature NAME = ...` 的表达式文本完全
   一致，否则 `gen --emit=inc` 报 `undeclared feature expression`；直接写
   `feature` 名（`HasAVX`）时，前端把它解析成同一表达式的 `hasFeature` 叶子，
