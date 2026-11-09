@@ -113,9 +113,12 @@ def tokenize(text, line_map=None):
                 toks.append(Tok(c, c, sl)); i += 1; continue
             if c == '"':
                 j = i + 1
+                buf = []
                 while j < n and line[j] != '"':
-                    j += 1
-                toks.append(Tok("STR", line[i+1:j], sl)); i = j + 1; continue
+                    if line[j] == "\\" and j + 1 < n:
+                        buf.append(line[j + 1]); j += 2; continue
+                    buf.append(line[j]); j += 1
+                toks.append(Tok("STR", "".join(buf), sl)); i = j + 1; continue
             if c.isdigit():
                 j = i
                 while j < n and line[j].isdigit():
@@ -250,6 +253,17 @@ class Parser:
         if self.peek() and self.peek().t == "ID" and self.peek().v == "feature":
             self.next(); self.expect("("); st = self.next().v; self.expect(")")
             return leaf("hasFeature", [st])
+        # A host expression the corpus cannot evaluate: it is copied into the
+        # generated C++ verbatim, inside the rule's `LegalityQuery` lambda.
+        # `eval`/`cases` treat it as a hole (`opaque`), never as false.
+        if self.peek() and self.peek().t == "ID" and self.peek().v == "opaque":
+            self.next(); self.expect("(")
+            tok = self.next()
+            if tok.t != "STR":
+                raise ValueError(
+                    f"line {tok.line}: opaque( needs a C++ string, got {tok.v!r}")
+            self.expect(")")
+            return leaf("opaque", [tok.v])
         # A declared feature name (`HasAVX`) is a boolean primary, equivalent
         # to `feature("Subtarget.hasAVX()")` and resolving to the same node.
         if self.peek() and self.peek().t == "ID" \

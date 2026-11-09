@@ -357,6 +357,11 @@ class IncEmitter:
                 # A feature guard emits the declared bool name bare; the
                 # junction adds the parentheses.
                 return self._feature(n["args"][0])
+            if n["name"] == "opaque":
+                # A host predicate: raw C++, evaluated where the rule emits it.
+                # `Query` is the rule lambda's parameter; `ST`/`STI` are the
+                # constructor's, exactly as in the source file.
+                return "(%s)" % n["args"][0]
             raise ValueError(f"unknown leaf predicate {n['name']!r}")
         if k in ("all", "any"):
             sep = " && " if k == "all" else " || "

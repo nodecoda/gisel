@@ -196,6 +196,32 @@ class CoreJson:
                   '"origin": %s' % _compact(origin)]
         return "{" + ", ".join(parts) + "}"
 
+    def escapes(self):
+        """The host predicates the corpus copies through, in source order.
+
+        `opaque("...")` is the documented escape point: the generated C++
+        evaluates it, but nothing in gisel can.  Listing them here is what
+        makes the scope of an analysis statement checkable.
+        """
+        found = []
+
+        def walk(n):
+            if isinstance(n, dict):
+                if n.get("kind") == "leaf" and n.get("name") == "opaque":
+                    for e in n.get("args", []):
+                        if e not in found:
+                            found.append(e)
+                for v in n.values():
+                    walk(v)
+            elif isinstance(n, list):
+                for v in n:
+                    walk(v)
+
+        for rs in self.program.rulesets:
+            for rule in rs.rules:
+                walk(rule.predicate)
+        return found
+
     def emit(self, source_name, lines=None):
         lines = lines or {}
         out = ["{",
@@ -219,7 +245,10 @@ class CoreJson:
                 text = self.rule(rule, rs.name, ri, origin)
                 out.append("        " + text + ("," if ri + 1 < len(rs.rules) else ""))
             out.append("     ]}" + ("," if si + 1 < len(self.program.rulesets) else ""))
-        out += ["  ],", '  "escapes": []', "}"]
+        escapes = self.escapes()
+        out += ["  ],",
+                '  "escapes": [%s]' % ", ".join(_string(e) for e in escapes),
+                "}"]
         return "\n".join(out) + "\n"
 
 

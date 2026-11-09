@@ -620,6 +620,11 @@ class Evaluator:
                 return True
             if name == "hasFeature":
                 return self.features.get(config, a[0])
+            if name == "opaque":
+                # A host predicate the evaluator cannot answer.  It is a hole,
+                # not False: `rule_matches` maps it to None and the graph
+                # counts the state as opaque.
+                raise EvalError("opaque", "host predicate %r" % (a[0],))
             raise EvalError("unknown_leaf", "leaf %r" % (name,))
         if k == "true":
             return True
