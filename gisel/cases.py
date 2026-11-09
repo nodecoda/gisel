@@ -113,7 +113,10 @@ _POINTER_BITS = (16, 32, 64, 128)
 # LLVM IR has a closed set of float widths.  `f31`/`f33` are spellable LLTs
 # (LLT::floatIEEE takes any size) but no IR produces one, and a target
 # legalizer asserts when asked to legalize it, so a probe there is noise.
-_FLOAT_BITS = (16, 32, 64, 80, 128)
+# 80 is deliberately absent: `x86_fp80` is not an IEEE format, LLT spells it
+# `scalar(80)`, and `LLT::floatIEEE(80)` is unreachable -- a query spelled
+# `f80` cannot even be constructed, so asking it would only abort the runner.
+_FLOAT_BITS = (16, 32, 64, 128)
 
 
 def _resize_bits(t, bits):

@@ -441,6 +441,14 @@ class Translator:
             return self.pred_lambda(text)
         text = " ".join(text.split())
         text = re.sub(r"\bQ\.", "Query.", text)
+        # `size_of` in the DSL is the known-minimum element-count product, the
+        # same number a release-build LLT reports; the explicit
+        # `getKnownMinValue()` spelling is that same observation.
+        text = text.replace(".getSizeInBits().getKnownMinValue()", ".getSizeInBits()")
+        # The AArch64 constructor spells the element-count observation through
+        # a local helper that also answers for scalars and scalable vectors,
+        # where LLT::getNumElements() is not defined.  Same observation.
+        text = re.sub(r"\bnumElements\(", "num_elems(", text)
         if text in self.feature_aliases:
             return self.feature_aliases[text]
         if self._single_call(text) and re.fullmatch(r"(slot|elem_of|scalar_of|sort_of|num_elems|bits_of|size_of|"
@@ -682,6 +690,10 @@ class Translator:
     def _mut_ty(self, text):
         """`changeTo(i, j)`'s numeric form means "the type of slot j"."""
         text = text.strip()
+        # `numElements(Query.Types[k])` is the same observation as the
+        # `getNumElements()` spelling the patterns below expect.
+        text = re.sub(r"numElements\((Query\.Types\[\d+\])\)",
+                      r"\1.getNumElements()", text)
         if re.fullmatch(r"\d+", text):
             return "same_as(%s)" % text
         return "ty(%s)" % self.t.name(text)
@@ -689,10 +701,15 @@ class Translator:
     def mutation_lambda(self, text):
         """`bitcastIf`'s new-type lambda -> a `.gisel` type expression."""
         body = re.sub(r"\bQ\.", "Query.", text)
+        body = body.replace(".getSizeInBits().getKnownMinValue()", ".getSizeInBits()")
+        body = re.sub(r"numElements\((Query\.Types\[\d+\])\)",
+                      r"\1.getNumElements()", body)
         aliases = dict(re.findall(
             r"(?:const\s+)?LLT\s*&?\s*(\w+)\s*=\s*(Query\.Types\[\d+\]);", body))
         for var, val in aliases.items():
             body = re.sub(r"\b%s\b" % var, val, body)
+        body = re.sub(r"numElements\((Query\.Types\[\d+\])\)",
+                      r"\1.getNumElements()", body)
         m = re.search(r"LLT::vector\(\s*Query\.Types\[(\d+)\]\.getElementCount"
                       r"\(\)\.divideCoefficientBy\((\d+)\)\s*,\s*(\d+)\s*\)", body)
         if m:

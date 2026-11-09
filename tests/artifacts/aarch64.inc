@@ -130,9 +130,9 @@
       .clampMaxNumElements(0, A_s32, (A_v4s32).getNumElements())
       .clampMinNumElements(0, A_s64, (A_v2s64).getNumElements())
       .clampMaxNumElements(0, A_s64, (A_v2s64).getNumElements())
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) <= 2); }, 0, A_s32)
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) <= 4); }, 0, A_s16)
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) <= 16); }, 0, A_s8)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) <= 2); }, 0, A_s32)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) <= 4); }, 0, A_s16)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) <= 16); }, 0, A_s8)
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0)
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 0);
   getActionDefinitionsBuilder(G_MUL)
@@ -146,9 +146,9 @@
       .clampMaxNumElements(0, A_s32, (A_v4s32).getNumElements())
       .clampMinNumElements(0, A_s64, (A_v2s64).getNumElements())
       .clampMaxNumElements(0, A_s64, (A_v2s64).getNumElements())
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) <= 2); }, 0, A_s32)
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) <= 4); }, 0, A_s16)
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) <= 16); }, 0, A_s8)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) <= 2); }, 0, A_s32)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) <= 4); }, 0, A_s16)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) <= 16); }, 0, A_s8)
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0)
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 0);
   getActionDefinitionsBuilder({G_SHL, G_ASHR, G_LSHR})
@@ -701,7 +701,7 @@
       .legalFor({{A_s128, A_s128}, {A_s128, A_v16s8}, {A_s128, A_v8s16}, {A_s128, A_v4s32}, {A_s128, A_v2s64}, {A_s128, A_v2p0}, {A_v16s8, A_s128}, {A_v16s8, A_v16s8}, {A_v16s8, A_v8s16}, {A_v16s8, A_v4s32}, {A_v16s8, A_v2s64}, {A_v16s8, A_v2p0}, {A_v8s16, A_s128}, {A_v8s16, A_v16s8}, {A_v8s16, A_v8s16}, {A_v8s16, A_v4s32}, {A_v8s16, A_v2s64}, {A_v8s16, A_v2p0}, {A_v4s32, A_s128}, {A_v4s32, A_v16s8}, {A_v4s32, A_v8s16}, {A_v4s32, A_v4s32}, {A_v4s32, A_v2s64}, {A_v4s32, A_v2p0}, {A_v2s64, A_s128}, {A_v2s64, A_v16s8}, {A_v2s64, A_v8s16}, {A_v2s64, A_v4s32}, {A_v2s64, A_v2s64}, {A_v2s64, A_v2p0}, {A_v2p0, A_s128}, {A_v2p0, A_v16s8}, {A_v2p0, A_v8s16}, {A_v2p0, A_v4s32}, {A_v2p0, A_v2s64}, {A_v2p0, A_v2p0}})
       .coreCustomIf([=](const LegalityQuery &Query) { return (Query.Types[0].isScalar()) && (Query.Types[1].isVector()) && (((Query.Types[1]).getScalarSizeInBits() == 1)); })
       .coreLowerIf([=](const LegalityQuery &Query) { return ((Query.Types[0].isVector()) && (!(Query.Types[1].isVector()))) || ((!(Query.Types[0].isVector())) && (Query.Types[1].isVector())); })
-      .coreLowerIf([=](const LegalityQuery &Query) { return (!((!((Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())))) || (!((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector())))))) && ((((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1) * llvm::PowerOf2Ceil(((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1))) % ((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1)) != 0)); })
+      .coreLowerIf([=](const LegalityQuery &Query) { return (!((!((Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector())))) || (!((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector())))))) && ((((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0) * llvm::PowerOf2Ceil(((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0))) % ((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0)) != 0)); })
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .clampMinNumElements(0, A_s8, (A_v8s8).getNumElements())
       .clampMaxNumElements(0, A_s8, (A_v16s8).getNumElements())
@@ -763,10 +763,10 @@
       .coreUnsupportedIf([=](const LegalityQuery &Query) { return (!(Query.Types[1].isScalableVector())) && ((Query.Types[0] != (Query.Types[1]).getElementType())); })
       .coreMinScalar([](const LegalityQuery &) { return true; }, 2, A_s64)
       .coreCustomIf([=](const LegalityQuery &Query) { return ((Query.Types[1] == A_v8s8)) || ((Query.Types[1] == A_v16s8)) || ((Query.Types[1] == A_v2s16)) || ((Query.Types[1] == A_v4s16)) || ((Query.Types[1] == A_v8s16)) || ((Query.Types[1] == A_v2s32)) || ((Query.Types[1] == A_v4s32)) || ((Query.Types[1] == A_v2s64)) || ((Query.Types[1] == A_v2p0)); })
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1) <= 2)); }, 0, A_s64)
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1) <= 4)); }, 0, A_s32)
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1) <= 8)); }, 0, A_s16)
-      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1) <= 16)); }, 0, A_s8)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0) <= 2)); }, 0, A_s64)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0) <= 4)); }, 0, A_s32)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0) <= 8)); }, 0, A_s16)
+      .coreMinScalarOrElt([=](const LegalityQuery &Query) { return ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && ((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0) <= 16)); }, 0, A_s8)
       .coreMinScalarOrElt([](const LegalityQuery &) { return true; }, 0, A_s8)
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 1)
       .clampMaxNumElements(1, A_s64, 2)
@@ -805,9 +805,9 @@
       .legalFor({{A_v8s8, A_s8}, {A_v8s8, A_s32}, {A_v16s8, A_s8}, {A_v16s8, A_s32}, {A_v4s16, A_s16}, {A_v4s16, A_s32}, {A_v8s16, A_s16}, {A_v8s16, A_s32}, {A_v2s32, A_s32}, {A_v4s32, A_s32}, {A_v2s64, A_s64}, {A_v2p0, A_p0}});
   getActionDefinitionsBuilder(G_SHUFFLE_VECTOR)
       .coreLegalIf([=](const LegalityQuery &Query) { return (!((Query.Types[0] != Query.Types[1]))) && ((Query.Types[0] == A_v8s8 || Query.Types[0] == A_v16s8 || Query.Types[0] == A_v4s16 || Query.Types[0] == A_v8s16 || Query.Types[0] == A_v2s32 || Query.Types[0] == A_v4s32 || Query.Types[0] == A_v2s64)); })
-      .coreMoreTo([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) > ((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1)); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, Query.Types[0]); })
+      .coreMoreTo([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) > ((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0)); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, Query.Types[0]); })
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 0)
-      .coreMoreTo([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1) < ((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, Query.Types[1]); })
+      .coreMoreTo([=](const LegalityQuery &Query) { return (((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0) < ((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, Query.Types[1]); })
       .coreWidenScalarOrEltToNextPow2OrMinSize([](const LegalityQuery &) { return true; }, 0, 8)
       .clampMinNumElements(0, A_s8, (A_v8s8).getNumElements())
       .clampMaxNumElements(0, A_s8, (A_v16s8).getNumElements())
@@ -818,11 +818,11 @@
       .clampMinNumElements(0, A_s64, (A_v2s64).getNumElements())
       .clampMaxNumElements(0, A_s64, (A_v2s64).getNumElements())
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0)
-      .coreBitcastToType([=](const LegalityQuery &Query) { return Query.Types[0].isPointerVector(); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector(((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 1), A_i64)); });
+      .coreBitcastToType([=](const LegalityQuery &Query) { return Query.Types[0].isPointerVector(); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector(((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0), A_i64)); });
   getActionDefinitionsBuilder(G_CONCAT_VECTORS)
       .legalFor({{A_v16s8, A_v8s8}, {A_v8s16, A_v4s16}, {A_v4s32, A_v2s32}})
       .coreCustomIf([=](const LegalityQuery &Query) { return ((Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector()))) && (((Query.Types[0]).getScalarSizeInBits() < 8)); })
-      .coreBitcastToType([=](const LegalityQuery &Query) { return ((Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector()))) && ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && (((Query.Types[0]).getScalarSizeInBits() >= 8)) && (llvm::isPowerOf2_32((Query.Types[0]).getScalarSizeInBits())) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() <= 128)) && (((Query.Types[1]).getSizeInBits().getKnownMinValue() <= 64)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, ((Query.Types[0]).changeElementCount((Query.Types[0]).getElementCount().divideCoefficientBy(((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1)))).changeElementSize((Query.Types[1]).getSizeInBits().getKnownMinValue())); });
+      .coreBitcastToType([=](const LegalityQuery &Query) { return ((Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector()))) && ((Query.Types[1].isVector()) && (!(Query.Types[1].isScalableVector()))) && (((Query.Types[0]).getScalarSizeInBits() >= 8)) && (llvm::isPowerOf2_32((Query.Types[0]).getScalarSizeInBits())) && (((Query.Types[0]).getSizeInBits().getKnownMinValue() <= 128)) && (((Query.Types[1]).getSizeInBits().getKnownMinValue() <= 64)); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, ((Query.Types[0]).changeElementCount((Query.Types[0]).getElementCount().divideCoefficientBy(((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0)))).changeElementSize((Query.Types[1]).getSizeInBits().getKnownMinValue())); });
   getActionDefinitionsBuilder(G_EXTRACT_SUBVECTOR)
       .coreLegalIf([=](const LegalityQuery &Query) { return LegalityPredicates::typePairInSet(0, 1, {{A_v8s8, A_v16s8}, {A_v4s16, A_v8s16}, {A_v2s32, A_v4s32}})(Query); })
       .coreWidenScalarOrEltToNextPow2([](const LegalityQuery &) { return true; }, 0)
@@ -927,7 +927,7 @@
       .lower();
   getActionDefinitionsBuilder({G_VECREDUCE_SMIN, G_VECREDUCE_SMAX, G_VECREDUCE_UMIN, G_VECREDUCE_UMAX})
       .legalFor({{A_i8, A_v8i8}, {A_i8, A_v16i8}, {A_i16, A_v4i16}, {A_i16, A_v8i16}, {A_i32, A_v2i32}, {A_i32, A_v4i32}})
-      .coreMoreElementsToNextPow2([=](const LegalityQuery &Query) { return (Query.Types[1].isVector()) && (((Query.Types[1]).getElementType() != A_s8)) && (((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1) % 2) != 0)); }, 1)
+      .coreMoreElementsToNextPow2([=](const LegalityQuery &Query) { return (Query.Types[1].isVector()) && (((Query.Types[1]).getElementType() != A_s8)) && (((((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0) % 2) != 0)); }, 1)
       .clampMaxNumElements(1, A_s64, 2)
       .clampMaxNumElements(1, A_s32, 4)
       .clampMaxNumElements(1, A_s16, 8)
@@ -935,7 +935,7 @@
       .scalarize(1)
       .lower();
   getActionDefinitionsBuilder({G_VECREDUCE_OR, G_VECREDUCE_AND, G_VECREDUCE_XOR})
-      .coreFewerTo([=](const LegalityQuery &Query) { return (!(Query.Types[1].isScalar())) && ((!(!(llvm::isPowerOf2_32(((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 1))))) && (((Query.Types[1]).getSizeInBits().getKnownMinValue() > 64))); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, (Query.Types[1]).changeElementCount((Query.Types[1]).getElementCount().divideCoefficientBy(2))); })
+      .coreFewerTo([=](const LegalityQuery &Query) { return (!(Query.Types[1].isScalar())) && ((!(!(llvm::isPowerOf2_32(((Query.Types[1]).isVector() ? (Query.Types[1]).getElementCount().getKnownMinValue() : 0))))) && (((Query.Types[1]).getSizeInBits().getKnownMinValue() > 64))); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, (Query.Types[1]).changeElementCount((Query.Types[1]).getElementCount().divideCoefficientBy(2))); })
       .scalarize(1)
       .lower();
   getActionDefinitionsBuilder(G_VECTOR_COMPRESS)

@@ -259,12 +259,13 @@ class IncEmitter:
         if k == "numElems" and n["args"][0].get("kind") == "slot":
             # A query slot may hold a scalar or a scalable vector.
             # `getNumElements()` fatals on scalable and `getElementCount()`
-            # asserts on scalars, so spell both cases out; the evaluator's
-            # `num_elems` is 1 for a scalar and the known-minimum count for a
-            # vector.
+            # asserts on scalars, so spell both cases out.  The value must be
+            # the one a release-build LLT reports (and the one the evaluator's
+            # `num_elems` uses): the known minimum for a vector, and 0 for
+            # anything else -- scalars and pointers carry ElementCount 0.
             ty = self.value(n["args"][0])
             return ("((%s).isVector() ? (%s).getElementCount()"
-                    ".getKnownMinValue() : 1)" % (ty, ty))
+                    ".getKnownMinValue() : 0)" % (ty, ty))
         if k in ("elemOf", "scalarOf", "numElems", "bitsOf"):
             method = {"elemOf": "getElementType", "scalarOf": "getScalarType",
                       "numElems": "getNumElements",
