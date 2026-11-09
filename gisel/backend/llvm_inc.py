@@ -35,6 +35,21 @@ LICENSE_HEADER = """\
 """
 
 
+def _mentions(text, name):
+    """True when C++ text uses `name` as a whole identifier."""
+    start = 0
+    while True:
+        i = text.find(name, start)
+        if i < 0:
+            return False
+        before = text[i - 1] if i else ""
+        after = text[i + len(name)] if i + len(name) < len(text) else ""
+        if not (before.isalnum() or before == "_") and not (
+                after.isalnum() or after == "_"):
+            return True
+        start = i + len(name)
+
+
 class Shim:
     """One row of ``CoreShimTable`` (LegalizerInfoEmitter.cpp:2747)."""
 
@@ -1169,10 +1184,43 @@ class IncEmitter:
                 lists.append("  const std::initializer_list<LLT> %s = {%s};"
                              % (d.name, ", ".join(
                                  self._type_value(e) for e in d.value.elems)))
-        features = ["  bool %s = %s;" % (d.name, d.cxx)
-                    for d in self.gs.decls
-                    if isinstance(d, A.Feature)
-                    and d.name in self.used_features]
+        # Features are ordinary C++ bools and one may spell another by name
+        # (SPIRV's `IsExtendedInts` reads `hasArbitraryPrecisionInts`).  Emit
+        # every dependency, and emit them before their users; declaration
+        # order in the source is alphabetical, not topological.
+        feature_decls = {d.name: d for d in self.gs.decls
+                         if isinstance(d, A.Feature)}
+        needed = set()
+        todo = list(self.used_features)
+        while todo:
+            name = todo.pop()
+            if name in needed or name not in feature_decls:
+                continue
+            needed.add(name)
+            text = feature_decls[name].cxx
+            todo.extend(other for other in feature_decls
+                        if other != name and _mentions(text, other))
+        order = []
+        state = {}
+
+        def visit(name):
+            if state.get(name) == "done":
+                return
+            if state.get(name) == "active":
+                raise ValueError(
+                    "feature declarations form a cycle through %r" % name)
+            state[name] = "active"
+            for other in feature_decls:
+                if (other != name and other in needed
+                        and _mentions(feature_decls[name].cxx, other)):
+                    visit(other)
+            state[name] = "done"
+            order.append(name)
+
+        for name in sorted(needed):
+            visit(name)
+        features = ["  bool %s = %s;" % (name, feature_decls[name].cxx)
+                    for name in order]
 
         out = [LICENSE_HEADER.rstrip("\n"), ""]
         if features:
