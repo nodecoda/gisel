@@ -15,5 +15,5 @@
     "mode": "dual"
   },
   "features": "tests/cases/ppc-features.json",
-  "query_count": 98
+  "query_count": 94
 }

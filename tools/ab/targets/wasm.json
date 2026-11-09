@@ -15,5 +15,5 @@
     "mode": "dual"
   },
   "features": "tests/cases/wasm-features.json",
-  "query_count": 942
+  "query_count": 886
 }

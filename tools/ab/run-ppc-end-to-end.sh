@@ -11,7 +11,7 @@ BUILD=${2:?}
 INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-EXPECTED_QUERIES=98
+EXPECTED_QUERIES=94
 mkdir -p "$OUT"
 
 "$ROOT/tools/ab/build-ppc-runner.sh" "$TREE" "$BUILD" "$INC" "$OUT/runner"

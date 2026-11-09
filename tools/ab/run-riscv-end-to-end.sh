@@ -12,7 +12,7 @@ INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 STATE=${5:-$ROOT/.ab/riscv}
-EXPECTED_QUERIES=6301
+EXPECTED_QUERIES=6149
 mkdir -p "$OUT" "$STATE"
 
 "$ROOT/tools/ab/build-riscv-runner.sh" "$TREE" "$BUILD" "$INC" "$OUT/runner"

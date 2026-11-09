@@ -16,5 +16,5 @@
   },
   "features": "tests/cases/x86-features.json",
   "axes": null,
-  "query_count": 3217
+  "query_count": 3027
 }

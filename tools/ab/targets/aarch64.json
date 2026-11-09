@@ -16,5 +16,5 @@
   },
   "features": "tests/cases/features.json",
   "axes": "tests/cases/aarch64-mem-orderings.axes.json",
-  "query_count": 12952
+  "query_count": 12583
 }

@@ -11,7 +11,7 @@ BUILD=${2:?}
 INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-EXPECTED_QUERIES=1670
+EXPECTED_QUERIES=1614
 mkdir -p "$OUT"
 
 "$ROOT/tools/ab/build-arm-runner.sh" "$TREE" "$BUILD" "$INC" "$OUT/runner"

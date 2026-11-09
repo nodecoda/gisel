@@ -229,6 +229,47 @@ def _dim_of(node):
     return None
 
 
+def _mem_shape_ok(case, mem_opcodes):
+    """A memory-carrying query has to look like one the IR can produce.
+
+    Two contracts the backends state with `assert` before looking at a rule:
+
+      * an opcode whose rules read `MMODescrs[0]` always carries one;
+      * the memory size fits the value slot (`QueryMemSize <= Size`).
+    """
+    if case.opcode not in mem_opcodes:
+        return True
+    if case.mem is None:
+        return False
+    types = _parse(case.types)
+    value_bits = _scalar_bits(types[0])
+    mem_bits = _scalar_bits(E.parse_case_llt(case.mem[0]))
+    if value_bits and mem_bits and mem_bits > value_bits:
+        return False
+    return True
+
+
+def _mem_observation(node):
+    """``("size"|"align", None)`` for a direct memory-descriptor read.
+
+    A rule may ask about the memory type itself rather than name a descriptor:
+    `size_of(mem_ty(mem_slot(0)))` and `align_of(mem_slot(0))`.  Those are the
+    only two observations in the language, so recording the literal they are
+    compared against is enough to synthesise a memory axis.
+    """
+    if not isinstance(node, dict):
+        return None
+    if node.get("kind") == "sizeOf":
+        inner = (node.get("args") or [None])[0]
+        if isinstance(inner, dict) and inner.get("kind") == "memTy":
+            return "size"
+    if node.get("kind") == "alignOf":
+        inner = (node.get("args") or [None])[0]
+        if isinstance(inner, dict) and inner.get("kind") == "memSlot":
+            return "align"
+    return None
+
+
 def _literals(node):
     """LLT literals in a set/type node, as parsed tuples."""
     out = []
@@ -256,6 +297,7 @@ class RuleInfo:
     literals: dict = field(default_factory=dict)   # slot -> set[(dim, n)]
     thresholds: dict = field(default_factory=dict)  # slot -> set[(dim, n)]
     mem_entries: list = field(default_factory=list)  # (t0, t1, mty, align)
+    mem_obs: set = field(default_factory=set)  # ("size"|"align", literal)
     uses_mem: bool = False
     slots: set = field(default_factory=set)
     uses_ordering: bool = False
@@ -327,6 +369,11 @@ def _walk_info(node, info):
                 index = expr["index"]
                 info.imms.add(index)
                 info.imm_thresholds.setdefault(index, set()).add(other["value"])
+                continue
+            obs = _mem_observation(expr)
+            if obs is not None:
+                info.uses_mem = True
+                info.mem_obs.add((obs, other["value"]))
                 continue
             slot = _slot_of(expr)
             dim = _dim_of(expr)
@@ -741,7 +788,52 @@ def _mem_candidates(infos, expand=None):
                         continue
                     seen.add(key)
                     out.append(key)
-    return out
+    if out:
+        return out
+    return _observed_mem_entries(infos)
+
+
+def _observed_mem_entries(infos, max_slot_types=4):
+    """Descriptors for rules that read the memory type without naming one.
+
+    `size_of(mem_ty(mem_slot(0))) == 32` says what the memory type must be
+    wide; `align_of(mem_slot(0))` says how aligned.  Without a descriptor row
+    there is no memory axis at all, and every rule that reads one is silently
+    unwitnessed (Mips' G_LOAD was).  Synthesise one row per observed size at
+    two alignments -- the minimum and the size itself, which are the two sides
+    of `size <= align` -- crossed with the rules' own slot-type literals.
+    """
+    sizes, aligns = set(), set()
+    for info in infos:
+        for kind, value in info.mem_obs:
+            (sizes if kind == "size" else aligns).add(value)
+    if not sizes:
+        return []
+    slot0, slot1 = [], []
+    for info in infos:
+        for text in sorted(llt_text(t) for t in info.literals.get(0, ())):
+            if text not in slot0:
+                slot0.append(text)
+        for text in sorted(llt_text(t) for t in info.literals.get(1, ())):
+            if text not in slot1:
+                slot1.append(text)
+    if not slot0 or not slot1:
+        return []
+    rows = []
+    seen = set()
+    for bits in sorted(sizes):
+        if bits < 8 or bits % 8:
+            continue
+        mty = "s%d" % bits
+        for align in sorted({8, bits}):
+            for t0 in slot0[:max_slot_types]:
+                for t1 in slot1[:max_slot_types]:
+                    key = (t0, t1, mty, align)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    rows.append(key)
+    return rows
 
 
 def _pad(types, nslots, default):
@@ -804,13 +896,22 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
              "ill_formed": 0, "ill_formed_opcodes": {},
              "unwitnessed": []}
 
+    # Opcodes whose rules read a memory descriptor.  A query for one of them
+    # without a descriptor is not a legalizer query at all: the backends read
+    # `MMODescrs[0]` unconditionally, so an empty array asserts before any rule
+    # runs.
+    mem_opcodes = {rs["opcodes"][0] for rs in doc["rulesets"]
+                   if rs["opcodes"]
+                   and any(i.uses_mem for i in inspect_ruleset(rs)[1])}
+
     def emit(case):
         if case.key() in seen:
             return False
         # Every path ends here, so this is the one place that has to hold:
         # `_queries` filters early to save evaluator work, but boundary and
         # witness probes build types directly.
-        if not type_shape_ok(case.opcode, _parse(case.types)):
+        if (not type_shape_ok(case.opcode, _parse(case.types))
+                or not _mem_shape_ok(case, mem_opcodes)):
             stats["ill_formed"] += 1
             stats["ill_formed_opcodes"][case.opcode] = (
                 stats["ill_formed_opcodes"].get(case.opcode, 0) + 1)
@@ -940,16 +1041,23 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                             break
                     if mem is not None:
                         mty, align, ordering, failure = mem
-                        for probe, reason in (
-                                (align - 1, "align %d -> %d" % (align, align - 1)),
-                                (align + 1, "align %d -> %d" % (align, align + 1))):
+                        # An MMO's alignment is a power of two (`Align`), and
+                        # upstream asserts on anything else before it even looks
+                        # at the rule.  Probe the neighbouring power of two, not
+                        # `align +/- 1`, so the question stays a legal query.
+                        probes = {max(8, align // 2), align * 2}
+                        for probe in sorted(probes):
+                            if probe == align:
+                                continue
+                            reason = "align %d -> %d" % (align, probe)
                             case = Case(config, opcode,
                                         tuple(llt_text(t) for t in types),
                                         (mty, probe, ordering, failure),
                                         "boundary", rs["def"], ri,
                                         reason, imms=imms)
                             res = _try_fire(evaluator, case)
-                            if res != "error" and _outcome(res) != base[1:] and emit(case):
+                            if (res != "error" and _outcome(res) != base[1:]
+                                    and emit(case)):
                                 emitted += 1
                         mt = E.parse_case_llt(mty)
                         bits = _scalar_bits(mt)

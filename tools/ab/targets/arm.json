@@ -15,5 +15,5 @@
     "mode": "dual"
   },
   "features": "tests/cases/arm-features.json",
-  "query_count": 1670
+  "query_count": 1614
 }

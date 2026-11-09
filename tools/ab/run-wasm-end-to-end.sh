@@ -12,7 +12,7 @@ BUILD=${2:?}
 INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-EXPECTED_QUERIES=942
+EXPECTED_QUERIES=886
 mkdir -p "$OUT"
 
 "$ROOT/tools/ab/build-wasm-runner.sh" "$TREE" "$BUILD" "$INC" "$OUT/runner"
