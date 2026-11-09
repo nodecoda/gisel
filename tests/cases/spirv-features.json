@@ -1,0 +1,50 @@
+{
+  "spirv64-kernel": {
+    "ST.isShader()": false,
+    "ST.getPointerSize() == 64": true,
+    "ST.canUseExtInstSet(SPIRV::InstructionSet::OpenCL_std)": true,
+    "ST.canUseExtension( SPIRV::Extension::SPV_ALTERA_arbitrary_precision_integers)": false,
+    "ST.canUseExtension(SPIRV::Extension::SPV_EXT_long_vector)": false,
+    "Spv_hasArbitraryPrecisionInts || ST.canUseExtension(SPIRV::Extension::SPV_KHR_bit_instructions) || ST.canUseExtension(SPIRV::Extension::SPV_INTEL_int4)": false
+  },
+  "spirv32-kernel": {
+    "ST.isShader()": false,
+    "ST.getPointerSize() == 64": false,
+    "ST.canUseExtInstSet(SPIRV::InstructionSet::OpenCL_std)": true,
+    "ST.canUseExtension( SPIRV::Extension::SPV_ALTERA_arbitrary_precision_integers)": false,
+    "ST.canUseExtension(SPIRV::Extension::SPV_EXT_long_vector)": false,
+    "Spv_hasArbitraryPrecisionInts || ST.canUseExtension(SPIRV::Extension::SPV_KHR_bit_instructions) || ST.canUseExtension(SPIRV::Extension::SPV_INTEL_int4)": false
+  },
+  "spirv64-shader": {
+    "ST.isShader()": true,
+    "ST.getPointerSize() == 64": true,
+    "ST.canUseExtInstSet(SPIRV::InstructionSet::OpenCL_std)": false,
+    "ST.canUseExtension( SPIRV::Extension::SPV_ALTERA_arbitrary_precision_integers)": false,
+    "ST.canUseExtension(SPIRV::Extension::SPV_EXT_long_vector)": false,
+    "Spv_hasArbitraryPrecisionInts || ST.canUseExtension(SPIRV::Extension::SPV_KHR_bit_instructions) || ST.canUseExtension(SPIRV::Extension::SPV_INTEL_int4)": false
+  },
+  "spirv32-shader": {
+    "ST.isShader()": true,
+    "ST.getPointerSize() == 64": false,
+    "ST.canUseExtInstSet(SPIRV::InstructionSet::OpenCL_std)": false,
+    "ST.canUseExtension( SPIRV::Extension::SPV_ALTERA_arbitrary_precision_integers)": false,
+    "ST.canUseExtension(SPIRV::Extension::SPV_EXT_long_vector)": false,
+    "Spv_hasArbitraryPrecisionInts || ST.canUseExtension(SPIRV::Extension::SPV_KHR_bit_instructions) || ST.canUseExtension(SPIRV::Extension::SPV_INTEL_int4)": false
+  },
+  "spirv64-kernel-ext": {
+    "ST.isShader()": false,
+    "ST.getPointerSize() == 64": true,
+    "ST.canUseExtInstSet(SPIRV::InstructionSet::OpenCL_std)": true,
+    "ST.canUseExtension( SPIRV::Extension::SPV_ALTERA_arbitrary_precision_integers)": true,
+    "ST.canUseExtension(SPIRV::Extension::SPV_EXT_long_vector)": true,
+    "Spv_hasArbitraryPrecisionInts || ST.canUseExtension(SPIRV::Extension::SPV_KHR_bit_instructions) || ST.canUseExtension(SPIRV::Extension::SPV_INTEL_int4)": true
+  },
+  "spirv32-shader-ext": {
+    "ST.isShader()": true,
+    "ST.getPointerSize() == 64": false,
+    "ST.canUseExtInstSet(SPIRV::InstructionSet::OpenCL_std)": false,
+    "ST.canUseExtension( SPIRV::Extension::SPV_ALTERA_arbitrary_precision_integers)": false,
+    "ST.canUseExtension(SPIRV::Extension::SPV_EXT_long_vector)": true,
+    "Spv_hasArbitraryPrecisionInts || ST.canUseExtension(SPIRV::Extension::SPV_KHR_bit_instructions) || ST.canUseExtension(SPIRV::Extension::SPV_INTEL_int4)": true
+  }
+}

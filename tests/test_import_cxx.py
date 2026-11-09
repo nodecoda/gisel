@@ -47,6 +47,10 @@ MIPS_SRC = Path(os.environ.get(
     "GS_MIPS_SRC",
     "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/Mips/"
     "MipsLegalizerInfo.cpp"))
+SPIRV_SRC = Path(os.environ.get(
+    "GS_SPIRV_SRC",
+    "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/SPIRV/"
+    "SPIRVLegalizerInfo.cpp"))
 
 
 def run(*args, env=None):
@@ -105,14 +109,13 @@ class ImporterBugsAreRefusals(unittest.TestCase):
 
     CRASH = ROOT / "tests" / "fixtures" / "legalizer-ctor-crash.cpp"
 
-    def test_internal_error_is_refused_with_its_line(self):
+    def test_untranslatable_statement_is_refused_with_its_line(self):
         with tempfile.TemporaryDirectory() as d:
             out = Path(d) / "T.gisel"
             r = run("RISCV", str(self.CRASH), "--out", str(out))
         self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
         self.assertIn("1 rulesets, 1 rules, 1 refused", r.stdout)
-        self.assertIn("refused line 6: auto &allowed", r.stdout)
-        self.assertIn("internal error AttributeError", r.stdout)
+        self.assertIn("refused line 6: R_G_ADD.someUnknownBuilder", r.stdout)
         self.assertNotIn("Traceback", r.stderr)
 
     def test_block_reports_the_line_of_a_failing_statement(self):
@@ -150,7 +153,8 @@ class ReimportedCorpora(unittest.TestCase):
                 ("WebAssembly", WASM_SRC, 29, 109),
                 ("PowerPC", PPC_SRC, 15, 25),
                 ("ARM", ARM_SRC, 52, 96),
-                ("Mips", MIPS_SRC, 48, 95)):
+                ("Mips", MIPS_SRC, 48, 95),
+                ("SPIRV", SPIRV_SRC, 83, 353)):
             if not src.exists():
                 continue
             with self.subTest(target=target), \
@@ -174,15 +178,15 @@ class PinnedRevision(unittest.TestCase):
         r = run("--all", "--pin", str(PIN), "--git-repo", str(LLVM_GIT),
                 "--check")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(r.stdout.count(": matches"), 8, r.stdout)
-        self.assertEqual(r.stdout.count(": read "), 8, r.stdout)
+        self.assertEqual(r.stdout.count(": matches"), 9, r.stdout)
+        self.assertEqual(r.stdout.count(": read "), 9, r.stdout)
 
     def test_pin_records_one_commit_for_every_target(self):
         pin = json.loads(PIN.read_text())
         self.assertEqual(len(pin["commit"]), 40, pin["commit"])
         self.assertEqual(sorted(pin["sources"]),
                          ["AArch64", "ARM", "M68k", "Mips", "PowerPC",
-                          "RISCV", "WebAssembly", "X86"])
+                          "RISCV", "SPIRV", "WebAssembly", "X86"])
         for name, entry in pin["sources"].items():
             self.assertEqual(len(entry["sha256"]), 64, name)
             self.assertIn("llvm/lib/Target/", entry["path"])

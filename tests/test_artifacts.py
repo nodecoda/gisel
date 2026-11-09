@@ -384,6 +384,7 @@ class ProbeCorpus(unittest.TestCase):
               ("PowerPCLegalizerInfo", 15, 25),
               ("ARMLegalizerInfo", 52, 96),
               ("MipsLegalizerInfo", 48, 95),
+              ("SPIRVLegalizerInfo", 83, 353),
               ("WebAssemblyLegalizerInfo", 29, 109))
 
     def test_all_backends_accept_the_probe(self):

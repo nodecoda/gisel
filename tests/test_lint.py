@@ -42,6 +42,7 @@ class LintCorpus(unittest.TestCase):
                              ("PowerPCLegalizerInfo", 25),
                              ("ARMLegalizerInfo", 96),
                              ("MipsLegalizerInfo", 95),
+                             ("SPIRVLegalizerInfo", 353),
                              ("WebAssemblyLegalizerInfo", 109)):
             r = run("lint", str(CORPUS / f"{name}.gisel"))
             self.assertEqual(r.returncode, 0, r.stderr)

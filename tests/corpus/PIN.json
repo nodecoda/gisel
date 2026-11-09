@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "comment": "The upstream revision every corpus rule came from. `tools/import-cxx.py --all --pin tests/corpus/PIN.json --git-repo <llvm> --check` must reproduce the three .gisel files byte for byte. The commit is a plain upstream llvm-project commit: local patches in a worktree cannot change what was imported, so the corpus keeps the reviewed deviations below. `patches` lists the unmerged upstream PRs this repository carries; the official side of the A/B harness is built from a tree with them applied, which is why the corpus asks for the post-fix behaviour. When they land upstream, move `commit` past them and delete both the patches and the deviations.",
+  "comment": "The upstream revision every corpus rule came from. `tools/import-cxx.py --all --pin tests/corpus/PIN.json --git-repo <llvm> --check` must reproduce every .gisel file byte for byte. The commit is a plain upstream llvm-project commit: local patches in a worktree cannot change what was imported, so the corpus keeps the reviewed deviations below. `patches` lists the unmerged upstream PRs this repository carries; the official side of the A/B harness is built from a tree with them applied, which is why the corpus asks for the post-fix behaviour. When they land upstream, move `commit` past them and delete both the patches and the deviations.",
   "repo": "llvm/llvm-project",
   "commit": "9bfc850b9940566bef17a34601826775349ba0e6",
   "sources": {
@@ -35,6 +35,10 @@
     "Mips": {
       "path": "llvm/lib/Target/Mips/MipsLegalizerInfo.cpp",
       "sha256": "3660b66b709c5eec9431e54010d1da9e241a460aa528ff213b444ebc0e96b525"
+    },
+    "SPIRV": {
+      "path": "llvm/lib/Target/SPIRV/SPIRVLegalizerInfo.cpp",
+      "sha256": "e404ba675047cbc8eb48bf87bbc2a67d4d7c926d2ce5ad4f59e3fe0a33361208"
     }
   },
   "patches": [

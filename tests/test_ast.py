@@ -13,8 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "tests" / "corpus"
 CORPORA = ("AArch64LegalizerInfo", "M68kLegalizerInfo",
            "ARMLegalizerInfo", "MipsLegalizerInfo", "PowerPCLegalizerInfo",
-           "RISCVLegalizerInfo", "WebAssemblyLegalizerInfo",
-           "X86LegalizerInfo")
+           "RISCVLegalizerInfo", "SPIRVLegalizerInfo",
+           "WebAssemblyLegalizerInfo", "X86LegalizerInfo")
 
 
 def text_of(name):

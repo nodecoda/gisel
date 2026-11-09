@@ -103,6 +103,13 @@ FEATURE_NAMES = {
         "ST.isThumb1Only()": "isThumb1Only",
         "ST.useSoftFloat()": "useSoftFloat",
     },
+    "SPIRV": {
+        "ST.canUseExtInstSet(SPIRV::InstructionSet::OpenCL_std)": "hasOpenCLStd",
+        "ST.canUseExtension(SPIRV::Extension::SPV_ALTERA_arbitrary_precision_integers)": "hasArbitraryPrecisionInts",
+        "ST.canUseExtension(SPIRV::Extension::SPV_EXT_long_vector)": "hasLongVector",
+        "ST.getPointerSize() == 64": "has64BitPointers",
+        "ST.isShader()": "isShader",
+    },
     "Mips": {
         "ST.hasMSA()": "hasMSA",
         "ST.hasMips32r2()": "hasMips32r2",
@@ -235,12 +242,24 @@ def _llt_float_ieee(text):
                   lambda m: "LLT::float%s()" % m.group(1), text)
 
 
+# SPIRVAS address-space names in declaration order; the C++ enum is the
+# authority (`llvm/Support/SPIRVAddrSpace.h`) and the corpus spells the numbers.
+SPIRV_ADDRESS_SPACES = {
+    name: str(index) for index, name in enumerate((
+        "Function", "CrossWorkgroup", "UniformConstant", "Workgroup",
+        "Generic", "DeviceOnlyINTEL", "HostOnlyINTEL", "Input", "Output",
+        "CodeSectionINTEL", "Private", "StorageBuffer", "Uniform",
+        "PushConstant"))
+}
+
+
 class Types:
     """C++ LLT constants found in the constructor."""
 
     def __init__(self):
         self.decl = []          # [(cpp name, emitted name, rhs text)]
         self.sets = {}          # cpp name -> [cpp type names]
+        self.set_alias = {}     # cpp name -> a set expression (ternary)
         self.by_cpp = {}        # cpp name -> emitted name
         self.refused = []
 
@@ -323,6 +342,19 @@ class Types:
             # `cond ? A : B` -> a named `select` (same as a reference site).
             self.by_cpp[cpp_name] = self.name(text)
             return
+        m = re.fullmatch(r"LLT::pointer\(\s*(.+?)\s*,\s*(.+?)\s*\)", text, re.S)
+        if m:
+            asx = re.sub(r"SPIRVAS::(\w+)",
+                         lambda k: SPIRV_ADDRESS_SPACES.get(k.group(1),
+                                                            k.group(1)),
+                         m.group(1).strip())
+            width = m.group(2).strip()
+            tern = getattr(self, "int_ternary_text", {}).get(width)
+            if tern:
+                # `strace PSize` is `ST.getPointerSize()`, two values wide; the
+                # type declaration is where the DSL takes the raw condition.
+                width = "%s ? %d : %d" % tern
+            text = "LLT::pointer(%s, %s)" % (asx, width)
         # LLT::scalar(XLen) / 2*XLen: a feature-dependent width.  The named
         # form is a select over the two legal values.
         m = re.fullmatch(r"LLT::(?:scalar|integer)\(\s*(.+?)\s*\)", text, re.S)
@@ -481,6 +513,7 @@ class Translator:
         self.bool_helpers = {}  # static bool helpers used as `if` gates
         self.aligns = {}        # align lambdas: name -> (cond, then, else)
         self.named_preds = {}   # LegalityPredicate variables
+        self.int_ternary = {}   # cpp int name -> (gate, value if true, else)
         self.refused = []
 
     # -- features: any `ST.x()` / `XLen == N` becomes a named feature --------
@@ -500,7 +533,7 @@ class Translator:
         if "getELen()" in cpp_text and "hasVInstructions()" not in cpp_text:
             name = "(ST.hasVInstructions() && %s)" % cpp_text
         if name not in self.features:
-            key = _norm(key_text)
+            key = _norm(key_text).replace("( ", "(")
             suffix = FEATURE_NAMES.get(CURRENT_TARGET, {}).get(key)
             if suffix:
                 USED_RENAMES["feature"].add(key)
@@ -515,6 +548,11 @@ class Translator:
 
     def pred(self, text):
         text = text.strip()
+        if re.fullmatch(r"Query\.(?:Types|MMODescrs)\[[^\]]+\]\.[A-Za-z_]+\("
+                        r"\)", text):
+            # One observation spelled on a query slot; `query_body` owns the
+            # `Query.Types[i].foo()` vocabulary.
+            return self.query_body(text)
         if text.startswith("LegalityPredicate(") and text.endswith(")"):
             return self.pred_lambda(text)
         if re.match(r"\[[^\]]*\]\s*\(", text):
@@ -540,6 +578,8 @@ class Translator:
         # already a `.gisel` observation: `isPowerOf2_64(x)` is `is_pow2(x)`.
         text = re.sub(r"isPowerOf2_\d+\(|isPowerOf2\(", "is_pow2(", text)
         helper = self.query_helper(text)
+        if helper is None:
+            helper = self.legality_helper(text)
         if helper is not None:
             return helper
         if text in self.feature_aliases:
@@ -643,12 +683,84 @@ class Translator:
         if local is not None:
             return local
         # Subtarget reads and XLen comparisons are cached features.
-        if re.fullmatch(r"(ST|STI)\.\w+\(\)", text) or \
+        if re.fullmatch(r"(ST|STI)\.\w+\([^()]*\)", text) or \
                 re.fullmatch(r"XLen\s*==\s*\d+", text):
             return self.feature(text)
         if "Query." in text:
             return self.query_body(text)
         raise Refuse(text)
+
+    def int_splits(self, text):
+        """A constant or a configuration-chosen integer -> [(gate, value)]."""
+        text = " ".join(text.split())
+        if text in self.int_ternary:
+            gate, a, b = self.int_ternary[text]
+            return [(gate, a), ("not " + gate, b)]
+        return [(None, const_eval(text, getattr(self, "env", {})))]
+
+    def set_pred(self, idx, ref):
+        """`in(slot(i), SET)` for a concrete or a configuration-chosen set."""
+        ref = ref.strip()
+        m = split_ternary(ref)
+        if m:
+            yes = self.set_pred(idx, m[1].strip())
+            no = self.set_pred(idx, m[2].strip())
+            g = self.pred(m[0])
+            return "((%s and %s) or (not %s and %s))" % (g, yes, g, no)
+        if ref.startswith("{") and ref.endswith("}"):
+            return "in(slot(%s), [%s])" % (
+                idx, ", ".join(self.t.name(x) for x in split_top(ref[1:-1])))
+        if ref in self.t.set_alias:
+            return self.set_pred(idx, self.t.set_alias[ref])
+        if ref in self.t.sets:
+            return "in(slot(%s), [%s])" % (
+                idx, ", ".join(self.t.name(x) for x in self.t.sets[ref]))
+        return "in(slot(%s), [%s])" % (idx, self.t.name(ref))
+
+    def legality_helper(self, text):
+        """LegalityPredicates spellings that are one observation of the query.
+
+        Each one is inlined instead of becoming an opaque predicate, so the
+        evaluator can still answer: a predicate the table cannot evaluate is a
+        hole, and a hole is not a rule.
+        """
+        m = re.fullmatch(r"typeOfLongVectors\s*\(\s*(\d+)\s*,\s*(\w+)\s*\)",
+                         text)
+        if m:
+            return "(%s and sort_of(slot(%s)) == vector)" % (
+                self.pred(m.group(2)), m.group(1))
+        m = re.fullmatch(r"typeOfExtendedScalars\s*\(\s*(\d+)\s*,"
+                         r"\s*(\w+)\s*\)", text)
+        if m:
+            return "(%s and sort_of(slot(%s)) == scalar)" % (
+                self.pred(m.group(2)), m.group(1))
+        m = re.fullmatch(r"vectorElementCountIsGreaterThan\s*\(\s*(\d+)\s*,"
+                         r"\s*(.+?)\s*\)", text, re.S)
+        if m:
+            return self._count_cmp(m.group(1), m.group(2), ">")
+        m = re.fullmatch(r"vectorElementCountIsLessThanOrEqualTo\s*\("
+                         r"\s*(\d+)\s*,\s*(.+?)\s*\)", text, re.S)
+        if m:
+            return self._count_cmp(m.group(1), m.group(2), "<=")
+        m = re.fullmatch(r"numElementsNotPow2\s*\(\s*(\d+)\s*\)", text)
+        if m:
+            return "not is_pow2(num_elems(slot(%s)))" % m.group(1)
+        m = re.fullmatch(r"typeInSet\s*\(\s*(\d+)\s*,\s*"
+                         r"(\w+|\{[^{}]*\})\s*\)", text, re.S)
+        if m:
+            return self.set_pred(m.group(1), m.group(2))
+        return None
+
+    def _count_cmp(self, idx, amount, op):
+        # vectorElementCountIs* are false for a non-fixed-vector; `num_elems`
+        # alone reads 0 for a scalar, which makes `<="` true and would accept
+        # types upstream rejects.
+        alts = []
+        for gate, value in self.int_splits(amount):
+            cmp_ = "is_fixed_vector(slot(%s)) and num_elems(slot(%s)) %s %d" % (
+                idx, idx, op, value)
+            alts.append("(%s and %s)" % (gate, cmp_) if gate else cmp_)
+        return alts[0] if len(alts) == 1 else "(%s)" % " or ".join(alts)
 
     def query_helper(self, text):
         """Named C++ query helpers that are one observation spelled in code.
@@ -1000,6 +1112,16 @@ class Translator:
         text = re.sub(r"mem_ty\(mem_slot\((\d+)\)\)\.getSizeInBits\(\)",
                       r"size_of(mem_ty(mem_slot(\1)))", text)
         text = re.sub(r"ORD\((\d+)\)", r"mem_ordering(mem_slot(\1))", text)
+        # `isValid()` / `isPointerOrPointerVector()` must be folded before the
+        # observation patterns below: those use a non-greedy `(.+?)` between
+        # `__T(` and the call, so an unfolded method name would be swallowed
+        # into the slot of the next observation.
+        text = re.sub(r"__T\(([^()]*)\)\.isValid\(\)", "true", text)
+        text = re.sub(
+            r"__T\(([^()]*)\)\.isPointerOrPointerVector\(\)",
+            r"(sort_of(slot(\1)) == pointer"
+            r" || sort_of(slot(\1)) == pointer_vector)",
+            text)
         for pat, rep in (
                 (r"__T\((.+?)\)\.getScalarType\(\)\.isFloat16\(\)",
                  r"is_float16(scalar_of(slot(\1)))"),
@@ -1133,6 +1255,9 @@ class Translator:
             return self.feature(text)
         if "Query." in text:
             return self.query_body(text)
+        if text in ("scalar", "vector", "scalable_vector", "pointer",
+                    "pointer_vector"):
+            return text          # a kind tag, not a type name
         if re.fullmatch(r"[A-Za-z_]\w*\s*\(.*\)", text, re.S):
             return text          # already `.gisel` (`bits_of(slot(0))`, ...)
         return "ty(%s)" % self.t.name(text)
@@ -1183,14 +1308,33 @@ class Translator:
             m = re.fullmatch(r"(?:const\s+)?(?:unsigned|int|bool|LLT|auto)\s*&?\s*"
                              r"(\w+)\s*=\s*(.+?);?", st, re.S)
             if m:
-                name, val = m.group(1), m.group(2).strip()
-                if "Query." not in val:
-                    try:
-                        env[name] = str(const_eval(val, {}))
-                        continue
-                    except Refuse:
-                        pass
-                env[name] = " ".join(val.split())
+                # `const LLT Ty1 = Query.Types[0], Ty2 = Query.Types[1];`
+                # declares two aliases in one statement; split them on the
+                # top-level commas before folding.
+                decls = [("".join((m.group(1), " =")), m.group(2))]
+                head = st[:st.index(m.group(1))]
+                decls = [(m.group(1), m.group(2))]
+                if "," in m.group(2):
+                    decls, _ = [], None
+                    rest_text = st[st.index(m.group(1)):]
+                    for part in split_top(rest_text):
+                        pm = re.fullmatch(r"(\w+)\s*=\s*(.+)", part.strip(), re.S)
+                        if not pm:
+                            decls, _ = [], None
+                            break
+                        decls.append((pm.group(1), pm.group(2)))
+                if not decls:
+                    rest.append(st)
+                    continue
+                for name, val in decls:
+                    val = val.strip().rstrip(";").strip()
+                    if "Query." not in val:
+                        try:
+                            env[name] = str(const_eval(val, {}))
+                            continue
+                        except Refuse:
+                            pass
+                    env[name] = " ".join(val.split())
                 continue
             rest.append(st)
         text = "; ".join(x.rstrip(";") for x in rest)
@@ -1475,11 +1619,28 @@ def idx_of(text, env):
     return v
 
 
+# A helper that hands back a fixed opcode list.  SPIRV builds one rule set per
+# opcode in a loop, so the list has to be known here; `tests/test_import_cxx.py`
+# reads it out of SPIRVUtils.cpp and fails if the two disagree.
+OPCODE_LISTS = {
+    "getTypeFoldingSupportedOpcodes": [
+        "G_ADD", "G_FADD", "G_STRICT_FADD", "G_SUB", "G_FSUB", "G_STRICT_FSUB",
+        "G_MUL", "G_FMUL", "G_STRICT_FMUL", "G_SDIV", "G_UDIV", "G_FDIV",
+        "G_STRICT_FDIV", "G_SREM", "G_UREM", "G_FREM", "G_STRICT_FREM",
+        "G_FNEG", "G_CONSTANT", "G_FCONSTANT", "G_AND", "G_OR", "G_XOR",
+        "G_SHL", "G_ASHR", "G_LSHR", "G_SELECT", "G_EXTRACT_VECTOR_ELT",
+    ],
+}
+
+
 def opcodes_of(text, env):
-    """`{G_A, G_B}` / `G_A` / `Op` -> ["G_A", "G_B"]."""
+    """`{G_A, G_B}` / `G_A` / `Op` / `helper()` -> ["G_A", "G_B"]."""
     text = text.strip()
     if text.startswith("{") and text.endswith("}"):
         return [o.strip() for o in split_top(text[1:-1])]
+    m = re.fullmatch(r"(\w+)\s*\(\s*\)", text)
+    if m and m.group(1) in OPCODE_LISTS:
+        return list(OPCODE_LISTS[m.group(1)])
     if text in env:
         return [env[text]]
     if re.fullmatch(r"G_\w+", text):
@@ -1533,6 +1694,8 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
                     [("not " + g, t) for _, t in type_preds(idx, m[2].strip())])
         if text in tr.t.sets:
             return [(None, "in(slot(%d), %s)" % (idx, PREFIX + text))]
+        if text in tr.t.set_alias:
+            return type_preds(idx, tr.t.set_alias[text])
         return [(None, "in(slot(%d), %s)" % (idx, tr.t.name(text)))]
 
     def expand_sets(ref):
@@ -1547,7 +1710,31 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
             return [(None, [tr.t.name(x) for x in split_top(ref[1:-1])])]
         if ref in tr.t.sets:
             return [(None, [tr.t.name(x) for x in tr.t.sets[ref]])]
+        if ref in tr.t.set_alias:
+            return expand_sets(tr.t.set_alias[ref])
         raise Refuse(ref)
+
+    def mutation_variants(text):
+        """A lane-count mutation whose count a configuration picks.
+
+        `changeElementCountTo(i, ElementCount::getFixed(MaxVectorSize))` is one
+        rule per value of the gate, so the caller emits one line per split.
+        """
+        m = re.fullmatch(r"(?:LegalizeMutations::)?changeElementCountTo"
+                         r"\s*\(\s*(\d+)\s*,\s*ElementCount::getFixed"
+                         r"\(\s*(.+?)\s*\)\s*\)", text.strip(), re.S)
+        if m and not re.fullmatch(r"\d+", m.group(2).strip()):
+            return [(gate, "slot(%s), %d" % (m.group(1), value))
+                    for gate, value in tr.int_splits(m.group(2))]
+        m = re.fullmatch(r"(?:LegalizeMutations::)?changeElementSizeTo"
+                         r"\s*\(\s*(\d+)\s*,\s*(.+?)\s*\)",
+                         text.strip(), re.S)
+        if m and not re.fullmatch(r"\d+", m.group(2).strip()):
+            idx = m.group(1)
+            return [(gate, "slot(%s), replace(elt_size_to(slot(%s), %d))"
+                     % (idx, idx, value))
+                    for gate, value in tr.int_splits(m.group(2))]
+        return None
 
     def mutation(text):
         """A `LegalizeMutations::` call or a lambda returning a pair."""
@@ -1564,6 +1751,13 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
                          r"\s*\(\s*(\d+)\s*,\s*(.+)\)", text, re.S)
         if m:
             return "slot(%s), replace(%s)" % (m.group(1), tr._mut_ty(m.group(2)))
+        m = re.fullmatch(r"(?:LegalizeMutations::)?changeElementCountTo"
+                         r"\s*\(\s*(\d+)\s*,\s*ElementCount::getFixed"
+                         r"\(\s*(.+?)\s*\)\s*\)", text, re.S)
+        if m and re.fullmatch(r"\d+", m.group(2).strip()):
+            # FewerElements to a fixed lane count; the DSL's `fewer` takes the
+            # count directly when it is a literal.
+            return "slot(%s), %s" % (m.group(1), m.group(2).strip())
         m = re.fullmatch(r"(?:LegalizeMutations::)?changeElementSizeTo"
                          r"\s*\(\s*(\d+)\s*,\s*(.+)\)", text, re.S)
         if m:
@@ -1597,7 +1791,8 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
         pred_arg, args = args[0], args[1:]
     if method.endswith("CartesianProduct") and args:
         head = args[0].lstrip()
-        if not (head.startswith("{") or args[0] in tr.t.sets or "?" in args[0]):
+        if not (head.startswith("{") or args[0] in tr.t.sets
+                or args[0] in tr.t.set_alias or "?" in args[0]):
             pred_arg, args = args[0], args[1:]
     pg = tr.pred(pred_arg) if pred_arg is not None else None
 
@@ -1740,8 +1935,16 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
         if len(args) == 1:
             out.append("%s(%s)" % (op, mutation(args[0])))
         else:
-            out.append("%s(%s) when %s" % (op, mutation(args[1]),
-                                           tr.pred_lambda(args[0])))
+            pred_ = tr.pred_lambda(args[0])
+            variants = mutation_variants(args[1])
+            if variants is None:
+                out.append("%s(%s) when %s" % (op, mutation(args[1]), pred_))
+            else:
+                # The count is decided by the same configuration the predicate
+                # reads, so each value gets its own rule with that gate.
+                for gate, target in variants:
+                    out.append("%s(%s) when (%s and %s)"
+                               % (op, target, pred_, gate))
     elif method == "clampMinNumElements":
         out.append("clamp_min(%s, %s, %s)" % (idx_of(args[0], env),
                                               tr.t.name(args[1]),
@@ -1991,6 +2194,7 @@ class Importer:
         CURRENT_TARGET = target
         self.p = Program()
         self.t = Types()
+        self.t.int_ternary_text = {}
         self.tr = Translator(self.t)
         self.t.cond_fn = self.tr.pred
         self.t.feat_name = self.tr.feature
@@ -2005,6 +2209,7 @@ class Importer:
         self.env = {}
         self.tr.env = self.env
         self.skipped = []   # statements that fill data tables, not rules
+        self.ignored = []   # constructor plumbing, not rules
 
     # -- statements ------------------------------------------------------
     def block(self, text, line0=0):
@@ -2034,6 +2239,10 @@ class Importer:
             return self.if_stmt(st, line)
         if st.startswith("for "):
             return self.for_stmt(st, line)
+        if st.startswith("switch "):
+            return self.switch_stmt(st, line)
+        if st in ("break", "continue"):
+            return
         if st.startswith("{"):
             return self.block(st[1:-1], line)
         if re.match(r"(const\s+)?LLT\s+\w+\s*=", st):
@@ -2052,8 +2261,17 @@ class Importer:
                 # the feature table (and out of the evaluator's key space).
                 self.env[name] = value
                 return
-            self.tr.features[expr] = PREFIX + name
-            self.tr.feature_aliases[name] = PREFIX + name
+            # A compound constant may name an earlier one; the emitted
+            # constructor only has the `.gisel` names, so rewrite the
+            # reference to the name the feature block declares.
+            for alias, emitted in list(self.tr.feature_aliases.items()):
+                expr = re.sub(r"\b%s\b" % re.escape(alias), emitted, expr)
+            key = _norm(expr).replace("( ", "(")
+            suffix = FEATURE_NAMES.get(CURRENT_TARGET, {}).get(key)
+            if suffix:
+                USED_RENAMES["feature"].add(key)
+            self.tr.features[expr] = PREFIX + (suffix or name)
+            self.tr.feature_aliases[name] = self.tr.features[expr]
             return
         if re.match(r"auto\s+\w+\s*=\s*\[", st):
             if "LegalityQuery" in st:
@@ -2093,19 +2311,48 @@ class Importer:
         if re.match(r"(?:auto|LegalizeRuleSet)\s*&\s*\w+\s*=", st):
             m = re.match(r"(?:auto|LegalizeRuleSet)\s*&\s*(\w+)\s*=\s*(.+)$",
                          st, re.S)
+            if not m.group(2).lstrip().startswith("getActionDefinitionsBuilder"):
+                # `auto &allowedVectorTypes = isShader ? shader : all;` names
+                # a set, not a rule chain.
+                self.t.set_alias[m.group(1)] = " ".join(m.group(2).split())
+                return
             return self.chain(m.group(1), m.group(2), line)
         if st.startswith("getActionDefinitionsBuilder"):
             return self.chain(None, st, line)
         m = re.match(r"(\w+)\s*\.", st)
         if m and m.group(1) in self.p.by_object:
             return self.extend(self.p.by_object[m.group(1)], st[m.end(1):], line)
-        if re.match(r"unsigned\s+\w+\s*=", st):
-            m = re.match(r"unsigned\s+(\w+)\s*=\s*(.+)$", st, re.S)
-            self.env[m.group(1)] = const_eval(m.group(2), self.env)
-            return
+        if re.match(r"(?:const\s+)?(?:unsigned|uint32_t)\s+\w+\s*=", st):
+            m = re.match(r"(?:const\s+)?(?:unsigned|uint32_t)\s+(\w+)\s*=\s*(.+)$",
+                         st, re.S)
+            name, expr = m.group(1), m.group(2)
+            try:
+                value = const_eval(expr, self.env)
+            except Refuse:
+                value = None
+            if isinstance(value, int) and not isinstance(value, bool):
+                self.env[name] = value
+                return
+            # `MaxVectorSize = ST.isShader() ? 4 : 16` and
+            # `PSize = ST.getPointerSize()` are two numbers chosen by the
+            # configuration.  A rule cannot spell that as one integer, so the
+            # importer remembers the pair and splits the rule it appears in;
+            # `int_splits()` does the split.
+            tern = self._int_ternary(expr)
+            if tern is not None:
+                self.tr.int_ternary[name] = tern[:3]
+                self.t.int_ternary_text[name] = tern[3], tern[1], tern[2]
+                return
+            raise Refuse(expr)
         if re.match(r"LegalityPredicate\s+\w+\s*=", st):
             return self.predicate_var(st, line)
         if re.match(r"verify\s*\(", st) or st.startswith("using namespace "):
+            return
+        if (re.match(r"this->\w+\s*=", st) or re.match(r"(?:GR|TM)\s*=", st)
+                or st.startswith("LLVM_DEBUG(")):
+            # Constructor plumbing (a member, the global registry, a debug
+            # print), not a rule and not an observation.
+            self.ignored.append((line, st))
             return
         m = re.match(r"(\w+)\s*\(\s*\)$", st)
         if m and m.group(1) in DATA_TABLE_INITIALISERS:
@@ -2115,6 +2362,26 @@ class Importer:
         if m and m.group(1) in self.named_preds:
             return self.predicate_var("LegalityPredicate " + st, line)
         raise Refuse("unrecognised statement")
+
+    def _int_ternary(self, expr):
+        """`cond ? a : b` (or `ST.getPointerSize()`) -> a gated int pair."""
+        expr = " ".join(expr.split())
+        if expr == "ST.getPointerSize()":
+            # The triple decides the width; the values are the only two LLVM
+            # pointers have.  The gate is the feature the feature table holds.
+            return (self.tr.feature("ST.getPointerSize() == 64"), 64, 32,
+                    "ST.getPointerSize() == 64")
+        m = split_ternary(expr)
+        if not m:
+            return None
+        try:
+            a = const_eval(m[1], self.env)
+            b = const_eval(m[2], self.env)
+        except Refuse:
+            return None
+        if not (isinstance(a, int) and isinstance(b, int)):
+            return None
+        return (self.tr.pred(m[0]), a, b, " ".join(m[0].split()))
 
     def predicate_var(self, st, line):
         m = re.match(r"LegalityPredicate\s+(\w+)\s*=\s*(.+)$", st, re.S)
@@ -2133,8 +2400,8 @@ class Importer:
             # A plain predicate expression: `all(sizeIs(0, 64), immIs(0, 32))`.
             return self.tr.pred(rhs)
         body = m.group(2)
-        aliases = dict(re.findall(r"LLT\s+(\w+)\s*=\s*(Query\.Types\[[^\]]+\]);",
-                                  body))
+        aliases = dict(re.findall(
+            r"(?:LLT\s+|,\s*)(\w+)\s*=\s*(Query\.Types\[[^\]]+\])", body))
         for var, val in aliases.items():
             body = re.sub(r"\b%s\b" % var, val, body)
         rm = re.search(r"return\s+(.+?);", body, re.S)
@@ -2214,11 +2481,60 @@ class Importer:
         text = text.strip()
         return text[:-1] if text.endswith(";") else text
 
+    def switch_stmt(self, st, line):
+        """`switch (Opc) { case G_A: ... break; default: ... }` -> one branch.
+
+        The selector is a constructor variable (a loop over an opcode list), so
+        which branch runs is decided at transcription time, not by the DSL.
+        Only the branch that runs is transcribed; the others are C++ control
+        flow, not rules.
+        """
+        i = st.index("(")
+        close = match_paren(st, i) - 1
+        sel = " ".join(st[i + 1:close].split())
+        body = st[close + 1:].strip()
+        if not body.startswith("{") or not body.endswith("}"):
+            raise Refuse("switch body")
+        inner = body[1:-1]
+        value = self.env.get(sel)
+        if value is None:
+            ops = opcodes_of(sel, self.env)
+            value = ops[0] if len(ops) == 1 else None
+        if value is None:
+            raise Refuse("switch selector %r" % sel)
+        chosen = None
+        labels, buf, pos = [], [], 0
+        for m in re.finditer(r"\b(case\s+[^:]+:|default\s*:)", inner):
+            labels.append((m.group(1), inner[pos:m.start()]))
+            pos = m.end()
+        labels.append((None, inner[pos:]))
+        # `labels` alternates label text and the text before it; rebuild the
+        # (label, body) pairs by walking the matches in order.
+        sections, pending, cur = [], [], None
+        for m in re.finditer(r"\b(case\s+([^:]+):|default\s*:)", inner):
+            if cur is not None:
+                sections.append((pending, inner[cur:m.start()]))
+                pending = []
+            label = m.group(2)
+            if label is not None and "::" in label:
+                label = label.rsplit("::", 1)[1].strip()
+            pending.append(label.strip() if label else "*")
+            cur = m.end()
+        if cur is not None:
+            sections.append((pending, inner[cur:]))
+        for names, chunk in sections:
+            if "*" in names or value in names:
+                chosen = chunk
+                break
+        if chosen is None:
+            return
+        self.block(chosen, line)
+
     def for_stmt(self, st, line):
         open_ = st.index("(")
         close = match_paren(st, open_) - 1
         head, body = st[open_ + 1:close], st[close + 1:].strip()
-        m = re.fullmatch(r"unsigned\s+(\w+)\s*:\s*(.+)", head, re.S)
+        m = re.fullmatch(r"(?:unsigned|auto)\s+(\w+)\s*:\s*(.+)", head, re.S)
         if not m or not body.startswith("{"):
             raise Refuse("for (unrecognised)")
         var, items, body = m.group(1), m.group(2), body[1:-1]
@@ -2494,6 +2810,10 @@ TARGETS = {
         "Mips", "Mips",
         "lib/Target/Mips/MipsLegalizerInfo.cpp",
         48, 95),
+    "SPIRV": Target(
+        "SPIRV", "Spv",
+        "lib/Target/SPIRV/SPIRVLegalizerInfo.cpp",
+        83, 353),
 }
 
 
@@ -2582,6 +2902,12 @@ def transcribe(spec, source, out):
         for line, why in imp.skipped:
             notes += "//   line %d: %s\n" % (line, why)
         notes += "//\n"
+    if imp.ignored:
+        notes += ("// Ignored (%d statement(s), constructor plumbing, not "
+                  "rules):\n" % len(imp.ignored))
+        for line, why in imp.ignored:
+            notes += "//   line %d: %s\n" % (line, why)
+        notes += "//\n"
     name = spec.name + "LegalizerInfo"
     body = render(imp)
     header = HEADER.format(
@@ -2598,6 +2924,8 @@ def transcribe(spec, source, out):
         print("  refused line %s: %s" % (line, why))
     for line, why in imp.skipped:
         print("  skipped line %s: %s (data table, not a rule)" % (line, why))
+    for line, why in imp.ignored:
+        print("  ignored line %s: %s (not a rule)" % (line, why))
 
     rc = 1 if refusals else 0
     # The pin only applies to the canonical upstream file, not to fixtures.
