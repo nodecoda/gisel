@@ -27,7 +27,9 @@ from pathlib import Path
 
 from . import ast as A
 from . import axes as axesmod
+from . import analysis as AN
 from . import cases as C
+from . import llt as L
 from . import eval as E
 from . import output
 from . import dsl
@@ -85,7 +87,7 @@ def _walk_mem_rows(node, out, pointer_width):
             if len(args) >= 4 and isinstance(args[3], dict):
                 for row in args[3].get("elems", []):
                     if isinstance(row, (list, tuple)) and len(row) >= 4:
-                        for text in C.type_value_spellings(row[2]):
+                        for text in AN.type_value_spellings(row[2]):
                             mty = _resolve(text, pointer_width)
                             try:
                                 t = E.parse_case_llt(mty)
@@ -114,7 +116,7 @@ def _reads_mem(node):
 
 def domain_axes(source, pointer_width=64):
     """`(types, mems, doc)` for one source and pointer width."""
-    doc = C.document(source)
+    doc = AN.document(source)
     types = {_resolve(t, pointer_width) for t in doc["domain"]["types"]}
     types |= _named_types(source, pointer_width)
     mems = set()
@@ -145,7 +147,7 @@ def effective_axes(source, pointer_width=64, axes=None):
     """`domain_axes` with an optional profile applied."""
     types, mems, doc = domain_axes(source, pointer_width)
     if axes is not None:
-        types = [C.llt_text(t) for t in axes.apply_types(
+        types = [L.spell(t) for t in axes.apply_types(
             [E.parse_case_llt(t) for t in types])]
         mems = _apply_mem_axis(mems, axes, pointer_width)
     return types, mems, doc
@@ -177,13 +179,13 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
 
     for rs in doc["rulesets"]:
         uses_mem = any(_reads_mem(rule["predicate"]) for rule in rs["rules"])
-        _nslots, infos = C.inspect_ruleset(rs)
+        _nslots, infos = AN.inspect_ruleset(rs)
         uses_ordering = any(info.uses_ordering for info in infos)
         mem_pairs = (axes.ordering_pairs()
                      if (axes is not None and uses_ordering)
                      else [("NotAtomic", "NotAtomic")])
-        imm_axis = C.imm_candidates(infos, axes)
-        imm_tuples = C._imm_tuples(imm_axis)
+        imm_axis = AN.imm_candidates(infos, axes)
+        imm_tuples = AN.imm_tuples(imm_axis)
         for opcode in rs["opcodes"]:
             info = slots.get(opcode, {})
             arity = info.get("arity")
@@ -250,13 +252,13 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
-    doc = C.document(args.source)
+    doc = AN.document(args.source)
     try:
         axes = axesmod.load(args.axes) if args.axes else None
         features_path = args.features or (axes.configs_path if axes else None)
-        features = C.derive_features(doc, features_path, args.configs)
+        features = AN.derive_features(doc, features_path, args.configs)
         if axes is not None:
-            full = (C.derive_features(doc, features_path)
+            full = (AN.derive_features(doc, features_path)
                     if args.configs else features)
             axes.bind(args.source, doc, full)
             axes.apply_features(features)

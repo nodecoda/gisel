@@ -16,6 +16,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import analysis as AN
 from . import axes as axesmod
 from . import cases as C
 from . import domain as D
@@ -198,9 +199,9 @@ def _mem_type_spellings(node, evaluator, config):
                 branch = ("then" if evaluator.bool_value(
                     select["cond"], [], None, config) else "else")
             except Exception:
-                return C.type_value_spellings(node)
+                return AN.type_value_spellings(node)
             return _mem_type_spellings(select.get(branch), evaluator, config)
-    return C.type_value_spellings(node)
+    return AN.type_value_spellings(node)
 
 
 def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=(),
@@ -577,7 +578,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
           extra_mems=(), arity_overrides=None, progress=False,
           axis_profile=None, refine=False):
     """Build one configuration's graph and return a :class:`Report`."""
-    doc = C.document(source)
+    doc = AN.document(source)
     evaluator = E.Evaluator(doc, features)
     slots = slots or D.load_opcode_slots()
     arity_manifest = dsl.load_arity_manifest()
@@ -603,10 +604,10 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     started = time.monotonic()
 
     for rs_idx, rs in enumerate(doc["rulesets"]):
-        nslots, infos = C.inspect_ruleset(rs)
+        nslots, infos = AN.inspect_ruleset(rs)
         atoms = _atoms(rs)
-        imm_axis = C.imm_candidates(infos, axis_profile)
-        imm_tuples = C._imm_tuples(imm_axis) if imm_axis else [()]
+        imm_axis = AN.imm_candidates(infos, axis_profile)
+        imm_tuples = AN.imm_tuples(imm_axis) if imm_axis else [()]
         imm_spec = axis_profile.imms() if axis_profile is not None else {}
         uses_ordering = any(info.uses_ordering for info in infos)
         ordering_covered = (axis_profile is not None
@@ -956,7 +957,7 @@ def _oracle_inputs(path, configs, extended):
 
 
 def _features(doc, path, configs):
-    table = C.derive_features(doc, path, configs)
+    table = AN.derive_features(doc, path, configs)
     if not table.table:
         raise GraphError("no configurations selected")
     return table
@@ -983,7 +984,7 @@ def main(argv=None):
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        doc = C.document(args.source)
+        doc = AN.document(args.source)
         axis_profile = axesmod.load(args.axes) if args.axes else None
         features_path = args.features or (axis_profile.configs_path
                                           if axis_profile else None)
