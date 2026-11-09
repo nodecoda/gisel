@@ -24,8 +24,9 @@ class X86Domain(unittest.TestCase):
         rows = self.rows()
         # 26,092 points the old D* enumerated, plus the five zero-type-slot
         # opcodes (G_BR, G_TRAP, G_DEBUGTRAP, G_UBSANTRAP, G_INVOKE_REGION_START)
-        # that -gen-legalizer also emits.
-        self.assertEqual(len(rows), 25127)
+        # that -gen-legalizer also emits; minus the points whose type tuple
+        # cannot be a real MIR instruction (see `cases.type_shape_ok`).
+        self.assertEqual(len(rows), 24561)
         types, mems, _ = domain.domain_axes(X86)
         self.assertEqual(len(types), 24)
         self.assertEqual(len(mems), 23)
@@ -45,7 +46,7 @@ class X86Domain(unittest.TestCase):
 
     def test_pointer_width_is_a_configuration_axis(self):
         rows = self.rows(pointer_width=32)
-        self.assertEqual(len(rows), 25127)
+        self.assertEqual(len(rows), 24561)
         values = {t for r in rows for t in r["types"]}
         self.assertIn("p0:32", values)
         self.assertIn("v2p0:32", values)

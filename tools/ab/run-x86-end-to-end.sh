@@ -13,7 +13,7 @@ INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 STATE=${5:-$ROOT/.ab/x86}
-EXPECTED_QUERIES=3282
+EXPECTED_QUERIES=3217
 mkdir -p "$OUT" "$STATE"
 
 restore() {

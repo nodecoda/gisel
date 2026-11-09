@@ -165,6 +165,7 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
         return parsed[text]
 
     skipped = []
+    shape_dropped = {}
     per_config = {}
 
     for config in configs:
@@ -198,6 +199,7 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
                 mem_axis = list(cfg_mems) if uses_mem else [None]
                 for combo in itertools.product(*slot_axes):
                     if not C.type_shape_ok(opcode, [_llt(t) for t in combo]):
+                        shape_dropped[opcode] = shape_dropped.get(opcode, 0) + 1
                         continue
                     for mem in mem_axis:
                         for ordering, failure in mem_pairs:
@@ -219,6 +221,15 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
         # Surface rather than silently narrowing the domain.
         sys.stderr.write("domain: skipped %d opcode(s) with unknown arity: %s\n"
                          % (len(skipped), ", ".join(sorted(set(skipped))[:8])))
+    if shape_dropped:
+        # A point whose type tuple cannot be a real MIR instruction is not part
+        # of the domain.  Say how many, and for which opcodes: this is the part
+        # of the product the answers cannot cover.
+        sys.stderr.write(
+            "domain: dropped %d ill-formed point(s): %s\n"
+            % (sum(shape_dropped.values()),
+               ", ".join("%s %d" % kv
+                         for kv in sorted(shape_dropped.items()))))
 
 
 def main(argv=None):

@@ -4,7 +4,7 @@ set -euo pipefail
 # run-aarch64-end-to-end.sh TREE BUILD INC OUT [STATE]
 #
 # One command, no manual steps: build both runners from INC, generate the
-# 10,029-query set, answer it twice, and diff.  The query set is `gisel cases`
+# 12,952-query set, answer it twice, and diff.  The query set is `gisel cases`
 # with the recording axes file, not LLVM's table points, because the ordering
 # axis only exists in the query generator.
 TREE=${1:?usage: run-aarch64-end-to-end.sh TREE BUILD INC OUT [STATE]}
@@ -13,7 +13,7 @@ INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
 STATE=${5:-$ROOT/.ab/aarch64}
-EXPECTED_QUERIES=13199
+EXPECTED_QUERIES=12952
 mkdir -p "$OUT" "$STATE"
 
 "$ROOT/tools/ab/build-aarch64-runner.sh" "$TREE" "$BUILD" "$INC" \

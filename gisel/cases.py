@@ -531,10 +531,29 @@ def _try_fire(evaluator, case):
 # Shapes the generic MIR verifier rejects before the legalizer can run.  A
 # query of such a shape is not reachable, so it is not part of the domain: the
 # runner would either abort on the official side or answer a question that no
-# `llc` input can ask.  Source: MachineVerifier.cpp, G_MERGE_VALUES and
-# G_UNMERGE_VALUES.
+# `llc` input can ask.
+#
+# Every entry names where the rule comes from.  A shape rule is a claim about
+# LLVM, so it is either quoted from a verifier check or marked `semantics` when
+# the verifier does not check the opcode and only the opcode's meaning
+# constrains it.  Opcodes with no entry are *not* guessed at: the cartesian
+# product still produces whatever the rules admit.
+#
+# This is a filter on the *question*, not on the answer: it never decides what
+# a legal query means, only whether the question can be asked at all.
+
+def _same_element(a, b):
+    return E.llt_eq(a[3], b[3])
+
+
+def _same_lane_count(a, b):
+    return E.is_vector(a) == E.is_vector(b) and (
+        not E.is_vector(a) or a[1] == b[1])
+
+
 def type_shape_ok(opcode, types):
     if opcode == "G_MERGE_VALUES":
+        # MachineVerifier.cpp: G_MERGE_VALUES takes scalars only.
         return all(not E.is_vector(t) for t in types)
     if opcode == "G_UNMERGE_VALUES":
         if all(not E.is_vector(t) for t in types):
@@ -543,9 +562,38 @@ def type_shape_ok(opcode, types):
         # and the same scalability on every slot.
         if all(E.is_vector(t) for t in types):
             first = types[0]
-            return all(t[2] == first[2] and E.llt_eq(t[3], first[3])
+            return all(t[2] == first[2] and _same_element(t, first)
                        for t in types[1:])
         return False
+    if opcode == "G_CONCAT_VECTORS":
+        if len(types) < 2:
+            return False
+        # MachineVerifier.cpp:1602 -- "G_CONCAT_VECTOR requires vector source
+        # and destination operands" and "num dest and source elements should
+        # match".  The query carries (dst, src); the second source is the same
+        # type as the first, so the destination has twice the lanes.
+        #
+        # The verifier does not compare element types, but concatenation is
+        # defined as gluing two vectors of one element type: `concat(v2s16,
+        # v2s16)` is `v4s16`, never `v4s32`.  A mismatched pair reaches the
+        # bitcast rule, whose mutation changes the total size and trips
+        # mutationIsSane.  Semantics, not the verifier.
+        return (E.is_vector(types[0]) and E.is_vector(types[1])
+                and types[0][1] == types[1][1] * 2
+                and _same_element(types[0], types[1]))
+    if opcode == "G_SHUFFLE_VECTOR":
+        if len(types) < 2:
+            return False
+        # MachineVerifier.cpp:1945 -- "must have vector src", "must have
+        # vector dst", "cannot change element type".
+        return (E.is_vector(types[0]) and E.is_vector(types[1])
+                and _same_element(types[0], types[1]))
+    if opcode in ("G_FPTOSI_SAT", "G_FPTOUI_SAT"):
+        if len(types) < 2:
+            return False
+        # semantics: the saturated conversion keeps the lane count.  The
+        # verifier has no case for these opcodes, so this is the only source.
+        return _same_lane_count(types[0], types[1])
     return True
 
 
@@ -606,6 +654,40 @@ def _candidates(infos, nslots, cap, domain, scalable_ok=True):
             break
         per[widest] = per[widest][:-1]
     return per
+
+
+# Opcodes whose slots are related by a type shape (`type_shape_ok`).  Only for
+# these is it worth crossing one slot's candidates into another: elsewhere the
+# slots really are independent axes.
+_SHAPED_OPCODES = frozenset({
+    "G_MERGE_VALUES", "G_UNMERGE_VALUES", "G_CONCAT_VECTORS",
+    "G_SHUFFLE_VECTOR", "G_FPTOSI_SAT", "G_FPTOUI_SAT",
+})
+
+
+def _shape_candidates(opcode, per):
+    """Let a shaped opcode's slots reach each other's values.
+
+    The candidate sets are built one slot at a time, and a slot the rules never
+    name falls back to the domain order, which for a shaped opcode may hold
+    nothing that pairs with the other slots -- then every product point is
+    filtered out and the ruleset loses all its witnesses.  Mirroring the values
+    (append-only, so nothing that already worked is dropped) keeps at least the
+    pairable combinations inside the product.
+    """
+    if opcode not in _SHAPED_OPCODES or len(per) < 2:
+        return per
+    everything = []
+    for values in per:
+        for value in values:
+            if value not in everything:
+                everything.append(value)
+    out = [list(values) for values in per]
+    for slot in range(len(out)):
+        for value in everything:
+            if value not in out[slot]:
+                out[slot].append(value)
+    return out
 
 
 def _product_size(per):
@@ -680,11 +762,13 @@ def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
     that edge only exists when the two are not taken from the same row.
     """
     out = []
+    dropped = 0
     if uses_mem:
         for t0, t1, mty, align in mem_entries:
             types = _pad([E.parse_case_llt(x) for x in (t0, t1)], len(per),
                          default)
             if not type_shape_ok(opcode, types):
+                dropped += 1
                 continue
             for ordering, failure in mem_pairs:
                 for imms in imm_tuples:
@@ -700,10 +784,11 @@ def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
                                     imms))
     for types in itertools.product(*per):
         if not type_shape_ok(opcode, types):
+            dropped += 1
             continue
         for imms in imm_tuples:
             out.append((types, None, imms))
-    return out
+    return out, dropped
 
 
 def generate(doc, features, *, configs=None, max_slot_values=16,
@@ -716,10 +801,19 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
     stats = {"configs": configs, "rulesets": 0, "opcodes": 0, "rules": 0,
              "witnessed": 0, "shadowed": 0, "unexercised": 0,
              "equivalence": 0, "boundary": 0, "outside": 0,
+             "ill_formed": 0, "ill_formed_opcodes": {},
              "unwitnessed": []}
 
     def emit(case):
         if case.key() in seen:
+            return False
+        # Every path ends here, so this is the one place that has to hold:
+        # `_queries` filters early to save evaluator work, but boundary and
+        # witness probes build types directly.
+        if not type_shape_ok(case.opcode, _parse(case.types)):
+            stats["ill_formed"] += 1
+            stats["ill_formed_opcodes"][case.opcode] = (
+                stats["ill_formed_opcodes"].get(case.opcode, 0) + 1)
             return False
         seen.add(case.key())
         cases.append(case)
@@ -733,8 +827,8 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         opcode = rs["opcodes"][0]
         nslots, infos = inspect_ruleset(rs)
         domain = [E.parse_case_llt(t) for t in doc["domain"]["types"]]
-        per = _candidates(infos, nslots, max_slot_values, domain,
-                          scalable_ok)
+        per = _shape_candidates(opcode, _candidates(
+            infos, nslots, max_slot_values, domain, scalable_ok))
         if axes is not None:
             per = [axes.apply_types(slot) for slot in per]
         default = _defaults(per)
@@ -748,8 +842,12 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                      else [("NotAtomic", "NotAtomic")])
         imm_axis = imm_candidates(infos, axes)
         imm_tuples = _imm_tuples(imm_axis)
-        queries = _queries(per, default, mem_entries, uses_mem, imm_tuples,
-                           mem_pairs, opcode)
+        queries, dropped = _queries(per, default, mem_entries, uses_mem,
+                                    imm_tuples, mem_pairs, opcode)
+        stats["ill_formed"] += dropped
+        if dropped:
+            stats["ill_formed_opcodes"][opcode] = (
+                stats["ill_formed_opcodes"].get(opcode, 0) + dropped)
 
         stats["rulesets"] += 1
         stats["opcodes"] += len(rs["opcodes"])
@@ -787,7 +885,7 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         for ri in unwitnessed:
             found = _rule_witness(evaluator, rs_idx, ri, rs, configs, infos,
                                   default, mem_entries, imm_tuples, mem_pairs,
-                                  scalable_ok)
+                                  scalable_ok, per)
             if found is not None:
                 config, types, mem, imms, res = found
                 if emit(Case(config, opcode,
@@ -797,8 +895,8 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                              imms=imms)):
                     stats["witnessed"] += 1
                     witnessed.append(ri)
-                fires[(config, ri)] = [(tuple(types), mem, imms, res)]
-                continue
+                    fires[(config, ri)] = [(tuple(types), mem, imms, res)]
+                    continue
             stat = _satisfiable(evaluator, rs_idx, ri, rs, configs, infos,
                                 per, default, mem_entries, imm_tuples,
                                 mem_pairs)
@@ -996,6 +1094,8 @@ def generate_from_queries(doc, features, queries_path, oracle_path,
              "oracle_unanswerable": unanswerable, "unwitnessed": []}
 
     def emit(case):
+        # The differ works on queries an oracle already answered; filtering
+        # them here would change what it compares, so shapes are not checked.
         if case.key() in seen:
             return False
         seen.add(case.key())
@@ -1057,6 +1157,31 @@ def generate_from_queries(doc, features, queries_path, oracle_path,
     return Generation(cases, stats)
 
 
+def _compatible_types(opcode, base, slots, combo, per):
+    """Every well-formed fill of the slots a rule search does not enumerate.
+
+    A rule that only constrains slot 0 still needs a legal value in slot 1.
+    Taking the default blindly can produce a shape the MIR verifier rejects,
+    which would make the search "find" a query that can never be asked -- and
+    stopping at the first legal fill can make it "find" one whose *other* rule
+    fires first.  Both callers want to keep looking, so this yields.
+    """
+    types = list(base)
+    for s, t in zip(slots, combo):
+        types[s] = t
+    free = [s for s in range(len(types)) if s not in slots]
+    if not free:
+        if type_shape_ok(opcode, types):
+            yield tuple(types)
+        return
+    for fill in itertools.product(*(per[s] for s in free)):
+        trial = list(types)
+        for s, value in zip(free, fill):
+            trial[s] = value
+        if type_shape_ok(opcode, trial):
+            yield tuple(trial)
+
+
 def _satisfiable(evaluator, rs_idx, ri, rs, configs, infos, per, default,
                  mem_entries, imm_tuples=((),),
                  mem_pairs=(("NotAtomic", "NotAtomic"),)):
@@ -1069,11 +1194,10 @@ def _satisfiable(evaluator, rs_idx, ri, rs, configs, infos, per, default,
         mem_trials += [(mty, int(align), ordering, failure)
                        for _, _, mty, align in mem_entries
                        for ordering, failure in mem_pairs]
+    opcode = rs["opcodes"][0]
     for config in configs:
         for combo in itertools.product(*values):
-            types = list(default)
-            for s, t in zip(slots, combo):
-                types[s] = t
+          for types in _compatible_types(opcode, default, slots, combo, per):
             for mem in mem_trials:
                 mems = ([E.MemDesc(E.parse_case_llt(mem[0]), mem[1],
                                    mem[2], mem[3])] if mem else [])
@@ -1095,7 +1219,8 @@ def _satisfiable(evaluator, rs_idx, ri, rs, configs, infos, per, default,
 
 def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
                   mem_entries, imm_tuples=((),),
-                  mem_pairs=(("NotAtomic", "NotAtomic"),), scalable_ok=True):
+                  mem_pairs=(("NotAtomic", "NotAtomic"),), scalable_ok=True,
+                  per=None):
     """A query that makes rule ``ri`` the *first* match, or ``None``.
 
     The shared candidate product is capped, so a rule can lose its witness to a
@@ -1129,22 +1254,24 @@ def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
         mem_trials += [(mty, int(align), ordering, failure)
                        for _, _, mty, align in mem_entries
                        for ordering, failure in mem_pairs]
+    search = per if per is not None else [list(v) for v in per_slot]
     for config in configs:
         for combo in itertools.product(*per_slot):
-            types = list(default)
-            for s, t in zip(slots, combo):
-                types[s] = t
-            for mem in mem_trials:
-                mems = ([E.MemDesc(E.parse_case_llt(mem[0]), mem[1],
-                                   mem[2], mem[3])] if mem else [])
-                for imms in imm_tuples:
-                    try:
-                        res = _fire(evaluator, config, opcode, types, mems, imms)
-                    except (E.EvalError, IndexError, KeyError, TypeError,
-                            ValueError, AssertionError):
-                        continue
-                    if res is not None and res[0] == rs_idx and res[1] == ri:
-                        return (config, types, mem, imms, res)
+            for types in _compatible_types(opcode, default, slots, combo,
+                                           search):
+                for mem in mem_trials:
+                    mems = ([E.MemDesc(E.parse_case_llt(mem[0]), mem[1],
+                                       mem[2], mem[3])] if mem else [])
+                    for imms in imm_tuples:
+                        try:
+                            res = _fire(evaluator, config, opcode, types, mems,
+                                        imms)
+                        except (E.EvalError, IndexError, KeyError, TypeError,
+                                ValueError, AssertionError):
+                            continue
+                        if (res is not None and res[0] == rs_idx
+                                and res[1] == ri):
+                            return (config, types, mem, imms, res)
     return None
 
 
@@ -1355,6 +1482,11 @@ def main(argv=None):
         print("rules=%d witnessed=%d shadowed=%d unexercised=%d"
               % (stats["rules"], stats["witnessed"], stats["shadowed"],
                  stats["unexercised"]))
+        if stats["ill_formed"]:
+            print("ill-formed=%d (%s)"
+                  % (stats["ill_formed"],
+                     ", ".join("%s %d" % kv for kv in
+                               sorted(stats["ill_formed_opcodes"].items()))))
     if args.strict_coverage and (stats["unexercised"] or stats["shadowed"]):
         print("cases: %d rule(s) have no witness (%d unexercised, %d shadowed);"
               " the query set does not cover every rule"

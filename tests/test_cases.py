@@ -128,6 +128,22 @@ ruleset B_UNMERGE: G_UNMERGE_VALUES
     legal in(slot(1), [s32, s64])
 """
 
+SHAPED = """\
+type s8 = LLT::scalar(8)
+type s16 = LLT::scalar(16)
+type s32 = LLT::scalar(32)
+type v2s32 = LLT::fixed_vector(2, LLT::scalar(32))
+type v4s32 = LLT::fixed_vector(4, LLT::scalar(32))
+type v8s8 = LLT::fixed_vector(8, LLT::scalar(8))
+type v16s8 = LLT::fixed_vector(16, LLT::scalar(8))
+type v8s16 = LLT::fixed_vector(8, LLT::scalar(16))
+type v16s16 = LLT::fixed_vector(16, LLT::scalar(16))
+
+ruleset B_CONCAT: G_CONCAT_VECTORS
+    legal in_pairs(slot(0), slot(1), [[v16s8, v8s8], [v16s16, v8s16]])
+    bitcast(slot(0), replace(ty(v4s32)))
+"""
+
 
 class VerifierShapes(unittest.TestCase):
     """Queries the generic MIR verifier rejects are not part of the domain."""
@@ -147,6 +163,51 @@ class VerifierShapes(unittest.TestCase):
         self.assertTrue(cases.type_shape_ok("G_UNMERGE_VALUES", ok))
         self.assertFalse(cases.type_shape_ok("G_UNMERGE_VALUES", bad))
         self.assertFalse(cases.type_shape_ok("G_UNMERGE_VALUES", mixed))
+
+    def test_concat_needs_double_lanes_and_one_element_type(self):
+        ok = [E.parse_case_llt(t) for t in ("v16s8", "v8s8")]
+        wrong_lanes = [E.parse_case_llt(t) for t in ("v16s8", "v2s32")]
+        wrong_element = [E.parse_case_llt(t) for t in ("v4s32", "v2s16")]
+        self.assertTrue(cases.type_shape_ok("G_CONCAT_VECTORS", ok))
+        self.assertFalse(cases.type_shape_ok("G_CONCAT_VECTORS", wrong_lanes))
+        self.assertFalse(cases.type_shape_ok("G_CONCAT_VECTORS", wrong_element))
+
+    def test_shuffle_cannot_change_the_element_type(self):
+        ok = [E.parse_case_llt(t) for t in ("v16s8", "v16s8")]
+        changed = [E.parse_case_llt(t) for t in ("v16s8", "v16s32")]
+        scalar = [E.parse_case_llt(t) for t in ("v16s8", "s32")]
+        self.assertTrue(cases.type_shape_ok("G_SHUFFLE_VECTOR", ok))
+        self.assertFalse(cases.type_shape_ok("G_SHUFFLE_VECTOR", changed))
+        self.assertFalse(cases.type_shape_ok("G_SHUFFLE_VECTOR", scalar))
+
+    def test_saturating_convert_keeps_the_lane_count(self):
+        ok = [E.parse_case_llt(t) for t in ("v2i64", "v2f16")]
+        short = [E.parse_case_llt(t) for t in ("v2i64", "f16")]
+        self.assertTrue(cases.type_shape_ok("G_FPTOSI_SAT", ok))
+        self.assertFalse(cases.type_shape_ok("G_FPTOSI_SAT", short))
+
+    def test_shape_check_survives_a_short_tuple(self):
+        # `nslots` comes from the slots the ruleset names, not from the opcode's
+        # arity: a hand-written ruleset may expose one slot of a two-slot
+        # opcode.  The filter must answer False, not raise IndexError.
+        one = [E.parse_case_llt("v16s8")]
+        for opcode in ("G_CONCAT_VECTORS", "G_SHUFFLE_VECTOR",
+                       "G_FPTOSI_SAT"):
+            self.assertFalse(cases.type_shape_ok(opcode, one), opcode)
+
+    def test_shape_filter_counts_what_it_drops(self):
+        doc, features, gen = build(SHAPED)
+        self.assertTrue(gen.cases)
+        self.assertGreater(gen.stats["ill_formed"], 0)
+        self.assertGreater(
+            gen.stats["ill_formed_opcodes"].get("G_CONCAT_VECTORS", 0), 0)
+        # Every surviving query is a shape MIR can hold, and the filter did not
+        # cost either rule its witness.
+        for case in gen.cases:
+            types = [E.parse_case_llt(t) for t in case.types]
+            self.assertTrue(cases.type_shape_ok(case.opcode, types), case)
+        self.assertEqual(sorted({c.rule for c in gen.cases
+                                 if c.kind == "equivalence"}), [0, 1])
 
     def test_other_opcodes_are_unaffected(self):
         self.assertTrue(cases.type_shape_ok(

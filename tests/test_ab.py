@@ -49,7 +49,7 @@ class Adapters(unittest.TestCase):
         self.assertEqual(a64["strategy"], "generated-ctor")
         ctor = ab.load_target("x86-ctor")
         self.assertEqual(ctor["strategy"], "generated-ctor")
-        self.assertEqual(a64["query_count"], 13199)
+        self.assertEqual(a64["query_count"], 12952)
 
     def test_unknown_target_is_an_error(self):
         with self.assertRaises(ab.HarnessError):
