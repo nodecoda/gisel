@@ -2187,9 +2187,17 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
             parts = split_top(text[1:-1])
             if parts and all(x.lstrip().startswith("{") for x in parts):
                 rows = [split_top(r[1:-1]) for r in parts]
+                arity = len(rows[0])
+                if any(len(r) != arity for r in rows):
+                    raise Refuse(text)
+                if arity == 1:
+                    # `{{S32}, {S64}}` is `initializer_list<LLT>`: C++ picks
+                    # the one-type overload, so it constrains slot 0 only.
+                    elems = [tr.t.name(r[0]) for r in rows]
+                    return [(None, "in(slot(%d), [%s])"
+                             % (idx, ", ".join(elems)))]
                 triples = ["[" + ", ".join(tr.t.name(x) for x in r) + "]"
                            for r in rows]
-                arity = len(rows[0])
                 if arity == 2:
                     return [(None, "in_pairs(slot(0), slot(1), [%s])"
                              % ", ".join(triples))]
