@@ -172,7 +172,7 @@
       .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0)
       .coreMinScalarSameAs([=](const LegalityQuery &Query) { return Query.Types[0].isVector(); }, 1, 0)
-      .coreNarrowTo([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (((Query.Types[0]).getScalarSizeInBits() < (Query.Types[1]).getScalarSizeInBits())); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, Query.Types[0]); });
+      .coreMaxScalarSameAs([=](const LegalityQuery &Query) { return Query.Types[0].isVector(); }, 1, 0);
   getActionDefinitionsBuilder(G_PTR_ADD)
       .legalFor({{A_p0, A_i64}, {A_v2p0, A_v2i64}})
       .coreMinScalarOrElt([](const LegalityQuery &) { return true; }, 1, A_s64)
@@ -273,7 +273,7 @@
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreWidenScalarOrEltToNextPow2OrMinSize([](const LegalityQuery &) { return true; }, 0, 8)
       .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-      .coreNarrowTo([=](const LegalityQuery &Query) { return (true) && (((Query.Types[0]).getScalarSizeInBits() < (Query.Types[1]).getScalarSizeInBits())); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, Query.Types[0]); })
+      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
       .clampMinNumElements(0, A_s8, (A_v8s8).getNumElements())
       .clampMaxNumElements(0, A_s8, (A_v16s8).getNumElements())
       .clampMinNumElements(0, A_s16, (A_v4s16).getNumElements())

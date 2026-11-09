@@ -1445,11 +1445,13 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
     elif method in ("minScalarEltSameAsIf", "maxScalarEltSameAsIf"):
         a, b = idx_of(args[1], env), idx_of(args[2], env)
         g = tr.pred_lambda(args[0])
-        if method == "minScalarEltSameAsIf":
-            out.append("widen(slot(%d), same_as(%d)) when %s" % (a, b, g))
-        else:
-            out.append("narrow(slot(%d), replace(same_as(%d))) when (%s and "
-                       "bits_of(slot(%d)) < bits_of(slot(%d)))" % (a, b, g, b, a))
+        # `same_as(k)` is a *scalar width* observation, and both
+        # `coreMinScalarSameAs` and `coreMaxScalarSameAs` already compare
+        # `getScalarSizeInBits()`.  `replace(same_as(k))` would instead make the
+        # whole type of slot k the new type, which for a vector slot produces a
+        # vector where a scalar is expected and trips mutationIsSane.
+        op = "widen" if method == "minScalarEltSameAsIf" else "narrow"
+        out.append("%s(slot(%d), same_as(%d)) when %s" % (op, a, b, g))
     elif method == "maxScalarIf":
         idx = idx_of(args[1], env)
         out.append("narrow(slot(%d), ty(%s)) when %s"

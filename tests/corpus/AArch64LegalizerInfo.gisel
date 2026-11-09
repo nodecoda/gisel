@@ -188,7 +188,7 @@ ruleset A_G_SHL: G_SHL G_ASHR G_LSHR
     widen(slot(1), same_as(0))
     scalarize(slot(0)) when bits_of(slot(0)) > 64
     widen(slot(1), same_as(0)) when sort_of(slot(0)) == vector
-    narrow(slot(1), replace(same_as(0))) when (sort_of(slot(0)) == vector and bits_of(slot(0)) < bits_of(slot(1)))
+    narrow(slot(1), same_as(0)) when sort_of(slot(0)) == vector
 
 ruleset A_G_PTR_ADD: G_PTR_ADD
     legal in_pairs(slot(0), slot(1), [[A_p0, A_i64], [A_v2p0, A_v2i64]])
@@ -302,7 +302,7 @@ ruleset A_G_CTPOP: G_CTPOP
     widen(slot(0), pow2)
     widen(slot(0), 8)
     widen(slot(1), same_as(0)) when true
-    narrow(slot(1), replace(same_as(0))) when (true and bits_of(slot(0)) < bits_of(slot(1)))
+    narrow(slot(1), same_as(0)) when true
     clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
     clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
     clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
