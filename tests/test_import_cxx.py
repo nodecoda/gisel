@@ -142,6 +142,33 @@ class ImporterBugsAreRefusals(unittest.TestCase):
         self.assertIn("RecursionError", importer.p.refused[0][1])
 
 
+class LambdaPredicates(unittest.TestCase):
+    """A predicate lambda is read by its body, whatever the return type."""
+
+    RETURN = ROOT / "tests" / "fixtures" / "legalizer-ctor-lambda-return.cpp"
+    SHAPE = ROOT / "tests" / "fixtures" / "legalizer-ctor-lambda-shape.cpp"
+
+    def test_lambda_with_an_explicit_return_type_is_read(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "T.gisel"
+            r = run("RISCV", str(self.RETURN), "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("1 rulesets, 1 rules, 0 refused", r.stdout)
+            text = out.read_text()
+        self.assertIn("legal sort_of(slot(0)) == scalar", text)
+
+    def test_an_unreadable_lambda_is_refused_not_recursed(self):
+        # `pred()` and `pred_lambda()` used to hand the same text back and
+        # forth, so a lambda with a shape neither knew raised RecursionError
+        # instead of naming the statement.
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "T.gisel"
+            r = run("RISCV", str(self.SHAPE), "--out", str(out))
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("lambda shape not understood", r.stdout)
+        self.assertNotIn("RecursionError", r.stdout + r.stderr)
+
+
 class ReimportedCorpora(unittest.TestCase):
     """Every pinned constructor reproduces its checked-in `.gisel`."""
 

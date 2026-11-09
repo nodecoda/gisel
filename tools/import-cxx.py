@@ -1286,10 +1286,16 @@ class Translator:
         text = text.strip()
         if text.startswith("LegalityPredicate(") and text.endswith(")"):
             return self.pred_lambda(text[len("LegalityPredicate("):-1])
-        m = re.match(r"\[.*?\]\s*\((.*?)\)\s*\{(.*)\}$", text, re.S)
-        if not m:
-            return self.pred(text)
-        return self.body_pred(m.group(2))
+        m = re.match(r"\[.*?\]\s*\((.*?)\)\s*(?:->\s*[^({]+?)?\s*\{(.*)\}$",
+                     text, re.S)
+        if m:
+            return self.body_pred(m.group(2))
+        if re.match(r"\[[^\]]*\]\s*\(", text):
+            # A lambda whose shape this parser does not know.  Calling
+            # `pred()` back would re-dispatch to this function and recurse
+            # until the interpreter gives up, with no line to point at.
+            raise Refuse("lambda shape not understood")
+        return self.pred(text)
 
     def body_pred(self, body):
         """A lambda body of `if (...)` early returns -> one predicate."""
