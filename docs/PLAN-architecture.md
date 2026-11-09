@@ -1,7 +1,7 @@
 # 架构治理计划（Phase 1–2）
 
-状态：**待拍板**。Phase 0（不改语法的止血）已完成并提交，见 §7。
-本文固定“读哪份事实、谁说了算、先做什么、怎么验证”，不重复代码细节。
+状态：**执行中**。Phase 0–P5 已完成并提交；P6 的文档对齐已开始（见 §8）。
+D1/D3/D5/D6 按推荐执行；D2/D4 保持现状，不修改 `.gisel` 语法。
 
 ## 1 目标与非目标
 
@@ -113,13 +113,29 @@ done
 `docs/REPORT-graph.md`。AArch64 baseline 的候选积（前一轮实测约 1.17M states，
 900 s 未跑完）不在本轮修复范围；P5 只要求“可中断、可解释”，不承诺跑完。
 
-## 7 Phase 0 已交付
+## 7 已交付
 
 | 提交 | 内容 |
 |---|---|
 | `066a9d6` | inline `select_type` 的元组 bug；`inc` 渲染内联 select；`walk_nodes` 覆盖 `SelectValue`/`SetValue`/`on`/`to` |
 | `04c4c86` | `gisel/output.py`；`cases`/`domain` 写盘失败返回 2；`graph` 只算一次 `public()` |
 | `6ff8af4` | CI/README/spec/RELEASING 去掉 `--emit=table`；历史报告加状态头；两个 meta-test |
+| `5e56918` | 本文（Phase 1–2 计划） |
+| `575df3d` | `gisel/llt.py`：tuple LLT 的 spell/bits/lanes/mutate/neighbours 单一实现 |
+| `2074d5c` | `gisel/analysis.py`：document/derive_features/inspect_rule(set)/imm_candidates/type_value_spellings；`graph`/`domain` 不再反向依赖 `cases` 私有函数 |
+| `b993b0c` | 分析读规则的**全部**字段（`on`/`to`/内联 select）；feature 只出现在 mutation 里也不再丢配置轴 |
+| `db07b3b` | lint 与 `.inc` 共用 `shim_for`；所有出口都拒绝未声明类型（`[s32]` 不再 inc 能过、core 不能过） |
+| `e44fc0d` | `graph.Domain.successor` 单点判定域外；closure 审计每个非 opaque 状态的全部成员；`--refine` 把“无后继”成员单独分桶；迭代 DFS |
 
-Phase 0 的验证：`305 passed, 94 subtests passed`；`import-cxx --all --check`
-9/9 matches。
+验证：`310 passed, 94 subtests passed`；`import-cxx --all --check` 9/9 matches。
+
+## 8 剩余
+
+- P6：`docs/REPORT-graph.md` 已按 `e44fc0d` 重写；AArch64 baseline 已重跑，
+  发现 `G_ASHR` 混合 vector/scalar 查询上的 147 个商图 2-环（见报告 §5）。
+  可达性与上游定性是独立 triage 事项，不要直接写成“上游死循环”。
+- D5 已落地：`cases` 的 stats 打印 `slot_budget` / `candidate_max` /
+  `candidate_over_budget`；`spec/axes.md` 与 `docs/ALGORITHM-cases.md`
+  已改成“软预算”。
+- `analysis._walk_info` 与 `ast.walk_nodes` 已经是一套遍历；lint 的
+  `TARGET_SORTS` 与 shim 表仍是两份，合表属于后续重构（不在 P0–P5 的验收里）。

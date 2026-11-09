@@ -208,7 +208,7 @@ TOTAL                                 340    402
 而 RISCV 的构造函数对 `G_CTLZ` 写了两条链。选择在 gisel 侧规范化，不动上游那条
 诊断：按 opcode 拼接（`dsl.canonicalize_rulesets`），序列相同的仍在共享。
 RISCV 从 **96 表 / 402 条** 变成 **91 表 / 413 条**（只复制一次 Zbb 链，不是 738），
-复算仍 19512 / 0 / 0；AArch64/X86 没有重复 opcode，是恒等变换，golden 逐字节不变。
+复算仍 19512 / 0 / 0；X86 没有重复 opcode，是恒等变换（63/328 不变）；AArch64 有 3 个重复 opcode，规范化后 117→114 张表、741→743 条 core 规则，golden 逐字节不变。
 
 规范化后的 `.td` 交给打了 `llvm-dev/patches/core-ir-riscv-gaps.diff` 的 tblgen：
 

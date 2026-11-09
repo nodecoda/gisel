@@ -110,7 +110,9 @@ imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内�
 
 ### profiles
 
-- `cases.max_slot_values`：每个 type slot 的候选上限（默认 16）。
+- `cases.max_slot_values`：每个 type slot 的候选**软预算**（默认 16）。软的意思是：规则里的每个字面量及其邻居永远保留，只有域类型受它约束，
+  所以单槽候选数可以超过 16（AArch64 `G_ADD` 实测 105）。`cases` 的 stats
+  打印 `slot_budget` / `candidate_max` / `candidate_over_budget`。
 - `cases.boundaries`：`false` 时关闭边界探测（`max_boundary_per_rule = 0`）。
 - `cases.max_outside`：每个 (config, opcode) 的 outside 上限。
   `--max-outside` 显式给出时覆盖 profile。

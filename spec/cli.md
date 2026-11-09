@@ -21,6 +21,13 @@ gisel 只有这七个命令。新增一个命令等于新增一块产品面，�
 （JSON）、`core`（schema-0.4 JSON）。`table`（C++ 表）已于 2026-11-09 移除，
 见 `spec/m3-scope.md`。
 
+`check` 比较的是**产物形**，不是源文件的 builder 边界：`--emit=check` 与
+`--emit=core` 在生成前先做 `canonicalize_rulesets`（同一 opcode 的多条
+builder 链按文档顺序拼成一张表）；`--emit=inc` 保留源文件的 builder 边界，
+因为那正是手写 C++ 构造函数的形状。因此同一份 `.gisel` 在 `check`/`core` 与
+`inc` 下的 ruleset 数可能不同（X86 是恒等；AArch64 117→114、RISC-V 96→91），
+这不是漂移，是契约。`lint` 的行号始终指向源文件。
+
 `cases` 与 `domain` 产出的是**问题**，不是答案文件；答案由外部 legalizer 或
 `eval` 给出，比较命令在工作台（`tools/ab/diff.py`）。
 
