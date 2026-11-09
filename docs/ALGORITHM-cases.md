@@ -295,6 +295,80 @@ f16, f32, f64, bf16`。它们保证「规则什么字面量都没写」时也能
 
 `--strict-coverage` 把「无见证的规则数」变成退出码 1，让这件事不能再沉默。
 
+#### 形状：槽不是独立轴
+
+上面的候选是**逐槽**构造的，但一个查询的多个槽不是互相独立的：LLVM 的
+generic opcode 对槽之间的关系有约束。`G_CONCAT_VECTORS` 的结果必须有源的两倍
+lane 数、且元素类型相同；`G_SHUFFLE_VECTOR` 的源必须是向量、且不能改元素类型。
+直接对逐槽候选做笛卡尔积，就会造出这种形状：
+
+```text
+G_CONCAT_VECTORS  (v16s8, v2s32)     # concat 两个 v2s32 得到 v4s32，不是 v16s8
+G_SHUFFLE_VECTOR  (v16s8, s32)       # 源是标量
+G_FPTOSI_SAT      (v2i64, f16)       # 标量和 2-lane 向量配对
+```
+
+这些不是"难测的点"，是**问不出来的点**：真实的 MIR 里它们不可能出现。把官方的
+legalizer 叫过去，它会在 `LegalizeRuleSet::apply` 的
+`mutationIsSane(Rule, Query, Mutation)` 上直接断言（AArch64 上 108 条）。
+
+所以候选乘积之后要过一层形状过滤。它不是"跳过不好测的输入"，而是**把问题限定
+在能被问出来的集合里**——分母必须先于答案成立。
+
+约束的来源分三档，每一条都要能指回依据：
+
+| 来源 | 含义 | 例 |
+|---|---|---|
+| `MachineVerifier.cpp` | 上游 verifier 就拒绝的形状 | `G_CONCAT_VECTORS`（1602 行）、`G_SHUFFLE_VECTOR`（1945 行） |
+| `semantics` | verifier 没查，但 opcode 的定义不允许 | `G_FPTOSI_SAT` 的 lane 一致性；`G_CONCAT_VECTORS` 的元素类型一致 |
+| 未列出 | 不猜 | 其余 opcode 的槽仍然是独立轴 |
+
+第二档必须单独标出来，因为它弱于第一档。例子很实在：`G_CONCAT_VECTORS` 的
+verifier 只比较 lane 总数，**不比较元素类型**，所以 `(v4s32, v2s16)` 能过
+verifier，然后让 legalizer 断言。concat 的定义是"把两个同元素类型的向量粘起来"，
+所以这条按语义过滤；但它是语义推断，不是抄 verifier。
+
+过滤点有两处，缺一不可：
+
+- `_queries()` 在乘积时丢，省掉后面的求值开销；
+- `generate()` 的 `emit()` 再兜一层，因为 boundary 和定向 witness 两条路径会
+  **直接构造**类型，不经过乘积。
+
+丢弃必须被计数，不能静默：
+
+```text
+ill-formed=15582 (G_CONCAT_VECTORS 3435, G_FPTOSI_SAT 7951,
+                  G_MERGE_VALUES 288, G_SHUFFLE_VECTOR 3628,
+                  G_UNMERGE_VALUES 280)
+```
+
+数字同时出现在文本输出和 `--json` 的 `stats.ill_formed` /
+`stats.ill_formed_opcodes` 里。它回答的是"我们主动放弃了多少个百分点"，
+而不是藏起来。
+
+还有两个连带的地方不修就会把覆盖数虚高：
+
+1. **定向搜索也要形状感知**。`_satisfiable` 和 `_rule_witness` 会用默认值填
+   规则没有枚举的槽；默认值可能和已选值不组成合法形状。修复前它们会"找到"
+   一个问不出来的查询，于是规则被记为已覆盖。`_compatible_types()` 枚举所有
+   合法的填充，两个搜索都从它取。
+2. **没有字面量的槽要镜像别的槽**。`G_SHUFFLE_VECTOR` 的规则只写 `slot(0)`，
+   `slot(1)` 的候选就只剩 domain 的前 16 个，里面可能一个同元素向量都没有，
+   于是合法配对根本凑不出来。`_candidates()` 现在让这种槽先用同一 ruleset
+   其它槽的字面量。
+
+效果（AArch64，同一棵树）：
+
+| | 过滤前 | 过滤后 |
+|---|---:|---:|
+| 查询 | 13,199 | 12,952 |
+| 两侧都断言 | 108 | **0** |
+| 有见证的规则 | 572 | **572** |
+
+规则覆盖没有下降是这条约束的验收条件：如果过滤让某条规则失去见证，说明要么
+约束写错了，要么那条规则真的只能被非法输入触发——两种都要停下来看，不能拿
+"分母变小了"当成功。
+
 ### 6.2 内存
 
 内存行来自 `in_mem_desc` 的 `(t0, t1, mty, align)`：

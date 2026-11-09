@@ -47,7 +47,7 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 产物是一行一个查询的 JSONL，**不带答案**：`config/name/types/mem/imms`。
 口径（等价类、边界、outside、见证）在 `spec/cases.md` 和
 `docs/ALGORITHM-cases.md`；每个 target 的查询数是契约的一部分，脚本里写死
-（X86 3,282 / AArch64 13,199 / RISC-V 6,301），变了就停下来看新题目。
+（X86 3,217 / AArch64 12,952 / RISC-V 6,301），变了就停下来看新题目。
 
 ## 3 对拍
 
@@ -88,12 +88,23 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 
 | target | 查询行 | 去重 key | 一致 | 分歧 | 两侧都断言 | 备注 |
 |---|---:|---:|---:|---:|---:|---|
-| AArch64 | 13,199 | 13,199 | 13,199 | 0 | 108 | 剩下的 108 条在官方侧也断言，是上游自身的问题，不是两侧差异 |
+| AArch64 | 12,952 | 12,952 | 12,952 | 0 | 0 | — |
 | RISC-V | 6,301 | 6,299 | 6,299 | 0 | 0 | — |
-| X86 | 3,282 | 3,276 | 3,276 | 0 | 0 | 19 条 `G_BUILD_VECTOR` 归零，见下 |
+| X86 | 3,217 | 3,211 | 3,211 | 0 | 0 | — |
 
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
 `patches`（`PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
-`Unsupported`，差异归零。AArch64 的 117 条同理：PR #238306 修好官方侧的
-`mutationIsSane` 后只剩 108 条**两侧都断言**的查询，那是上游自己也会挂的点，
-不属于对拍差异。
+`Unsupported`，差异归零。
+
+AArch64 的 117 条要拆成两层看：PR #238306 修好官方侧的 `mutationIsSane` 后
+暴露成 9 条真实分歧，那是我们的 importer 把 `maxScalarEltSameAsIf` 翻错了；
+修完后还剩 108 条两侧都断言。
+
+那 108 条不是上游的锅，是**我们自己造的非法查询**：逐槽候选做笛卡尔积，
+造出了 `(v16s8, v2s32)`、`(v16s8, s32)`、`(v2i64, f16)` 这类真实 MIR 里不可能
+出现的类型组合，官方 legalizer 正确地拒绝了它们。加了 opcode 形状约束之后
+108 条归零，规则见证数不变（572）。详见 `docs/ALGORITHM-cases.md` 的
+「形状：槽不是独立轴」。
+
+查询行数因此从 13,199 / 3,282 变成 12,952 / 3,217；RISC-V 没有这类形状，
+6,301 不变。
