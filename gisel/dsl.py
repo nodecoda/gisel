@@ -69,7 +69,8 @@ UNARY_CALL = {"elem_of": "elemOf", "scalar_of": "scalarOf", "sort_of": "sortOf",
               "ty": "ty", "pow2_min": "pow2Min"}
 BINARY_CALL = {"vec_of": "vecOf", "scalar_or_vec_of": "scalarOrVecOf",
                "elt_type_to": "eltTypeTo", "elt_size_to": "eltSizeTo",
-               "div_lanes": "divLanes", "mul": "mul", "urem": "urem",
+               "div_lanes": "divLanes", "mul": "mul", "add": "add",
+               "sub": "sub", "urem": "urem",
                "udiv": "udiv", "clamp": "clamp", "align_to": "alignTo"}
 
 # A canonical type literal: scalar (s8/i32/f16/bf16), pointer (p0:64/p0:*),
@@ -678,7 +679,7 @@ def _tc(node, arity, errs, names=None):
     if k in ("memOrdering", "memFailureOrdering"):
         need(0, "MemDesc")
         return "Ordering"
-    if k in ("mul", "urem", "udiv", "alignTo"):
+    if k in ("mul", "add", "sub", "urem", "udiv", "alignTo"):
         need(0, "Int"); need(1, "Int")
         return "Int"
     if k == "pow2Ceil":

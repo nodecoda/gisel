@@ -555,6 +555,10 @@ class Evaluator:
             return self.value(a[2], types, mems, config, imms)
         if k == "mul":
             return self.int_value(a[0], types, mems, config, imms) * self.int_value(a[1], types, mems, config, imms)
+        if k == "add":
+            return self.int_value(a[0], types, mems, config, imms) + self.int_value(a[1], types, mems, config, imms)
+        if k == "sub":
+            return self.int_value(a[0], types, mems, config, imms) - self.int_value(a[1], types, mems, config, imms)
         if k == "urem":
             return self.int_value(a[0], types, mems, config, imms) % self.int_value(a[1], types, mems, config, imms)
         if k == "udiv":

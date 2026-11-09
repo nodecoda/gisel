@@ -324,6 +324,10 @@ class IncEmitter:
                 self.value(a) for a in n["args"])
         if k == "mul":
             return "(%s * %s)" % tuple(self.value(a) for a in n["args"])
+        if k == "add":
+            return "(%s + %s)" % tuple(self.value(a) for a in n["args"])
+        if k == "sub":
+            return "(%s - %s)" % tuple(self.value(a) for a in n["args"])
         if k == "urem":
             return "(%s %% %s)" % tuple(self.value(a) for a in n["args"])
         if k == "udiv":

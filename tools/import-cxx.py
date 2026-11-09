@@ -509,16 +509,63 @@ def _fold_pow2ceil(text):
         i = end
 
 
-def _binop_at(text, ops):
+def _whole_paren(text):
+    """`(expr)` -> `expr`; None when the parentheses are not the whole text."""
+    t = text.strip()
+    if not (t.startswith("(") and t.endswith(")")):
+        return None
     depth = 0
+    for i, c in enumerate(t):
+        if c == "(":
+            depth += 1
+        elif c == ")":
+            depth -= 1
+            if depth == 0 and i != len(t) - 1:
+                return None
+    return t[1:-1].strip() if depth == 0 else None
+
+
+def _strip_outer_parens(text):
+    """Drop grouping parentheses around the whole expression."""
+    t = text.strip()
+    while True:
+        inner = _whole_paren(t)
+        if inner is None:
+            return t
+        t = inner
+
+
+def _binop_at(text, ops):
+    """Index of the rightmost top-level operator in ``ops`` (left-assoc)."""
+    depth = 0
+    best, bestc = -1, None
     for i, c in enumerate(text):
         if c in "([":
             depth += 1
         elif c in ")]":
             depth -= 1
         elif depth == 0 and c in ops:
-            return i, c
-    return -1, None
+            if c in "+-":
+                j = i - 1
+                while j >= 0 and text[j].isspace():
+                    j -= 1
+                if j < 0 or text[j] in "+-*/%(<,=!&|?:":
+                    continue          # unary sign, not a binary operator
+            best, bestc = i, c
+    return best, bestc
+
+
+def _match_brace(text, i):
+    """Index just past the `}` that closes the `{` at ``i``."""
+    depth = 0
+    for j in range(i, len(text)):
+        if text[j] == "{":
+            depth += 1
+        elif text[j] == "}":
+            depth -= 1
+            if depth == 0:
+                return j + 1
+    raise Refuse("unbalanced braces")
 
 
 def _is_assert(st):
@@ -527,21 +574,33 @@ def _is_assert(st):
 
 
 def _arith(text):
-    """C++ integer arithmetic the DSL spells as `mul`/`urem`/`pow2_ceil`."""
+    """C++ integer arithmetic the DSL spells as `mul`/`add`/`udiv`/....
+
+    The rewrite follows C++ precedence (``* / %`` bind tighter than ``+ -``)
+    and is left-associative, so ``a + b * c`` becomes
+    ``add(a, mul(b, c))``.  Parentheses are only grouping, never a value.
+    """
     text = re.sub(r"\b(\d+)[uUlL]+\b", r"\1", text)   # `1u`, `8LL`, ...
     text = _fold_pow2ceil(text)
-    for _ in range(8):
-        i, c = _binop_at(text, "*%")
-        if i < 0:
+    t = text.strip()
+    # Only arithmetic grouping is dropped.  A parenthesised *predicate*
+    # (`(sort_of(x) == vector and ...)`) must keep its parentheses: `_arith`
+    # is also reached from the comparison branch.
+    while True:
+        inner = _whole_paren(t)
+        if inner is None or not (re.fullmatch(r"-?\d+", inner) or
+                                 _binop_at(inner, "+-*/%")[0] >= 0):
             break
-        lhs, rhs = text[:i].strip(), text[i + 1:].strip()
-        j, _c = _binop_at(rhs, "*%")
-        if j >= 0:
-            rhs, rest = rhs[:j].strip(), rhs[j:]
-        else:
-            rest = ""
-        text = "%s(%s, %s)%s" % ("mul" if c == "*" else "urem", lhs, rhs, rest)
-    return text
+        t = inner
+    if re.fullmatch(r"-?\d+", t):
+        return t
+    for ops, names in (("+-", {"+": "add", "-": "sub"}),
+                       ("*/%", {"*": "mul", "/": "udiv", "%": "urem"})):
+        i, c = _binop_at(t, ops)
+        if i >= 0:
+            lhs, rhs = t[:i].strip(), t[i + 1:].strip()
+            return "%s(%s, %s)" % (names[c], _arith(lhs), _arith(rhs))
+    return t
 
 
 def _ordering(name):
@@ -1294,6 +1353,149 @@ class Translator:
             raise Refuse("host helper %r" % m.group(1))
         return out
 
+    # -- mutation helpers (static LegalizeMutation F(unsigned i)) ---------
+    def mutation_helper_value(self, name, idx, env):
+        """Expand `oneMoreElement(0)` and friends into a `.gisel` type value.
+
+        The helper is recognised by the *shape* of its body, not by its name:
+        any `static LegalizeMutation F(unsigned i)` whose lambda is a chain of
+        local declarations plus `return std::pair(i, <type expr>)`.  A body
+        that uses anything else is refused, not guessed.
+        """
+        spec = self._mutation_helper_spec(name)
+        if spec is None:
+            return None
+        henv = dict(env or {})
+        henv[spec["param"]] = idx
+        binds = {}
+        try:
+            for var, expr in spec["decls"]:
+                binds[var] = self._helper_value(expr, binds, henv)
+            return self._helper_value(spec["type"], binds, henv)
+        except Refuse:
+            return None
+
+    def _mutation_helper_spec(self, name):
+        cache = self.__dict__.setdefault("_mutation_helpers", {})
+        if name in cache:
+            return cache[name]
+        cache[name] = None
+        src = getattr(self, "source", "")
+        m = re.search(r"static\s+LegalizeMutation\s+%s\s*\(([^)]*)\)\s*\{"
+                      % re.escape(name), src)
+        if not m:
+            return None
+        params = split_top(m.group(1))
+        if len(params) != 1:
+            return None
+        param = params[0].replace("*", " ").replace("&", " ").split()[-1]
+        try:
+            close = _match_brace(src, m.end() - 1)
+        except Refuse:
+            return None
+        body = src[m.end():close - 1]
+        lm = re.search(r"\[[^\]]*\]\s*\(", body)
+        if not lm:
+            return None
+        try:
+            pclose = match_paren(body, lm.end() - 1)
+        except Exception:
+            return None
+        bopen = body.find("{", pclose)
+        if bopen < 0:
+            return None
+        try:
+            bclose = _match_brace(body, bopen)
+        except Refuse:
+            return None
+        lam = body[bopen + 1:bclose - 1]
+        ret, decls = None, []
+        for st, _ in split_statements(lam):
+            st = st.strip().rstrip(";").strip()
+            if not st or _is_assert(st):
+                continue
+            if st.startswith("return "):
+                ret = st[len("return "):].strip()
+                continue
+            dm = re.fullmatch(
+                r"(?:const\s+)?(?:unsigned|int|auto|LLT|bool)\s+(\w+)\s*=\s*(.+)",
+                st, re.S)
+            if not dm:
+                return None
+            decls.append((dm.group(1), dm.group(2).strip()))
+        if ret is None:
+            return None
+        pm = re.fullmatch(
+            r"(?:std::)?(?:make_pair|pair(?:\s*<[^>]*>)?)\s*\((.*)\)",
+            ret, re.S)
+        if not pm:
+            return None
+        args = split_top(pm.group(1))
+        if len(args) != 2:
+            return None
+        spec = {"param": param, "decls": decls, "type": args[1].strip()}
+        cache[name] = spec
+        return spec
+
+    def _helper_value(self, text, binds, env):
+        """A C++ type expression inside a mutation helper -> `.gisel` value."""
+        t = _strip_outer_parens(text.strip().rstrip(";"))
+        if not t:
+            raise Refuse(text)
+        if re.fullmatch(r"\d+[uUlL]*", t):
+            return str(int(re.sub(r"[uUlL]+$", "", t)))
+        if t.startswith("-"):
+            return "sub(0, %s)" % self._helper_value(t[1:], binds, env)
+        for ops, names in (("+-", {"+": "add", "-": "sub"}),
+                           ("*/%", {"*": "mul", "/": "udiv", "%": "urem"})):
+            i, c = _binop_at(t, ops)
+            if i >= 0:
+                return "%s(%s, %s)" % (
+                    names[c],
+                    self._helper_value(t[:i], binds, env),
+                    self._helper_value(t[i + 1:], binds, env))
+        if t in binds:
+            return binds[t]
+        m = re.fullmatch(r"Query\.Types\[(.+)\]", t, re.S)
+        if m:
+            return "slot(%s)" % idx_of(m.group(1), env)
+        m = re.fullmatch(r"(\w+)\.get(NumElements|SizeInBits|ElementType|"
+                         r"ScalarSizeInBits|ScalarType)\(\)", t)
+        if m:
+            base = self._helper_value(m.group(1), binds, env)
+            if m.group(2) == "NumElements":
+                return "num_elems(%s)" % base
+            if m.group(2) in ("SizeInBits", "ScalarSizeInBits"):
+                return "size_of(%s)" % base
+            if m.group(2) == "ElementType":
+                return "elem_of(%s)" % base
+            return "scalar_of(%s)" % base
+        m = re.fullmatch(r"LLT::fixed_vector\((.*)\)", t, re.S)
+        if m:
+            args = split_top(m.group(1))
+            if len(args) != 2:
+                raise Refuse(text)
+            return "vec_of(%s, %s)" % (
+                self._helper_value(args[0], binds, env),
+                self._helper_value(args[1], binds, env))
+        m = re.fullmatch(r"LLT::scalarOrVector\((.*)\)", t, re.S)
+        if m:
+            args = split_top(m.group(1))
+            if len(args) != 2:
+                raise Refuse(text)
+            cm = re.fullmatch(r"ElementCount::getFixed\((.*)\)",
+                              _strip_outer_parens(args[0]), re.S)
+            if not cm:
+                raise Refuse(text)
+            return "scalar_or_vec_of(%s, %s)" % (
+                self._helper_value(cm.group(1), binds, env),
+                self._helper_value(args[1], binds, env))
+        if re.fullmatch(r"[A-Za-z_]\w*", t):
+            name = self.t.name(t)
+            if name != t:
+                return "ty(%s)" % name
+        raise Refuse(text)
+
     # -- align helpers ---------------------------------------------------
     def align_variants(self, text):
         """`getScalarMemAlign(n)` -> [(gate, integer), ...], mutually exclusive."""
@@ -1938,6 +2140,16 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
                          r"\s*,\s*(.+)\)", text, re.S)
         if m:
             return "slot(%s), ty(%s)" % (m.group(1), tr.t.name(m.group(2)))
+        m = re.fullmatch(r"([A-Za-z_]\w*)\s*\((.*)\)", text, re.S)
+        if m and "::" not in text:
+            try:
+                i = idx_of(m.group(2), env)
+            except Refuse:
+                i = None
+            if isinstance(i, int):
+                value = tr.mutation_helper_value(m.group(1), i, env)
+                if value is not None:
+                    return "slot(%d), replace(%s)" % (i, value)
         if text.startswith("["):
             return tr.mutation_lambda(text)
         raise Refuse(text)
@@ -2394,6 +2606,7 @@ class Importer:
         self.t = Types()
         self.t.int_ternary_text = {}
         self.tr = Translator(self.t)
+        self.tr.source = source
         self.t.cond_fn = self.tr.pred
         self.t.feat_name = self.tr.feature
         self.tr.helpers = parse_helpers(source)

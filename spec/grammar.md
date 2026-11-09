@@ -121,6 +121,12 @@ call   := ID "(" [ expr {"," expr} ] ")"
 一元观察子与构造子见 `dsl.py:66-82`（`UNARY_CALL`、`BINARY_CALL`）；
 `slot(i)`、`mem_slot(i)`、`imm(i)` 是特例（`dsl.py:45`、`ZERO_ARG`）。
 
+`Int` 值可以用 `add`/`sub`/`mul`/`udiv`/`urem`/`align_to`/`pow2_ceil` 组合，
+sort 都是 `(Int, Int) -> Int`。它们只表达上游 helper 里的整数算术，
+不是通用表达式语言：没有变量、没有函数定义。`more`/`fewer` 的目标
+若是 `replace(<LLT 表达式>)`，整条变异由表达式算出（见 AMDGPU 的
+`oneMoreElement` / `moreEltsToNext32Bit` / `fewerEltsToSize64Vector`）。
+
 `imm(i)` 读 `Query.Immediates[i]`，sort 是 `Int`，只能出现在谓词里（不是类型，
 不能当 `widen` 的目标）。它没有 arity 可检查：冻结 opcode 表只描述类型槽，
 所以 `imm(9)` 不会被 J3b 拦下。
