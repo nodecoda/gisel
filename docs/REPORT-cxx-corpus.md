@@ -125,7 +125,8 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 - 换上游修订需要改 `TARGETS` 里的计数并重新生成，不是运行时参数；这是
   有意为之。当前三份输入钉的是和冻结答案同一次构建的源码修订（sha 见上表），
   不一定是最新 upstream；换修订就要连答案一起重冻。
-- M68k 已转正（见 §9），WebAssembly 已转正（见 §10），PowerPC 已转正（见 §11）。
+- M68k 已转正（见 §9），WebAssembly 已转正（见 §10），PowerPC 已转正（见 §11），
+  ARM 已转正（见 §12）。
 - LLVM 研究分支上残留的 `.td` / `-gen-legalizer*` 代码不在本仓库清理范围；
   gisel 这边已经不再读它。
 
@@ -222,3 +223,84 @@ tools/ab/run-ppc-end-to-end.sh TREE BUILD ppc.inc OUT
 没限制宽度，而 `Bitcast` 的 `mutationIsSane` 要求新旧类型位宽相等。复现和补丁写法
 记在 `/home/ubuntu/admin/upstream-issues/2026-11-09-15-gisel-ppc-bitcast-size-assert.md`
 （待提 issue）。
+
+## 12 ARM 转正（2026-11-09）
+
+ARM 的构造函数 214 行、52 个规则集 / 96 条规则。它的 legalizer 不在 `GISel/`
+子目录，路径是 `lib/Target/ARM/ARMLegalizerInfo.cpp`；`import-cxx.py` 里 ARM 的
+`rel` 和 `FEATURE_NAMES` 都按这个路径来。
+
+三处新增，都是 ARM 自己的形状：
+
+| C++ | 处理 |
+|---|---|
+| `static bool AEABI(const ARMSubtarget &ST) { return A \|\| B \|\| C; }`，用成 `if (AEABI(ST))` | 新增 `parse_helpers` 的 `static bool` 分支 + `local_bool`：作为 `if` gate 时按它拼的析取式内联，而不是当成 `LegalityPredicate` |
+| `REMBuilder.libcallFor({s32})` | `libcallForCartesianProduct` 早就在分支里，`libcallFor` 只差一个动作名 |
+| `bool A_HasHWDivide = (!ST.isThumb() && ...) \|\| (ST.isThumb() && ...)` 跨行 | `feature()` 和 `bool X = ...` 都先把表达式折成一行：feature 声明是一行，声明文本同时是求值 key |
+
+剩下两条拒绝是 `setFCmpLibcallsAEABI()` / `setFCmpLibcallsGNU()`（第 153 行）。
+它们不产生规则：只填 `FCmp32/64Libcalls` 数组，供 `legalizeCustom()` 的
+`G_FCMP` 分支用，规则形里没有对应物。现在由 `DATA_TABLE_INITIALISERS`
+点名跳过，**计数并打印**，同时写进 `.gisel` 文件头：
+
+```
+ARM: 52 rulesets, 96 rules, 0 refused
+  skipped line 153: setFCmpLibcallsAEABI() (data table, not a rule)
+  skipped line 153: setFCmpLibcallsGNU() (data table, not a rule)
+```
+
+这是“不是规则所以不转录”，不是“翻译不了就跳过”：名单是显式的，输出可见，
+`--check` 仍逐字节复现。
+
+### 12.1 配置轴
+
+构造函数自己读的谓词有 9 个（`isThumb1Only` 只做早退，不进规则）。实际取值不是
+猜的：先用一个探针程序把候选 triple/CPU 的 `ARMSubtarget` 真值打出来，再写进
+`tests/cases/arm-features.json`：
+
+| config | triple / CPU | 起点 |
+|---|---|---|
+| `armv7a-neon` | `armv7-linux-gnueabihf` / `cortex-a7` | VFP4 + NEON + HW divide |
+| `armv7a-nodiv` | 同上 / `-hwdiv,-hwdiv-arm` | 只关 HW divide |
+| `armv7a-a5` | `cortex-a5` | VFP4、无 divide |
+| `armv6-arm1176` | `armv6-linux-gnueabihf` / `arm1176jzf-s` | NEON 关 |
+| `armv4t` | `armv4t-linux-gnueabi` / `arm7tdmi` / `+soft-float` | 无 V5T、无 VFP2、软浮点 |
+| `thumbv7m` | `thumbv7m-none-eabi` / `cortex-m3` | M-profile，无 FPU |
+| `armv7-soft` | `armv7-linux-gnueabi` / `generic` / `+soft-float` | 软浮点 + NEON |
+
+这一步抓到一个真错：`cortex-a5` 的 `hasVFP4Base()` 是**真**（VFPv4-D16），我第一版
+按“A5 老”写成假，1,670 条里 `G_FMA s32` 一条从 Legal 变 Libcall——`ab.py` 的
+三方矩阵（官方 / 我们 / 求值器）直接把它挑出来了。改真值后归零。
+
+### 12.2 结果
+
+```
+python3 -m gisel gen tests/corpus/ARMLegalizerInfo.gisel --emit=inc --out /tmp/arm.inc
+tools/ab/run-arm-end-to-end.sh TREE BUILD /tmp/arm.inc OUT
+{"agree": 1670, "disagree": 0, "unanswerable": 0}
+
+python3 tools/ab/ab.py run --target arm --tree TREE --build BUILD \
+  --queries OUT/queries.jsonl --out OUT2
+target=arm compare=full queries=1670 agree=1670 disagree=0 unanswerable=0 rc=0
+```
+
+`bundle.json` 的三方矩阵是 `all_agree 1670`：官方库、生成的构造函数、gisel 求值器
+三者同答案。
+
+### 12.3 未覆盖
+
+- **Thumb1 没有配置。** 构造函数在 `if (ST.isThumb1Only()) { verify(...); return; }`
+  处返回，一个规则都不注册；`.gisel` 没有“这个 subtarget 一张表都没有”的写法，
+  所以带上 Thumb1 只会得到一条由构造决定的全量分歧。这是语言缺口，记在这里而不是
+  靠少列配置糊过去。
+- **`setFCmpLibcalls*` 的表没有对拍。** 它走 `legalizeCustom()`，不在 `getAction()`
+  的返回面上；`G_FCMP` 的 action（`custom`）是对拍过的，表内容不是。
+- `A_G_SREM#3`（`not AEABI && not HW divide` 的 libcall 分支）在真实 ABI 下取不到：
+  试过的 triple 全部 `isTargetAEABI()` 为真。cases 把它报成 `unexercised`。
+- `A_G_LOAD#1` 是 `unsupportedIfMemSizeNotPow2()` 那条 `unsupported`，在查询集里
+  `unexercised`：mem 轴上的候选（s8/s16/s32/s64/p0）字节数全是 2 的幂，没有一条
+  能走到它。
+- `A_G_LOAD#3`（VFP2 下的 `narrow(slot(0), ty(A_s32))`）是 `shadowed`：同轴上先命中
+  的 `legal`（s64 + align 32）把它挡在前面。
+- 这三条和 WebAssembly 报的 `shadowed/unexercised` 是同一口径：列出来、不静默，
+  也不为了清零去改分区。

@@ -27,6 +27,10 @@
     "PowerPC": {
       "path": "llvm/lib/Target/PowerPC/GISel/PPCLegalizerInfo.cpp",
       "sha256": "4ca6a62b6f435c6e3e8ce1d576458a111026bdcbd35d978c22160f840cc3aa2a"
+    },
+    "ARM": {
+      "path": "llvm/lib/Target/ARM/ARMLegalizerInfo.cpp",
+      "sha256": "b86441eb03f4e50291053f61da8a94c542224767d705933d54b2fd3761a59b02"
     }
   },
   "patches": [

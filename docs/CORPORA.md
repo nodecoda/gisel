@@ -91,6 +91,7 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 | M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-m68k-end-to-end.sh` |
 | PowerPC | `PowerPC/GISel/PPCLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 98 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-ppc-end-to-end.sh` |
 | WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 942 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-wasm-end-to-end.sh` |
+| ARM | `ARM/ARMLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,670 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-arm-end-to-end.sh` |
 
 ## 证据分三层，别混
 

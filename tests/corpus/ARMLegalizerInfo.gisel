@@ -1,0 +1,233 @@
+//===- ARMLegalizerInfo.gisel - imported from ARMLegalizerInfo.cpp -*- gisel -*-===//
+//
+// One-shot transcription: `tools/import-cxx.py ARM ARMLegalizerInfo.cpp`.
+// Source sha256 b86441eb03f4e50291053f61da8a94c542224767d705933d54b2fd3761a59b02.  Do not edit by hand; re-run the importer instead.
+//
+// The importer refuses what it cannot translate; every refusal below is a
+// statement that still has to be written by hand (or taught to the importer).
+//
+// Skipped (2 statement(s), data tables for custom legalisation, not rules):
+//   line 153: setFCmpLibcallsAEABI()
+//   line 153: setFCmpLibcallsGNU()
+//
+//===----------------------------------------------------------------------===//
+include "llvm/Target/LegalizerInfo.td"
+include "llvm/Target/Target.td"
+
+feature A_HasHWDivide = (!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())
+feature A_hasNEON = ST.hasNEON()
+feature A_hasV5TOps = ST.hasV5TOps()
+feature A_hasVFP2Base = ST.hasVFP2Base()
+feature A_hasVFP4Base = ST.hasVFP4Base()
+feature A_isTargetAEABI = ST.isTargetAEABI()
+feature A_isTargetGNUAEABI = ST.isTargetGNUAEABI()
+feature A_isTargetMuslAEABI = ST.isTargetMuslAEABI()
+feature A_isThumb1Only = ST.isThumb1Only()
+feature A_useSoftFloat = ST.useSoftFloat()
+
+type A_p0 = LLT::pointer(0, 32)
+type A_s1 = LLT::scalar(1)
+type A_s8 = LLT::scalar(8)
+type A_s16 = LLT::scalar(16)
+type A_s32 = LLT::scalar(32)
+type A_s64 = LLT::scalar(64)
+
+ruleset A_G_SEXT: G_SEXT G_ZEXT G_ANYEXT
+    legal in_pairs(slot(0), slot(1), [[A_s8, A_s1], [A_s8, A_s8], [A_s8, A_s16], [A_s16, A_s1], [A_s16, A_s8], [A_s16, A_s16], [A_s32, A_s1], [A_s32, A_s8], [A_s32, A_s16]])
+
+ruleset A_G_TRUNC: G_TRUNC
+    legal in_pairs(slot(0), slot(1), [[A_s1, A_s8], [A_s1, A_s16], [A_s1, A_s32], [A_s8, A_s8], [A_s8, A_s16], [A_s8, A_s32], [A_s16, A_s8], [A_s16, A_s16], [A_s16, A_s32]])
+
+ruleset A_G_SEXT_INREG: G_SEXT_INREG
+    lower true
+
+ruleset A_G_MUL: G_MUL G_AND G_OR G_XOR
+    legal in(slot(0), [A_s32])
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s32))
+
+ruleset A_G_ADD: G_ADD G_SUB
+    legal (A_hasNEON and in(slot(0), [A_s32, A_s64]))
+    widen(slot(0), ty(A_s32)) when A_hasNEON
+
+ruleset A_G_ADD_2: G_ADD G_SUB
+    legal (not A_hasNEON and in(slot(0), [A_s32]))
+    widen(slot(0), ty(A_s32)) when not A_hasNEON
+
+ruleset A_G_ASHR: G_ASHR G_LSHR G_SHL
+    legal in_pairs(slot(0), slot(1), [[A_s32, A_s32]])
+    widen(slot(0), ty(A_s32))
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s32))
+
+ruleset A_G_SDIV: G_SDIV G_UDIV
+    legal (A_HasHWDivide and in(slot(0), [A_s32]))
+    widen(slot(0), ty(A_s32)) when A_HasHWDivide
+    narrow(slot(0), ty(A_s32)) when A_HasHWDivide
+
+ruleset A_G_SDIV_2: G_SDIV G_UDIV
+    libcall (not A_HasHWDivide and in(slot(0), [A_s32]))
+    widen(slot(0), ty(A_s32)) when not A_HasHWDivide
+    narrow(slot(0), ty(A_s32)) when not A_HasHWDivide
+
+ruleset A_G_SREM: G_SREM G_UREM
+    widen(slot(0), ty(A_s32))
+    lower (A_HasHWDivide and in(slot(0), [A_s32]))
+    custom ((not A_HasHWDivide and (A_isTargetAEABI or A_isTargetGNUAEABI or A_isTargetMuslAEABI)) and in(slot(0), [A_s32]))
+    libcall ((not A_HasHWDivide and not (A_isTargetAEABI or A_isTargetGNUAEABI or A_isTargetMuslAEABI)) and in(slot(0), [A_s32]))
+
+ruleset A_G_INTTOPTR: G_INTTOPTR
+    legal in_pairs(slot(0), slot(1), [[A_p0, A_s32]])
+    widen(slot(1), ty(A_s32))
+
+ruleset A_G_PTRTOINT: G_PTRTOINT
+    legal in_pairs(slot(0), slot(1), [[A_s32, A_p0]])
+    widen(slot(0), ty(A_s32))
+
+ruleset A_G_CONSTANT: G_CONSTANT
+    custom in(slot(0), [A_s32, A_p0])
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s32))
+
+ruleset A_G_CONSTANT_POOL: G_CONSTANT_POOL
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_ICMP: G_ICMP
+    legal in_pairs(slot(0), slot(1), [[A_s1, A_s32], [A_s1, A_p0]])
+    widen(slot(1), ty(A_s32))
+
+ruleset A_G_SELECT: G_SELECT
+    legal in_pairs(slot(0), slot(1), [[A_s32, A_s1], [A_p0, A_s1]])
+    widen(slot(0), ty(A_s32))
+
+ruleset A_G_LOAD: G_LOAD G_STORE
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_s8, A_p0, A_s8, 8), mem_desc(A_s16, A_p0, A_s16, 8), mem_desc(A_s32, A_p0, A_s32, 8), mem_desc(A_p0, A_p0, A_p0, 8)])
+    unsupported not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_s64, A_p0, A_s64, 32)]))
+    narrow(slot(0), ty(A_s32)) when (not A_useSoftFloat and A_hasVFP2Base)
+    narrow(slot(0), ty(A_s32)) when not (not A_useSoftFloat and A_hasVFP2Base)
+    lower true
+
+ruleset A_G_FRAME_INDEX: G_FRAME_INDEX
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_GLOBAL_VALUE: G_GLOBAL_VALUE
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_PHI: G_PHI
+    legal in(slot(0), [A_s32, A_p0])
+    widen(slot(0), ty(A_s32))
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in(slot(0), [A_s64]))
+
+ruleset A_G_PTR_ADD: G_PTR_ADD
+    legal in_pairs(slot(0), slot(1), [[A_p0, A_s32]])
+    widen(slot(1), ty(A_s32))
+
+ruleset A_G_BR: G_BR
+    legal true
+
+ruleset A_G_BRCOND: G_BRCOND
+    legal in(slot(0), [A_s1])
+
+ruleset A_G_FADD: G_FADD G_FSUB G_FMUL G_FDIV G_FCONSTANT G_FNEG
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in(slot(0), [A_s32, A_s64]))
+
+ruleset A_G_FCMP: G_FCMP
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s1, A_s32], [A_s1, A_s64]]))
+
+ruleset A_G_MERGE_VALUES: G_MERGE_VALUES
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s64, A_s32]]))
+
+ruleset A_G_UNMERGE_VALUES: G_UNMERGE_VALUES
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s32, A_s64]]))
+
+ruleset A_G_FPEXT: G_FPEXT
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s64, A_s32]]))
+
+ruleset A_G_FPTRUNC: G_FPTRUNC
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s32, A_s64]]))
+
+ruleset A_G_FPTOSI: G_FPTOSI G_FPTOUI
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s32, A_s64]]))
+
+ruleset A_G_SITOFP: G_SITOFP G_UITOFP
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s64, A_s32]]))
+
+ruleset A_G_GET_FPENV: G_GET_FPENV G_SET_FPENV G_GET_FPMODE
+    legal ((not A_useSoftFloat and A_hasVFP2Base) and in(slot(0), [A_s32]))
+
+ruleset A_G_RESET_FPENV: G_RESET_FPENV
+    legal (not A_useSoftFloat and A_hasVFP2Base)
+
+ruleset A_G_SET_FPMODE: G_SET_FPMODE
+    custom ((not A_useSoftFloat and A_hasVFP2Base) and in(slot(0), [A_s32]))
+
+ruleset A_G_RESET_FPMODE: G_RESET_FPMODE
+    custom (not A_useSoftFloat and A_hasVFP2Base)
+
+ruleset A_G_FADD_2: G_FADD G_FSUB G_FMUL G_FDIV
+    libcall (not (not A_useSoftFloat and A_hasVFP2Base) and in(slot(0), [A_s32, A_s64]))
+
+ruleset A_G_FNEG: G_FNEG
+    lower (not (not A_useSoftFloat and A_hasVFP2Base) and in(slot(0), [A_s32, A_s64]))
+
+ruleset A_G_FCONSTANT: G_FCONSTANT
+    lower (not (not A_useSoftFloat and A_hasVFP2Base) and in(slot(0), [A_s32, A_s64]))
+
+ruleset A_G_FCMP_2: G_FCMP
+    custom (not (not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s1, A_s32], [A_s1, A_s64]]))
+
+ruleset A_G_FPEXT_2: G_FPEXT
+    libcall (not (not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s64, A_s32]]))
+
+ruleset A_G_FPTRUNC_2: G_FPTRUNC
+    libcall (not (not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s32, A_s64]]))
+
+ruleset A_G_FPTOSI_2: G_FPTOSI G_FPTOUI
+    libcall (not (not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s32, A_s64]]))
+
+ruleset A_G_SITOFP_2: G_SITOFP G_UITOFP
+    libcall (not (not A_useSoftFloat and A_hasVFP2Base) and in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s64, A_s32]]))
+
+ruleset A_G_GET_FPENV_2: G_GET_FPENV G_SET_FPENV G_RESET_FPENV
+    libcall not (not A_useSoftFloat and A_hasVFP2Base)
+
+ruleset A_G_GET_FPMODE: G_GET_FPMODE G_SET_FPMODE G_RESET_FPMODE
+    libcall not (not A_useSoftFloat and A_hasVFP2Base)
+
+ruleset A_G_FMA: G_FMA
+    legal ((not A_useSoftFloat and A_hasVFP4Base) and in(slot(0), [A_s32, A_s64]))
+
+ruleset A_G_FMA_2: G_FMA
+    libcall (not (not A_useSoftFloat and A_hasVFP4Base) and in(slot(0), [A_s32, A_s64]))
+
+ruleset A_G_FREM: G_FREM G_FPOW
+    libcall in(slot(0), [A_s32, A_s64])
+
+ruleset A_G_CTLZ: G_CTLZ
+    legal ((A_hasV5TOps and not A_isThumb1Only) and in(slot(0), [A_s32, A_s32]))
+    widen(slot(1), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(1), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+    widen(slot(0), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(0), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+
+ruleset A_G_CTLZ_ZERO_POISON: G_CTLZ_ZERO_POISON
+    lower ((A_hasV5TOps and not A_isThumb1Only) and in(slot(0), [A_s32, A_s32]))
+    widen(slot(1), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(1), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+    widen(slot(0), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(0), ty(A_s32)) when (A_hasV5TOps and not A_isThumb1Only)
+
+ruleset A_G_CTLZ_ZERO_POISON_2: G_CTLZ_ZERO_POISON
+    libcall (not (A_hasV5TOps and not A_isThumb1Only) and in(slot(0), [A_s32, A_s32]))
+    widen(slot(1), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(1), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)
+    widen(slot(0), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(0), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)
+
+ruleset A_G_CTLZ_2: G_CTLZ
+    lower (not (A_hasV5TOps and not A_isThumb1Only) and in(slot(0), [A_s32, A_s32]))
+    widen(slot(1), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(1), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)
+    widen(slot(0), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)
+    narrow(slot(0), ty(A_s32)) when not (A_hasV5TOps and not A_isThumb1Only)

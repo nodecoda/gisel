@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "name": "arm",
+  "source": "tests/corpus/ARMLegalizerInfo.gisel",
+  "strategy": "generated-ctor",
+  "baseline_inc": null,
+  "swap_inc": null,
+  "inc_name": "ARMLegalizerInfo.inc",
+  "library": "lib/libLLVMARMCodeGen.so.24.0git",
+  "ninja_target": null,
+  "touch_source": "llvm/lib/Target/ARM/ARMLegalizerInfo.cpp",
+  "runner": {
+    "source": "tools/ab/arm_query_runner.cpp",
+    "builder": "tools/ab/build-arm-runner.sh",
+    "mode": "dual"
+  },
+  "features": "tests/cases/arm-features.json",
+  "query_count": 1670
+}

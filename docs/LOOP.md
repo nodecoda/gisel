@@ -32,7 +32,7 @@ python3 tools/import-cxx.py --all --pin tests/corpus/PIN.json \
 `getNumElements()`，见 `2026-11-09-13`），工作区里的文件已经不是 pin 的内容。
 提取只认 pin，补丁就污染不了语料。
 
-产物：`tests/corpus/{X86,AArch64,RISCV,M68k,PowerPC,WebAssembly}LegalizerInfo.gisel`。规则数和拒绝数
+产物：`tests/corpus/{X86,AArch64,RISCV,M68k,PowerPC,WebAssembly,ARM}LegalizerInfo.gisel`。规则数和拒绝数
 写进工具的 `TARGETS`，漂移就 rc=1。
 
 ## 2 出题
@@ -48,7 +48,7 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 口径（等价类、边界、outside、见证）在 `spec/cases.md` 和
 `docs/ALGORITHM-cases.md`；每个 target 的查询数是契约的一部分，脚本里写死
 （X86 3,217 / AArch64 12,952 / RISC-V 6,301 / M68k 41 / PowerPC 98 /
-WebAssembly 942），
+WebAssembly 942 / ARM 1,670），
 变了就停下来看新题目。
 
 ## 3 对拍
@@ -60,6 +60,7 @@ tools/ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc   OUT STATE
 tools/ab/run-m68k-end-to-end.sh    TREE BUILD m68k.inc OUT
 tools/ab/run-ppc-end-to-end.sh     TREE BUILD ppc.inc  OUT
 tools/ab/run-wasm-end-to-end.sh    TREE BUILD wasm.inc OUT
+tools/ab/run-arm-end-to-end.sh     TREE BUILD arm.inc  OUT
 ```
 
 官方一侧必须是**从 pin 的 C++ 构建出来的构造函数**；我们的一侧把
@@ -99,6 +100,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 | M68k | 41 | 41 | 41 | 0 | 0 | 单配置，规则 13 条 |
 | PowerPC | 98 | 98 | 98 | 0 | 1 | 单配置，规则 25 条；1 条两侧都断言（上游 `bitcastIf`，见 §备注） |
 | WebAssembly | 942 | 942 | 942 | 0 | 0 | wasm32/wasm64 × ±sign-ext，规则 109 条 |
+| ARM | 1,670 | 1,670 | 1,670 | 0 | 0 | 7 配置（soft-float / VFP2 / VFP4 / NEON / V5T / HW divide / AEABI），规则 96 条；Thumb1 未覆盖（构造函数直接 return，见 REPORT §12） |
 
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
 `patches`（`PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个

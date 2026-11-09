@@ -40,6 +40,7 @@ class LintCorpus(unittest.TestCase):
         # silent change in what the front end accepts shows up here first.
         for name, nrules in (("M68kLegalizerInfo", 13),
                              ("PowerPCLegalizerInfo", 25),
+                             ("ARMLegalizerInfo", 96),
                              ("WebAssemblyLegalizerInfo", 109)):
             r = run("lint", str(CORPUS / f"{name}.gisel"))
             self.assertEqual(r.returncode, 0, r.stderr)

@@ -92,6 +92,17 @@ FEATURE_NAMES = {
         "ST.hasAddr64()": "HasAddr64",
         "ST.hasSignExt()": "HasSignExt",
     },
+    "ARM": {
+        "ST.hasNEON()": "hasNEON",
+        "ST.hasV5TOps()": "hasV5TOps",
+        "ST.hasVFP2Base()": "hasVFP2Base",
+        "ST.hasVFP4Base()": "hasVFP4Base",
+        "ST.isTargetAEABI()": "isTargetAEABI",
+        "ST.isTargetGNUAEABI()": "isTargetGNUAEABI",
+        "ST.isTargetMuslAEABI()": "isTargetMuslAEABI",
+        "ST.isThumb1Only()": "isThumb1Only",
+        "ST.useSoftFloat()": "useSoftFloat",
+    },
     "RISCV": {
         "ST.enableUnalignedScalarMem()": "enableUnalignedScalarMem",
         "ST.getELen() == 64": "getELen_64",
@@ -457,12 +468,17 @@ class Translator:
         self.feature_aliases = {}   # cpp bool variable -> feature name
         self.opcode = None
         self.helpers = {}       # static LegalityPredicate helpers
+        self.bool_helpers = {}  # static bool helpers used as `if` gates
         self.aligns = {}        # align lambdas: name -> (cond, then, else)
         self.named_preds = {}   # LegalityPredicate variables
         self.refused = []
 
     # -- features: any `ST.x()` / `XLen == N` becomes a named feature --------
     def feature(self, cpp_text):
+        # A `feature` declaration is one `.gisel` line, and the declaration
+        # text is also the evaluator key, so a C++ expression wrapped over
+        # several lines is joined before either is written down.
+        cpp_text = " ".join(cpp_text.split())
         # `RISCVSubtarget::getELen()` asserts unless the V extension is on, and
         # upstream only ever evaluates it under `hasVInstructions()`.  Hoisting
         # the sub-expression on its own loses that guard, and the generated
@@ -596,6 +612,9 @@ class Translator:
         if cmp is not None:
             lhs, op, rhs = cmp
             return "%s %s %s" % (self.expr_text(lhs), op, self.expr_text(rhs))
+        local = self.local_bool(text)
+        if local is not None:
+            return local
         local = self.local_pred(text)
         if local is not None:
             return local
@@ -830,6 +849,20 @@ class Translator:
             return "num_elems(%s)" % ("slot(%s)" % i if m.group(1)
                                       else "ty(%s)" % self.t.name(i))
         return self.int_expr(text)
+
+    def local_bool(self, text):
+        """Inline a `static bool F(...)` helper used as a constructor gate."""
+        m = re.fullmatch(r"(\w+)\s*\((.*)\)", text.strip(), re.S)
+        if not m or m.group(1) not in self.bool_helpers:
+            return None
+        tmpl = self.bool_helpers[m.group(1)]
+        call = split_top(m.group(2))
+        if len(call) != len(tmpl["params"]):
+            raise Refuse(text)
+        body = tmpl["expr"]
+        for p, a in zip(tmpl["params"], call):
+            body = re.sub(r"\b%s\b" % re.escape(p), a, body)
+        return self.pred(body)
 
     # -- local LegalityPredicate helpers ---------------------------------
     def local_pred(self, text):
@@ -1254,6 +1287,14 @@ def parse_helpers(source):
         out[name] = {"params": [p.split()[-1].lstrip("&*")
                                 for p in split_top(params)],
                      "body": pm.group(1), "stmt": True}
+    # `static bool F(const T &ST) { return A || B; }`: a constructor-time gate
+    # like `if (AEABI(ST))`.  Inlined as the disjunction it spells.
+    for m in re.finditer(r"static\s+bool\s+(\w+)\s*\((.*?)\)\s*\{\s*"
+                         r"return\s+(.+?);\s*\}", source, re.S):
+        name, params, expr = m.group(1), m.group(2), m.group(3)
+        out[name] = {"params": [p.split()[-1].lstrip("&*")
+                                for p in split_top(params)],
+                     "expr": " ".join(expr.split()), "bool": True}
     return out
 
 
@@ -1475,10 +1516,11 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
         for g, pred in type_preds(0, args[0]):
             out.append(act(ACTIONS[method], pred, g))
     elif method in ("legalForCartesianProduct", "customForCartesianProduct",
-                    "lowerForCartesianProduct"):
+                    "lowerForCartesianProduct", "libcallForCartesianProduct"):
         op = {"legalForCartesianProduct": "legal",
               "customForCartesianProduct": "custom",
-              "lowerForCartesianProduct": "lower"}[method]
+              "lowerForCartesianProduct": "lower",
+              "libcallForCartesianProduct": "libcall"}[method]
         if len(args) <= 2:
             b_ref = args[1] if len(args) > 1 else args[0]
             for ga, a in expand_sets(args[0]):
@@ -1822,6 +1864,15 @@ def apply_gate(line, gate):
     return line + " when " + gate
 
 
+# A constructor statement that fills a data table read by custom legalisation
+# rather than adding a rule.  `setFCmpLibcallsAEABI()` / `setFCmpLibcallsGNU()`
+# only populate `FCmp32/64Libcalls`, which `legalizeCustom()` consumes when it
+# folds a `G_FCMP` into libcalls; the rule form has nothing to say about them.
+# Skipping such a call is not a transcription gap, so it is counted and named
+# in the corpus header instead of being reported as a refusal.
+DATA_TABLE_INITIALISERS = {"setFCmpLibcallsAEABI", "setFCmpLibcallsGNU"}
+
+
 class Importer:
     def __init__(self, target, source="", prefix=None):
         global PREFIX, CURRENT_TARGET
@@ -1833,6 +1884,8 @@ class Importer:
         self.t.cond_fn = self.tr.pred
         self.t.feat_name = self.tr.feature
         self.tr.helpers = parse_helpers(source)
+        self.tr.bool_helpers = {k: v for k, v in self.tr.helpers.items()
+                                if v.get("bool")}
         self.tr.aligns = parse_aligns(source)
         self.named_preds = {}
         self.tr.named_preds = self.named_preds
@@ -1840,6 +1893,7 @@ class Importer:
         self.gate = []
         self.env = {}
         self.tr.env = self.env
+        self.skipped = []   # statements that fill data tables, not rules
 
     # -- statements ------------------------------------------------------
     def block(self, text, line0=0):
@@ -1876,7 +1930,7 @@ class Importer:
             return self.t.add(m.group(1), m.group(2), line)
         if re.match(r"(const\s+)?bool\s+\w+\s*=", st):
             m = re.match(r"(?:const\s+)?bool\s+(\w+)\s*=\s*(.+)$", st, re.S)
-            name, expr = m.group(1), m.group(2).strip()
+            name, expr = m.group(1), " ".join(m.group(2).split())
             self.tr.features[expr] = PREFIX + name
             self.tr.feature_aliases[name] = PREFIX + name
             return
@@ -1931,6 +1985,10 @@ class Importer:
         if re.match(r"LegalityPredicate\s+\w+\s*=", st):
             return self.predicate_var(st, line)
         if re.match(r"verify\s*\(", st) or st.startswith("using namespace "):
+            return
+        m = re.match(r"(\w+)\s*\(\s*\)$", st)
+        if m and m.group(1) in DATA_TABLE_INITIALISERS:
+            self.skipped.append((line, st))
             return
         m = re.match(r"(\w+)\s*=\s*(.+)$", st, re.S)
         if m and m.group(1) in self.named_preds:
@@ -2307,6 +2365,10 @@ TARGETS = {
         "PowerPC", "P",
         "lib/Target/PowerPC/GISel/PPCLegalizerInfo.cpp",
         15, 25),
+    "ARM": Target(
+        "ARM", "A",
+        "lib/Target/ARM/ARMLegalizerInfo.cpp",
+        52, 96),
 }
 
 
@@ -2389,6 +2451,12 @@ def transcribe(spec, source, out):
         for line, why in refusals[:40]:
             notes += "//   line %d: %s\n" % (line, why)
         notes += "//\n"
+    if imp.skipped:
+        notes += ("// Skipped (%d statement(s), data tables for custom "
+                  "legalisation, not rules):\n" % len(imp.skipped))
+        for line, why in imp.skipped:
+            notes += "//   line %d: %s\n" % (line, why)
+        notes += "//\n"
     name = spec.name + "LegalizerInfo"
     body = render(imp)
     header = HEADER.format(
@@ -2403,6 +2471,8 @@ def transcribe(spec, source, out):
           % (where, rulesets, rules, len(refusals)))
     for line, why in refusals:
         print("  refused line %s: %s" % (line, why))
+    for line, why in imp.skipped:
+        print("  skipped line %s: %s (data table, not a rule)" % (line, why))
 
     rc = 1 if refusals else 0
     # The pin only applies to the canonical upstream file, not to fixtures.

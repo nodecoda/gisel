@@ -35,6 +35,7 @@ is back on the baseline include.
 | `m68k` | generated constructor object | 41-query smoke target; single `default` config |
 | `ppc` | generated constructor object | 98 queries; one `default` config; 1 query asserts on both sides (upstream `bitcastIf`) |
 | `wasm` | generated constructor object | 942 queries; `wasm32|wasm64` × `±sign-ext` |
+| `arm` | generated constructor object | 1,670 queries; 7 configs across soft-float / VFP2 / VFP4 / NEON / V5T / hardware divide / AEABI; Thumb1 excluded (constructor registers no rule) |
 
 Adapters live in `tools/ab/targets/*.json`: include path, library, ninja
 target, runner builder, feature table, optional axes, query-count contract.

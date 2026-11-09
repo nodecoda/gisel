@@ -12,7 +12,7 @@ from gisel import ast as A
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "tests" / "corpus"
 CORPORA = ("AArch64LegalizerInfo", "M68kLegalizerInfo",
-           "PowerPCLegalizerInfo", "RISCVLegalizerInfo",
+           "ARMLegalizerInfo", "PowerPCLegalizerInfo", "RISCVLegalizerInfo",
            "WebAssemblyLegalizerInfo", "X86LegalizerInfo")
 
 

@@ -1,0 +1,86 @@
+{
+  "armv7a-neon": {
+    "(!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())": true,
+    "ST.hasNEON()": true,
+    "ST.hasV5TOps()": true,
+    "ST.hasVFP2Base()": true,
+    "ST.hasVFP4Base()": true,
+    "ST.isTargetAEABI()": true,
+    "ST.isTargetGNUAEABI()": true,
+    "ST.isTargetMuslAEABI()": false,
+    "ST.isThumb1Only()": false,
+    "ST.useSoftFloat()": false
+  },
+  "armv7a-nodiv": {
+    "(!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())": false,
+    "ST.hasNEON()": true,
+    "ST.hasV5TOps()": true,
+    "ST.hasVFP2Base()": true,
+    "ST.hasVFP4Base()": true,
+    "ST.isTargetAEABI()": true,
+    "ST.isTargetGNUAEABI()": true,
+    "ST.isTargetMuslAEABI()": false,
+    "ST.isThumb1Only()": false,
+    "ST.useSoftFloat()": false
+  },
+  "armv7a-a5": {
+    "(!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())": false,
+    "ST.hasNEON()": true,
+    "ST.hasV5TOps()": true,
+    "ST.hasVFP2Base()": true,
+    "ST.hasVFP4Base()": true,
+    "ST.isTargetAEABI()": true,
+    "ST.isTargetGNUAEABI()": true,
+    "ST.isTargetMuslAEABI()": false,
+    "ST.isThumb1Only()": false,
+    "ST.useSoftFloat()": false
+  },
+  "armv6-arm1176": {
+    "(!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())": false,
+    "ST.hasNEON()": false,
+    "ST.hasV5TOps()": true,
+    "ST.hasVFP2Base()": true,
+    "ST.hasVFP4Base()": false,
+    "ST.isTargetAEABI()": true,
+    "ST.isTargetGNUAEABI()": true,
+    "ST.isTargetMuslAEABI()": false,
+    "ST.isThumb1Only()": false,
+    "ST.useSoftFloat()": false
+  },
+  "armv4t": {
+    "(!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())": false,
+    "ST.hasNEON()": false,
+    "ST.hasV5TOps()": false,
+    "ST.hasVFP2Base()": false,
+    "ST.hasVFP4Base()": false,
+    "ST.isTargetAEABI()": true,
+    "ST.isTargetGNUAEABI()": true,
+    "ST.isTargetMuslAEABI()": false,
+    "ST.isThumb1Only()": false,
+    "ST.useSoftFloat()": true
+  },
+  "thumbv7m": {
+    "(!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())": true,
+    "ST.hasNEON()": false,
+    "ST.hasV5TOps()": true,
+    "ST.hasVFP2Base()": false,
+    "ST.hasVFP4Base()": false,
+    "ST.isTargetAEABI()": true,
+    "ST.isTargetGNUAEABI()": false,
+    "ST.isTargetMuslAEABI()": false,
+    "ST.isThumb1Only()": false,
+    "ST.useSoftFloat()": false
+  },
+  "armv7-soft": {
+    "(!ST.isThumb() && ST.hasDivideInARMMode()) || (ST.isThumb() && ST.hasDivideInThumbMode())": false,
+    "ST.hasNEON()": true,
+    "ST.hasV5TOps()": true,
+    "ST.hasVFP2Base()": true,
+    "ST.hasVFP4Base()": false,
+    "ST.isTargetAEABI()": true,
+    "ST.isTargetGNUAEABI()": true,
+    "ST.isTargetMuslAEABI()": false,
+    "ST.isThumb1Only()": false,
+    "ST.useSoftFloat()": true
+  }
+}
