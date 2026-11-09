@@ -264,9 +264,9 @@ features.get(config, "Subtarget.hasAVX512()")
 
 ```text
 1. 规则字面量（全部）
-2. core domain 里声明的类型
-3. 邻居 _neighbours()
-4. 兜底 sentinel
+2. 邻居 _neighbours()
+3. 兜底 sentinel
+4. core domain 里声明的类型（最后，超限时先丢它）
 ```
 
 `_neighbours` 生成：
@@ -286,9 +286,14 @@ f16, f32, f64, bf16`。它们保证「规则什么字面量都没写」时也能
 - 每槽默认 16 个（`--axes` 的 `cases.max_slot_values` 可改）；
 - 整个笛卡尔积超过 20,000 时，从**最宽的轴**尾部逐个删。
 
-字面量排在最前面，且截断时用 `max(cap, len(literals))`，所以**字面量永远不
-会被裁掉**；被裁掉的是 sentinel 和邻居。这是「有界」不损害「每条规则都有
-机会被见证」的关键。
+字面量和邻居都排在域类型前面，所以产品超限时**先丢域类型**。这一点是硬约束，
+不是排序偏好：突变规则（`widen` / `clamp_min` / `scalarize` …）只能被「合法集合
+之外的某个值」触发，而这个值就是某个字面量的邻居。曾经的实现把截断长度取成
+`max(cap, len(literals))`，于是一个槽位的字面量一旦达到 `cap`，邻居就被整批
+裁掉，AArch64 有 406 条规则因此**永远没有见证**——对拍照样报 0 分歧，因为根本
+没问。修复后的对照数字见 `docs/REPORT-coverage.md`。
+
+`--strict-coverage` 把「无见证的规则数」变成退出码 1，让这件事不能再沉默。
 
 ### 6.2 内存
 

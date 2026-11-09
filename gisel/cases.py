@@ -174,7 +174,11 @@ def _neighbours(t):
         # neighbours alone miss v4s8 when the literal is v16s8.
         for n in (1, 2, 4, 8, 16, 32, 64):
             out.add(_relane(t, n))
-        out.add((t[0], t[1], not t[2], t[3]))
+        # Flipping scalability on a one-lane vector would spell a fixed
+        # one-lane vector, which *is* its element type; `_relane` collapses
+        # that spelling, so the flip must not reintroduce it.
+        if not (t[1] == 1 and t[2]):
+            out.add((t[0], t[1], not t[2], t[3]))
     if t[0] == "bf16":
         out.add(("float", 16))
     return {x for x in out if x is not None and x != t}
@@ -552,14 +556,25 @@ def _candidates(infos, nslots, cap, domain):
         if not lit and not any(i in info.slots for info in infos):
             per.append([E.parse_case_llt("s32")])
             continue
+        # A mutation rule only fires on a type its legal rules do *not* name,
+        # so the neighbours of the literals are the candidates that reach it.
+        # They must survive the cap: truncating to `max(cap, len(lit))` used to
+        # drop every neighbour whenever a slot had `cap` or more literals,
+        # which left the rules behind them permanently unwitnessed.  Domain
+        # types go last so the product guard below trims them first.
         neigh = {x for t in lit for x in _neighbours(t)}
         ordered = sorted(lit, key=_candidate_key)
-        ordered += [t for t in sorted(domain, key=_candidate_key)
-                    if t not in ordered]
         ordered += [t for t in sorted(neigh, key=_candidate_key)
                     if t not in ordered]
         ordered += [t for t in _SENTINEL_LLTS if t not in ordered]
-        per.append(ordered[:max(cap, len(lit))] if cap > 0 else ordered)
+        if cap > 0:
+            keep = max(cap, len(ordered))
+            ordered += [t for t in sorted(domain, key=_candidate_key)
+                        if t not in ordered][:max(0, keep - len(ordered))]
+        else:
+            ordered += [t for t in sorted(domain, key=_candidate_key)
+                        if t not in ordered]
+        per.append(ordered)
     # Keep the cartesian product bounded without dropping any literal.
     while _product_size(per) > 20000:
         widest = max(range(len(per)), key=lambda i: len(per[i]))
@@ -744,11 +759,24 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         unwitnessed = [ri for ri in range(len(rs["rules"]))
                        if ri not in witnessed]
         for ri in unwitnessed:
+            found = _rule_witness(evaluator, rs_idx, ri, rs, configs, infos,
+                                  default, mem_entries, imm_tuples, mem_pairs)
+            if found is not None:
+                config, types, mem, imms, res = found
+                if emit(Case(config, opcode,
+                             tuple(llt_text(x) for x in types), mem,
+                             "equivalence", rs["def"], ri,
+                             "first match for rule %d (directed)" % ri,
+                             imms=imms)):
+                    stats["witnessed"] += 1
+                    witnessed.append(ri)
+                fires[(config, ri)] = [(tuple(types), mem, imms, res)]
+                continue
             stat = _satisfiable(evaluator, rs_idx, ri, rs, configs, infos,
                                 per, default, mem_entries, imm_tuples,
                                 mem_pairs)
             stats["shadowed" if stat else "unexercised"] += 1
-            if len(stats["unwitnessed"]) < 40:
+            if len(stats["unwitnessed"]) < 200:
                 stats["unwitnessed"].append(
                     "%s#%d: %s" % (rs["def"], ri,
                                    "shadowed" if stat else "unexercised"))
@@ -1038,6 +1066,57 @@ def _satisfiable(evaluator, rs_idx, ri, rs, configs, infos, per, default,
     return False
 
 
+def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
+                  mem_entries, imm_tuples=((),),
+                  mem_pairs=(("NotAtomic", "NotAtomic"),)):
+    """A query that makes rule ``ri`` the *first* match, or ``None``.
+
+    The shared candidate product is capped, so a rule can lose its witness to a
+    truncation somewhere else in the rule set even though the rule is
+    reachable.  This search only enumerates the types this rule names (plus
+    their neighbours), which is small enough to exhaust and specific enough to
+    land on it.  ``None`` means "no witness in this bounded search", not
+    "dead": ``_satisfiable`` answers the weaker predicate question.
+    """
+    opcode = rs["opcodes"][0]
+    slots = sorted(infos[ri].slots) or [0]
+    per_slot = []
+    for s in slots:
+        cand = set(infos[ri].literals.get(s, set()))
+        for leaf in list(cand):
+            cand |= _neighbours(leaf)
+        if not cand:
+            cand = {default[s] if s < len(default) else E.parse_case_llt("s32")}
+        per_slot.append(sorted(cand, key=_candidate_key)[:96])
+    total = 1
+    for values in per_slot:
+        total *= len(values)
+    if total > 200000:
+        return None
+    mem_trials = [None]
+    if infos[ri].uses_mem:
+        mem_trials += [(mty, int(align), ordering, failure)
+                       for _, _, mty, align in mem_entries
+                       for ordering, failure in mem_pairs]
+    for config in configs:
+        for combo in itertools.product(*per_slot):
+            types = list(default)
+            for s, t in zip(slots, combo):
+                types[s] = t
+            for mem in mem_trials:
+                mems = ([E.MemDesc(E.parse_case_llt(mem[0]), mem[1],
+                                   mem[2], mem[3])] if mem else [])
+                for imms in imm_tuples:
+                    try:
+                        res = _fire(evaluator, config, opcode, types, mems, imms)
+                    except (E.EvalError, IndexError, KeyError, TypeError,
+                            ValueError, AssertionError):
+                        continue
+                    if res is not None and res[0] == rs_idx and res[1] == ri:
+                        return (config, types, mem, imms, res)
+    return None
+
+
 # ---- differential --------------------------------------------------------
 
 @dataclass
@@ -1179,6 +1258,8 @@ def main(argv=None):
                     help="default: profile value, else 2")
     ap.add_argument("--axes", help="axis profile JSON (analysis only)")
     ap.add_argument("--json", action="store_true", help="print stats as JSON")
+    ap.add_argument("--strict-coverage", action="store_true",
+                    help="fail when any rule has no witness in the query set")
     args = ap.parse_args(argv)
 
     doc = document(args.source)
@@ -1243,6 +1324,14 @@ def main(argv=None):
         print("rules=%d witnessed=%d shadowed=%d unexercised=%d"
               % (stats["rules"], stats["witnessed"], stats["shadowed"],
                  stats["unexercised"]))
+    if args.strict_coverage and (stats["unexercised"] or stats["shadowed"]):
+        print("cases: %d rule(s) have no witness (%d unexercised, %d shadowed);"
+              " the query set does not cover every rule"
+              % (stats["unexercised"] + stats["shadowed"],
+                 stats["unexercised"], stats["shadowed"]), file=sys.stderr)
+        for entry in stats["unwitnessed"][:20]:
+            print("  " + entry, file=sys.stderr)
+        return 1
     if args.against and stats["diff"]["covered"] == 0:
         print("cases: no overlapping queries; check --features/--config "
               "spellings", file=sys.stderr)

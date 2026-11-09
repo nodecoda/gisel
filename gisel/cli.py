@@ -178,6 +178,8 @@ def main(argv=None):
     cs.add_argument("--max-outside", type=int, default=None)
     cs.add_argument("--axes", help="axis profile JSON (analysis only)")
     cs.add_argument("--json", action="store_true", help="print stats as JSON")
+    cs.add_argument("--strict-coverage", action="store_true",
+                    help="fail when any rule has no witness in the query set")
 
     d = sub.add_parser("domain",
                        help="enumerate the answerless query domain (D*)")

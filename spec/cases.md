@@ -34,6 +34,14 @@ outside      等价类之外（没有规则命中，落到 Unsupported）
 
 一个规则若可满足但从未首命中，记为 **shadowed**；若在给定 config 集合下
 根本不可满足，记为 **unexercised**。两者都进 `--json` 的统计，不静默丢弃。
+`--strict-coverage` 把这两个计数变成退出码 1，并打印前 20 条规则名；它存在的
+理由是：分母漏了规则时，对拍会给出“0 分歧”，而那不是等价，只是没问到。
+
+候选集按槽位取「规则字面量 ∪ 字面量的邻居 ∪ 哨兵 ∪ 域类型」，其中**字面量和
+邻居必须全部保留**——突变规则只能被“合法集合之外的某个值”触发，把邻居截掉
+等于让它永远无见证。域类型排在最后，产品规模超限时先丢它们。首命中搜索在全局
+候选集没找到见证时，还会对单条规则做一次定向枚举（只用这条规则自己命名的
+类型及其邻居）；这一步失败只说明“有界搜索没找到”，不说明规则是死的。
 
 一个 ruleset 挂多个 opcode 时，用例只写第一个 opcode；规则本身不读 opcode。
 
@@ -90,10 +98,11 @@ uncovered 生成集里 oracle 没有对应点的数量
 gisel cases SOURCE --out FILE
              [--features FILE] [--config NAME ...]
              [--against ORACLE] [--queries Q --oracle A]
-             [--max-outside N] [--json]
+             [--max-outside N] [--json] [--strict-coverage]
 ```
 
-退出码：0 成功；1 对拍分歧或求值错误；2 参数/IO/config 错误。
+退出码：0 成功；1 对拍分歧、求值错误，或 `--strict-coverage` 下有规则
+无见证；2 参数/IO/config 错误。
 输出是 JSONL，每行一条查询；`gisel eval --cases` 不消费这种文件（它要求
 `action/type_idx/new_type` 三列，那是 oracle 的格式）。
 

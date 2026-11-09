@@ -276,3 +276,35 @@ class AnswerMode(unittest.TestCase):
                 self.assertEqual(answer["type_idx"], type_idx)
                 self.assertEqual(answer["new_type"], E.fmt_oracle_llt(new_type))
                 self.assertEqual(answer["types"], query["types"])
+
+class CoverageGate(unittest.TestCase):
+    """`--strict-coverage` turns the unwitnessed count into an exit code."""
+
+    def _run(self, source, *extra):
+        import subprocess
+        import sys
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "q.jsonl"
+            return subprocess.run(
+                [sys.executable, "-m", "gisel.cli", "cases", str(source),
+                 "--out", str(out), *extra],
+                capture_output=True, text=True)
+
+    def test_a_fully_witnessed_source_passes(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text(FIXTURE)
+            r = self._run(src, "--strict-coverage")
+        self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+
+    def test_a_rule_with_no_witness_fails(self):
+        # `legal s32` twice: the second rule can never be the first match, so
+        # the set has no witness for it and the gate must say so instead of
+        # reporting a green run.
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text(SHADOWED)
+            r = self._run(src, "--strict-coverage")
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("no witness", r.stderr)
+
