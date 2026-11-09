@@ -1317,6 +1317,10 @@ class Translator:
         text = re.sub(r"MEM\((\d+)\)", r"mem_ty(mem_slot(\1))", text)
         text = re.sub(r"mem_ty\(mem_slot\((\d+)\)\)\.getSizeInBits\(\)",
                       r"size_of(mem_ty(mem_slot(\1)))", text)
+        text = re.sub(r"mem_ty\(mem_slot\((\d+)\)\)\.isScalar\(\)",
+                      r"sort_of(mem_ty(mem_slot(\1))) == scalar", text)
+        text = re.sub(r"mem_ty\(mem_slot\((\d+)\)\)\.isVector\(\)",
+                      r"sort_of(mem_ty(mem_slot(\1))) == vector", text)
         text = re.sub(r"ORD\((\d+)\)", r"mem_ordering(mem_slot(\1))", text)
         # `isValid()` / `isPointerOrPointerVector()` must be folded before the
         # observation patterns below: those use a non-greedy `(.+?)` between
@@ -1503,6 +1507,17 @@ class Translator:
         m = re.fullmatch(r"Query\.Types\[(.+)\]", t, re.S)
         if m:
             return "slot(%s)" % idx_of(m.group(1), env)
+        m = re.fullmatch(
+            r"Query\.MMODescrs\[(.+)\]\.MemoryTy\."
+            r"get(?:SizeInBits|ScalarSizeInBits)\(\)", t, re.S)
+        if m:
+            return "size_of(mem_ty(mem_slot(%s)))" % idx_of(m.group(1), env)
+        m = re.fullmatch(r"Query\.MMODescrs\[(.+)\]\.MemoryTy", t, re.S)
+        if m:
+            return "mem_ty(mem_slot(%s))" % idx_of(m.group(1), env)
+        m = re.fullmatch(r"Query\.MMODescrs\[(.+)\]\.AlignInBits", t, re.S)
+        if m:
+            return "align_of(mem_slot(%s))" % idx_of(m.group(1), env)
         m = re.fullmatch(r"(\w+)\.get(NumElements|SizeInBits|ElementType|"
                          r"ScalarSizeInBits|ScalarType)\(\)", t)
         if m:

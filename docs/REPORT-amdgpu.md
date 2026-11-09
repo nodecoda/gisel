@@ -2,7 +2,7 @@
 
 一句话：**上游一共 11 个 legalizer 构造函数，语料收了 9 个；BPF 的构造函数是空的，
 真正剩下的只有 AMDGPU。** 导入器已经能把 AMDGPU 读成一份**能解析、能 lint**
-的语料（782 条规则），但还有 21 条语句拒绝，其中一部分要动 DSL 本身。本轮做
+的语料（785 条规则），但还有 18 条语句拒绝，其中一部分要动 DSL 本身。本轮做
 盘点、一个可复现的探针、把“悄悄产出非法文本”这类缺陷堵死，并按 §4 选定的
 逃逸点路线落下 `opaque(...)`；语料仍未收。
 
@@ -11,8 +11,8 @@
 | 项 | 值 |
 |---|---:|
 | rulesets | 142 |
-| rules | 782 |
-| refused | 21 |
+| rules | 785 |
+| refused | 18 |
 | builder 调用 | 689 |
 | 其中 `opaque` 规则 | 22 处 / 18 条规则 / 10 个不同表达式 |
 | lint | 0 error / 7 warning |
@@ -57,10 +57,10 @@ python3 -m gisel lint /tmp/amdgpu.gisel
 （`git log -1 -- docs/REPORT-amdgpu.md`）——数字随导入器变化，源 sha 是稳定锚点。
 
 ```
-142 rulesets, 782 rules, 21 refused
-TOTAL  689 calls  783 rules
+142 rulesets, 785 rules, 18 refused
+TOTAL  689 calls  786 rules
 
-lint: 0 error(s), 7 warning(s), 782 rule(s)
+lint: 0 error(s), 7 warning(s), 785 rule(s)
 ```
 
 7 条 warning 都是 `arity unknown`（`G_BUILD_VECTOR_TRUNC`、`G_MERGE_VALUES` 等），
@@ -96,11 +96,10 @@ lint: 0 error(s), 7 warning(s), 782 rule(s)
 
 这条约束对现有 9 份语料零影响（`--all --check` 9/9 逐字节相同）。
 
-## 3 21 条拒绝：按“要做什么”分类
+## 3 18 条拒绝：按“要做什么”分类
 
 | 类别 | 条数 | 要做什么 |
 |---|---:|---|
-| `getScalarTypeFromMemDesc` | 3 | 变异体读 memdesc |
 | `clampNumElements` 的元素类型写法 | 3 | `clampNumElements(0, V16S32, V32S32)` 取元素类型的写法 |
 | `bitcast` 的复杂 lambda 体 | 4 | `fewerElementsIf`/`widenScalarIf` 里多行的 `std::pair` 体（LOAD/STORE/MERGE/UNMERGE） |
 | `narrowScalarIf` 三参数形态 | 2 | 谓词 + 变异 + 变异 |
@@ -111,7 +110,7 @@ lint: 0 error(s), 7 warning(s), 782 rule(s)
 | `moreElementsToNextExistingRegClass` | 1 | 返回 `LegalizeMutation` 的 helper，不是谓词；属于变异侧原语 |
 | `minScalarIf(...)` | 1 | 其他 |
 
-本轮清掉的八类（原 30 + 12 + 9 + 14 + 6 + 11 + 7 + 4）走的是 §6 第 3 步的原语：
+本轮清掉的九类（原 30 + 12 + 9 + 14 + 6 + 11 + 7 + 4 + 3）走的是 §6 第 3 步的原语：
 
 - `clampMaxNumElementsStrict`（30 条）→ `align_lanes` + `clamp_max` 两条规则；
 - `if` 块里的 clamp（12 条）→ `clamp_min/max ... when P`；
@@ -129,8 +128,12 @@ lint: 0 error(s), 7 warning(s), 782 rule(s)
   按 gate 拆成互斥的两份；纯整数表达式（`2 * 8`）在导入期折成 16；
 - 嵌套集合参数（4 条）→ 按 C++ 重载解析读内层 arity：1 元素是
   `initializer_list<LLT>`（只约束 slot 0），2/3 元素才是 pair/tuple
-  （`in_pairs`/`in_triples`）。这一批也只动导入器。
-  上面两批都没有新增语法。
+  （`in_pairs`/`in_triples`）；
+- `getScalarTypeFromMemDesc`（3 条）→ 变异 helper 的 body 读
+  `Query.MMODescrs[0].MemoryTy`：目标类型写成
+  `replace(int_of_size(size_of(mem_ty(mem_slot(0)))))`，谓词 lambda 里的
+  `MemTy.isScalar()` 折成 `sort_of(mem_ty(mem_slot(0))) == scalar`。
+  上面三批都只动导入器，没有新增语法。
 
 ## 4 真正的分水岭：文件内的 C++ 谓词
 
@@ -229,10 +232,11 @@ LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool �
    ~~`widen_to_multiple`（9）~~、~~lane 数 `+1` / 补到 32 位（14）~~、
    ~~bitcast 到算出来的类型（6）~~、~~变异 lambda 形态（11）~~、
    ~~memdesc 具名/表达式 align（7，导入器侧，无语法变更）~~、
-   ~~嵌套集合参数（4，导入器侧，无语法变更）~~ 已完成；
-   下一批是 `getScalarTypeFromMemDesc`（3）。
+   ~~嵌套集合参数（4，导入器侧，无语法变更）~~、
+   ~~`getScalarTypeFromMemDesc`（3，导入器侧，无语法变更）~~ 已完成；
+   下一批是 `narrowScalarIf` 三参数形态（2）。
 4. 0 拒绝之后再进 `PIN.json` / `TARGETS` / cases 配置 / runner，最后才是端到端。
-   顺序反了会拿 21 条缺口冒充“已接入”。
+   顺序反了会拿 18 条缺口冒充“已接入”。
 
 ## 7 复现
 
