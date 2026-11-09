@@ -43,6 +43,7 @@ from . import ast as A
 from . import axes as axesmod
 from . import answers as answer_file
 from . import eval as E
+from . import llt as L
 from . import output
 from .backend import core_json
 
@@ -57,28 +58,15 @@ _SENTINELS = (
     "nxv4s32", "p0:64", "p0:32", "p0:128", "p0:*", "f16", "f32", "f64",
     "bf16",
 )
-_POW2 = (1, 2, 4, 8, 16, 32, 64, 128, 256, 512)
 _SENTINEL_LLTS = tuple(E.parse_case_llt(s) for s in _SENTINELS)
 
 
 # ---- LLT text and mutation ----------------------------------------------
 
-def llt_text(t) -> str:
-    """The Core IR spelling, accepted by :func:`eval.parse_case_llt`."""
-    if t[0] == "invalid":
-        return "LLT_invalid"
-    if t[0] == "bf16":
-        return "bf16"
-    if t[0] == "pointer":
-        return "p%d:%s" % (t[1], t[2])
-    if t[0] == "vector":
-        head = "nxv" if t[2] else "v"
-        return head + str(t[1]) + llt_text(t[3])
-    return {"scalar": "s", "integer": "i", "float": "f"}[t[0]] + str(t[1])
+llt_text = L.spell
 
 
-_KIND_ORDER = {"scalar": 0, "integer": 0, "float": 0, "bf16": 0,
-               "vector": 1, "pointer": 2, "invalid": 3}
+_KIND_ORDER = L.KIND_ORDER
 
 
 def _candidate_key(t):
@@ -90,102 +78,6 @@ def _candidate_key(t):
     scalars, so `typeIs(slot, p0)` rules still get a pointer witness.
     """
     return (_KIND_ORDER.get(t[0], 9), llt_text(t))
-
-
-def _scalar_bits(t):
-    if t[0] in ("scalar", "integer", "float"):
-        return t[1]
-    if t[0] == "bf16":
-        return 16
-    if t[0] == "pointer" and t[2] != "*":
-        return t[2]
-    return None
-
-
-def _lanes(t):
-    return t[1] if t[0] == "vector" else None
-
-
-# LLVM pointers have a target-chosen width; 63/65 are spellable LLTs but not
-# widths a subtarget can have.  Mutating into them would emit a boundary the
-# configuration space cannot contain.
-_POINTER_BITS = (16, 32, 64, 128)
-
-# LLVM IR has a closed set of float widths.  `f31`/`f33` are spellable LLTs
-# (LLT::floatIEEE takes any size) but no IR produces one, and a target
-# legalizer asserts when asked to legalize it, so a probe there is noise.
-# 80 is deliberately absent: `x86_fp80` is not an IEEE format, LLT spells it
-# `scalar(80)`, and `LLT::floatIEEE(80)` is unreachable -- a query spelled
-# `f80` cannot even be constructed, so asking it would only abort the runner.
-_FLOAT_BITS = (16, 32, 64, 128)
-
-
-def _resize_bits(t, bits):
-    """Same shape, scalar/element/pointer width set to ``bits``."""
-    if bits is None or bits <= 0:
-        return None
-    if t[0] in ("scalar", "integer"):
-        return (t[0], bits)
-    if t[0] == "float":
-        if bits not in _FLOAT_BITS:
-            return None
-        return ("float", bits)
-    if t[0] == "pointer":
-        if bits not in _POINTER_BITS:
-            return None
-        return ("pointer", t[1], bits)
-    if t[0] == "vector":
-        elem = _resize_bits(t[3], bits)
-        return None if elem is None else ("vector", t[1], t[2], elem)
-    return None
-
-
-def _relane(t, lanes):
-    if t[0] != "vector" or lanes <= 0:
-        return None
-    if lanes == 1 and not t[2]:
-        return t[3]          # a fixed one-lane vector is the element type
-    return ("vector", lanes, t[2], t[3])
-
-
-def _mutate(t, dim, n):
-    if dim == "bits":
-        return _resize_bits(t, n)
-    if dim == "bytes":
-        return _resize_bits(t, 8 * n)
-    if dim == "lanes":
-        return _relane(t, n)
-    return None
-
-
-def _neighbours(t):
-    """Off-by-one spellings around one LLT, never used as a class witness."""
-    out = set()
-    bits = _scalar_bits(t)
-    if bits is not None:
-        if t[0] == "float":
-            out.update(("float", n) for n in _FLOAT_BITS if n != bits)
-        else:
-            if bits > 1:
-                out.add(_resize_bits(t, bits - 1))
-            out.add(_resize_bits(t, bits + 1))
-    lanes = _lanes(t)
-    if lanes is not None:
-        if lanes > 1:
-            out.add(_relane(t, lanes - 1))
-        out.add(_relane(t, lanes + 1))
-        # Lane-count predicates compare against small powers of two; the +-1
-        # neighbours alone miss v4s8 when the literal is v16s8.
-        for n in (1, 2, 4, 8, 16, 32, 64):
-            out.add(_relane(t, n))
-        # Flipping scalability on a one-lane vector would spell a fixed
-        # one-lane vector, which *is* its element type; `_relane` collapses
-        # that spelling, so the flip must not reintroduce it.
-        if not (t[1] == 1 and t[2]):
-            out.add((t[0], t[1], not t[2], t[3]))
-    if t[0] == "bf16":
-        out.add(("float", 16))
-    return {x for x in out if x is not None and x != t}
 
 
 # ---- predicate inspection ------------------------------------------------
@@ -243,8 +135,8 @@ def _mem_shape_ok(case, mem_opcodes):
     if case.mem is None:
         return False
     types = _parse(case.types)
-    value_bits = _scalar_bits(types[0])
-    mem_bits = _scalar_bits(E.parse_case_llt(case.mem[0]))
+    value_bits = L.scalar_bits(types[0])
+    mem_bits = L.scalar_bits(E.parse_case_llt(case.mem[0]))
     if value_bits and mem_bits and mem_bits > value_bits:
         return False
     return True
@@ -313,10 +205,10 @@ def _add_literal(info, slot, text):
     except E.EvalError:
         return
     info.literals.setdefault(slot, set()).add(t)
-    bits = _scalar_bits(t)
+    bits = L.scalar_bits(t)
     if bits:
         info.thresholds.setdefault(slot, set()).add(("bits", bits))
-    lanes = _lanes(t)
+    lanes = L.lanes(t)
     if lanes:
         info.thresholds.setdefault(slot, set()).add(("lanes", lanes))
 
@@ -385,7 +277,7 @@ def _walk_info(node, info):
         slot = _slot_of(node)
         if slot is not None:
             info.slots.add(slot)
-            for n in _POW2:
+            for n in L.POW2:
                 info.thresholds.setdefault(slot, set()).add(("bits", n))
 
     for key in ("args", "arg", "set"):
@@ -679,7 +571,7 @@ def _candidates(infos, nslots, cap, domain, scalable_ok=True):
         # drop every neighbour whenever a slot had `cap` or more literals,
         # which left the rules behind them permanently unwitnessed.  Domain
         # types go last so the product guard below trims them first.
-        neigh = {x for t in lit for x in _neighbours(t)}
+        neigh = {x for t in lit for x in L.neighbours(t)}
         ordered = sorted(lit, key=_candidate_key)
         ordered += [t for t in sorted(neigh, key=_candidate_key)
                     if t not in ordered]
@@ -1037,7 +929,7 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                     for slot in range(nslots):
                         for dim, n in sorted(infos[ri].thresholds.get(slot, ())):
                             for probe in (n - 1, n, n + 1):
-                                mut = _mutate(types[slot], dim, probe)
+                                mut = L.mutate(types[slot], dim, probe)
                                 if mut is None or mut == types[slot]:
                                     continue
                                 vtypes = types[:slot] + (mut,) + types[slot + 1:]
@@ -1078,10 +970,10 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                                     and emit(case)):
                                 emitted += 1
                         mt = E.parse_case_llt(mty)
-                        bits = _scalar_bits(mt)
+                        bits = L.scalar_bits(mt)
                         if bits:
                             for probe in (bits - 1, bits + 1):
-                                nmt = _resize_bits(mt, probe)
+                                nmt = L.resize_bits(mt, probe)
                                 if nmt is None:
                                     continue
                                 case = Case(config, opcode,
@@ -1362,7 +1254,7 @@ def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
     for s in slots:
         cand = set(infos[ri].literals.get(s, set()))
         for leaf in list(cand):
-            cand |= _neighbours(leaf)
+            cand |= L.neighbours(leaf)
         if not cand:
             cand = {default[s] if s < len(default) else E.parse_case_llt("s32")}
         values = sorted(cand, key=_candidate_key)

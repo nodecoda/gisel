@@ -21,6 +21,7 @@ from . import cases as C
 from . import domain as D
 from . import dsl
 from . import eval as E
+from . import llt as L
 
 
 TERMINAL = {"Legal", "Lower", "Libcall", "Custom", "Unsupported"}
@@ -40,7 +41,7 @@ def _json_key(value):
 
 
 def _type_text(t):
-    return C.llt_text(t)
+    return L.spell(t)
 
 
 def _representative_key(t):
