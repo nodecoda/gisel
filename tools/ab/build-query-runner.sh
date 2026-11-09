@@ -20,6 +20,10 @@ TARGET=${5:?}
 RUNNER=${6:?}
 CTOR=${7:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+
+# The official side must carry PIN.json `commit` plus every unmerged patch it
+# lists; a tree without them answers with pre-patch rules.
+"$ROOT/tools/ab/check-pin.sh" "$TREE"
 CXX=${CXX:-g++}
 
 # The generated constructor includes "<TARGET>LegalizerInfo.inc" by name; the

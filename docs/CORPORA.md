@@ -45,6 +45,15 @@ AArch64 12,952/12,952、RISC-V 6,299/6,299 全部 agree。等这些 PR 合入上
 把 `commit` 前移，偏离函数会按设计**报错**（它断言旧文本还在），那时删掉它们
 即可——这正是它存在的意义。
 
+这条前提是机器检查的，不是注释：每个 `build-*-runner.sh` 编译前先跑
+`tools/ab/check-pin.sh TREE`，要求 HEAD 从 `commit` 下降、且 `patches` 里每个
+commit 都是 HEAD 的祖先。缺一个就 rc=1 并逐个点名，因为那种树上官方侧回答的是
+修前规则，偏离会以“我们翻错了”的样子出现在对拍里。反过来说，`git log` 里看到
+那两个 X86 修复**不**代表上游已合——它们只在 `explore/06-review-fixes` 上，
+`origin/main` 没有。真的合入后，动 `PIN.json` 的 `commit` 和 `patches`，
+`check-pin.sh` 与偏离断言会一起逼你把两边都改对。树没有 git 元数据（tarball）
+时跳过检查；确知树是 rebase 过的镜像可用 `GIT_DSL_SKIP_PIN_CHECK=1`。
+
 ## 复现：一条命令，钉住计数
 
 导入器是**一次性转录工具**，不是通用 C++ 解析器：目标写死在 `TARGETS` 里

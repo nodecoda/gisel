@@ -13,6 +13,10 @@ OUT=${3:?}
 MODE=${4:-shipping}
 CXX=${CXX:-g++}
 HERE=$(cd "$(dirname "$0")/../.." && pwd)
+
+# The official side must carry PIN.json `commit` plus every unmerged patch it
+# lists; a tree without them answers with pre-patch rules.
+"$HERE/tools/ab/check-pin.sh" "$TREE"
 SRC=$HERE/tools/ab/query_runner.cpp
 mkdir -p "$(dirname "$OUT")"
 

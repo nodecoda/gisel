@@ -12,6 +12,10 @@ BUILD=${2:?}
 INC=${3:?}
 OUT=${4:?}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
+
+# The official side must carry PIN.json `commit` plus every unmerged patch it
+# lists; a tree without them answers with pre-patch rules.
+"$ROOT/tools/ab/check-pin.sh" "$TREE"
 CXX=${CXX:-g++}
 mkdir -p "$(dirname "$OUT")"
 
