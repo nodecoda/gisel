@@ -112,9 +112,9 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 `docs/REPORT-no-td.md`。`tools/import-cxx.py` 留在工作台（`docs/SCOPE.md` §2），
 只负责把目标端 C++ 转成 `.gisel`；它不是 gisel 的运行时依赖。
 
-`tools/refresh-oracle.sh`（调 `llvm-tblgen -gen-legalizer*` 刷新 `tests/artifacts/`）
-已不再适用：产物现在由 `gisel gen` 自己生成。LLVM 分支里的 `.td` 和
-`-gen-legalizer*` 因此只剩历史价值，删除它们不影响 gisel；
+`tools/refresh-oracle.sh` 现在直接调 `gisel gen --emit={inc,core,check}` 刷新
+`tests/artifacts/`。它不再碰 `llvm-tblgen -gen-legalizer*`，因为那套后端和它读的
+`.td` 已经删除；冻结产物是 gisel 自己的输出（漂移基线），不是第二个实现。
 `docs/REPORT-cxx-corpus.md` 记录这次切换。
 
 语料是冻结输入：改规则等于改语料，必须重新过产物门（`tests/test_artifacts.py`、
