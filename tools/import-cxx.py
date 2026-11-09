@@ -360,13 +360,22 @@ class Types:
     def elem_of(self, cpp):
         """Element type of a vector LLT constant -> its `.gisel` type name."""
         name = self.name(cpp)
-        for pat, repl in ((r"(?:nxv|v)(\d+)(s|i|f)(\d+)", r"\2\3"),
-                          (r"(?:nxv|v)(\d+)p0", "p0"),
-                          (r"(?:nxv|v)(\d+)bf16", "bf16")):
-            m = re.fullmatch(re.escape(PREFIX) + pat, name)
+        stem = re.escape(PREFIX) + r"(?:nxv|nv|v|V)(\d+)"
+        for pat, elem in ((stem + r"([sifSIF])(\d+)", None),
+                          (stem + r"p0", "p0"),
+                          (stem + r"bf16", "bf16")):
+            m = re.fullmatch(pat, name)
             if m:
-                return PREFIX + re.sub(r"\\(\d)", lambda k: m.group(
-                    int(k.group(1))), repl)
+                if elem is None:
+                    keys = [m.group(2).upper() + m.group(3),
+                            m.group(2).lower() + m.group(3)]
+                else:
+                    keys = [elem]
+                for key in keys:
+                    got = self.name(key)
+                    if got != key:
+                        return got
+                return PREFIX + keys[-1]
         raise Refuse("element type of %r" % cpp)
 
     def translate_refs(self, expr):
