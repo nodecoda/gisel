@@ -256,6 +256,7 @@ docs/ALGORITHM-cases.md  case generation as a bounded quotient (article source)
 docs/REPORT-cases.md    case generation: evidence, rejected options
 docs/REQUIREMENTS-ab.md  workbench: the differential-testing requirement
 docs/REPORT-ab.md       workbench: end-to-end A/B (not a gisel feature)
+docs/PLAN-architecture.md  the Phase 1-2 cleanup plan (decisions, PR order)
 docs/SCOPE.md           what gisel is, what only uses it
 spec/semantics.md       what a rule means (and what the evaluator does)
 ```
