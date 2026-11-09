@@ -528,6 +528,11 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
              "witnessed": 0, "shadowed": 0, "unexercised": 0,
              "equivalence": 0, "boundary": 0, "outside": 0,
              "ill_formed": 0, "ill_formed_opcodes": {},
+             # `max_slot_values` is a soft budget: every literal and its
+             # neighbours survive, so a slot can be wider than the budget.
+             # Report both so a reader never mistakes 16 for a hard cap.
+             "slot_budget": max_slot_values,
+             "candidate_max": 0, "candidate_over_budget": 0,
              "unwitnessed": []}
 
     # Opcodes whose rules read a memory descriptor.  A query for one of them
@@ -569,6 +574,10 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
             infos, nslots, max_slot_values, domain, scalable_ok))
         if axes is not None:
             per = [axes.apply_types(slot) for slot in per]
+        widest = max((len(values) for values in per), default=0)
+        stats["candidate_max"] = max(stats["candidate_max"], widest)
+        if widest > max_slot_values:
+            stats["candidate_over_budget"] += 1
         default = _defaults(per)
         mem_entries = _mem_candidates(infos)
         if axes is not None:

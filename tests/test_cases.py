@@ -151,6 +151,21 @@ class Shapes(unittest.TestCase):
         self.assertEqual(gen.stats["witnessed"], 0)
         self.assertEqual(gen.stats["unexercised"], 1)
 
+    def test_the_slot_budget_is_soft_and_reported(self):
+        # 20 literals in one slot: `_candidates` keeps every literal plus its
+        # neighbours, so the axis is wider than `max_slot_values`.  That is
+        # the design, and the stats have to say so instead of letting a
+        # reader treat 16 as a hard cap.
+        bits = [1, 3, 5, 6, 7, 9, 10, 11, 12, 13,
+                17, 18, 19, 20, 21, 22, 23, 25, 26, 27]
+        text = "".join("type S%d = LLT::scalar(%d)\n" % (b, b) for b in bits)
+        text += "\nruleset B_ADD: G_ADD\n    legal in(slot(0), [%s])\n" % (
+            ", ".join("S%d" % b for b in bits))
+        doc, features, gen = build(text)
+        self.assertEqual(gen.stats["slot_budget"], 16)
+        self.assertGreater(gen.stats["candidate_max"], 16)
+        self.assertGreaterEqual(gen.stats["candidate_over_budget"], 1)
+
     def test_every_generated_type_round_trips(self):
         doc, features, gen = build(FIXTURE)
         for case in gen.cases:
