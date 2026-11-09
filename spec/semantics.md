@@ -63,6 +63,10 @@
 位宽 `<` 目标或不是 2 的幂，`shim_guard_and_newtype:718` 起）；guard 为假时
 这条规则**不**消费查询，继续往下匹配。`new_type = invalid` 表示"不变"。
 
+`more(slot(i), N)` / `fewer(slot(i), N)`（`changeElementCountTo(i, EC(N))`
+的写法）是例外：C++ 的变异没有额外 guard，规则的谓词就是全部条件，所以
+`eval` 不再补 `num_elems` 比较，命中即把 lane 数改成 `N`。
+
 `clamp_min(i, elt, n)` / `clamp_max(...)` 在前端就展开成一条 `more`/`fewer`
 （四个 guard + `replace(vec_of/scalar_or_vec_of(...))`，`dsl.py:475-497`），
 所以 core JSON 里没有 clamp 节点。

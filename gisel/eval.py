@@ -956,6 +956,12 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
         raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
 
     if op == "more":
+        if to_form == "int":
+            # `changeElementCountTo(i, EC)` applies unconditionally when the
+            # rule predicate holds: no additional size/count guard.
+            if not is_vector(t):
+                return False, ("invalid",)
+            return True, fixed_vector(to_int, get_element_type(t))
         if to_form == "pow2":
             if not (is_fixed_vector(t) and not is_pow2_32(num_elems(t))):
                 return False, ("invalid",)
@@ -963,6 +969,10 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
         raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
 
     if op == "fewer":
+        if to_form == "int":
+            if not is_vector(t):
+                return False, ("invalid",)
+            return True, fixed_vector(to_int, get_element_type(t))
         if to_form == "ty":
             target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             tsize, _ = size_in_bits(target)

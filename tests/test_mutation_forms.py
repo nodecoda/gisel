@@ -93,6 +93,55 @@ class Semantics(unittest.TestCase):
         self.assertEqual(got[("G_MUL", ("v3s16",))]["new_type"], "<3 x s32>")
 
 
+LANE_SOURCE = """\
+type T_v2s32 = LLT::fixed_vector(2, 32)
+type T_v4s32 = LLT::fixed_vector(4, 32)
+type T_v8s32 = LLT::fixed_vector(8, 32)
+
+ruleset T_G_AND: G_AND
+    fewer(slot(0), 4) when num_elems(slot(0)) > 4
+
+ruleset T_G_OR: G_OR
+    more(slot(0), 8) when num_elems(slot(0)) < 8
+"""
+
+
+class LaneCount(unittest.TestCase):
+    """`fewer`/`more` to an exact lane count has no implicit guard.
+
+    `changeElementCountTo(i, EC)` runs whenever the rule predicate holds; the
+    predicate already spells `num_elems` when the C++ does.
+    """
+
+    def answers(self):
+        with tempfile.TemporaryDirectory() as d:
+            d = Path(d)
+            src = d / "t.gisel"
+            src.write_text(LANE_SOURCE)
+            doc, cases, out = d / "doc.json", d / "q.jsonl", d / "a.jsonl"
+            r = run("gen", str(src), "--emit=core", "--out", str(doc))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            queries = [("G_AND", ["v8s32"]), ("G_OR", ["v2s32"])]
+            cases.write_text("\n".join(json.dumps(
+                {"config": "baseline", "name": n, "types": t,
+                 "mem": None, "imms": []}) for n, t in queries) + "\n")
+            r = run("eval", "--doc", str(doc), "--features", str(FEATURES),
+                    "--cases", str(cases), "--answers", str(out))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            got = [json.loads(line) for line in out.read_text().splitlines()]
+        return {row["name"]: row for row in got}
+
+    def test_fewer_to_an_exact_count(self):
+        row = self.answers()["G_AND"]
+        self.assertEqual((row["action"], row["new_type"]),
+                         ("FewerElements", "<4 x s32>"))
+
+    def test_more_to_an_exact_count(self):
+        row = self.answers()["G_OR"]
+        self.assertEqual((row["action"], row["new_type"]),
+                         ("MoreElements", "<8 x s32>"))
+
+
 class Emitter(unittest.TestCase):
     def test_inc_uses_the_whole_type_shim(self):
         with tempfile.TemporaryDirectory() as d:
