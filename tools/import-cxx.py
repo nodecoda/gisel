@@ -573,6 +573,31 @@ def _is_assert(st):
     return re.match(r"(?:static_)?assert\s*\(", st.strip()) is not None
 
 
+def _split_top_op(text, op):
+    """Split on a top-level operator (`&&`, `||`)."""
+    depth, parts, start, i = 0, [], 0, 0
+    while i < len(text):
+        c = text[i]
+        if c in "([{":
+            depth += 1
+        elif c in ")]}":
+            depth -= 1
+        elif depth == 0 and text.startswith(op, i):
+            parts.append(text[start:i])
+            i += len(op)
+            start = i
+            continue
+        i += 1
+    parts.append(text[start:])
+    return parts
+
+
+def _looks_type(value):
+    """True when a `.gisel` value expression already denotes an LLT."""
+    return value.startswith(("elem_of(", "ty(", "vec_of(", "scalar_or_vec_of(",
+                             "int_of_size(", "scalar_of("))
+
+
 def _arith(text):
     """C++ integer arithmetic the DSL spells as `mul`/`add`/`udiv`/....
 
@@ -1124,7 +1149,7 @@ class Translator:
                 return "int_of_size(size_of(slot(%s)))" % src.group(1)
         return "ty(%s)" % self.t.name(text)
 
-    def mutation_lambda(self, text):
+    def mutation_lambda(self, text, env=None):
         """`bitcastIf`'s new-type lambda -> a `.gisel` type expression."""
         body = re.sub(r"\bQ\.", "Query.", text)
         body = body.replace(".getSizeInBits().getKnownMinValue()", ".getSizeInBits()")
@@ -1187,6 +1212,12 @@ class Translator:
                 return "slot(%s), ty(%s)" % (
                     idx, self.t.name("LLT::scalar(%s)" % mm.group(1)))
             return "slot(%s), replace(%s)" % (idx, self._mut_ty(ty))
+        body = self._lambda_body(text)
+        if body is not None:
+            try:
+                return self._mutation_body_value(body, getattr(self, "env", {}))
+            except Refuse:
+                pass
         raise Refuse("bitcast lambda %r" % text[:60])
 
     def count_expr(self, text):
@@ -1367,11 +1398,8 @@ class Translator:
             return None
         henv = dict(env or {})
         henv[spec["param"]] = idx
-        binds = {}
         try:
-            for var, expr in spec["decls"]:
-                binds[var] = self._helper_value(expr, binds, henv)
-            return self._helper_value(spec["type"], binds, henv)
+            return self._mutation_body_value(spec["body"], henv)
         except Refuse:
             return None
 
@@ -1394,23 +1422,30 @@ class Translator:
         except Refuse:
             return None
         body = src[m.end():close - 1]
-        lm = re.search(r"\[[^\]]*\]\s*\(", body)
-        if not lm:
+        lam = self._lambda_body(body)
+        if lam is None:
             return None
-        try:
-            pclose = match_paren(body, lm.end() - 1)
-        except Exception:
-            return None
-        bopen = body.find("{", pclose)
+        spec = {"param": param, "body": lam}
+        cache[name] = spec
+        return spec
+
+    @staticmethod
+    def _lambda_body(text):
+        """The statements inside the first lambda body in ``text``."""
+        bopen = text.find("{")
         if bopen < 0:
             return None
         try:
-            bclose = _match_brace(body, bopen)
+            bclose = _match_brace(text, bopen)
         except Refuse:
             return None
-        lam = body[bopen + 1:bclose - 1]
+        return text[bopen + 1:bclose - 1]
+
+    def _mutation_body_value(self, body, env):
+        """`{ decls; return pair(i, T); }` -> `slot(i), replace(<value>)`."""
+        body = re.sub(r"//[^\n]*", "", body)
         ret, decls = None, []
-        for st, _ in split_statements(lam):
+        for st, _ in split_statements(body):
             st = st.strip().rstrip(";").strip()
             if not st or _is_assert(st):
                 continue
@@ -1418,24 +1453,27 @@ class Translator:
                 ret = st[len("return "):].strip()
                 continue
             dm = re.fullmatch(
-                r"(?:const\s+)?(?:unsigned|int|auto|LLT|bool)\s+(\w+)\s*=\s*(.+)",
-                st, re.S)
+                r"(?:const\s+)?(?:unsigned|int|auto|LLT|bool)\s*&?\s*(\w+)"
+                r"\s*=\s*(.+)", st, re.S)
             if not dm:
-                return None
+                raise Refuse(st)
             decls.append((dm.group(1), dm.group(2).strip()))
         if ret is None:
-            return None
+            raise Refuse("no return")
         pm = re.fullmatch(
             r"(?:std::)?(?:make_pair|pair(?:\s*<[^>]*>)?)\s*\((.*)\)",
             ret, re.S)
         if not pm:
-            return None
+            raise Refuse(ret)
         args = split_top(pm.group(1))
         if len(args) != 2:
-            return None
-        spec = {"param": param, "decls": decls, "type": args[1].strip()}
-        cache[name] = spec
-        return spec
+            raise Refuse(ret)
+        idx_text, ty_expr = args[0].strip(), args[1].strip()
+        binds = {}
+        for var, expr in decls:
+            binds[var] = self._helper_value(expr, binds, env)
+        value = self._helper_value(ty_expr, binds, env)
+        return "slot(%s), replace(%s)" % (idx_of(idx_text, env), value)
 
     def _helper_value(self, text, binds, env):
         """A C++ type expression inside a mutation helper -> `.gisel` value."""
@@ -1446,6 +1484,12 @@ class Translator:
             return str(int(re.sub(r"[uUlL]+$", "", t)))
         if t.startswith("-"):
             return "sub(0, %s)" % self._helper_value(t[1:], binds, env)
+        tern = split_ternary(t)
+        if tern:
+            return "select(%s, %s, %s)" % (
+                self._helper_pred(tern[0], binds, env),
+                self._helper_value(tern[1], binds, env),
+                self._helper_value(tern[2], binds, env))
         for ops, names in (("+-", {"+": "add", "-": "sub"}),
                            ("*/%", {"*": "mul", "/": "udiv", "%": "urem"})):
             i, c = _binop_at(t, ops)
@@ -1470,6 +1514,10 @@ class Translator:
             if m.group(2) == "ElementType":
                 return "elem_of(%s)" % base
             return "scalar_of(%s)" % base
+        m = re.fullmatch(r"LLT::(?:integer|scalar)\((.*)\)", t, re.S)
+        if m:
+            return "int_of_size(%s)" % self._helper_value(
+                m.group(1), binds, env)
         m = re.fullmatch(r"LLT::fixed_vector\((.*)\)", t, re.S)
         if m:
             args = split_top(m.group(1))
@@ -1477,7 +1525,7 @@ class Translator:
                 raise Refuse(text)
             return "vec_of(%s, %s)" % (
                 self._helper_value(args[0], binds, env),
-                self._helper_value(args[1], binds, env))
+                self._as_elt(args[1], binds, env))
         m = re.fullmatch(r"LLT::scalarOrVector\((.*)\)", t, re.S)
         if m:
             args = split_top(m.group(1))
@@ -1489,12 +1537,106 @@ class Translator:
                 raise Refuse(text)
             return "scalar_or_vec_of(%s, %s)" % (
                 self._helper_value(cm.group(1), binds, env),
-                self._helper_value(args[1], binds, env))
+                self._as_elt(args[1], binds, env))
+        m = re.fullmatch(r"([A-Za-z_]\w*)\s*\((.*)\)", t, re.S)
+        if m and "::" not in t:
+            value = self._llt_helper_value(
+                m.group(1), split_top(m.group(2)), binds, env)
+            if value is not None:
+                return value
         if re.fullmatch(r"[A-Za-z_]\w*", t):
             name = self.t.name(t)
             if name != t:
                 return "ty(%s)" % name
         raise Refuse(text)
+
+    def _as_elt(self, text, binds, env):
+        """`LLT::fixed_vector(n, X)`: X is an LLT, or a scalar width."""
+        value = self._helper_value(text, binds, env)
+        if not _looks_type(value):
+            return "int_of_size(%s)" % value
+        return value
+
+    def _helper_pred(self, text, binds, env):
+        t = text.strip()
+        parts = _split_top_op(t, "||")
+        if len(parts) > 1:
+            return "(%s)" % " or ".join(
+                self._helper_pred(p, binds, env) for p in parts)
+        parts = _split_top_op(t, "&&")
+        if len(parts) > 1:
+            return "(%s)" % " and ".join(
+                self._helper_pred(p, binds, env) for p in parts)
+        if t.startswith("!") and not t.startswith("!="):
+            return "not (%s)" % self._helper_pred(t[1:], binds, env)
+        cmp = self._split_cmp(t)
+        if cmp:
+            lhs, op, rhs = cmp
+            return "(%s %s %s)" % (
+                self._helper_value(lhs.strip(), binds, env), op,
+                self._helper_value(rhs.strip(), binds, env))
+        raise Refuse(text)
+
+    def _llt_helper_value(self, name, args, binds, env):
+        """Inline a `static LLT F(...)` helper (declarations + early returns)."""
+        cache = self.__dict__.setdefault("_llt_helpers", {})
+        if name not in cache:
+            cache[name] = self._llt_helper_spec(name)
+        spec = cache[name]
+        if spec is None or len(args) != len(spec["params"]):
+            return None
+        local = {}
+        try:
+            for param, arg in zip(spec["params"], args):
+                local[param] = self._helper_value(arg, binds, env)
+            return self._llt_body_value(spec["body"], local, env)
+        except Refuse:
+            return None
+
+    def _llt_helper_spec(self, name):
+        src = getattr(self, "source", "")
+        m = re.search(r"static\s+LLT\s+%s\s*\(([^)]*)\)\s*\{"
+                      % re.escape(name), src)
+        if not m:
+            return None
+        params = [p.replace("*", " ").replace("&", " ").split()[-1]
+                  for p in split_top(m.group(1))]
+        try:
+            close = _match_brace(src, m.end() - 1)
+        except Refuse:
+            return None
+        return {"params": params, "body": src[m.end():close - 1]}
+
+    def _llt_body_value(self, body, binds, env):
+        body = re.sub(r"//[^\n]*", "", body)
+        branches, final = [], None
+        for st, _ in split_statements(body):
+            st = st.strip().rstrip(";").strip()
+            if not st or _is_assert(st):
+                continue
+            if st.startswith("return "):
+                final = self._helper_value(st[len("return "):], binds, env)
+                continue
+            im = re.fullmatch(r"if\s*\((.*)\)\s*\{(.*)\}", st, re.S)
+            if im:
+                rm = re.fullmatch(r"\s*return\s+(.+?);?\s*", im.group(2), re.S)
+                if not rm:
+                    raise Refuse(st)
+                branches.append((
+                    self._helper_pred(im.group(1), binds, env),
+                    self._helper_value(rm.group(1), binds, env)))
+                continue
+            dm = re.fullmatch(
+                r"(?:const\s+)?(?:unsigned|int|auto|LLT|bool)\s*&?\s*(\w+)"
+                r"\s*=\s*(.+)", st, re.S)
+            if not dm:
+                raise Refuse(st)
+            binds[dm.group(1)] = self._helper_value(dm.group(2), binds, env)
+        if final is None:
+            raise Refuse(body)
+        for cond, value in reversed(branches):
+            final = "select(%s, %s, %s)" % (cond, value, final)
+        return final
 
     # -- align helpers ---------------------------------------------------
     def align_variants(self, text):
@@ -2149,9 +2291,9 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
             if isinstance(i, int):
                 value = tr.mutation_helper_value(m.group(1), i, env)
                 if value is not None:
-                    return "slot(%d), replace(%s)" % (i, value)
+                    return value
         if text.startswith("["):
-            return tr.mutation_lambda(text)
+            return tr.mutation_lambda(text, env)
         raise Refuse(text)
 
     # `legalFor(pred, {..})` / `minScalar(pred, 0, sXLen)`: the predicate is a
@@ -2359,8 +2501,6 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
             # `bitcastIf(P, changeTo(i, T))` names the target type directly;
             # `mutation_lambda` reads the pair/lambda spellings only.
             to = tr.mutation(mut)
-        elif op == "bitcast":
-            to = tr.mutation_lambda(mut)
         else:
             to = mutation(mut)
         out.append("%s(%s) when %s" % (op, to, tr.pred_lambda(pred)))
