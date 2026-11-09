@@ -562,6 +562,7 @@ class Translator:
         self.named_preds = {}   # LegalityPredicate variables
         self.int_ternary = {}   # cpp int name -> (gate, value if true, else)
         self.refused = []
+        self.opaque = []        # host predicates copied as `opaque("...")`
 
     # -- features: any `ST.x()` / `XLen == N` becomes a named feature --------
     def feature(self, cpp_text):
@@ -1360,6 +1361,17 @@ class Translator:
             i += 1
         return None
 
+    @staticmethod
+    def _single_return(body):
+        """The expression of a lambda body that is one `return <expr>;`."""
+        stmts = [x.strip() for x, _ in split_statements(body) if x.strip()]
+        if len(stmts) != 1:
+            return None
+        st = stmts[0].rstrip(";").strip()
+        if not st.startswith("return "):
+            return None
+        return st[len("return "):].strip() or None
+
     def pred_lambda(self, text):
         text = text.strip()
         if text.startswith("LegalityPredicate(") and text.endswith(")"):
@@ -1367,7 +1379,22 @@ class Translator:
         m = re.match(r"\[.*?\]\s*\((.*?)\)\s*(?:->\s*[^({]+?)?\s*\{(.*)\}$",
                      text, re.S)
         if m:
-            return self.body_pred(m.group(2))
+            try:
+                return self.body_pred(m.group(2))
+            except Refuse:
+                # A helper defined in the target file (`isLoadStoreLegal(ST,
+                # Query)`) is not part of the predicate algebra.  Copy the
+                # expression through `opaque(...)` instead of dropping the
+                # rule: the generated C++ can evaluate it, gisel cannot, and
+                # the escape is listed in the corpus header and in
+                # `--emit=core` `escapes`.
+                expr = self._single_return(m.group(2))
+                if expr is None:
+                    raise
+                expr = " ".join(expr.split())
+                self.opaque.append(expr)
+                return 'opaque("%s")' % (expr.replace("\\", "\\\\")
+                                              .replace('"', '\\"'))
         if re.match(r"\[[^\]]*\]\s*\(", text):
             # A lambda whose shape this parser does not know.  Calling
             # `pred()` back would re-dispatch to this function and recurse
@@ -2265,6 +2292,13 @@ DSL_CALLS = {
 def apply_gate(line, gate):
     if not gate:
         return line
+    # A constructor-level `if` whose condition folded to a literal is C++ that
+    # does or does not run at all: `if (false)` registers no builder upstream,
+    # and `not not true` is just `true`.
+    while "not not " in gate:
+        gate = gate.replace("not not ", "")
+    if gate == "not true":
+        return None
     head, _, rest = line.partition(" ")
     if head in TERMINALS:
         rest = rest.strip()
@@ -2714,7 +2748,9 @@ class Importer:
             if len(self.gate) > 1:
                 gate = "(" + " and ".join(self.gate) + ")"
             for r in rules:
-                rs.rules.append((line, apply_gate(r, gate)))
+                gated = apply_gate(r, gate)
+                if gated is not None:
+                    rs.rules.append((line, gated))
             i += end
         rest = text[i:].strip()
         if rest not in ("", ";"):
@@ -3051,6 +3087,16 @@ def transcribe(spec, source, out):
 
     refusals = imp.p.refused + [(l, w) for l, w in imp.t.refused] + \
         [(0, w) for w in imp.tr.refused]
+    body = render(imp)
+    # `tr.opaque` records every host predicate the parser saw, including one
+    # inside a statement that was refused for a different reason (the
+    # mutation beside it).  The header must name only the escapes that are
+    # actually in the file, or it claims rules that were dropped.
+    emitted_opaque = []
+    for m in re.finditer(r'opaque\("((?:[^"\\]|\\.)*)"\)', body):
+        expr = m.group(1).replace('\\"', '"').replace("\\\\", "\\")
+        if expr not in emitted_opaque:
+            emitted_opaque.append(expr)
     notes = ""
     if refusals:
         notes = "// Refused (%d statement(s), not transcribed):\n" % len(refusals)
@@ -3063,6 +3109,13 @@ def transcribe(spec, source, out):
         for line, why in imp.skipped:
             notes += "//   line %d: %s\n" % (line, why)
         notes += "//\n"
+    if emitted_opaque:
+        notes += ("// Opaque (%d host predicate(s), copied as `opaque(...)`; the "
+                  "generated C++ evaluates them, gisel cannot):\n"
+                  % len(emitted_opaque))
+        for expr in emitted_opaque:
+            notes += "//   %s\n" % expr
+        notes += "//\n"
     if imp.ignored:
         notes += ("// Ignored (%d statement(s), constructor plumbing, not "
                   "rules):\n" % len(imp.ignored))
@@ -3070,7 +3123,6 @@ def transcribe(spec, source, out):
             notes += "//   line %d: %s\n" % (line, why)
         notes += "//\n"
     name = spec.name + "LegalizerInfo"
-    body = render(imp)
     header = HEADER.format(
         name=name, src=source.name, target=spec.name,
         sha=hashlib.sha256(text.encode()).hexdigest(), notes=notes)
