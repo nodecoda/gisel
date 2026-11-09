@@ -35,7 +35,7 @@ X86 的两条偏离写在工具里（`X86_DEVIATIONS`），每条都会断言上
 
 | 偏离 | 原因 |
 |---|---|
-| `G_BUILD_VECTOR` 去掉最小 lane clamp | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 会死循环（最小复现：`2026-11-09-14`）；只留最大 clamp，窄 build vector 走 Unsupported。端到端对拍里这正好是 X86 全部 19 条差异 |
+| `G_BUILD_VECTOR` 去掉最小 lane clamp | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 会死循环（上游 issue #236649，修复 PR #238277 待合并；实测见 `2026-11-09-14`）；只留最大 clamp，窄 build vector 走 Unsupported。端到端对拍里这正好是 X86 全部 19 条差异 |
 | `G_CTPOP` 增加 VPOPCNTDQ 的向量 legal | 我们的语料带上了向量 legalization，冻结答案里这些点是 Legal |
 
 ## 复现：一条命令，钉住计数

@@ -235,11 +235,16 @@ pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`（sha256 `79f2376…`）。
 official  MoreElements      gisel  Unsupported
 ```
 
-这不是翻译错误，而是语料里唯一一处**有意偏离**（`docs/CORPORA.md` 的偏离表）：
-上游 `clampNumElements(0, v16s8, …)` 会给窄 build vector 一个“加 lane”的
-`MoreElements`，而 `moreElementsVector` 重建出来的新 build vector 又拿到同一个
-动作，`llc` 永远不返回。最小复现和 `-debug-only=legalizer` 的轨迹已落到
+这不是翻译错误，而是语料里唯一一处**有意偏离**（`docs/CORPORA.md` 的偏离表），
+而且它对齐的是**我们待合并的上游修复**：issue
+[#236649](https://github.com/llvm/llvm-project/issues/236649)、PR
+[#238277](https://github.com/llvm/llvm-project/pull/238277)。上游
+`clampNumElements(0, v16s8, …)` 给窄 build vector 一个“加 lane”的
+`MoreElements`，`moreElementsVector` 重建出来的新 build vector 又拿到同一个动作，
+`llc` 永远不返回。实测与 `-debug-only=legalizer` 轨迹在
 `/home/ubuntu/admin/upstream-issues/2026-11-09-14-gisel-x86-narrow-build-vector-loop.md`。
+
+PR 合并后把 pin 前移，这 19 条自动归零；在那之前它们不是“未知差异”。
 
 也就是说：**X86 上 3,257/3,276 一致，剩下 19 条是一个已知上游死循环的有意规避**，
 没有未归因的差异。
