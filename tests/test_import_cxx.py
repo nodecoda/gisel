@@ -227,6 +227,39 @@ class LambdaPredicates(unittest.TestCase):
         self.assertNotIn("RecursionError", r.stdout + r.stderr)
 
 
+class PredicateValueEscape(unittest.TestCase):
+    """A helper that returns a `LegalityPredicate` is copied, not inlined.
+
+    `isRegisterType(ST, 0)` is a `std::function<bool(const LegalityQuery&)>`:
+    it only answers when called with the rule's query.  Following its body
+    recurses through the `bool` overload of the same name, so the importer
+    must copy the call instead.
+    """
+
+    SRC = ROOT / "tests" / "fixtures" / "legalizer-ctor-pred-value.cpp"
+
+    def test_predicate_value_is_copied_with_the_query(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "T.gisel"
+            r = run("RISCV", str(self.SRC), "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            text = out.read_text()
+        self.assertIn('legal opaque("isRegisterType(ST, 0)(Query)")', text)
+        self.assertNotIn("RecursionError", r.stdout + r.stderr)
+
+    def test_the_inc_calls_the_helper_with_the_query(self):
+        with tempfile.TemporaryDirectory() as d:
+            src, inc = Path(d) / "T.gisel", Path(d) / "T.inc"
+            run("RISCV", str(self.SRC), "--out", str(src))
+            r = subprocess.run(
+                [sys.executable, "-m", "gisel", "gen", str(src),
+                 "--emit=inc", "--out", str(inc)],
+                cwd=ROOT, capture_output=True, text=True)
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            text = inc.read_text()
+        self.assertIn("return (isRegisterType(ST, 0)(Query));", text)
+
+
 class ReimportedCorpora(unittest.TestCase):
     """Every pinned constructor reproduces its checked-in `.gisel`."""
 

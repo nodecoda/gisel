@@ -2,7 +2,7 @@
 
 一句话：**上游一共 11 个 legalizer 构造函数，语料收了 9 个；BPF 的构造函数是空的，
 真正剩下的只有 AMDGPU。** 导入器已经能把 AMDGPU 读成一份**能解析、能 lint**
-的语料（633 条规则），但还有 120 条语句拒绝，其中约一半要动 DSL 本身。本轮做
+的语料（639 条规则），但还有 114 条语句拒绝，其中约一半要动 DSL 本身。本轮做
 盘点、一个可复现的探针、把“悄悄产出非法文本”这类缺陷堵死，并按 §4 选定的
 逃逸点路线落下 `opaque(...)`；语料仍未收。
 
@@ -11,10 +11,10 @@
 | 项 | 值 |
 |---|---:|
 | rulesets | 142 |
-| rules | 633 |
-| refused | 120 |
+| rules | 639 |
+| refused | 114 |
 | builder 调用 | 592 |
-| 其中 `opaque` 规则 | 6 处 / 3 个不同表达式 |
+| 其中 `opaque` 规则 | 16 处 / 7 个不同表达式 |
 | lint | 0 error / 7 warning |
 
 ## 1 盘点：11 个构造函数
@@ -57,10 +57,10 @@ python3 -m gisel lint /tmp/amdgpu.gisel
 （`git log -1 -- docs/REPORT-amdgpu.md`）——数字随导入器变化，源 sha 是稳定锚点。
 
 ```
-142 rulesets, 633 rules, 120 refused
+142 rulesets, 639 rules, 114 refused
 TOTAL  592 calls  646 rules
 
-lint: 0 error(s), 7 warning(s), 633 rule(s)
+lint: 0 error(s), 7 warning(s), 639 rule(s)
 ```
 
 7 条 warning 都是 `arity unknown`（`G_BUILD_VECTOR_TRUNC`、`G_MERGE_VALUES` 等），
@@ -93,14 +93,13 @@ lint: 0 error(s), 7 warning(s), 633 rule(s)
 
 这条约束对现有 9 份语料零影响（`--all --check` 9/9 逐字节相同）。
 
-## 3 120 条拒绝：按“要做什么”分类
+## 3 114 条拒绝：按“要做什么”分类
 
 | 类别 | 条数 | 要做什么 |
 |---|---:|---|
 | `clampMaxNumElementsStrict` | 30 | DSL 新原语。C++ 把它定义成 `alignNumElementsTo` + `clampMaxNumElements`（`LegalizerInfo.h:1327`）：“先按 N 补 undef 到整倍数，再夹上界”。`clamp_max` 已有，缺“补齐到 N 的倍数” |
 | `if` 块里的 clamp（gated clamp_max） | 12 | 语法缺“带谓词的 clamp”。要么给它加 `when`，要么让 importer 拆成 `actionIf` 形态 |
 | lane 变异体 | 14 | `oneMoreElement`(11) / `moreEltsToNext32Bit`(2) / `fewerEltsToSize64Vector`(1)，`more(slot, pow2)` 覆盖不了 |
-| 宿主谓词作参数（`isRegisterType(ST, 0)` 这类） | 9 | 返回 `LegalityPredicate` 的 helper 不是 `bool(...)`，不能直接套 `opaque("expr")`；要 `opaque("expr(Query)")` 形态（`LegalityPredicate = std::function<bool(const LegalityQuery&)>`），见 §4 |
 | `widenScalarToNextMultipleOf` | 9 | DSL 新原语：加宽到 Size 的整数倍（不是 next pow2，`LegalizerInfo.h:989`） |
 | 变异 lambda 形态 | 17 | bitcast 到算出来的类型(10)、`scalarize` 作变异体(6)、`changeElementSizeTo`(1)；返回 `std::pair<unsigned, LLT>` 的 lambda |
 | memdesc 的具名/表达式 align | 7 | `GlobalAlign8 = ST.hasUnalignedBufferAccessEnabled() ? 0 : 8`：align 字段需要一个“配置选的整数”，现在没有拼写 |
@@ -110,11 +109,12 @@ lint: 0 error(s), 7 warning(s), 633 rule(s)
 | `clampNumElements` 的元素类型写法 | 3 | `clampNumElements(0, V16S32, V32S32)` 取元素类型的写法 |
 | 构造函数里的局部 lambda / 未知常量 | 5 | `needToSplitMemOp`(1)、`MaxRegisterSize`(2)、`TypeIdx`(2) |
 | `narrowScalarIf` 三参数形态 | 2 | 谓词 + 变异 + 变异 |
+| `isIllegalRegisterType(ST, VecTypeIdx)` | 2 | 第二参是构造函数变量（循环里算出来的 slot），不是整数字面量，谓词值逃逸不敢猜 |
+| `moreElementsToNextExistingRegClass` | 1 | 返回 `LegalizeMutation` 的 helper，不是谓词；属于变异侧原语 |
 | `minScalarIf(...)` | 1 | 其他 |
 
 粗分：**约 10 条是拼写/常量求值**，**约 100 条要 DSL + `--emit=inc` + `eval` 同步
-扩原语**（每个原语都要有语义、lint、单元测试、以及和现网 C++ `LegalizerInfo` 的
-一致声明），**9 条归 §4 的逃逸点**。
+扩原语**，**3 条仍是宿主 helper 的边角**（谓词值逃逸已经能吃整数字面量形态）。
 
 ## 4 真正的分水岭：文件内的 C++ 谓词
 
@@ -156,10 +156,26 @@ Opaque (3 host predicate(s), copied as `opaque(...)`; the generated C++ evaluate
   shouldWidenLoad(ST, Query, G_LOAD)
 ```
 
-当前 6 处规则（G_LOAD/G_STORE 的 `legal`/`custom`/`shouldWidenLoad`、G_SEXTLOAD 的
-`legal`）走这条口。另有 9 条是**谓词值**而不是布尔表达式——`isRegisterType(ST, 0)`
-返回 `LegalityPredicate`，要写成 `opaque("isRegisterType(ST, 0)(Query)")` 才能编译，
-这是下一步的便宜项。
+当前 16 处规则走这条口，7 个不同表达式：
+
+```
+isLoadStoreLegal(ST, Query)              x3
+hasBufferRsrcWorkaround(Query.Types[0])  x2
+shouldWidenLoad(ST, Query, G_LOAD)       x1
+isRegisterType(ST, 0)(Query)             x4
+isRegisterType(ST, 1)(Query)             x3
+isRegisterClassType(ST, 0)(Query)        x2
+isRegisterClassType(ST, 1)(Query)        x1
+```
+
+`isRegisterType(ST, 0)` 这类是**谓词值**（`LegalityPredicate = std::function<bool(const
+LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool 用。导入器只在
+“文件里确实声明了 `LegalityPredicate <名字>(`、且最后一个实参是整数字面量”时才这么
+翻译；`isIllegalRegisterType(ST, VecTypeIdx)` 的第二参是循环变量，不猜，继续拒绝。
+
+实现上踩过一个坑：`isRegisterType(ST, TypeIdx)` 的谓词体转调同名的 `bool` 重载，
+直接内联会无限递归（第一版把整条 builder 链炸成 `RecursionError`，规则静默消失）。
+现在内联栈挡住同名重入，失败才退回 `opaque`。
 
 这条口子也修掉了一个统计错误：头部原先把“解析到、但所在语句因别的理由被拒绝”的
 谓词也算进去（13），现在只列真正出现在正文里的（3 个不同表达式）。
@@ -181,8 +197,8 @@ Opaque (3 host predicate(s), copied as `opaque(...)`; the generated C++ evaluate
 
 1. ~~便宜项先清：`assert`、`sameSize`、文件级常量/类型集合、地址空间枚举。~~
    本轮已完成，并顺带堵住“悄悄产出非法文本”。
-2. ~~定下 §4：逃逸点还是新原语。~~ 已选**逃逸点**并落地 `opaque(...)`；
-   下一步是谓词值形态 `opaque("helper(ST, i)(Query)")`（9 条）。
+2. ~~定下 §4：逃逸点还是新原语。~~ 已选**逃逸点**并落地 `opaque(...)`，含
+   谓词值形态 `opaque("helper(ST, i)(Query)")`（解锁 6 条规则）。
 3. DSL 原语分批：`align_lanes`（解锁 30 条）→ `widen_to_multiple`（9）→
    lane 数 `+1` / 补到 32 位（16）→ 带谓词的 clamp（12）→ bitcast 到算出来的类型（6）。
 4. 0 拒绝之后再进 `PIN.json` / `TARGETS` / cases 配置 / runner，最后才是端到端。

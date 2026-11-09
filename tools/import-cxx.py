@@ -706,9 +706,17 @@ class Translator:
         if m is not None:
             return m
         # Predicates that name a slot by a constructor variable: fold it first.
-        text = re.sub(r"\(\s*(\w+)\s*,", lambda m: "(%s," % (
-            m.group(1) if m.group(1).isdigit() else self.slot_index(m.group(1))
-        ) if not m.group(1).isdigit() else m.group(0), text)
+        # A call to a file-scope helper is left alone: its first argument is
+        # the subtarget (`isRegisterType(ST, 0)`), not a slot index, and the
+        # `local_*` / opaque paths below know what to do with it.
+        helper = re.match(r"(\w+)\s*\(", text)
+        if not (helper and helper.group(1) in (
+                set(getattr(self, "pred_values", ()))
+                | set(getattr(self, "helpers", {}))
+                | set(getattr(self, "bool_helpers", {})))):
+            text = re.sub(r"\(\s*(\w+)\s*,", lambda m: "(%s," % (
+                m.group(1) if m.group(1).isdigit() else self.slot_index(m.group(1))
+            ) if not m.group(1).isdigit() else m.group(0), text)
         for pat, body in (
                 (r"sizeIs\s*\(\s*(\d+)\s*,\s*(\d+)\)", r"size_of(slot(\1)) == \2"),
                 (r"immIs\s*\(\s*(\d+)\s*,\s*(-?\d+)\)", r"imm(\1) == \2"),
@@ -735,12 +743,38 @@ class Translator:
         if cmp is not None:
             lhs, op, rhs = cmp
             return "%s %s %s" % (self.expr_text(lhs), op, self.expr_text(rhs))
-        local = self.local_bool(text)
+        try:
+            local = self.local_bool(text)
+        except Refuse:
+            # The name is known as a `bool` helper but this call has another
+            # arity (an overload); the same name may still be a predicate
+            # value, which the escape below handles.
+            local = None
         if local is not None:
             return local
-        local = self.local_pred(text)
+        try:
+            local = self.local_pred(text)
+        except Refuse:
+            # The helper is known, but this call is not the shape its body
+            # inlines into (AMDGPU's predicate overload delegates to a `bool`
+            # overload on `Query.Types[i]`).  The escape below can still copy
+            # the call; only give up when it cannot.
+            local = None
         if local is not None:
             return local
+        # A file-local helper the predicate algebra does not model but that
+        # returns a predicate value: `isRegisterType(ST, 0)` is a
+        # `std::function<bool(const LegalityQuery&)>`, so it only becomes a
+        # bool when called with the rule's query.  Inlining above wins when
+        # the helper's body is understood; this is the escape for the rest.
+        # Only the slot-index form takes an integer -- an `LLT` argument
+        # belongs to the `bool` overload and must not get `(Query)`.
+        m = re.fullmatch(r"(\w+)\s*\((.*)\)", text, re.S)
+        if m:
+            name, args = m.group(1), m.group(2)
+            if (name in getattr(self, "pred_values", ())
+                    and re.fullmatch(r"\s*\d+\s*", split_top(args)[-1])):
+                return 'opaque("%s(%s)(Query)")' % (name, args)
         # Subtarget reads and XLen comparisons are cached features.
         if re.fullmatch(r"(ST|STI)\.\w+\([^()]*\)", text) or \
                 re.fullmatch(r"XLen\s*==\s*\d+", text):
@@ -1130,7 +1164,20 @@ class Translator:
         m = re.fullmatch(r"(\w+)\s*\((.*)\)", text.strip(), re.S)
         if not m or m.group(1) not in self.helpers:
             return None
+        # A helper whose body delegates to the overload of its own name
+        # (`isRegisterType(ST, TypeIdx)` calls `isRegisterType(ST, LLT)`)
+        # cannot be inlined: following it recurses without bound.  Refuse so
+        # the caller can copy the call through `opaque` instead.
+        inline = getattr(self, "_inline", None)
+        if inline is None:
+            inline = self._inline = set()
+        if m.group(1) in inline:
+            raise Refuse(text)
         tmpl = self.helpers[m.group(1)]
+        if tmpl.get("bool"):
+            # `parse_helpers` keys by name, so a `bool` overload can shadow
+            # the predicate template; inlining the wrong one is not an option.
+            raise Refuse(text)
         call = split_top(m.group(2))
         if len(call) != len(tmpl["params"]):
             raise Refuse(text)
@@ -1139,7 +1186,11 @@ class Translator:
             body = tmpl["body"]
             for p in tmpl["params"]:
                 body = re.sub(r"\b%s\b" % re.escape(p), sub[p], body)
-            return self.body_pred(body)
+            inline.add(m.group(1))
+            try:
+                return self.body_pred(body)
+            finally:
+                inline.discard(m.group(1))
         idx = _subst(tmpl["idx"], sub)
         typeset = _subst(tmpl["set"], sub)
         elems = self.t.sets.get(typeset) or [typeset]
@@ -3072,6 +3123,11 @@ def transcribe(spec, source, out):
     USED_RENAMES["select"].clear()
     USED_RENAMES["feature"].clear()
     imp = Importer(spec.name, text, spec.prefix)
+    # A file-scope helper that returns `LegalityPredicate` is a predicate
+    # value, not a bool: `isRegisterType(ST, 0)` only answers when called with
+    # the rule's query.  Trust the return type in the file rather than the
+    # call, so the `bool` overload of the same name is never rewritten.
+    imp.tr.pred_values = set(re.findall(r"LegalityPredicate\s+(\w+)\s*\(", text))
     for name, rhs in member_types(source):
         imp.t.add(name, rhs, 0)
     consts, lists, ints = file_consts(source)
