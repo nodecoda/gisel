@@ -105,6 +105,11 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 | Mips | 1,656 | 1,656 | 1,647 | 0 | 0 | 5 配置（MSA / MIPS32r2 / 非对齐访问），规则 95 条；9 条官方侧断言、我们侧给答案（上游 4 字节非对齐 load 断言，`--allow-ref-asserts 9`） |
 | SPIRV | 5,136 | 5,136 | 5,132 | 0 | 4 | 6 配置（kernel/shader × spirv32/64 × 扩展集），规则 353 条；4 条两侧都断言（上游 `changeElementSizeTo` 传了元素数量，读 `Query.Types[16]`，`--expect-unanswerable 4`） |
 
+2026-11-09 在 `fe98bba`（SPIRV 接入后）把上表 9 个 target 的端到端脚本全部重跑了一遍，
+结论不变：`m68k 35 / wasm 886 / ppc 94 / arm 1,614 / mips 1,656 / riscv 6,149 /
+aarch64 12,583 / x86 3,027 / spirv 5,136` 条查询，`disagree = 0`；
+`ppc` 的 1 条、`mips` 的 9 条（`ref_asserted`）、`spirv` 的 4 条（两侧都断言）与表里一致。
+
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
 `patches`（`PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
 `Unsupported`，差异归零。
