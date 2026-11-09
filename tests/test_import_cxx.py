@@ -80,6 +80,45 @@ class Fixture(unittest.TestCase):
             self.assertEqual(total.split()[-2:], ["5", "6"])
 
 
+class ImporterBugsAreRefusals(unittest.TestCase):
+    """A parse bug names the line; it never aborts the transcription."""
+
+    CRASH = ROOT / "tests" / "fixtures" / "legalizer-ctor-crash.cpp"
+
+    def test_internal_error_is_refused_with_its_line(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "T.gisel"
+            r = run("RISCV", str(self.CRASH), "--out", str(out))
+        self.assertEqual(r.returncode, 1, r.stdout + r.stderr)
+        self.assertIn("1 rulesets, 1 rules, 1 refused", r.stdout)
+        self.assertIn("refused line 6: auto &allowed", r.stdout)
+        self.assertIn("internal error AttributeError", r.stdout)
+        self.assertNotIn("Traceback", r.stderr)
+
+    def test_block_reports_the_line_of_a_failing_statement(self):
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("import_cxx", TOOL)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+
+        original = module.Importer.statement
+
+        def statement(self, text, line):
+            if text.startswith("boom"):
+                raise RecursionError("too deep")
+            return original(self, text, line)
+
+        module.Importer.statement = statement
+        try:
+            importer = module.Importer("RISCV", "")
+            importer.block("const LLT s32 = LLT::scalar(32);\nboom;\n"
+                           "const LLT s64 = LLT::scalar(64);", 10)
+        finally:
+            module.Importer.statement = original
+        self.assertEqual([line for line, _ in importer.p.refused], [11])
+        self.assertIn("RecursionError", importer.p.refused[0][1])
+
+
 class ReimportedCorpora(unittest.TestCase):
     """Every pinned constructor reproduces its checked-in `.gisel`."""
 

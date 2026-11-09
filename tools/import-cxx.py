@@ -996,7 +996,7 @@ class Translator:
         """A lambda body of `if (...)` early returns -> one predicate."""
         if self.opcode:
             body = re.sub(r"Query\.Opcode", self.opcode, body)
-        stmts = [x.strip() for x in split_statements(body) if x.strip()]
+        stmts = [x.strip() for x, _ in split_statements(body) if x.strip()]
         env, rest = {}, []
         for st in stmts:
             m = re.fullmatch(r"(?:const\s+)?(?:unsigned|int|bool|LLT|auto)\s*&?\s*"
@@ -1021,7 +1021,7 @@ class Translator:
             if text == before:
                 break
         return self._body_stmts(
-            [x.strip() for x in split_statements(text) if x.strip()])
+            [x.strip() for x, _ in split_statements(text) if x.strip()])
 
     def _body_stmts(self, stmts):
         if not stmts:
@@ -1673,7 +1673,7 @@ def consume_one(text, i):
 
 
 def split_statements(text):
-    """Top-level statements, keeping `if`/`for` bodies attached."""
+    """Top-level statements and their line offset from ``text``'s first line."""
     out, i, n = [], 0, len(text)
     while i < n:
         while i < n and text[i] in " \t\n\r":
@@ -1690,16 +1690,16 @@ def split_statements(text):
             if m2:
                 j += m2.end()
                 j = consume_one(text, j)
-            out.append(text[start:j].strip())
+            out.append((text[start:j].strip(), text[:start].count("\n")))
             i = j
             continue
         if text[i] == "{":
             j = consume_one(text, i)
-            out.append(text[start:j].strip())
+            out.append((text[start:j].strip(), text[:start].count("\n")))
             i = j
             continue
         j = consume_one(text, i)
-        out.append(text[start:j].strip())
+        out.append((text[start:j].strip(), text[:start].count("\n")))
         i = j
     return out
 
@@ -1743,11 +1743,21 @@ class Importer:
 
     # -- statements ------------------------------------------------------
     def block(self, text, line0=0):
-        for st in split_statements(text):
+        for st, offset in split_statements(text):
+            line = line0 + offset
             try:
-                self.statement(st, line0)
+                self.statement(st, line)
             except Refuse as e:
-                self.p.refuse(line0, "%s: %s" % (st.splitlines()[0][:60], e))
+                self.p.refuse(line, "%s: %s" % (st.splitlines()[0][:60], e))
+            except Exception as e:
+                # An importer bug must not abort the run: report the line and
+                # keep going.  Every refusal already makes the exit code 1, so
+                # a partial transcription can never be mistaken for a complete
+                # one; the point is that a bug names the statement it choked on
+                # instead of printing a traceback with no source location.
+                self.p.refuse(line, "%s: internal error %s: %s"
+                              % (st.splitlines()[0][:60], type(e).__name__,
+                                 e))
 
     def statement(self, st, line):
         st = st.strip()
@@ -2049,7 +2059,10 @@ def constructor_text(path):
         elif text[i] == "}":
             depth -= 1
             if depth == 0:
-                return text[start + 1:i]
+                body = text[start + 1:i]
+                # `strip_comments` keeps one entry per source line, so the
+                # offset is a real line number in the input file.
+                return body, text[:start + 1].count("\n") + 1
     raise SystemExit("unbalanced constructor")
 
 
@@ -2247,7 +2260,8 @@ def transcribe(spec, source, out):
     imp = Importer(spec.name, text)
     for name, rhs in member_types(source):
         imp.t.add(name, rhs, 0)
-    imp.block(constructor_text(source))
+    body, first_line = constructor_text(source)
+    imp.block(body, first_line)
     for fix in spec.deviations:
         fix(imp)
 
