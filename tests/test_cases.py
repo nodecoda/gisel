@@ -38,6 +38,16 @@ ruleset B_ADD: G_ADD
     legal (feature("Subtarget.hasF()") and in(slot(0), s32))
 """
 
+TWO = """\
+type s32 = LLT::scalar(32)
+
+ruleset B_ADD: G_ADD
+    legal in(slot(0), s32)
+
+ruleset B_SUB: G_SUB
+    legal in(slot(0), s32)
+"""
+
 
 def write(d, text):
     path = Path(d) / "t.gisel"
@@ -50,6 +60,30 @@ def build(text):
         doc = cases.document(write(d, text))
     features = cases.derive_features(doc)
     return doc, features, cases.generate(doc, features)
+
+
+class RulesetFilter(unittest.TestCase):
+    """`only_rulesets` is a chunking device, not a different generator."""
+
+    def test_a_chunk_matches_the_full_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            doc = cases.document(write(d, TWO))
+        features = cases.derive_features(doc)
+        full = cases.generate(doc, features)
+        chunk = cases.generate(doc, features, only_rulesets=["B_SUB"])
+        self.assertEqual({c.opcode for c in chunk.cases}, {"G_SUB"})
+        self.assertEqual({c.key() for c in chunk.cases},
+                         {c.key() for c in full.cases if c.opcode == "G_SUB"})
+
+    def test_an_opcode_names_the_ruleset_too(self):
+        doc, features, _ = build(FIXTURE)
+        gen = cases.generate(doc, features, only_rulesets=["G_ADD"])
+        self.assertTrue(gen.cases)
+
+    def test_a_typo_is_an_error_not_an_empty_file(self):
+        doc, features, _ = build(FIXTURE)
+        with self.assertRaises(ValueError):
+            cases.generate(doc, features, only_rulesets=["NOPE"])
 
 
 class Shapes(unittest.TestCase):

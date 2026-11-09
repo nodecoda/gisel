@@ -180,6 +180,8 @@ def main(argv=None):
     cs.add_argument("--json", action="store_true", help="print stats as JSON")
     cs.add_argument("--strict-coverage", action="store_true",
                     help="fail when any rule has no witness in the query set")
+    cs.add_argument("--ruleset", action="append", dest="rulesets",
+                    help="only these ruleset defs or opcodes (repeatable)")
 
     d = sub.add_parser("domain",
                        help="enumerate the answerless query domain (D*)")

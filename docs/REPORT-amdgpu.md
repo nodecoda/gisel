@@ -231,6 +231,10 @@ LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool �
    /tmp/amdgpu-final.gisel --out ... --json` 返回 124，120 秒内没有写出任何
    查询。X86 74k 状态已经 68 秒；AMDGPU 直接全量不可跑，需要按 ruleset 分块 +
    只取声明过的类型（`gisel cases` 的等价类压缩要先用上，再测一次规模）。
+   分块入口已经落地：`gisel cases --ruleset NAME`（可重复，认 ruleset 名或
+   opcode）。X86 上验证过块内结果与全量跑的子集逐字节相同（`X_G_ADD` +
+   `X_G_PTR_ADD`，18 条，0.3 s；全量 1,350 条、20.8 s）。AMDGPU 按这个入口
+   逐块生成；名字拼错是退出码 2，不会伪装成“没有查询”。
 
 ## 6 建议顺序
 

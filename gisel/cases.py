@@ -885,8 +885,22 @@ def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
 
 def generate(doc, features, *, configs=None, max_slot_values=16,
              max_outside=2, max_boundary_per_rule=24,
-             max_witnesses_per_rule=4, axes=None) -> Generation:
-    """Derive the three case kinds from one schema-0.4 document."""
+             max_witnesses_per_rule=4, axes=None,
+             only_rulesets=None) -> Generation:
+    """Derive the three case kinds from one schema-0.4 document.
+
+    ``only_rulesets`` limits the run to the named ruleset defs (or their
+    opcodes).  A large target is generated in chunks; an unknown name is an
+    error rather than an empty file, because a typo would otherwise look like
+    "this ruleset has no queries".
+    """
+    wanted = set(only_rulesets or ())
+    if wanted:
+        known = {rs.get("def") for rs in doc["rulesets"]}
+        known |= {op for rs in doc["rulesets"] for op in rs["opcodes"]}
+        missing = sorted(wanted - known)
+        if missing:
+            raise ValueError("unknown ruleset(s): %s" % ", ".join(missing))
     evaluator = E.Evaluator(doc, features)
     configs = list(configs) if configs else sorted(features.table)
     cases, seen = [], set()
@@ -924,6 +938,9 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
     scalable_ok = _declares_scalable(doc)
     for rs_idx, rs in enumerate(doc["rulesets"]):
         if not rs["opcodes"]:
+            continue
+        if wanted and rs.get("def") not in wanted \
+                and not (wanted & set(rs["opcodes"])):
             continue
         opcode = rs["opcodes"][0]
         nslots, infos = inspect_ruleset(rs)
@@ -1526,6 +1543,9 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true", help="print stats as JSON")
     ap.add_argument("--strict-coverage", action="store_true",
                     help="fail when any rule has no witness in the query set")
+    ap.add_argument("--ruleset", action="append", dest="rulesets",
+                    help="only these ruleset defs or opcodes (repeatable); "
+                         "split a large target into chunks")
     args = ap.parse_args(argv)
 
     doc = document(args.source)
@@ -1561,11 +1581,16 @@ def main(argv=None):
             doc, features, args.queries, args.oracle,
             max_outside=max_outside)
     else:
-        generation = generate(
-            doc, features, configs=sorted(features.table),
-            max_slot_values=max_slot_values,
-            max_boundary_per_rule=24 if boundaries else 0,
-            max_outside=max_outside, axes=axes)
+        try:
+            generation = generate(
+                doc, features, configs=sorted(features.table),
+                max_slot_values=max_slot_values,
+                max_boundary_per_rule=24 if boundaries else 0,
+                max_outside=max_outside, axes=axes,
+                only_rulesets=args.rulesets)
+        except ValueError as exc:
+            print("gisel cases: %s" % exc, file=sys.stderr)
+            return 2
 
     Path(args.out).parent.mkdir(parents=True, exist_ok=True)
     with open(args.out, "w") as f:

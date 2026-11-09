@@ -12,7 +12,7 @@ gisel 只有这七个命令。新增一个命令等于新增一块产品面，�
 | `gen` | 把规则文本发射成一种产物 | 源文件、`--emit`、`--out` | 产物文件；stdout 一行统计 |
 | `check` | 产物是否与源文件一致 | 源文件、`--emit`、`--against` | 一致时 stdout 一行；不一致时 stderr 输出 unified diff |
 | `lint` | 静态检查，不产生产物 | 源文件、可选 `--manifest` | stderr 诊断，stdout 汇总（`--json` 时是机器可读汇总） |
-| `cases` | 生成无答案的测试查询 | 源文件、`--features`、可选 `--axes`/`--queries`/`--oracle` | 查询 JSONL 文件；stdout 统计 |
+| `cases` | 生成无答案的测试查询 | 源文件、`--features`、可选 `--axes`/`--queries`/`--oracle`/`--ruleset` | 查询 JSONL 文件；stdout 统计 |
 | `domain` | 枚举无答案查询域（笛卡尔积） | 源文件、可选 `--features`/`--axes` | 查询 JSONL 文件 |
 | `eval` | 用 schema-0.4 正常形回答查询 | `--doc`、`--features`、`--cases` | 汇总或 `--answers OUT` 的答案 JSONL |
 | `graph` | 在类型×类空间上建商图并找环 | 源文件、`--emit=core` | stdout 报告（`--json` 可机读） |
@@ -22,6 +22,11 @@ gisel 只有这七个命令。新增一个命令等于新增一块产品面，�
 
 `cases` 与 `domain` 产出的是**问题**，不是答案文件；答案由外部 legalizer 或
 `eval` 给出，比较命令在工作台（`tools/ab/diff.py`）。
+
+`cases --ruleset NAME`（可重复）只生成指定 ruleset 的查询；`NAME` 可以是
+`.gisel` 里的 `ruleset` 名，也可以是它挂的 opcode。名字拼错是用法错误（退出码
+2），不是“这个 ruleset 没有查询”。大 target 用这个参数分块跑，块之间按
+ruleset 不重叠。
 
 ## 2 退出码
 
