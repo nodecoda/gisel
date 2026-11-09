@@ -3522,8 +3522,7 @@ def deviation_x86_ctpop(imp):
     """Vector CTPOP is legal with VPOPCNTDQ (+VLX under 512 bits).
 
     Not in upstream's constructor yet: our corpus carries the vector
-    legalization, so the frozen answers (tests/cases/x86_ref_dump.jsonl) list
-    those types as Legal.
+    legalization, so the end-to-end A/B lists those types as Legal.
     """
     rs = next(r for r in imp.rulesets if r.opcodes == ["G_CTPOP"])
     if not rs.rules or not rs.rules[1][1].startswith("legal "):

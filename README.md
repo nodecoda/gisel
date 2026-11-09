@@ -24,8 +24,7 @@ gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
 gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
 gisel cases tests/corpus/X86LegalizerInfo.gisel --out x86.cases.jsonl \
-            --features tests/cases/x86-features.json \
-            --against tests/cases/x86_ref_dump.jsonl   # equivalence/boundary/outside
+            --features tests/cases/x86-features.json   # equivalence/boundary/outside
 ```
 
 ## Five minutes
@@ -146,21 +145,21 @@ from the hand-written `.cpp` constructor to `.gisel`
 (`tools/import-cxx.py`); the `.td` this project once added in between is no
 longer used.  `docs/CORPORA.md` says, per corpus, which upstream file it was
 extracted from, which reviewed deviations it carries, and what its frozen
-artifacts can and cannot prove (all three are self-baselines; rule fidelity is
-the frozen answer dumps).
+artifacts can and cannot prove (all three are self-baselines; rule fidelity
+comes from import-cxx --check and the end-to-end A/B).
 
 ## Status
 
 | milestone | backend | gate | state |
 |---|---|---|---|
-| M1 | `--emit=inc` | self-baseline + frozen answers (was: byte-identical to `-gen-legalizer`) | done |
+| M1 | `--emit=inc` | self-baseline + end-to-end A/B (was: byte-identical to `-gen-legalizer`) | done |
 | M2 | `--emit=check` | self-baseline counters (was: the `-gen-legalizer-check` JSON) | done |
 | M3 | ~~`--emit=table`~~ | removed 2026-11-09: the table direction is gone, `inc` is the product | dropped |
-| M4 | `--emit=core`, `eval` | core JSON (modulo `origin`) / 34,776-point differential, 0 disagreements | done |
+| M4 | `--emit=core`, `eval` | core JSON (modulo `origin`); evaluator answers any question file | done |
 | v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 | v0.4 | RISCV corpus (workbench import) | 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
-| v0.5 | `cases` | equivalence/boundary/outside; X86 3,277 cases (383 oracle-covered), AArch64 9,705 cases (439 oracle-covered), 0 disagreements | done |
+| v0.5 | `cases` | equivalence/boundary/outside; X86 3,277 cases, AArch64 9,705 cases | done |
 | v0.6 | more A/B targets | M68k 35, WebAssembly 886, PowerPC 94, ARM 1,614, Mips 1,656, SPIRV 5,136 queries; `disagree = 0` on each | done |
 
 `-gen-legalizer*` in the M1–M3 rows is this project's TableGen backend
@@ -176,18 +175,20 @@ constructors, not a general C++ parser: `--all --check` re-transcribes them
 and diffs the checked-in corpora, and a rule-count drift fails loudly.  The evidence lives in `docs/REPORT-riscv.md` and
 `docs/REPORT-ab.md`.
 
-`tests/artifacts/` holds the twelve frozen C++/JSON artifacts and their
-`SHA256`: four each for X86, AArch64 and RISC-V.  Upstream LLVM main has no
+`tests/artifacts/` holds the nine frozen C++/JSON artifacts and their
+`SHA256`: three each for X86, AArch64 and RISC-V.  Upstream LLVM main has no
 legalizer `.td` and no `-gen-legalizer`; the rules live in hand-written
 `*LegalizerInfo.cpp` constructors, and the corpora are transcribed from those.
 The artifacts are therefore gisel's own frozen output — a drift baseline, not
-a byte oracle against a second implementation.  What replaces the byte oracle
-is the answer gate: every corpus has to agree with its frozen query dump
-(`tests/cases/*_ref_dump.jsonl`, 5632 / 9632 / 19512 points).  `docs/CORPORA.md`
-has the chain and the reviewed deviations.
+a byte oracle against a second implementation.  Rule fidelity is checked on
+two other layers: `tools/import-cxx.py --check` re-transcribes the pinned C++
+and must reproduce the checked-in `.gisel` byte for byte, and `tools/ab/`
+builds the official legalizer and the one carrying our `.inc`, feeds both the
+same answerless query file, and compares the answer streams.
+`docs/CORPORA.md` has the chain and the reviewed deviations.
 
 ```sh
-python3 -m unittest discover -q -s tests      # 181 tests
+python3 -m unittest discover -q -s tests      # 312 tests (+94 subtests)
 (cd tests/artifacts && sha256sum -c SHA256)   # 12/12
 ```
 
@@ -209,30 +210,24 @@ queries against it without any LLVM binary:
 
 ```sh
 gisel gen tests/corpus/AArch64LegalizerInfo.gisel --emit=core --out a.core.json
-gisel eval --doc a.core.json \
-  --features tests/cases/features.json --cases tests/cases/a64_ref_dump.jsonl
-# cases=9632 disagreements=0 errors=0
-
-gisel gen tests/corpus/X86LegalizerInfo.gisel --emit=core --out x.core.json
-gisel eval --doc x.core.json \
-  --features tests/cases/x86-features.json --cases tests/cases/x86_ref_dump.jsonl
-# cases=5632 disagreements=0 errors=0
+gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json --out a.cases.jsonl
+gisel eval --doc a.core.json --features tests/cases/features.json \
+  --cases a.cases.jsonl --answers a.answers.jsonl
+# cases=... errors=0
 ```
 
-`tests/cases/a64_ref_dump.jsonl` is the frozen AArch64 differential
-(9632 points) dumped from the in-tree reference; `tests/cases/features.json`
-is the subtarget truth table it was recorded with.
-
-`gisel cases` produces questions, not answers.  To compare the evaluator with a
-compiled legalizer on the same file, pass `--answers` instead of frozen
-expectations; the output is the same JSONL shape a runner writes, so
-`tools/ab/diff.py` can read both:
+`gisel cases` produces questions, not answers.  `--answers` writes what the
+evaluator says in the same JSONL shape a compiled runner writes, so
+`tools/ab/diff.py` can compare the two answer streams:
 
 ```sh
-gisel eval --doc a.core.json --features tests/cases/features.json \
-  --cases queries.jsonl --answers eval.answers.jsonl
-python3 tools/ab/diff.py runner.answers.jsonl eval.answers.jsonl --json
+python3 tools/ab/diff.py runner.answers.jsonl a.answers.jsonl --json
 ```
+
+When a runner has already answered the same question file, `gisel cases
+--against answers.jsonl` compares only the overlap; `uncovered` is reported
+separately and is never counted as a pass.
 
 ## Layout
 
@@ -241,7 +236,7 @@ gisel/ast.py            Program / declarations / rule sets / structured LLT
 gisel/dsl.py            lexer, rule parser, core-IR normal form
 gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / core_json.py              M2 / M4
-gisel/eval.py           standalone evaluator (34,776 frozen points, 0 disagreements)
+gisel/eval.py           standalone evaluator (answers any question file)
 gisel/cases.py          equivalence/boundary/outside case generation
 gisel/answers.py        answer-file reader (the A/B comparison is tools/ab/diff.py)
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)

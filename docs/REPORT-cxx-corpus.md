@@ -19,10 +19,9 @@ upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
 | RISC-V | `ad529e1f1a9e` | 96 | 402 | 0 |
 | M68k | `f796bb977e0b` | 6 | 13 | 0 |
 
-`tests/artifacts/` 的十二份产物已按新语料重生成。它们**是 gisel 自己的冻结
+`tests/artifacts/` 的九份产物已按新语料重生成。它们**是 gisel 自己的冻结
 输出**，用于抓漂移，不是“与上游逐字节一致”的 oracle；规则保真靠
-`tests/cases/*_ref_dump.jsonl` 的答案门（X86 5632 点、AArch64 9632 点、
-RISC-V 19512 点，全部 agree）。
+`tools/import-cxx.py --check` 和 `tools/ab/` 端到端对拍。
 
 ## 2 为什么删掉中间的 `.td`
 
@@ -77,8 +76,8 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 独立的配置轴，合成一个会改变语义，所以保留两个名字。这是“重命名”不是
 “化简”。
 
-语义保持的证据：三个目标的冻结查询答案门全部仍然 agree；`inc/core`
-产物重新冻结后测试全绿。名字只影响可读性和产物字节，不影响求值。
+语义保持的证据：三个目标的端到端 A/B 仍然 agree；`inc/core` 产物重新冻结后
+测试全绿。名字只影响可读性和产物字节，不影响求值。
 
 ## 4 三个真实 bug
 
@@ -109,13 +108,13 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 | 偏离 | 原因 |
 |---|---|
 | `G_BUILD_VECTOR` 去掉最小 lane clamp（4 条 `clamp_min` + 1 条 `more`） | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 死循环；只留最大 clamp，窄 build vector 走 Unsupported |
-| `G_CTPOP` 增加 VPOPCNTDQ（512 位以下再加 VLX）的向量 legal | 上游构造函数还没有这段；冻结答案里这些点是 Legal |
+| `G_CTPOP` 增加 VPOPCNTDQ（512 位以下再加 VLX）的向量 legal | 上游构造函数还没有这段；端到端 A/B 里这些点是 Legal |
 
 ## 6 证据
 
 - 转录：三个目标 0 拒绝，`--all --check` 逐字节匹配。
 - 生成：`python3 -m unittest discover -q -s tests` 全绿（208 tests）。
-- 行为：三个目标的冻结查询全部 agree，0 disagree。
+- 行为：三个目标的端到端 A/B 全部 agree，0 disagree。
 - 计数：`tests/artifacts` 总调用 1074 = 1071 + 3（`immIdx` 3 条，来自
   AArch64；`gisel/ast.py` 的 `canonicalize_rulesets` 已按 opcode 汇总
   `imm_idx` 覆盖信息，修掉了 AArch64 `immIdx` 被最后一块覆盖成 0 的 bug）。
@@ -123,8 +122,8 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 ## 7 未覆盖
 
 - 换上游修订需要改 `TARGETS` 里的计数并重新生成，不是运行时参数；这是
-  有意为之。当前三份输入钉的是和冻结答案同一次构建的源码修订（sha 见上表），
-  不一定是最新 upstream；换修订就要连答案一起重冻。
+  有意为之。当前三份输入钉的是和 A/B 同一次构建的源码修订（sha 见上表），
+  不一定是最新 upstream；换修订就要连 A/B 的官方侧一起重建。
 - M68k 已转正（见 §9），WebAssembly 已转正（见 §10），PowerPC 已转正（见 §11），
   ARM 已转正（见 §12）。
 - LLVM 研究分支上残留的 `.td` / `-gen-legalizer*` 代码不在本仓库清理范围；

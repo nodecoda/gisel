@@ -36,7 +36,7 @@ X86 的两条偏离写在工具里（`X86_DEVIATIONS`），每条都会断言上
 | 偏离 | 原因 |
 |---|---|
 | `G_BUILD_VECTOR` 去掉最小 lane clamp | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 会死循环（上游 issue #236649，修复 PR #238277；实测见 `2026-11-09-14`）；只留最大 clamp，窄 build vector 走 Unsupported |
-| `G_CTPOP` 增加 VPOPCNTDQ 的向量 legal | 上游还没有这条规则（PR #235976），语料先带上向量 legalization，冻结答案里这些点是 Legal |
+| `G_CTPOP` 增加 VPOPCNTDQ 的向量 legal | 上游还没有这条规则（PR #235976），语料先带上向量 legalization，端到端 A/B 里这些点是 Legal |
 
 这两条偏离**只相对于 pin**。`PIN.json` 的 `patches` 记录了仓库叠加的 5 个未合
 PR（#238306、#238277、#235976、#237650、#239136），工作台构建的官方侧就是
@@ -92,9 +92,9 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 残留的 `X_selN` / `X_condN` 会被测试拦下。详见
 `docs/REPORT-cxx-corpus.md` §3b。
 
-| 语料 | 上游规则在哪 | 我们的提取路径 | 冻结对照物 | 能证明 |
+| 语料 | 上游规则在哪 | 我们的提取路径 | 证据 | 能证明 |
 |---|---|---|---|---|
-| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | 无 emitter；gisel 自己的输出（**自基线**）+ 冻结答案 | 生成器回归；规则保真靠 `tests/cases/x86_ref_dump.jsonl` 与工作台对拍 |
+| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | 转录 check + gisel 自基线 + 端到端 A/B | 生成器回归；规则保真靠 `tools/ab/` |
 | AArch64 | `AArch64/GISel/AArch64LegalizerInfo.cpp` | 同上 | 同上 | 同上 |
 | RISC-V | `RISCV/GISel/RISCVLegalizerInfo.cpp` | 同上 | 同上 | 同上 |
 | M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-m68k-end-to-end.sh` |
@@ -109,17 +109,15 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 1. **转录保真（语料层）**：`tools/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
    并且重新导入能逐字节复现仓库里的 `.gisel`（`tests/test_import_cxx.py`）。
    有偏离的地方在工具里点名，不是暗改。
-2. **规则保真（行为门，工作台）**：每个语料在 `tests/cases/*_ref_dump.jsonl`
-   的全部冻结查询上 `gisel eval` 必须一致——X86 5632 点、AArch64 9632 点、
-   RISC-V 19512 点全部 agree。更强的证据是把生成的 `.inc` 编进 target、和原
-   手写 C++ 构造函数端到端对拍（`tools/ab/`）。
+2. **规则保真（行为门，工作台）**：`gisel cases` 生成无答案查询，
+   `tools/ab/` 把它同时喂给官方构建和 include 了我们 `.inc` 的构建，比较两侧
+   的答案流。这是端到端证据，不经过任何中间表。
 3. **生成器回归（自基线）**：`tests/artifacts/` 是 gisel 自己的冻结输出，用来
-   抓语料/生成器漂移。它**不是**“与上游逐字节一致”的证据：`-gen-legalizer`
-   那条对照链路已随 `.td` 中间格式一起退役。
+   抓语料/生成器漂移。它**不是**“与上游逐字节一致”的证据。
 
-把自基线说成“与上游逐字节一致”就是越界。历史上 X86/AArch64 的 `.inc` 确实是
-`llvm-tblgen -gen-legalizer` 的逐字节输出；切到 cpp 直连后这个字节 oracle 没有
-了，证据换成上面第 1、2 层。
+`tests/cases/*_ref_dump.jsonl` 及其 `EvaluatorCorpus` 门禁已于 2026-11-10
+删除。那批“参考实现 → 冻结答案 → 用 gisel 复算”的表是 table 时代的取巧，
+方向是反的；现在只认 `c++ → gisel`，证据只保留上面三层。
 
 ## 撤掉的工具
 
@@ -127,7 +125,7 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 `docs/REPORT-no-td.md`。`tools/import-cxx.py` 留在工作台（`docs/SCOPE.md` §2），
 只负责把目标端 C++ 转成 `.gisel`；它不是 gisel 的运行时依赖。
 
-`tools/refresh-oracle.sh` 现在直接调 `gisel gen --emit={inc,core,check}` 刷新
+`tools/refresh-oracle.sh` 直接调 `gisel gen --emit={inc,core,check}` 刷新
 `tests/artifacts/`。它不再碰 `llvm-tblgen -gen-legalizer*`，因为那套后端和它读的
 `.td` 已经删除；冻结产物是 gisel 自己的输出（漂移基线），不是第二个实现。
 `docs/REPORT-cxx-corpus.md` 记录这次切换。

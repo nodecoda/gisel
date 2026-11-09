@@ -1,6 +1,7 @@
 # RISCV：为什么它不是「再抄一遍」，以及抄的代价
 
 > 历史说明：本报告写作时 `.td` 与 `table` 渲染器仍存在；它们已在 `docs/REPORT-no-td.md` 和 `spec/m3-scope.md` 中移除。
+> 文中的 19,512 / 9,632 / 5,632 点答案表已于 2026-11-10 删除，只作历史数字，不再是对拍证据。
 > 这是工作台报告：`tools/import-cxx.py` 是工作台工具，不是 gisel 的功能；边界见 `docs/SCOPE.md`。
 
 状态: 评估（2026-11-07）。工具: `tools/import-inventory.py`（本文件里所有数字都由它产出）。

@@ -3,7 +3,7 @@
 状态: 规范性。实现: `gisel/ast.py`（`parse_program`，文件级 AST）与
 `gisel/dsl.py`（`Parser`，规则体）。语料: `tests/corpus/*.gisel`
 （X86 328 条 / AArch64 741 条，由 `tools/import-cxx.py` 从手写 C++
-构造函数转录，有冻结答案对照）；
+构造函数转录，规则保真由端到端 A/B 校验）；
 另有两份探针语料 `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
 `WebAssemblyLegalizerInfo.gisel`（228 行 / 108 条），见 `docs/REPORT-wasm.md`。
 三份主语料走同一条链路：手写 C++ 构造函数 → `tools/import-cxx.py` →

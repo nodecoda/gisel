@@ -2,6 +2,7 @@
 
 > 2026-11-09: `--emit=table` 已移除。本文保留为当时的范围记录；现在只有
 > `inc` / `check` / `core`。
+> 2026-11-10: 文中引用的冻结答案表（含 9,632 点差分）已删除，不再是门禁。
 
 Result (2026-11-06): `gisel gen --emit=table` reproduces both fragments byte
 for byte -- `x86.table.inc` 4982 lines, `aarch64.table.inc` 10765 lines -- from

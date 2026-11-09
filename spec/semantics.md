@@ -87,25 +87,20 @@ except 落成**更窄的谓词**（命名 `pred` 或内联 `and not ...`）。�
 
 ## 8 语义差分（三个 target）
 
-| target | 答案表 | 规模 | 结果 |
-|---|---|---|---|
-| AArch64 | `tests/cases/a64_ref_dump.jsonl` | 9632 | 0 分歧 / 0 error |
-| X86 | `tests/cases/x86_ref_dump.jsonl` | 5632（1408 点 × 4 配置） | 0 分歧 / 0 error |
-| RISCV | `tests/cases/riscv_ref_dump.jsonl` | 19512（2439 点 × 8 配置） | 0 分歧 / 0 error |
+语义差分不是 gisel 的功能，而是工作台（`tools/ab/`）的事：把生成的 `.inc`
+编进 target，和原手写 C++ 构造函数各构建一份，喂同一份 `gisel cases` 生成的
+无答案查询，比较 `getAction()` 的答案流。结果见 `docs/REPORT-ab.md`。
 
-答案表从树内参考实现导出（`llvm-dev/tests/{aarch64,x86}-oracle/`），
-`gisel eval` 用我们的 core JSON 复算，由 `tests/test_artifacts.py::EvaluatorCorpus`
-固化。X86 表用的是 Core 拼法（`p0:32`），因为 `LLT::print` 会丢掉指针宽度；
-求值器两种拼法都接受（`parse_case_llt`）。
+`tests/cases/*_ref_dump.jsonl` 及其 `EvaluatorCorpus` 门禁已于 2026-11-10
+删除。那批“参考实现 → 冻结答案 → 用 gisel 复算”的表是 table 时代的取巧，
+方向是反的；现在只认 `c++ → gisel`。转录保真由
+`tools/import-cxx.py --check` 保证，规则保真由端到端 A/B 保证。
 
-X86 表补上了 AArch64 语料从未触发的 schema 形状，并因此修掉四类真 bug：
-`{"kind":"nary","op":"all_of"}`、`{"kind":"not","arg":...}` 的 DAG 拼法、
-集合元素里的 `select` 类型（`p0:*, if Is64Bit then s64 else s32`）、
-以及 `p0:*` 通配指针（按地址空间匹配、不比较宽度）。
+历史表曾经暴露过四类 schema 形状 bug（`{"kind":"nary","op":"all_of"}`、
+`{"kind":"not","arg":...}` 的 DAG 拼法、集合元素里的 `select` 类型、
+`p0:*` 通配指针）；修正后由求值器单测锁住，不依赖答案表。
 
-RISCV 表来自真实 `RISCVLegalizerInfo` 构造函数链接出的 2439 个点，8 个配置
-（`rv64gc`/`rv32gc`/`rv64gcv`/`rv32gcv`/`rv64zbb`/`rv64zfh`/`ristretto`/`rv32zilsd`），
-由 `llvm-dev/tests/riscv-oracle/` 导出。它暴露了两条求值器与真实 LLT 的偏差：
+那批表还暴露了两条求值器与真实 LLT 的偏差，修正本身同样由单测锁住：
 
 - **extended-kind 开关**。`LLT::float16()`、`LLT::integer(32)`、bfloat16 只有
   在 `LLT::getUseExtended()` 打开时才是独立 kind；该开关由 target machine 设置，
@@ -120,7 +115,7 @@ RISCV 表来自真实 `RISCVLegalizerInfo` 构造函数链接出的 2439 个点�
   （fixed 32）。只比已知最小值会把 18 条向量 G_LOAD/G_STORE 误判成 Legal
   （应为 Custom）。
 
-两类都先出现在 RISCV 语料；AArch64/X86 的 9632/5632 在修正前后均保持 0 分歧。
+两类都先出现在 RISCV 语料；修正后三个 target 的求值器行为一致。
 
 ## 9 规范形的表粒度
 
@@ -144,7 +139,7 @@ C++ 的 `getActionDefinitionsBuilder(Op)` 每调用一次就追加一张表，`g
   非 MOPS 两条链）→ 合并后 114 表 / 743 条（共享规则只复制一次）；`imm_idx`
   覆盖标记按 opcode 取并集。
 - RISCV 有 11 个重复 opcode（`G_CTLZ` 的 Zbb / 非 Zbb 两条链）→ **96 表 / 402 条
-  变成 91 表 / 413 条**（共享的 Zbb 规则只复制一次）；`19512 / 0 / 0` 不变。
+  变成 91 表 / 413 条**（共享的 Zbb 规则只复制一次）。
 
 ## 10 用例生成
 

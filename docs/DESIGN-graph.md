@@ -97,10 +97,11 @@
 
 ## Oracle 检查和退出码
 
-测试辅助函数会读取 `tests/cases/*_ref_dump.jsonl`，把每个 query 映射到图状态，
-比较图状态的即时 action/type index/new type 与 oracle。代表点与 oracle 不一致、
-query 无法落入图域、或 opaque/outside 被错误当成普通状态都算失败。图命令本身
-不默认读取 oracle，避免把测试数据变成图的输入。
+`--oracle FILE` 接受任意 runner 写出的答案 JSONL（与 `tools/ab/diff.py` 读的
+格式相同），把每个 query 映射到图状态，比较图状态的即时 action/type index/new
+type。代表点与答案不一致、query 无法落入图域、或 opaque/outside 被错误当成
+普通状态都算失败。它不默认读取任何文件，避免把测试数据变成图的输入；仓库里
+不再有冻结答案文件，测试用的是临时构造的小型答案集。
 
 - `0`：没有环，且请求的闭包检查通过；
 - `1`：发现环、注入边产生环、闭包不封闭或 oracle 校验失败；

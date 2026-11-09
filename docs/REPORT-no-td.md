@@ -68,7 +68,7 @@ core   AST -> schema-0.4 JSON -> eval
 
 - `tests/corpus/*.gisel` 一个字节不改；
 - 8 份 `tests/artifacts/*` 逐字节不变；
-- 34,776 点差分不变；
+- 当时的 34,776 点差分不变（该答案表已于 2026-11-10 删除）；
 
 就不能删除语料里的 include 行，也不能删除 `.inc` 产物里的 TableGen banner。
 唯一能做到“字面零 TableGen”的办法是修改语料并重生成产物，这会直接解除原先的

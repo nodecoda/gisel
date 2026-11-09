@@ -50,7 +50,7 @@ def load(path):
                 errors += 1
                 continue
             if k in out:
-                # The frozen dumps repeat a query when a target builds the
+                # An answer file may repeat a query when a target builds the
                 # same opcode twice.  An identical repeat is not an error; a
                 # repeat with a different answer is, because then one of the
                 # two rows would be silently dropped.

@@ -24,8 +24,8 @@ schema-0.4 document.  Three kinds of case, each with a contract:
     ``Unsupported``): a point in the domain but outside every rule's class.
 
 The differential contract is deliberately narrow: ``--against`` compares only
-the generated queries that also occur in the oracle dump.  Queries with no
-oracle point are reported as *uncovered*, never as passes.  ``agree ==
+the generated queries that also occur in an answer file.  Queries with no
+answer are reported as *uncovered*, never as passes.  ``agree ==
 covered == 0 disagreements`` is the subset statement; it says nothing about
 the uncovered ones.
 """

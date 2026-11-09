@@ -114,7 +114,7 @@ gisel gen X86... --emit=td  | cmp golden/x86.td   # byte-identical
 check/table/core for x86 & aarch64                # byte-identical (core modulo origin)
 gisel bootstrap golden/x86.td x86.core.json       # 与 corpus 逐字节相同
 gisel gen RISCV... --emit=inc                     # 402 rules, 0 rejects
-gisel eval aarch64.core.json ...                  # 9632 points, 0 disagreements
+gisel eval aarch64.core.json ...                  # 当时的 9632 点答案表，已删除
 ```
 
 ## 7 已知边界

@@ -108,37 +108,11 @@ multiple target classes”不可直接比较——旧数字按状态计，新数
 `--check-closure` 通过；当前它不通过，所以结论应写成“代表点商图上没有环，
 闭包未成立”。这不是 LLVM 的死循环，是分区/覆盖面尚未补齐。
 
-## 3b X86 C1 的 oracle 对齐
+## 3b X86 C1 的 oracle 对齐（已删除）
 
-```sh
-python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
-  --features tests/cases/x86-features.json --config C1 \
-  --oracle tests/cases/x86_ref_dump.jsonl --json > /tmp/graph-x86-oracle.json
-# rc=0, 108.3 s, 427 MB RSS
-# sha256 dae0c76d0b8e563f30970010576a300fb6b55e06a0bed51e98b75f20dd5d6320
-```
-
-| 指标 | 值 |
-|---|---:|
-| oracle.total | 1,408 |
-| matched | 1,386 |
-| agree | 1,386 |
-| disagree | **0** |
-| errors | 0 |
-| unaskable | 22 |
-| uncovered | 0 |
-
-22 条 `unaskable` 全部是**形状非法**的 dump 点，不是图漏建：
-
-```text
-G_CONCAT_VECTORS 12  G_MERGE_VALUES 2  G_UNMERGE_VALUES 2
-G_SHL 2  G_LSHR 2  G_ASHR 2
-```
-
-它们正是 `cases.type_shape_ok` 会拒绝的元组（例如 `(v16s8, s32)` 的 shift、
-`(v16s8, v2s32)` 的 concat），没有任何 MIR 能表达，所以图上没有对应状态。
-`agree == matched == 1,386`、`disagree == 0`、`uncovered == 0`：每个能问的点都
-与 dump 一致，没有“形状合法却没建状态”的真缺口。
+`tests/cases/x86_ref_dump.jsonl` 已于 2026-11-10 删除，基于它的 oracle 对齐
+不再是证据。`--oracle` 机制保留，接受任意 runner 写出的答案文件；仓库测试用
+临时构造的小型答案集覆盖它。原 1,408 点的数字只属于历史快照，不再重跑。
 
 ## 4 RISC-V：配置相关的内存类型
 

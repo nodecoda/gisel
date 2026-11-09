@@ -4,7 +4,8 @@
 This is the Phase 2 reference implementation.  It reads a
 `legalizer-spec-core` JSON document (the `-gen-legalizer-core` normal form),
 a per-configuration feature truth table, and a list of queries (one JSON
-object per line, the same shape as the frozen AArch64 oracle dump), and
+object per line, the same shape `gisel cases` writes, optionally carrying the
+answer produced by a runner), and
 answers each query with the triple
 
     (action, type_idx, new_type)
@@ -28,8 +29,8 @@ contract of the earlier 0.3 evaluator.
 Usage:
   python tools/core_eval_04.py \
       --doc ~/legalizer-baseline/aarch64.core.json \
-      --features tests/aarch64-oracle/features.json \
-      --cases tests/aarch64-oracle/a64_ref_dump.jsonl
+      --features tests/cases/features.json \
+      --cases a.cases.jsonl --answers a.answers.jsonl
 """
 import argparse
 import json
@@ -274,7 +275,7 @@ def _parse_elem_spelling(s, oracle):
     else:
         m = re.match(r"^p(\d+)$", s)
         if m:
-            # The frozen oracle was produced with PointerBits=64.
+            # Answer files from an x86-64 runner use PointerBits=64.
             return ("pointer", int(m.group(1)), 64)
     raise EvalError("bad_llt", "cannot parse LLT element %r" % (s,))
 
@@ -330,10 +331,10 @@ def parse_oracle_llt(s):
 
 
 def parse_case_llt(s):
-    """A frozen-case type: Core IR spelling or LLT::print spelling.
+    """An answer-file type: Core IR spelling or LLT::print spelling.
 
-    Our own oracle dumps write `p0:32`/`v4s32` (kind and pointer width are
-    explicit); the older AArch64 dump writes LLT::print (`<4 x s32>`, `p0`).
+    Answer files we write use `p0:32`/`v4s32` (kind and pointer width are
+    explicit); LLT::print spelling (`<4 x s32>`, `p0`) is also accepted.
     """
     if s == "LLT_invalid":
         return ("invalid",)
@@ -1084,7 +1085,7 @@ def prepare_query(evaluator, q):
     """Parse one query line the way the target's ``LLT::print`` spells it.
 
     Returns ``(types, mems, imms, collapse)``.  ``collapse`` is the inverse of
-    the extended-kind view, so a caller that compares against a frozen dump
+    the extended-kind view, so a caller that compares against an answer file
     normalises its expected type the same way.
     """
     ext = evaluator.extended(q["config"])
@@ -1191,8 +1192,8 @@ def main(argv=None):
     ap.add_argument("--features", required=True)
     ap.add_argument("--cases", required=True)
     ap.add_argument("--answers", metavar="OUT", default=None,
-                    help="answer expectation-free cases to OUT instead of "
-                         "checking them against frozen expectations")
+                    help="answer the cases to OUT instead of comparing them "
+                         "against the answers already in the file")
     ap.add_argument("--verbose", action="store_true")
     args = ap.parse_args(argv)
 

@@ -42,29 +42,21 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 
 生成与对拍（本机，2026-11-08 重测）：
 
-| target | configs | cases | eq | boundary | outside | rules | witnessed | shadowed | unexercised | oracle covered | disagree | time |
-|---|---|---|---|---|---|---|---|---|---|---|---|---|
-| X86 | 4（C0–C3） | 3,273 | 998 | 1,951 | 324 | 328 | 292 | 14 | 22 | 379 | 0 | 1.8 s |
-| AArch64 | 9 | 9,911 | 2,851 | 6,047 | 1,013 | 743 | 315 | 25 | 403 | 493 | 0 | 10 s |
-| RISC-V | 8 | 6,148 | 1,980 | 3,363 | 805 | 413 | 322 | 9 | 82 | 1,327 | 0 | 18 s |
-| M68k | 派生 2 | 84 | 28 | 36 | 20 | 13 | 11 | 2 | 0 | — | — | 0.6 s |
-| WebAssembly | 派生 2 | 978 | 426 | 376 | 176 | 109 | 98 | 8 | 3 | — | — | 0.6 s |
-
-对拍口径：只比较生成集与冻结 dump 的交集。
-
-- X86：`covered=379 / agree=379 / disagree=0 / uncovered=2894`
-- AArch64：`covered=493 / agree=493 / disagree=0 / uncovered=9418`
-- RISC-V：`covered=1327 / agree=1327 / disagree=0 / uncovered=4821`
+| target | configs | cases | eq | boundary | outside | rules | witnessed | shadowed | unexercised | time |
+|---|---|---|---|---|---|---|---|---|---|---|
+| X86 | 4（C0–C3） | 3,273 | 998 | 1,951 | 324 | 328 | 292 | 14 | 22 | 1.8 s |
+| AArch64 | 9 | 9,911 | 2,851 | 6,047 | 1,013 | 743 | 315 | 25 | 403 | 10 s |
+| RISC-V | 8 | 6,148 | 1,980 | 3,363 | 805 | 413 | 322 | 9 | 82 | 18 s |
+| M68k | 派生 2 | 84 | 28 | 36 | 20 | 13 | 11 | 2 | 0 | 0.6 s |
+| WebAssembly | 派生 2 | 978 | 426 | 376 | 176 | 109 | 98 | 8 | 3 | 0.6 s |
 
 （2026-11-08 切 cpp 语料后重测；`docs/ALGORITHM-cases.md` 有同一份数字。
 cases 比 2026-11-07 少，因为候选轴不再发明 LLVM 构造不出来的类型：固定 1 车道
 向量归一成元素类型，float 位宽只取 16/32/64/80/128。见 `spec/axes.md` §4。）
 
-这就是“子集”的准确说法：**在重叠域上，我们的答案与现有系统逐字段一致**。
-`uncovered` 不是通过——它只是还没有 oracle 答案。
-
-更强的全量证据仍是原有门禁：AArch64 9,632 + X86 5,632 + RISCV 19,512 =
-34,776 点，0 分歧（`gisel eval`）。
+生成器只负责产题；“答案对不对”不在这里证明。`tests/cases/*_ref_dump.jsonl`
+及其交集统计已于 2026-11-10 删除，当前答案证据只有 `tools/ab/` 的端到端对拍：
+同一份无答案查询喂给官方构建和 include 了我们 `.inc` 的构建，比较答案流。
 
 样例（X86，`G_LOAD`）：
 
