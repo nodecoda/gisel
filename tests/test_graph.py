@@ -43,6 +43,16 @@ ruleset G_ADD: G_ADD
 """
 
 
+MEMBER_MIX = """\
+type S3 = LLT::scalar(3)
+type S33 = LLT::scalar(33)
+type S64 = LLT::scalar(64)
+
+ruleset G_ADD: G_ADD
+    widen(slot(0), pow2_min(32))
+"""
+
+
 GUARDED = """\
 type S3 = LLT::scalar(3)
 type S32 = LLT::scalar(32)
@@ -84,12 +94,26 @@ class GraphFixture(unittest.TestCase):
         report = self.build(CLOSED, check_closure=True)
         self.assertTrue(report.closure["ok"], report.closure)
 
-    def test_outside_is_counted_and_closure_reports_it(self):
+    def test_outside_is_counted_and_a_homogeneous_outside_class_closes(self):
+        # `widen(pow2)` sends every member of the non-pow2 class into an
+        # undeclared width.  The mutation is counted as `outside`, and the
+        # class itself is homogeneous: closure has nothing to reject.
         report = self.build(OUTSIDE)
         self.assertGreater(report.public()["outside"], 0)
         checked = self.build(OUTSIDE, check_closure=True)
-        self.assertFalse(checked.closure["ok"])
-        self.assertTrue(checked.closure["violations"])
+        self.assertTrue(checked.closure["ok"], checked.closure)
+        self.assertEqual(checked.closure["kinds"]["outside"], 0)
+
+    def test_closure_audits_members_of_an_outside_class(self):
+        # The representative `s3` widens to the undeclared `s32`; `s33` is in
+        # the same class and widens to the declared `s64`.  The old audit
+        # looked at moves representatives only, so `s33` was never asked.
+        report = self.build(MEMBER_MIX, check_closure=True)
+        self.assertEqual(report.public()["cycles"], 0)
+        members = {v["member"][0] for v in report.closure["violations"]}
+        self.assertIn("s33", members)
+        self.assertEqual(report.closure["kinds"],
+                         {"partition": 0, "outside": 2})
 
     def test_implicit_guard_takes_part_in_the_class(self):
         # X86_UMIN spells the widen rule with a bare `true` predicate; only
@@ -99,7 +123,13 @@ class GraphFixture(unittest.TestCase):
         report = self.build(GUARDED, check_closure=True)
         public = report.public()
         self.assertEqual(public["cycles"], 0)
-        self.assertTrue(report.closure["ok"], report.closure)
+        # The class that holds `s3` also holds `s33`/`s63`/`s65`, whose
+        # widen targets are undeclared widths.  That is a coverage gap
+        # (`outside`), not a rule partition error, and closure now says so
+        # instead of trusting the representative.
+        self.assertFalse(report.closure["ok"])
+        self.assertEqual(report.closure["kinds"]["partition"], 0)
+        self.assertEqual(report.closure["kinds"]["outside"], 3)
         classes = [{cases.llt_text(member[0][0])
                     for member in graph._state_members(state)}
                    for state in report.states.values()]
@@ -116,12 +146,14 @@ class GraphFixture(unittest.TestCase):
         plain = self.build(REFINABLE, check_closure=True)
         self.assertFalse(plain.closure["ok"])
         self.assertEqual(plain.closure["kinds"]["partition"], 1)
+        self.assertEqual(plain.closure["kinds"]["outside"], 1)
         self.assertIsNone(plain.public().get("classes_before"))
 
         refined = self.build(REFINABLE, check_closure=True, refine=True)
         public = refined.public()
         self.assertTrue(refined.closure["ok"], refined.closure)
         self.assertEqual(refined.closure["kinds"]["partition"], 0)
+        self.assertEqual(refined.closure["kinds"]["outside"], 0)
         self.assertEqual(public["classes_before"], plain.classes)
         self.assertGreater(public["classes"], public["classes_before"])
         self.assertGreater(public["states"], plain.public()["states"])

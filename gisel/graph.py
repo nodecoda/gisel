@@ -412,7 +412,7 @@ def _rebuild_classes(table, groups):
 
 
 def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
-                    config, extended, max_rounds=8):
+                    config, extended, declared, max_rounds=8):
     """Split each axis class until one class has one successor class.
 
     This is opt-in.  The default partition is the atom `spec/graph.md`
@@ -433,6 +433,8 @@ def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
             return None
         if type_idx != axis or new_type == value:
             return None
+        if new_type not in declared:
+            return None       # outside: no successor class to split by
         return new_type
 
     for _round in range(max_rounds):
@@ -453,18 +455,21 @@ def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
             groups = []
             for cid in sorted(by_class):
                 values = by_class[cid]
-                keys = sorted({seen[v] for v in values
-                               if seen[v] is not None})
+                # `None` (no successor: terminal, no-rule, or outside the
+                # declared domain) is its own bucket.  Folding it into an
+                # arbitrary successor class left a class that mixed a moving
+                # member with an outside one, which closure still rejects.
+                keys = {seen[v] for v in values}
                 if len(keys) <= 1:
                     groups.append(values)
                     continue
                 changed = True
-                default = keys[0]
                 buckets = collections.defaultdict(list)
                 for value in values:
-                    key = seen[value] if seen[value] is not None else default
-                    buckets[key].append(value)
-                for key in sorted(buckets):
+                    buckets[seen[value]].append(value)
+                for key in sorted(buckets,
+                                  key=lambda x: (x is not None,
+                                                 x if x is not None else 0)):
                     groups.append(buckets[key])
             refined.append(_rebuild_classes(table, groups))
         type_classes = refined
@@ -479,31 +484,46 @@ def _opaque(evaluator, atoms, types, mem, config, imms=()):
 
 
 def _find_cycles(edges):
-    color, stack, position = {}, [], {}
-    count, samples = 0, []
+    """Three-colour DFS, iterative.
 
-    def dfs(node):
-        nonlocal count
-        color[node] = 1
-        position[node] = len(stack)
-        stack.append(node)
-        for target, _label in edges.get(node, []):
-            if target not in edges:
-                continue
-            state = color.get(target, 0)
-            if state == 1:
-                count += 1
-                if len(samples) < 5:
-                    samples.append(stack[position[target]:] + [target])
-            elif state == 0:
-                dfs(target)
-        stack.pop()
-        position.pop(node, None)
-        color[node] = 2
-
-    for node in sorted(edges, key=_node_text):
-        if color.get(node, 0) == 0:
-            dfs(node)
+    A legalizer chain is a path, and the largest state sets are tens of
+    thousands of nodes: recursion depth is the longest chain, not the node
+    count, but a long chain can still exceed Python's default limit.  An
+    explicit stack keeps the answer and the sample order identical without
+    turning a deep graph into a `RecursionError`.
+    """
+    adjacency = {node: [target for target, _label in edges.get(node, [])
+                        if target in edges]
+                 for node in edges}
+    color, count, samples = {}, 0, []
+    for root in sorted(edges, key=_node_text):
+        if color.get(root, 0) != 0:
+            continue
+        stack = [(root, 0)]
+        path = []
+        position = {}
+        while stack:
+            node, index = stack[-1]
+            if index == 0:
+                color[node] = 1
+                position[node] = len(path)
+                path.append(node)
+            targets = adjacency.get(node, ())
+            if index < len(targets):
+                stack[-1] = (node, index + 1)
+                target = targets[index]
+                state = color.get(target, 0)
+                if state == 1:
+                    count += 1
+                    if len(samples) < 5:
+                        samples.append(path[position[target]:] + [target])
+                elif state == 0:
+                    stack.append((target, 0))
+            else:
+                stack.pop()
+                path.pop()
+                position.pop(node, None)
+                color[node] = 2
     return count, samples
 
 
@@ -661,7 +681,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                 type_classes = _refine_classes(
                     type_classes, opcode, [items[0] for items in axes],
                     mem_values[0] if mem_values != [None] else None,
-                    evaluator, config, extended)
+                    evaluator, config, extended, declared)
             mem_classes = (_make_mem_classes(mem_values, atoms, axes,
                                              evaluator, config)
                            if mem_values != [None] else None)
@@ -712,6 +732,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                      time.monotonic() - started),
                   file=sys.stderr, flush=True)
 
+    domain = Domain(frozenset(declared), class_tables)
     for key, state in states.items():
         opcode = key[0]
         types, mem, imm = state["types"], state["mem"], state["imm"]
@@ -747,13 +768,8 @@ def build(source, config, features, *, pointer_width=64, slots=None,
         if type_idx >= len(types) or new_type == types[type_idx]:
             state["outcome"] = "stuck"
             continue
-        if new_type not in declared:
-            state["outcome"] = "outside"
-            continue
-        target = list(types)
-        target[type_idx] = new_type
-        target_key = _class_key(state["tables"], opcode, tuple(target), mem,
-                                imm)
+        target_key = domain.successor(opcode, types, mem, imm, type_idx,
+                                      new_type)
         if target_key is None:
             state["outcome"] = "outside"
             continue
@@ -771,68 +787,79 @@ def build(source, config, features, *, pointer_width=64, slots=None,
         def record(entry):
             closure["count"] += 1
             closure["ok"] = False
-            kind = ("outside" if entry.get("reason") == "outside"
-                    else "partition")
+            kind = entry.get("kind", "partition")
             closure["kinds"][kind] += 1
             if len(closure["violations"]) < limit:
                 closure["violations"].append(entry)
 
-        # Scan every state; the stored samples are capped, the audit is not.
+        def classify(member_types, member_mem, member_imm):
+            """(outcome, target_key, action, rule, detail) for one member."""
+            try:
+                action, type_idx, new_type, rule = E.evaluate_with_rule(
+                    evaluator, config, key[0], list(member_types),
+                    _mem_desc(member_mem, extended), member_imm or ())
+            except Exception as exc:
+                return ("opaque", None, None, None,
+                        {"reason": "opaque", "detail": str(exc)})
+            if rule is None:
+                return "no-rule", None, action, rule, None
+            if action in TERMINAL:
+                return "terminal", None, action, rule, None
+            if type_idx >= len(member_types) or new_type == member_types[type_idx]:
+                return "stuck", None, action, rule, None
+            target_key = domain.successor(
+                key[0], member_types, member_mem, member_imm, type_idx,
+                new_type)
+            if target_key is None:
+                return "outside", None, action, rule, {
+                    "reason": "outside",
+                    "mutation": _type_text(new_type),
+                }
+            return "moves", target_key, action, rule, None
+
+        # Audit concrete members of *every* class, not just the representative
+        # of a moving one.  A representative that is terminal (or outside, or
+        # unruly) used to hide a member that moves: the class-level "successor
+        # is a function" claim was never checked for those classes.
         for key in sorted(states, key=_node_text):
             state = states[key]
-            if state["outcome"] == "outside":
-                record({
-                    "state": _node_text(key), "reason": "outside",
-                    "member": [_type_text(x) for x in state["types"]],
-                })
-                continue
-            if state["outcome"] != "moves":
+            if state["outcome"] == "opaque":
                 continue
             targets = set()
             for types, mem, imm in _state_members(state):
-                try:
-                    action, type_idx, new_type, rule = E.evaluate_with_rule(
-                        evaluator, config, key[0], list(types),
-                        _mem_desc(mem, extended), imm or ())
-                except Exception as exc:
+                outcome, target_key, action, rule, detail = classify(
+                    types, mem, imm)
+                member = [_type_text(x) for x in types]
+                if outcome != state["outcome"]:
+                    entry = {
+                        "state": _node_text(key), "member": member,
+                        "reason": "different outcome",
+                        "outcome": outcome,
+                        "representative": state["outcome"],
+                        # Either direction of an outside/moving mix is a
+                        # coverage gap; anything else is a partition error.
+                        "kind": ("outside" if "outside" in (outcome,
+                                                            state["outcome"])
+                                 else "partition"),
+                    }
+                    entry.update(detail or {})
+                    record(entry)
+                elif action != state["action"] or rule != state["rule"]:
                     record({
-                        "state": _node_text(key),
-                        "member": [_type_text(x) for x in types],
-                        "reason": "opaque: %s" % exc,
-                    })
-                    continue
-                if rule != state["rule"] or action != state["action"]:
-                    record({
-                        "state": _node_text(key),
-                        "member": [_type_text(x) for x in types],
+                        "state": _node_text(key), "member": member,
                         "reason": "different rule",
-                        "rule": rule, "representative_rule": state["rule"],
+                        "action": action, "rule": rule,
+                        "representative_action": state["action"],
+                        "representative_rule": state["rule"],
                     })
-                    continue
-                target = list(types)
-                if type_idx >= len(target) or new_type == target[type_idx]:
-                    record({
-                        "state": _node_text(key),
-                        "member": [_type_text(x) for x in types],
-                        "reason": "stuck mutation",
-                    })
-                    continue
-                target[type_idx] = new_type
-                target_key = _class_key(state["tables"], key[0],
-                                        tuple(target), mem, imm)
-                if target_key is None:
-                    record({
-                        "state": _node_text(key),
-                        "member": [_type_text(x) for x in types],
-                        "reason": "outside", "mutation": _type_text(new_type),
-                    })
-                    continue
-                targets.add(target_key)
+                if outcome == "moves":
+                    targets.add(target_key)
             if len(targets) > 1:
                 record({
                     "state": _node_text(key),
                     "reason": "multiple target classes",
-                    "targets": [_node_text(x) for x in sorted(targets, key=_node_text)],
+                    "targets": [_node_text(x) for x in sorted(targets,
+                                                              key=_node_text)],
                 })
 
     injected = None
@@ -854,6 +881,32 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     return Report(config, states, dict(edges), total_classes, uncovered,
                   closure, injected, class_tables, sorted(skipped),
                   classes_before if refine else None)
+
+
+@dataclass(frozen=True)
+class Domain:
+    """The finite state space one configuration's graph is built over.
+
+    A mutation result is a state only when the value is both *declared* (the
+    coverage contract `spec/graph.md` states: widening into an undeclared
+    width is `outside`, not `no-rule`) and *classable* (the opcode's axes have
+    a class for it).  Both conditions live here so `build` and the closure
+    audit cannot disagree about what "outside" means.
+    """
+
+    declared: frozenset
+    tables: dict
+
+    def successor(self, opcode, types, mem, imm, changed_idx, new_type):
+        """State key for one mutation result, or None when it is outside."""
+        if new_type not in self.declared:
+            return None
+        target = list(types)
+        target[changed_idx] = new_type
+        table = self.tables.get(opcode)
+        if table is None:
+            return None
+        return _class_key(table, opcode, tuple(target), mem, imm)
 
 
 def _class_key(tables, opcode, types, mem, imms=None):
