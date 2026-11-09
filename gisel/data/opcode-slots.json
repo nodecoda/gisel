@@ -1017,6 +1017,56 @@
     1
    ]
   },
+  "G_STRICT_FADD": {
+   "arity": 1,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FCMP": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FCMPS": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FDIV": {
+   "arity": 1,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FLDEXP": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FMA": {
+   "arity": 1,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FMUL": {
+   "arity": 1,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FREM": {
+   "arity": 1,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FSQRT": {
+   "arity": 1,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_STRICT_FSUB": {
+   "arity": 1,
+   "imm": 0,
+   "ptype": []
+  },
   "G_SUB": {
    "arity": 1,
    "imm": 0,
@@ -1227,5 +1277,5 @@
  },
  "schema": 1,
  "source": "llvm/include/llvm/Target/GenericOpcodes.td",
- "source_commit": "e88a24a0fe845da4043952343c72de6eff3f6400"
+ "source_commit": "57587b095ee7cfcb4ba3a1493ea0788f2d178ed9"
 }

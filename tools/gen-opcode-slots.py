@@ -39,6 +39,17 @@ def parse(path):
             "ptype": sorted(set(int(x) for x in PTYPE_RE.findall(body))),
             "imm": len(set(imms)),
         }
+    # `def G_STRICT_FADD : ConstrainedInstruction<G_FADD>;` has no operand list
+    # of its own: it is the base opcode plus FP-environment operands LLVM adds
+    # in TableGen, so the slots are the base's.
+    base_of = {}
+    for m in re.finditer(r"^def\s+(G_[A-Z0-9_]+)\s*:\s*"
+                         r"ConstrainedInstruction<\s*(G_[A-Z0-9_]+)\s*>\s*;",
+                         text, re.M):
+        base_of[m.group(1)] = m.group(2)
+    for name, base in base_of.items():
+        if base in out:
+            out[name] = dict(out[base])
     return out
 
 

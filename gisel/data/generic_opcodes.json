@@ -1,6 +1,4 @@
 {
- "schema": 1,
- "source": "bundled LLVM generic opcode arity table",
  "note": "arity = highest (p)typeN index + 1; null = variadic/unknown",
  "opcodes": {
   "G_ABDS": 1,
@@ -218,16 +216,16 @@
   "G_STACKSAVE": 1,
   "G_STEP_VECTOR": 1,
   "G_STORE": 2,
-  "G_STRICT_FADD": 0,
-  "G_STRICT_FCMP": 0,
+  "G_STRICT_FADD": 1,
+  "G_STRICT_FCMP": 2,
   "G_STRICT_FCMPS": 0,
-  "G_STRICT_FDIV": 0,
-  "G_STRICT_FLDEXP": 0,
-  "G_STRICT_FMA": 0,
-  "G_STRICT_FMUL": 0,
-  "G_STRICT_FREM": 0,
-  "G_STRICT_FSQRT": 0,
-  "G_STRICT_FSUB": 0,
+  "G_STRICT_FDIV": 1,
+  "G_STRICT_FLDEXP": 2,
+  "G_STRICT_FMA": 1,
+  "G_STRICT_FMUL": 1,
+  "G_STRICT_FREM": 1,
+  "G_STRICT_FSQRT": 1,
+  "G_STRICT_FSUB": 1,
   "G_SUB": 1,
   "G_TRAP": 0,
   "G_TRUNC": 2,
@@ -286,5 +284,7 @@
   "G_XOR": 1,
   "G_ZEXT": 2,
   "G_ZEXTLOAD": 2
- }
+ },
+ "schema": 1,
+ "source": "bundled LLVM generic opcode arity table"
 }
