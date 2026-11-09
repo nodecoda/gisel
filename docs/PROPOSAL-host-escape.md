@@ -18,17 +18,17 @@ lint: 0 error(s), 7 warning(s)
 
 | 拒绝 | 实际原因 | 为什么不是语法问题 |
 |---|---|---|
-| LOAD/STORE `narrowScalarIf` “3 args” ×2 | `split_top` 不认模板尖括号，`pair<unsigned, LLT>` 的逗号被当成参数分隔 | 补模板感知的切分即可；上游签名是两参 |
+| `needToSplitMemOp` 局部 lambda 声明 ×1 | 它是构造函数里的局部 helper 声明 | 声明本身可以像 `assert` 一样忽略；三处调用点用现有 `opaque("needToSplitMemOp(Query, ...)")` 承接，helper 在构造函数作用域可见 |
 | EXTRACT/INSERT `customIf` 宿主调用 ×2 | lambda 先算局部量 `isLegalVecType`，再和类型条件做 `&&` | `opaque("...")` 本来就是谓词 primary，可与 `and` 组合；补“局部量折叠 + 早返回折成 or”即可 |
 | EXTRACT/INSERT `moreElementsIf` `isIllegalRegisterType(ST, VecTypeIdx)` ×2 | `VecTypeIdx` 是 `for (unsigned Op : {...})` 的循环值 | 导入器按每个 Op 展开循环即可；helper 在构造函数作用域可见，现有 `opaque` 能承接 |
 
-注意：这 5 条落地后，10 → 5，但**还不是 0**。
+这 5 条落地后，拒绝数 10 → 5，但**还不是 0**；剩下的正好是 §3 的 5 条。
 
 ## 3 真正需要新层的 5 条
 
 | 规则 | 宿主表达式 | 位置 |
 |---|---|---|
-| LOAD/STORE `narrowScalarIf` 的变异体 ×2 | `maxSizeForAddrSpace(ST, AS, IsLoad, IsAtomic)` | 变异 lambda 的值 |
+| LOAD/STORE `narrowScalarIf` 的变异体 ×2 | `maxSizeForAddrSpace(ST, AS, IsLoad, IsAtomic)`；另外 `split_top` 要能切 `pair<unsigned, LLT>` | 变异 lambda 的值 |
 | LOAD/STORE `fewerElementsIf` 的变异体 ×2 | 同上，且 body 有嵌套 `if` / 提前 `return` / `bit_floor` | 变异 lambda 的值 |
 | BUILD_VECTOR `moreElementsIf` ×1 | `moreElementsToNextExistingRegClass(0)` | **返回 `LegalizeMutation` 的 helper**，不是类型 |
 
