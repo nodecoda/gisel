@@ -546,7 +546,25 @@ def type_shape_ok(opcode, types):
     return True
 
 
-def _candidates(infos, nslots, cap, domain):
+def _declares_scalable(doc):
+    """Whether the document's declared domain contains a scalable vector.
+
+    X86 declares no scalable type, so a `nxv*` query is not a question its
+    legalizer can be asked: `LLT::getNumElements()` aborts on it.  Generating
+    one turns a shape filter into a crash in the official runner.
+    """
+    for text in doc.get("domain", {}).get("types", []):
+        for spelling in type_value_spellings(text):
+            try:
+                t = E.parse_case_llt(spelling)
+            except E.EvalError:
+                continue
+            if t[0] == "vector" and t[2]:
+                return True
+    return False
+
+
+def _candidates(infos, nslots, cap, domain, scalable_ok=True):
     """Per-slot candidates: literals, domain types, neighbours, sentinels."""
     per = []
     for i in range(nslots):
@@ -574,6 +592,9 @@ def _candidates(infos, nslots, cap, domain):
         else:
             ordered += [t for t in sorted(domain, key=_candidate_key)
                         if t not in ordered]
+        if not scalable_ok:
+            ordered = [x for x in ordered
+                       if not (x[0] == "vector" and x[2])] or ordered[:1]
         per.append(ordered)
     # Keep the cartesian product bounded without dropping any literal.
     while _product_size(per) > 20000:
@@ -702,13 +723,15 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
         stats[case.kind] += 1
         return True
 
+    scalable_ok = _declares_scalable(doc)
     for rs_idx, rs in enumerate(doc["rulesets"]):
         if not rs["opcodes"]:
             continue
         opcode = rs["opcodes"][0]
         nslots, infos = inspect_ruleset(rs)
         domain = [E.parse_case_llt(t) for t in doc["domain"]["types"]]
-        per = _candidates(infos, nslots, max_slot_values, domain)
+        per = _candidates(infos, nslots, max_slot_values, domain,
+                          scalable_ok)
         if axes is not None:
             per = [axes.apply_types(slot) for slot in per]
         default = _defaults(per)
@@ -760,7 +783,8 @@ def generate(doc, features, *, configs=None, max_slot_values=16,
                        if ri not in witnessed]
         for ri in unwitnessed:
             found = _rule_witness(evaluator, rs_idx, ri, rs, configs, infos,
-                                  default, mem_entries, imm_tuples, mem_pairs)
+                                  default, mem_entries, imm_tuples, mem_pairs,
+                                  scalable_ok)
             if found is not None:
                 config, types, mem, imms, res = found
                 if emit(Case(config, opcode,
@@ -1068,7 +1092,7 @@ def _satisfiable(evaluator, rs_idx, ri, rs, configs, infos, per, default,
 
 def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
                   mem_entries, imm_tuples=((),),
-                  mem_pairs=(("NotAtomic", "NotAtomic"),)):
+                  mem_pairs=(("NotAtomic", "NotAtomic"),), scalable_ok=True):
     """A query that makes rule ``ri`` the *first* match, or ``None``.
 
     The shared candidate product is capped, so a rule can lose its witness to a
@@ -1087,7 +1111,11 @@ def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
             cand |= _neighbours(leaf)
         if not cand:
             cand = {default[s] if s < len(default) else E.parse_case_llt("s32")}
-        per_slot.append(sorted(cand, key=_candidate_key)[:96])
+        values = sorted(cand, key=_candidate_key)
+        if not scalable_ok:
+            values = [x for x in values
+                      if not (x[0] == "vector" and x[2])] or values[:1]
+        per_slot.append(values[:96])
     total = 1
     for values in per_slot:
         total *= len(values)

@@ -100,3 +100,42 @@ does not cover every rule
   做“每条规则 × 每个字面量”的展开，作为 `cases` 的第二个出口。
 - 语料与 C++ 的逐字节一致只覆盖三个钉住的构造函数；第四个 target 是新工具，
   不是新 flag（`tools/import-cxx.py` 的文档头已经这么写）。
+
+## 7 第一次跑出来的东西：一条真分歧
+
+新的见证集第一次跑端到端（X86，3,276 条有效查询）时，`disagree = 1`：
+
+```text
+C1  G_UITOFP  (s32, v4s32)   ref(.td) = Custom   ours(gisel) = Unsupported
+```
+
+两边的规则都在这儿：
+
+```cpp
+// 手写上游 X86LegalizerInfo.cpp
+.customIf([=](const Query &Q) {
+  return !HasAVX512 && (HasSSE1 && typeIs(0, s32)(Q)) &&
+         scalarNarrowerThan(1, Is64Bit ? 64 : 32)(Q);
+})
+```
+
+`scalarNarrowerThan` 的实现是 `QueryTy.isScalar() && QueryTy.getSizeInBits() < Size`。
+`v4s32` 不是标量，所以这条规则**不命中**，继续往下走全是标量守卫的
+`clampScalar` / `widenScalarToNextPow2`，也都不命中 → `Unsupported`。
+
+而 `.td` 把它转写成了：
+
+```tablegen
+CoreCustom<(CoreAll (CoreNot HasAVX512), ..., (CoreLt (BitsOf (Slot 1)), ...))>
+```
+
+丢了 `isScalar` 守卫，而且 `BitsOf` 在向量上读的是元素位宽（32），于是
+`32 < 64` 成立 → `Custom`。
+
+也就是说：**gisel 是对的，`.td` 那条转写是错的**。这条分歧正好是「有界商」理论
+里那条不变量（`sizeIs` 读总位宽、`elementTypeIs` 读元素位宽）的一个现成反例。
+
+旧的分母（来自 `-gen-legalizer-table-points`）没抓到它：那套点的类型元组里，
+这个组合没有作为任何规则的见证出现。新的见证集让它变成了 `disagree = 1`。
+
+结论：`.td` 路径不仅多余，而且已经和手写代码不一致。这也解释了为什么它该被删。
