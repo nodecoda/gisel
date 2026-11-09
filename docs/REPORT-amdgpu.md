@@ -2,7 +2,7 @@
 
 一句话：**上游一共 11 个 legalizer 构造函数，语料收了 9 个；BPF 的构造函数是空的，
 真正剩下的只有 AMDGPU。** 导入器已经能把 AMDGPU 读成一份**能解析、能 lint**
-的语料（794 条规则），但还有 10 条语句拒绝，其中一部分要动 DSL 本身。本轮做
+的语料（796 条规则），但还有 7 条语句拒绝，其中一部分要动 DSL 本身。本轮做
 盘点、一个可复现的探针、把“悄悄产出非法文本”这类缺陷堵死，并按 §4 选定的
 逃逸点路线落下 `opaque(...)`；语料仍未收。
 
@@ -11,10 +11,10 @@
 | 项 | 值 |
 |---|---:|
 | rulesets | 142 |
-| rules | 794 |
-| refused | 10 |
+| rules | 796 |
+| refused | 7 |
 | builder 调用 | 702 |
-| 其中 `opaque` 规则 | 18 处 / 14 条规则 / 8 个不同表达式 |
+| 其中 `opaque` 规则 | 20 处 / 16 条规则 / 10 个不同表达式 |
 | lint | 0 error / 7 warning |
 
 ## 1 盘点：11 个构造函数
@@ -57,10 +57,10 @@ python3 -m gisel lint /tmp/amdgpu.gisel
 （`git log -1 -- docs/REPORT-amdgpu.md`）——数字随导入器变化，源 sha 是稳定锚点。
 
 ```
-142 rulesets, 794 rules, 10 refused
-TOTAL  702 calls  795 rules
+142 rulesets, 796 rules, 7 refused
+TOTAL  702 calls  797 rules
 
-lint: 0 error(s), 7 warning(s), 794 rule(s)
+lint: 0 error(s), 7 warning(s), 796 rule(s)
 ```
 
 7 条 warning 都是 `arity unknown`（`G_BUILD_VECTOR_TRUNC`、`G_MERGE_VALUES` 等），
@@ -96,18 +96,15 @@ lint: 0 error(s), 7 warning(s), 794 rule(s)
 
 这条约束对现有 9 份语料零影响（`--all --check` 9/9 逐字节相同）。
 
-## 3 10 条拒绝：按“要做什么”分类
+## 3 7 条拒绝：按“要做什么”分类
 
 | 类别 | 条数 | 要做什么 |
 |---|---:|---|
-| `fewerElementsIf` 的 `std::pair` body | 2 | LOAD/STORE 的多行 lambda 体（MERGE/UNMERGE 已在本轮读掉） |
-| `narrowScalarIf` 三参数形态 | 2 | 谓词 + 变异 + 变异 |
-| `customIf` 谓词里的宿主 register-class 查询 | 2 | `SIRegisterInfo::getSGPRClassForBitWidth(...)` 在 `&&` 表达式内部，不是整条谓词 |
-| `isIllegalRegisterType(ST, VecTypeIdx)` | 2 | 第二参是构造函数变量（循环里算出来的 slot），不是整数字面量，谓词值逃逸不敢猜 |
-| 构造函数里的局部 lambda | 1 | `needToSplitMemOp`，body 读 `maxSizeForAddrSpace` 宿主值 |
-| `moreElementsToNextExistingRegClass` | 1 | 返回 `LegalizeMutation` 的 helper，不是谓词；属于变异侧原语 |
+| `fewerElementsIf` 的 `std::pair` body | 2 | LOAD/STORE 的多行 lambda 体，body 读 `maxSizeForAddrSpace` |
+| `narrowScalarIf` “三参数”形态 | 2 | `split_top` 切不开 `pair<unsigned, LLT>`；body 也读 `maxSizeForAddrSpace` |
+| `moreElementsToNextExistingRegClass` | 3 | EXTRACT/INSERT/BUILD_VECTOR：返回 `LegalizeMutation` 的 helper，不是类型 |
 
-现累计清掉的十三类（原 30 + 12 + 9 + 14 + 6 + 11 + 7 + 4 + 3 + 3 + 2 + 1 + 2）走的是 §6 第 3 步的原语：
+现累计清掉的十四类（原 30 + 12 + 9 + 14 + 6 + 11 + 7 + 4 + 3 + 3 + 2 + 1 + 2 + 3）走的是 §6 第 3 步的原语：
 
 - `clampMaxNumElementsStrict`（30 条）→ `align_lanes` + `clamp_max` 两条规则；
 - `if` 块里的 clamp（12 条）→ `clamp_min/max ... when P`；
@@ -130,6 +127,9 @@ lint: 0 error(s), 7 warning(s), 794 rule(s)
   `Query.MMODescrs[0].MemoryTy`：目标类型写成
   `replace(int_of_size(size_of(mem_ty(mem_slot(0)))))`，谓词 lambda 里的
   `MemTy.isScalar()` 折成 `sort_of(mem_ty(mem_slot(0))) == scalar`；
+- 宿主谓词子表达式 + 构造函数局部 lambda（3 条）→ `opaque` 接受布尔子表达式，
+  `SIRegisterInfo::...` 里的槽号按循环值折成数字；构造函数局部 lambda 的 body
+  内联成 `[&]() -> bool { ... }()`（换 include 后局部名不在作用域）；
 - `if` 里重赋值的变异 body（2 条）→ 语句读成 `select(cond, 新值, 旧值)`，
   块内声明不外泄；`1 << Log2_32_Ceil(x)` 折成 `pow2_ceil`、`alignTo<N>` 折成
   `align_to(x, N)`；
@@ -245,14 +245,15 @@ LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool �
    ~~`clampNumElements` 元素类型（3，导入器侧，无语法变更）~~、
    ~~`notValidElt` 二参 lambda（2，导入器侧）~~、
    ~~`minScalarIf`（1，导入器侧）~~、
-   ~~MERGE/UNMERGE 的“赋值 + if 改写”变异 body（2，导入器侧）~~ 已完成。
-   剩下 10 条全部卡在宿主值或宿主谓词：
-   `maxSizeForAddrSpace`（4）、`getSGPRClassForBitWidth`（4）、
-   `moreElementsToNextExistingRegClass` 的循环（1）、`needToSplitMemOp`（1）。
+   ~~MERGE/UNMERGE 的“赋值 + if 改写”变异 body（2，导入器侧）~~、
+   ~~宿主谓词子表达式与构造函数局部 lambda（3，导入器侧）~~ 已完成。
+   剩下 7 条全部卡在宿主值或宿主谓词：
+   `maxSizeForAddrSpace`（4）、
+   `moreElementsToNextExistingRegClass` 的循环（3）。
    这些需要“表达式里的宿主逃逸点”这一层设计，属于语法/契约变更，按约定先
    出变更说明等批准，不直接动手。
 4. 0 拒绝之后再进 `PIN.json` / `TARGETS` / cases 配置 / runner，最后才是端到端。
-   顺序反了会拿 12 条缺口冒充“已接入”。
+   顺序反了会拿 7 条缺口冒充“已接入”。
 
 ## 7 复现
 

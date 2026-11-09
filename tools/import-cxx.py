@@ -701,6 +701,37 @@ class Translator:
         self.features[cpp_text] = PREFIX + name
         return PREFIX + name
 
+    def opaque_expr(self, cpp):
+        """A host C++ expression copied through `opaque(...)`."""
+        cpp = " ".join(cpp.split())
+        self.opaque.append(cpp)
+        return 'opaque("%s")' % (cpp.replace("\\", "\\\\")
+                                      .replace('"', '\\"'))
+
+    def host_pred(self, text):
+        """`SIRegisterInfo::f(Query.Types[VecTypeIdx])` -> opaque atom.
+
+        The string is emitted verbatim inside the generated predicate lambda,
+        so every index spelled by a constructor variable is folded to the
+        number the C++ would see.
+        """
+        def idx(m):
+            return "Query.%s[%s]" % (m.group(1), self.slot_index(m.group(2)))
+        return self.opaque_expr(re.sub(r"Query\.(Types|MMODescrs)\[([^\]]+)\]",
+                                       idx, text))
+
+    def cpp_bool(self, text):
+        """The constructor's `Op == G_LOAD` spelling -> `true`/`false`."""
+        text = " ".join(text.split())
+        if text in ("true", "false"):
+            return text
+        m = re.fullmatch(r"(\w+)\s*==\s*(G_\w+)", text)
+        if m:
+            v = self.env.get(m.group(1))
+            if isinstance(v, str):
+                return "true" if v == m.group(2) else "false"
+        raise Refuse("local lambda argument %r" % text)
+
     def pred(self, text):
         text = text.strip()
         if re.fullmatch(r"Query\.(?:Types|MMODescrs)\[[^\]]+\]\.[A-Za-z_]+\("
@@ -828,7 +859,8 @@ class Translator:
         if not (helper and helper.group(1) in (
                 set(getattr(self, "pred_values", ()))
                 | set(getattr(self, "helpers", {}))
-                | set(getattr(self, "bool_helpers", {})))):
+                | set(getattr(self, "bool_helpers", {}))
+                | set(getattr(self, "local_lambdas", {})))):
             text = re.sub(r"\(\s*(\w+)\s*,", lambda m: "(%s," % (
                 m.group(1) if m.group(1).isdigit() else self.slot_index(m.group(1))
             ) if not m.group(1).isdigit() else m.group(0), text)
@@ -877,6 +909,18 @@ class Translator:
             local = None
         if local is not None:
             return local
+        # A bool helper declared in the constructor: inline its body so the
+        # generated `.inc` does not depend on a local that the swap removes.
+        m = re.fullmatch(r"(\w+)\s*\(\s*(?:Query|Q)\s*,\s*(.+)\)", text, re.S)
+        if m and m.group(1) in getattr(self, "local_lambdas", {}):
+            params, body = self.local_lambdas[m.group(1)]
+            if len(params) < 2:
+                raise Refuse("local lambda arity")
+            flag = self.cpp_bool(m.group(2))
+            pname = params[-1].split()[-1].lstrip("*&")
+            body = re.sub(r"\b%s\b" % re.escape(pname), flag, body)
+            return self.opaque_expr("([&]() -> bool { %s }())"
+                                    % " ".join(body.split()))
         # A file-local helper the predicate algebra does not model but that
         # returns a predicate value: `isRegisterType(ST, 0)` is a
         # `std::function<bool(const LegalityQuery&)>`, so it only becomes a
@@ -887,9 +931,16 @@ class Translator:
         m = re.fullmatch(r"(\w+)\s*\((.*)\)", text, re.S)
         if m:
             name, args = m.group(1), m.group(2)
-            if (name in getattr(self, "pred_values", ())
-                    and re.fullmatch(r"\s*\d+\s*", split_top(args)[-1])):
-                return 'opaque("%s(%s)(Query)")' % (name, args)
+            parts = split_top(args)
+            last = parts[-1].strip()
+            resolved = last if re.fullmatch(r"-?\d+", last) else None
+            if resolved is None:
+                v = self.env.get(last)
+                if isinstance(v, int) and not isinstance(v, bool):
+                    resolved = str(v)
+            if name in getattr(self, "pred_values", ()) and resolved is not None:
+                parts[-1] = resolved
+                return 'opaque("%s(%s)(Query)")' % (name, ", ".join(parts))
         # Subtarget reads and XLen comparisons are cached features.
         if re.fullmatch(r"(ST|STI)\.\w+\([^()]*\)", text) or \
                 re.fullmatch(r"XLen\s*==\s*\d+", text):
@@ -897,11 +948,12 @@ class Translator:
         if "Query." in text:
             if _host_call(text):
                 # A host helper inside a predicate
-                # (`SIRegisterInfo::getX(Query.Types[i])`).  `opaque(...)`
-                # copies a whole predicate, not a sub-expression, so this
-                # statement has to be written by hand instead of being
-                # emitted as text the corpus parser rejects.
-                raise Refuse("host call %r" % text)
+                # (`SIRegisterInfo::getX(Query.Types[i])`).  `opaque(...)` is
+                # a predicate primary, so a *sub-expression* can be copied
+                # through; slot indices named by constructor variables must
+                # be folded first, because the generated `.inc` has no
+                # `VecTypeIdx` in scope.
+                return self.host_pred(text)
             return self.query_body(text)
         raise Refuse(text)
 
@@ -1900,6 +1952,12 @@ class Translator:
                 if expr is None:
                     raise
                 expr = " ".join(expr.split())
+                # A call to a lambda declared in the constructor: inline it,
+                # because the swapped constructor body no longer declares it.
+                lm = re.fullmatch(r"(\w+)\s*\(\s*(?:Query|Q)\s*,\s*(.+)\)",
+                                  expr, re.S)
+                if lm and lm.group(1) in getattr(self, "local_lambdas", {}):
+                    return self.pred(expr)
                 self.opaque.append(expr)
                 return 'opaque("%s")' % (expr.replace("\\", "\\\\")
                                               .replace('"', '\\"'))
@@ -2911,8 +2969,10 @@ class Importer:
         self.tr.aligns = parse_aligns(source)
         self.named_preds = {}
         self.param_preds = {}
+        self.local_lambdas = {}
         self.tr.named_preds = self.named_preds
         self.tr.param_preds = self.param_preds
+        self.tr.local_lambdas = self.local_lambdas
         self.rulesets = []
         self.gate = []
         self.env = {}
@@ -2981,6 +3041,19 @@ class Importer:
                 USED_RENAMES["feature"].add(key)
             self.tr.features[expr] = PREFIX + (suffix or name)
             self.tr.feature_aliases[name] = self.tr.features[expr]
+            return
+        if re.match(r"const\s+auto\s+\w+\s*=\s*\[", st):
+            # A bool helper declared *inside* the constructor: the generated
+            # `.inc` replaces the whole constructor body, so the name is not
+            # in scope there.  Remember the body; each call site inlines it
+            # into `opaque(...)`.
+            m = re.match(r"const\s+auto\s+(\w+)\s*=\s*(.+)$", st, re.S)
+            pm = re.match(r"\[.*?\]\s*\((.*?)\)\s*(?:->\s*\w+)?\s*\{(.*)\}$",
+                          m.group(2), re.S)
+            if not pm:
+                raise Refuse("local lambda")
+            params = [x.strip() for x in split_top(pm.group(1))]
+            self.local_lambdas[m.group(1)] = (params, pm.group(2))
             return
         if re.match(r"auto\s+\w+\s*=\s*\[", st):
             if "LegalityQuery" in st:

@@ -7,22 +7,25 @@
 AMDGPU 语料（pin `9bfc850b9940`）当前：
 
 ```text
-142 rulesets, 794 rules, 10 refused
+142 rulesets, 796 rules, 7 refused
 lint: 0 error(s), 7 warning(s)
 ```
 
-10 条拒绝里，**5 条不需要改语法**，只是导入器还没读完；另外 **5 条**卡在同一件
-事：规则的值/变异里出现了 gisel 无法求值的宿主表达式。本文只针对后者请求批准。
+10 条里已有 3 条靠导入器清掉（宿主谓词子表达式、构造函数局部 lambda），
+剩下 **7 条**卡在同一件事：规则的变异里出现了 gisel 无法求值的宿主值，
+或者变异本身就是宿主 helper。本文只针对这 7 条请求批准。
 
-## 2 不需要改语法的 5 条（照常推进，不在此次审批范围）
+## 2 已经靠导入器清掉的 3 条（不在审批范围，已完成）
 
-| 拒绝 | 实际原因 | 为什么不是语法问题 |
-|---|---|---|
-| `needToSplitMemOp` 局部 lambda 声明 ×1 | 它是构造函数里的局部 helper 声明 | 声明本身可以像 `assert` 一样忽略；三处调用点用现有 `opaque("needToSplitMemOp(Query, ...)")` 承接，helper 在构造函数作用域可见 |
-| EXTRACT/INSERT `customIf` 宿主调用 ×2 | lambda 先算局部量 `isLegalVecType`，再和类型条件做 `&&` | `opaque("...")` 本来就是谓词 primary，可与 `and` 组合；补“局部量折叠 + 早返回折成 or”即可 |
-| EXTRACT/INSERT `moreElementsIf` `isIllegalRegisterType(ST, VecTypeIdx)` ×2 | `VecTypeIdx` 是 `for (unsigned Op : {...})` 的循环值 | 导入器按每个 Op 展开循环即可；helper 在构造函数作用域可见，现有 `opaque` 能承接 |
+| 拒绝 | 实际做法 |
+|---|---|
+| `needToSplitMemOp` 局部 lambda 声明 ×1 | 声明记下来；调用点的 body 内联成 `opaque("([&]() -> bool { ... }())")`，因为换 include 后局部名不在作用域 |
+| EXTRACT/INSERT `customIf` 宿主调用 ×2 | `opaque(...)` 作为布尔子表达式接住 `SIRegisterInfo::...`；槽号按循环值折成 `Query.Types[1]` / `[0]` |
 
-这 5 条落地后，拒绝数 10 → 5，但**还不是 0**；剩下的正好是 §3 的 5 条。
+EXTRACT/INSERT 的 `moreElementsIf` 谓词也已结构化，但它的变异
+`moreElementsToNextExistingRegClass(...)` 仍然拒绝，所以归入 §3。
+
+这条路径由 `tests/test_host_pred.py` 锁住（4 条测试）。
 
 ## 3 真正需要新层的 5 条
 
@@ -30,7 +33,7 @@ lint: 0 error(s), 7 warning(s)
 |---|---|---|
 | LOAD/STORE `narrowScalarIf` 的变异体 ×2 | `maxSizeForAddrSpace(ST, AS, IsLoad, IsAtomic)`；另外 `split_top` 要能切 `pair<unsigned, LLT>` | 变异 lambda 的值 |
 | LOAD/STORE `fewerElementsIf` 的变异体 ×2 | 同上，且 body 有嵌套 `if` / 提前 `return` / `bit_floor` | 变异 lambda 的值 |
-| BUILD_VECTOR `moreElementsIf` ×1 | `moreElementsToNextExistingRegClass(0)` | **返回 `LegalizeMutation` 的 helper**，不是类型 |
+| EXTRACT/INSERT/BUILD_VECTOR `moreElementsIf` ×3 | `moreElementsToNextExistingRegClass(0)` | **返回 `LegalizeMutation` 的 helper**，不是类型 |
 
 另外 `needToSplitMemOp`（构造函数局部 lambda）本身不需要新语法：对它的调用可以
 写成现有 `opaque(...)`，所以它不再单独算一条。
@@ -87,8 +90,8 @@ narrow(slot(0), mutate("[=](const LegalityQuery &Query) -> std::pair<unsigned, L
 
 ## 5 建议
 
-先做 §2 的 5 条（无需批准），把语料推进到 **5 refused**；然后按**方案 B** 落地，
-到 **0 refused**，并在报告里明确“5 条规则的变异是受控逃逸点，答案以对拍为准”。
+§2 的 3 条已经落地，语料现在是 **7 refused**；按**方案 B** 落地后到 **0 refused**，
+并在报告里明确“7 条规则的变异是受控逃逸点，答案以对拍为准”。
 方案 C 作为后续可选的结构化收益，不阻塞本次接入。
 
 ## 6 需要批准的具体问题
@@ -97,5 +100,5 @@ narrow(slot(0), mutate("[=](const LegalityQuery &Query) -> std::pair<unsigned, L
 2. 是否接受“AMDGPU 0 拒绝，但其中 5 条变异为 opaque”这个结论口径？
 3. 若不同意 B，是否选 A（停在 5 条 deviation）或 C（继续扩 `host`/`bit_floor`）？
 
-批准后我会按顺序做：§2 的导入器 5 条 → 方案 B 的语法与三出口 → 逐 ruleset
-比对规则数 → `--all --check` 9/9 → 全量 pytest → 更新 REPORT-amdgpu → 分笔提交。
+批准后我会按顺序做：方案 B 的语法与三出口 → 逐 ruleset 比对规则数 →
+`--all --check` 9/9 → 全量 pytest → 更新 REPORT-amdgpu → 分笔提交。
