@@ -74,6 +74,18 @@ static void initializeTarget();
 static std::unique_ptr<TargetLegalizer>
 makeLegalizer(const TargetSubtarget &ST, TargetMachine &TM);
 
+// Optional per-target adjustment applied to the freshly created subtarget,
+// before the legalizer is built.  Most targets keep the no-op below.  SPIRV
+// needs it because its execution environment and extension set are not
+// encoded in the triple, so two configurations can share one triple.
+// A runner that provides a real one defines GISEL_AB_TWEAK_SUBTARGET before
+// including this header and defines `tweakSubtarget` after it.
+#ifdef GISEL_AB_TWEAK_SUBTARGET
+static void tweakSubtarget(const Config &, TargetSubtarget &);
+#else
+static void tweakSubtarget(const Config &, TargetSubtarget &) {}
+#endif
+
 static std::optional<AtomicOrdering> parseOrdering(StringRef Text) {
   return StringSwitch<std::optional<AtomicOrdering>>(Text)
       .Case("NotAtomic", AtomicOrdering::NotAtomic)
@@ -228,6 +240,10 @@ static bool makeSigma(const Config &C, Sigma &S) {
     errs() << "no subtarget for " << C.ID << "\n";
     return false;
   }
+  // The subtarget comes back const because TargetMachine hands out a const
+  // interface, but the machine owns it and is the only writer; a per-target
+  // hook may need to finish configuring it (see tweakSubtarget above).
+  tweakSubtarget(C, const_cast<TargetSubtarget &>(*S.STI));
   S.L = makeLegalizer(*S.STI, *S.TM);
   return bool(S.L);
 }

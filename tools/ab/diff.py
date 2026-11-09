@@ -131,6 +131,11 @@ def main(argv=None):
                     help="count the queries whose reference answer is "
                          "'asserted' as a known class, not a difference; the "
                          "run fails unless exactly N of them are found")
+    ap.add_argument("--expect-unanswerable", type=int, default=None,
+                    metavar="N",
+                    help="fail unless exactly N queries are unanswerable on "
+                         "both sides; pins a shared assert so a new class of "
+                         "assert cannot hide in the unanswerable count")
     args = ap.parse_args(argv)
 
     ref, e1 = A.load(args.ref)
@@ -155,6 +160,11 @@ def main(argv=None):
             print("MISSING in ours: %r" % (key,))
     if result["errors"]:
         return 2
+    if (args.expect_unanswerable is not None
+            and result["unanswerable"] != args.expect_unanswerable):
+        print("both sides unanswerable on %d queries, expected %d"
+              % (result["unanswerable"], args.expect_unanswerable))
+        return 1
     if (args.allow_ref_asserts is not None
             and result["ref_asserted"] != args.allow_ref_asserts):
         print("ref asserted on %d queries, expected %d"

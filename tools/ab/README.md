@@ -37,6 +37,7 @@ is back on the baseline include.
 | `wasm` | generated constructor object | 886 queries; `wasm32|wasm64` × `±sign-ext` |
 | `arm` | generated constructor object | 1,614 queries; 7 configs across soft-float / VFP2 / VFP4 / NEON / V5T / hardware divide / AEABI; Thumb1 excluded (constructor registers no rule) |
 | `mips` | generated constructor object | 1,656 queries; 5 configs across MSA / MIPS32r2 / unaligned access; 9 queries abort upstream (`--allow-ref-asserts 9`) |
+| `spirv` | generated constructor object | 5,136 queries; 6 configs across kernel/shader × spirv32/64 × extension sets; 4 queries abort on both sides (`--expect-unanswerable 4`, upstream `changeElementSizeTo` overload) |
 
 Adapters live in `tools/ab/targets/*.json`: include path, library, ninja
 target, runner builder, feature table, optional axes, query-count contract.

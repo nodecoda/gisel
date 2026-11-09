@@ -103,6 +103,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 | WebAssembly | 886 | 886 | 886 | 0 | 0 | wasm32/wasm64 × ±sign-ext，规则 109 条 |
 | ARM | 1,614 | 1,614 | 1,614 | 0 | 0 | 7 配置（soft-float / VFP2 / VFP4 / NEON / V5T / HW divide / AEABI），规则 96 条；Thumb1 未覆盖（构造函数直接 return，见 REPORT §12） |
 | Mips | 1,656 | 1,656 | 1,647 | 0 | 0 | 5 配置（MSA / MIPS32r2 / 非对齐访问），规则 95 条；9 条官方侧断言、我们侧给答案（上游 4 字节非对齐 load 断言，`--allow-ref-asserts 9`） |
+| SPIRV | 5,136 | 5,136 | 5,132 | 0 | 4 | 6 配置（kernel/shader × spirv32/64 × 扩展集），规则 353 条；4 条两侧都断言（上游 `changeElementSizeTo` 传了元素数量，读 `Query.Types[16]`，`--expect-unanswerable 4`） |
 
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
 `patches`（`PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个

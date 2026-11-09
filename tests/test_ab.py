@@ -81,6 +81,23 @@ class CompareMode(unittest.TestCase):
         self.assertEqual(result["disagree"], 1)
         self.assertEqual(result["first_details"][0]["class"], "new_type")
 
+    def test_expect_unanswerable_pins_a_shared_assert(self):
+        a = answer("G_ADD")
+        asserted = {"config": "C0", "name": "G_SUB", "types": ["s32"],
+                    "mem": None, "imms": [], "status": "unanswerable",
+                    "reason": "asserted"}
+        ref = write_jsonl([a, asserted])
+        ours = write_jsonl([a, asserted])
+        path = str(DIFF)
+        rc = subprocess.run([sys.executable, path, str(ref), str(ours),
+                             "--expect-unanswerable", "1"],
+                            capture_output=True, text=True).returncode
+        self.assertEqual(rc, 0)
+        rc = subprocess.run([sys.executable, path, str(ref), str(ours),
+                             "--expect-unanswerable", "0"],
+                            capture_output=True, text=True).returncode
+        self.assertEqual(rc, 1)
+
     def test_action_mode_still_catches_action_change(self):
         ref = [answer("G_ADD", "Legal")]
         ours = [answer("G_ADD", "WidenScalar", "s64")]

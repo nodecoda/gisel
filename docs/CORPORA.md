@@ -93,6 +93,7 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 | WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 886 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-wasm-end-to-end.sh` |
 | ARM | `ARM/ARMLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,614 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-arm-end-to-end.sh` |
 | Mips | `Mips/MipsLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,656 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-mips-end-to-end.sh` |
+| SPIRV | `SPIRV/SPIRVLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 5,136 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-spirv-end-to-end.sh`（4 条两侧都断言，`--expect-unanswerable 4`） |
 
 ## 证据分三层，别混
 

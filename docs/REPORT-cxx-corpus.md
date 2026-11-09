@@ -391,3 +391,71 @@ PowerPC 98 / ARM 1,670 变成 3,027 / 12,583 / 6,149 / 35 / 886 / 94 / 1,614，
 - `Mips_G_ZEXTLOAD#1/#2` 是 `shadowed`：同轴上更早的规则先命中。
 - `legalizeCustom()` 里 Mips 自己拆 load/store 的逻辑不在对拍面内：
   我们只比 `getAction()`，不比后续的 legalize 结果（和 PPC、ARM 同一口径）。
+
+## 14 SPIRV：第一个“配置不在 triple 里”的目标
+
+SPIRV 是第 9 个接入 A/B 的目标，也是第一个不能靠 triple 表达全部配置的目标：
+legalizer 读 `ST.isShader()`、`ST.getPointerSize()`、`ST.canUseExtInstSet(OpenCL_std)`
+和四个扩展查询，而 triple 只决定指针宽度。runner 的写法是上游自己验证过的：
+用 `spirv{32,64}-unknown-unknown` 建 subtarget（environment 是 `Unknown`，允许
+`setEnv`），再 `initAvailableExtensions` + `setEnv(Kernel|Shader)`，最后构造 legalizer。
+共享的 `query_runner_common.h` 为此加了一个默认为空的 `tweakSubtarget` 钩子，其它
+target 的代码逐字节不变。
+
+### 14.1 语料
+
+`tools/import-cxx.py SPIRV`：83 rulesets / 353 rules / 0 refused。0 拒绝的关键是
+在 importer 里补了 SPIRV 用到的写法：
+
+- `auto &X = cond ? A : B` 类型集别名（`Types.set_alias`）；
+- `unsigned N = cond ? a : b` 与 `= ST.getPointerSize()`（`int_ternary`）；
+- `for (auto Opc : getTypeFoldingSupportedOpcodes())` + `switch`，展开成 28 个 opcode；
+- `fewerElementsIf` / `changeElementSizeTo` / `typeOfLongVectors` 等 helper 内联；
+- `this->ST = &ST` / `GR = ...` 归入“constructor plumbing”，在生成 ctor 里补回；
+- `G_STRICT_*` 在 `opcode-slots.json` 里跟随基类 opcode 的槽数（`ConstrainedInstruction<G_XXX>`）。
+
+生成的 `.inc` 不依赖任何 LLVM 头文件改动：`fewer(slot, N)` 通过公开的
+`LegalizeRuleSet::fewerElementsIf(pred, changeElementCountTo(...))` 表达，
+而不是给 `LegalizerInfo.h` 加一个 `core` 方法（那条路试过，`actionIf` 是 private，
+最终选了公开 API）。
+
+### 14.2 对拍
+
+```
+tools/ab/run-spirv-end-to-end.sh TREE BUILD /tmp/spirv.inc OUT
+{"agree": 5136, "disagree": 0, "unanswerable": 4}
+```
+
+5,136 条查询（6 配置），5,132 条两侧同答案，0 条分歧；4 条两侧都断言，是同一个
+上游缺陷：`SPIRVLegalizerInfo.cpp:336` 在 `fewerElementsIf` 里把
+`changeElementCountTo(0, ElementCount::getFixed(MaxVectorSize))` 写成了
+`changeElementSizeTo(0, MaxVectorSize)`。重载解析选中的是
+`changeElementSizeTo(TypeIdx, FromTypeIdx)`，于是去读 `Query.Types[16]`，
+而 `G_SPLAT_VECTOR` 只有 2 个类型槽。查询固定为 4 条（`--expect-unanswerable 4`），
+新增一类断言会让数字变、跑挂。issue 落在
+`/home/ubuntu/admin/upstream-issues/2026-11-09-17-gisel-spirv-splat-vector-element-count-overload.md`。
+
+### 14.3 对拍抓出来的三个 importer/emitter 缺陷
+
+SPIRV 第一次把“同一个配置选择在多个参数位置出现”和“feature 引用 feature”带进语料：
+
+1. **feature 声明顺序。** `Spv_IsExtendedInts` 读 `Spv_hasArbitraryPrecisionInts`，
+   但 emitter 按字母序输出，生成的 C++ 引用未声明变量。现在按依赖拓扑排序，
+   依赖闭包一起输出，成环报错。
+2. **选择集在多个位置必须相关。** `legalForCartesianProduct(allowedVectorTypes,
+   allowedVectorTypes)` 的 `allowedVectorTypes` 是三元的；按位置独立展开会造出
+   `isShader and not isShader` 这种不可达规则，而且带着错误的操作数集合。现在
+   同名引用只展开一次，各位置取同一分支。
+3. **`vectorElementCountIsLessThanOrEqualTo` 少了固定向量守卫。** 上游是
+   `isFixedVector() && count <= N`；我们原来的 `num_elems(scalar) <= N` 对标量读 0，
+   于是 0 <= 4 成立，SPLAT/UNMERGE 的标量查询被错判成 `Legal`。新增
+   `is_fixed_vector(type)` 谓词（DSL、eval、inc 三处），`_count_cmp` 统一带上守卫。
+
+修完这三处后 SPIRV 的 18 条分歧归零。
+
+### 14.4 未覆盖
+
+- 4 条 `G_SPLAT_VECTOR` 查询两侧都断言（见 14.2），没有答案可比。
+- `legalizeCustom()` 的 SPIR-V 专属 legalize 不在对拍面内，只比 `getAction()`。
+- 扩展轴只枚举了 legalizer 真正读取的四个：`SPV_ALTERA_arbitrary_precision_integers`、
+  `SPV_KHR_bit_instructions`、`SPV_INTEL_int4`（经 `IsExtendedInts`）、`SPV_EXT_long_vector`。
