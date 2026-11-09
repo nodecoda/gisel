@@ -153,6 +153,34 @@ FOR_ACTION = {
 # coreObservationForm(): only the forms the corpora use, plus the identity.
 ONSERVATION_FORM = {"elemOf": "elem", "scalarOf": "scalar"}
 
+
+def _rule_field(rule, name):
+    """One field of an AST `Rule` or of a core-document rule dict."""
+    if isinstance(rule, dict):
+        return rule.get(name)
+    getter = getattr(rule, "get", None)
+    if getter is not None:
+        return getter(name)
+    return getattr(rule, name, None)
+
+
+def shim_forms(rule):
+    """The `(on, to)` shape a rule dispatches on, as the shim table keys it."""
+    on = _rule_field(rule, "on")
+    to = _rule_field(rule, "to")
+    return (ONSERVATION_FORM.get(on["kind"], on["kind"]) if on else "",
+            to["kind"] if to else "")
+
+
+def shim_for(rule):
+    """The C++ shim this rule needs, or None when the product cannot spell it.
+
+    `lint` calls this too: a rule the `.inc` emitter rejects must not pass
+    lint as clean.  Before this the two disagreed (`narrow(slot(0), 32)`:
+    lint rc=0, `--emit=inc` rc=2).
+    """
+    return SHIM_TABLE.get((_rule_field(rule, "op"),) + shim_forms(rule))
+
 # The three predicates whose C++ is a `LegalityPredicates::` call on the query.
 QUERY_PREDICATES = {"in", "inPairs", "inTriples", "inMemDesc"}
 
@@ -206,11 +234,6 @@ class IncEmitter:
                         if isinstance(d, A.Feature)}
         self.preds = {d.name: d.pred for d in gs.decls
                       if isinstance(d, A.PredicateDecl)}
-        # canonical LLT spelling -> record name (last declaration wins).
-        self._canonical = {}
-        for d in gs.decls:
-            if isinstance(d, A.NamedType):
-                self._canonical[A.llt_text(d.llt)] = d.name
         self.sets = {}
         for d in gs.decls:
             if isinstance(d, (A.TypeSet, A.TypeList)):
@@ -225,10 +248,7 @@ class IncEmitter:
 
     def _type(self, name):
         # `parse_program` leaves a bare string only for a token no
-        # declaration named; a canonical spelling still maps to the target
-        # record the old `Names.type` map would have chosen.
-        if name in self._canonical:
-            return self._canonical[name]
+        # declaration named; the caller's type gate has already rejected it.
         if name in self.names.records:
             return name
         raise ValueError(f"unknown type name {name!r}: rules name declared "
@@ -791,15 +811,12 @@ class IncEmitter:
             for gate in drop:
                 pred = self._drop_gate(pred, gate)
             r = _Stripped(r, pred)
-        on = r.get("on")
-        to = r.get("to")
-        on_form = ONSERVATION_FORM.get(on["kind"], on["kind"]) if on else ""
-        to_form = to["kind"] if to else ""
-        shim = SHIM_TABLE.get((r["op"], on_form, to_form))
+        shim = shim_for(r)
         if shim is None:
+            on_form, to_form = shim_forms(r)
             raise ValueError(
                 "no C++ shim for operator '%s' over '%s' to '%s'"
-                % (r["op"], on_form, to_form))
+                % (_rule_field(r, "op"), on_form, to_form))
 
         if r["op"] in FOR_ACTION:
             call = self._for_call(r, FOR_ACTION[r["op"]])

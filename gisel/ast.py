@@ -850,6 +850,51 @@ class NameTable:
         return name
 
 
+def _check_type_value(value, table: "NameTable", where):
+    """Reject an undeclared name in one resolved type value."""
+    if isinstance(value, str):
+        table.value_name(value)          # raises with the canonical message
+    elif isinstance(value, SelectValue):
+        for _cond, then in value.arms:
+            _check_type_value(then, table, where)
+        _check_type_value(value.otherwise, table, where)
+    elif isinstance(value, SetValue):
+        for elem in value.elems:
+            if isinstance(elem, tuple):
+                for item in elem:
+                    _check_type_value(item, table, where)
+            else:
+                _check_type_value(elem, table, where)
+    elif isinstance(value, (list, tuple)):
+        for item in value:
+            _check_type_value(item, table, where)
+
+
+def undeclared_type(program: Program):
+    """(line, ruleset, message) for the first rule type no declaration names.
+
+    `parse_program` keeps an unknown token as a plain string so `lint` can
+    point at the line.  Every exit must reject it there: `.inc` used to map a
+    canonical spelling back to a declared record, so `[s32]` produced C++ while
+    `--emit=core` refused the same source.
+    """
+    table = NameTable(program)
+    for rs in program.rulesets:
+        for rule in rs.rules:
+            try:
+                for field in _rule_fields(rule):
+                    for node in walk_nodes(field):
+                        kind = node.get("kind")
+                        if kind == "type":
+                            _check_type_value(node.get("value"), table, rule.line)
+                        elif kind == "set":
+                            for elem in node.get("elems", []):
+                                _check_type_value(elem, table, rule.line)
+            except ValueError as exc:
+                return (rule.line, rs.name, str(exc))
+    return None
+
+
 # ---- AST-level canonicalisation ------------------------------------------
 
 def canonicalize_rulesets(rulesets: list[RuleSet]) -> list[RuleSet]:

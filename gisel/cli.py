@@ -52,6 +52,10 @@ def _generate(gs, source, emit):
     # for one opcode are exactly what the hand-written constructor does, and
     # the aliasing they produce is observable through the legalizer-info
     # verifier.
+    bad = A.undeclared_type(gs)
+    if bad:
+        line, _ruleset, message = bad
+        raise ValueError("line %d: %s" % (line, message))
     if emit != "inc":
         gs = A.Program(gs.decls,
                        A.canonicalize_rulesets(gs.rulesets),
@@ -113,6 +117,15 @@ def _lint(gs, source, manifest):
                                errs, names)
             except (KeyError, IndexError, TypeError, ValueError) as e:
                 errs.append(f"malformed rule: {e}")
+            # `lint` promises the product can be generated.  The `.inc`
+            # emitter is the product, so ask it about the same rule instead
+            # of keeping a second, weaker idea of what is spellable.  A rule
+            # that already has a structural error gets only that error: one
+            # diagnostic per root cause.
+            if not errs and llvm_inc.shim_for(rule) is None:
+                on_form, to_form = llvm_inc.shim_forms(rule)
+                errs.append("no C++ shim for operator '%s' over '%s' to '%s'"
+                            % (rule["op"], on_form, to_form))
             for msg in errs:
                 errors.append({"file": source, "line": line,
                                "ruleset": rs_name, "rule": rule["op"],

@@ -107,6 +107,31 @@ class LintCorpus(unittest.TestCase):
             self.assertNotIn("nope", r.stderr)
 
 
+class ShimParity(unittest.TestCase):
+    """`lint` and the `.inc` emitter must agree on what is spellable.
+
+    They used to disagree: `narrow(slot(0), 32)` passed lint and then failed
+    in `gen` with "no C++ shim".  lint now asks the emitter's own table.
+    """
+
+    SOURCE = ("type X86_s32 = LLT::scalar(32)\n"
+              "ruleset X86_ADD: G_ADD\n"
+              "    narrow(slot(0), 32)\n")
+
+    def test_lint_reports_the_same_missing_shim_as_gen(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text(self.SOURCE)
+            lint = run("lint", str(src))
+            gen = run("gen", str(src), "--emit=inc",
+                      "--out", str(Path(d) / "T.inc"))
+        self.assertEqual(lint.returncode, 1, lint.stderr)
+        self.assertEqual(gen.returncode, 2, gen.stderr)
+        message = ("no C++ shim for operator 'narrow' over 'slot' to 'int'")
+        self.assertIn(message, lint.stderr)
+        self.assertIn(message, gen.stderr)
+
+
 class NegativeControl(unittest.TestCase):
     """A checker that never rejects is vacuous."""
 
@@ -208,14 +233,19 @@ class NegativeControl(unittest.TestCase):
                         "    legal in(slot(0), X_s8)\n")
         self.assertEqual(r.returncode, 0, r.stderr)
 
-    def test_gen_refuses_an_unknown_type_without_a_traceback(self):
-        with tempfile.TemporaryDirectory() as d:
-            src = Path(d) / "T.gisel"
-            src.write_text("ruleset R: G_ADD\n    legal in(slot(0), [s8])\n")
-            r = run("gen", str(src), "--emit=core", "--out", str(Path(d) / "x.json"))
-        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
-        self.assertIn("unknown type name", r.stderr)
-        self.assertNotIn("Traceback", r.stderr)
+    def test_every_exit_refuses_an_unknown_type_without_a_traceback(self):
+        # `.inc` used to map the canonical spelling `s8` back to a declared
+        # record, so the same source produced C++ while `core` said no.
+        for emit in ("inc", "check", "core"):
+            with tempfile.TemporaryDirectory() as d:
+                src = Path(d) / "T.gisel"
+                src.write_text("ruleset R: G_ADD\n"
+                               "    legal in(slot(0), [s8])\n")
+                r = run("gen", str(src), f"--emit={emit}",
+                        "--out", str(Path(d) / "x.json"))
+            self.assertEqual(r.returncode, 2, f"{emit}: {r.stdout + r.stderr}")
+            self.assertIn("unknown type name 's8'", r.stderr)
+            self.assertNotIn("Traceback", r.stderr)
 
     def test_unknown_node_kind_is_rejected(self):
         with self.assertRaises(ValueError):
