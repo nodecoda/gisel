@@ -142,6 +142,30 @@ class ImporterBugsAreRefusals(unittest.TestCase):
         self.assertIn("RecursionError", importer.p.refused[0][1])
 
 
+class ParseGuard(unittest.TestCase):
+    """Generated text is a corpus: it must parse, or it is not written."""
+
+    @staticmethod
+    def _module():
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("import_cxx", TOOL)
+        module = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(module)
+        return module
+
+    def test_good_text_parses(self):
+        module = self._module()
+        text = ("include \"llvm/Target/Target.td\"\n\n"
+                "ruleset R_G_ADD: G_ADD\n    legal true\n")
+        self.assertIsNone(module.parse_problem(text))
+
+    def test_gated_clamp_does_not_parse(self):
+        module = self._module()
+        text = ("ruleset R_G_ADD: G_ADD\n"
+                "    clamp_max(0, s32, 2) when true\n")
+        self.assertIsNotNone(module.parse_problem(text))
+
+
 class ConstructorContracts(unittest.TestCase):
     """`assert` is plumbing; `sameSize` is a real predicate."""
 

@@ -252,6 +252,15 @@ SPIRV_ADDRESS_SPACES = {
         "PushConstant"))
 }
 
+# llvm/Support/AMDGPUAddrSpace.h spells an address space as an enumerator; the
+# corpus only carries the number, same as the SPIR-V table above.
+AMDGPU_ADDRESS_SPACES = {
+    "FLAT_ADDRESS": "0", "GLOBAL_ADDRESS": "1", "REGION_ADDRESS": "2",
+    "LOCAL_ADDRESS": "3", "CONSTANT_ADDRESS": "4", "PRIVATE_ADDRESS": "5",
+    "CONSTANT_ADDRESS_32BIT": "6", "BUFFER_FAT_POINTER": "7",
+    "BUFFER_RESOURCE": "8", "BUFFER_STRIDED_POINTER": "9",
+}
+
 
 class Types:
     """C++ LLT constants found in the constructor."""
@@ -261,6 +270,7 @@ class Types:
         self.sets = {}          # cpp name -> [cpp type names]
         self.set_alias = {}     # cpp name -> a set expression (ternary)
         self.by_cpp = {}        # cpp name -> emitted name
+        self.int_consts = {}    # file-scope `unsigned N = 1024;`
         self.refused = []
 
     def name(self, cpp):
@@ -270,16 +280,47 @@ class Types:
         canon = "?" + _norm(cpp).replace(PREFIX, "")
         if canon in self.by_cpp:
             return self.by_cpp[canon]
+        # The canonical spelling is lower case (`s32`, `v2s32`), but a target
+        # may name the same type in upper case (`Amdgpu_S32`, `Amdgpu_V2S32`).
+        # Both are the same LLT, so both spellings are looked up.
+        def spelled(*keys):
+            for key in keys:
+                if key in self.by_cpp:
+                    return self.by_cpp[key]
+            return None
+
         m = re.fullmatch(r"LLT::scalar\(\s*(\d+)\s*\)", cpp.strip())
-        if m and "s%s" % m.group(1) in self.by_cpp:
-            return self.by_cpp["s%s" % m.group(1)]
+        if m and spelled("s%s" % m.group(1), "S%s" % m.group(1)):
+            return spelled("s%s" % m.group(1), "S%s" % m.group(1))
         m = re.fullmatch(r"LLT::integer\(\s*(\d+)\s*\)", cpp.strip())
-        if m and "i%s" % m.group(1) in self.by_cpp:
-            return self.by_cpp["i%s" % m.group(1)]
+        if m and spelled("i%s" % m.group(1), "I%s" % m.group(1)):
+            return spelled("i%s" % m.group(1), "I%s" % m.group(1))
         m = re.fullmatch(r"LLT::fixed_vector\(\s*(\d+)\s*,\s*LLT::scalar"
                          r"\(\s*(\d+)\s*\)\s*\)", cpp.strip())
-        if m and "v%ss%s" % (m.group(1), m.group(2)) in self.by_cpp:
-            return self.by_cpp["v%ss%s" % (m.group(1), m.group(2))]
+        if m:
+            got = spelled("v%ss%s" % (m.group(1), m.group(2)),
+                          "V%ss%s" % (m.group(1), m.group(2)),
+                          "V%sS%s" % (m.group(1), m.group(2)))
+            if got:
+                return got
+        m = re.fullmatch(r"LLT::fixed_vector\(\s*(\d+)\s*,\s*(.+?)\s*\)",
+                         cpp.strip(), re.S)
+        if m:
+            # A vector whose element type the file names (`LLT::fixed_vector(2,
+            # LocalPtr)`) has no declared type of its own.  Give it one, the
+            # way the source would have: reuse an identical declaration when
+            # the file already has it.
+            lanes, elem = m.group(1), self.name(m.group(2).strip())
+            rhs = "LLT::fixed_vector(%s, %s)" % (lanes, elem)
+            for _, name, text in self.decl:
+                if text == rhs:
+                    self.by_cpp[cpp.strip()] = name
+                    return name
+            stem = elem.split("_", 1)[1] if elem.startswith(PREFIX) else elem
+            name = PREFIX + "V%s%s" % (lanes, stem)
+            self.decl.append((None, name, rhs))
+            self.by_cpp[cpp.strip()] = name
+            return name
         m = split_ternary(cpp.strip())
         if m:
             # `(cond) ? T : F` -> a named `select` declaration (the backends
@@ -348,6 +389,10 @@ class Types:
                          lambda k: SPIRV_ADDRESS_SPACES.get(k.group(1),
                                                             k.group(1)),
                          m.group(1).strip())
+            asx = re.sub(r"AMDGPUAS::(\w+)",
+                         lambda k: AMDGPU_ADDRESS_SPACES.get(k.group(1),
+                                                             k.group(1)),
+                         asx)
             width = m.group(2).strip()
             tern = getattr(self, "int_ternary_text", {}).get(width)
             if tern:
@@ -359,9 +404,11 @@ class Types:
         # form is a select over the two legal values.
         m = re.fullmatch(r"LLT::(?:scalar|integer)\(\s*(.+?)\s*\)", text, re.S)
         if m:
-            inner = m.group(1)
+            inner = m.group(1).strip()
+            inner = str(self.int_consts.get(inner, inner))
             if re.fullmatch(r"\d+", inner):
-                pass
+                kind = "scalar" if text.startswith("LLT::scalar") else "integer"
+                text = "LLT::%s(%s)" % (kind, inner)
             else:
                 pick = self._width_select(inner)
                 if pick is None:
@@ -676,7 +723,12 @@ class Translator:
         # would still evaluate correctly, but the feature name is what the
         # `.inc` gates on, so keep it named.
         if re.fullmatch(r"(?:(?:ST|STI)\.\w+\(\)|XLen)\s*(?:==|!=|<=|>=|<|>)\s*"
-                        r"(?:\d+|(?:ST|STI)\.\w+\(\)|XLen)", text):
+                        r"(?:\d+|(?:ST|STI)\.\w+\(\)|XLen"
+                        r"|(?:[A-Za-z_]\w*::)+\w+)", text):
+            # The right side may be an enumerator (`ST.getGeneration() >=
+            # AMDGPUSubtarget::SEA_ISLANDS`).  It is still one configuration
+            # axis, so it becomes a named opaque feature rather than a `ty()`
+            # operand the grammar cannot parse.
             return self.feature(text)
         cmp = self._split_cmp(text)
         if cmp is not None:
@@ -970,6 +1022,12 @@ class Translator:
                       r"\1.getNumElements()", text)
         if re.fullmatch(r"\d+", text):
             return "same_as(%s)" % text
+        m = re.fullmatch(r"LLT::(?:scalar|integer)\(\s*(.+?)\.getSizeInBits\(\)"
+                         r"\s*\)", text, re.S)
+        if m:
+            src = re.fullmatch(r"Query\.Types\[(\d+)\]", m.group(1).strip())
+            if src:
+                return "int_of_size(size_of(slot(%s)))" % src.group(1)
         return "ty(%s)" % self.t.name(text)
 
     def mutation_lambda(self, text):
@@ -1139,6 +1197,8 @@ class Translator:
                 (r"__T\((.+?)\)\.getElementCount\(\)\.getFixedValue\(\)",
                  r"num_elems(slot(\1))"),
                 (r"__T\((.+?)\)\.getNumElements\(\)", r"num_elems(slot(\1))"),
+                (r"__T\((.+?)\)\.getScalarType\(\)\.getSizeInBits\(\)",
+                 r"bits_of(scalar_of(slot(\1)))"),
                 (r"__T\((.+?)\)\.getElementType\(\)\.getSizeInBits\(\)",
                  r"bits_of(elem_of(slot(\1)))"),
                 (r"__T\((.+?)\)\.getSizeInBits\(\)", r"size_of(slot(\1))"),
@@ -1174,7 +1234,13 @@ class Translator:
         if cmp is not None:
             lhs, op, rhs = cmp
             return "%s %s %s" % (_arith(lhs.strip()), op, _arith(rhs.strip()))
-        return _arith(text)
+        out = _arith(text)
+        m = re.match(r"([A-Za-z_]\w*)\s*\(", out.strip())
+        if m and m.group(1) not in DSL_CALLS:
+            # e.g. AMDGPU's `hasBufferRsrcWorkaround(T)`: a helper defined in
+            # the target, not an observation of the query.
+            raise Refuse("host helper %r" % m.group(1))
+        return out
 
     # -- align helpers ---------------------------------------------------
     def align_variants(self, text):
@@ -1266,7 +1332,13 @@ class Translator:
             return text          # a kind tag, not a type name
         if re.fullmatch(r"[A-Za-z_]\w*\s*\(.*\)", text, re.S):
             return text          # already `.gisel` (`bits_of(slot(0))`, ...)
-        return "ty(%s)" % self.t.name(text)
+        named = self.t.name(text)
+        if named == text.strip():
+            # Not a declared type and not an observation: a local integer or a
+            # host helper.  Wrapping it in `ty()` emits text the corpus parser
+            # rejects, so refuse instead.
+            raise Refuse("unknown name %r" % text)
+        return "ty(%s)" % named
 
     @staticmethod
     def _split_cmp(text):
@@ -2174,6 +2246,21 @@ def split_statements(text):
 
 TERMINALS = ("legal", "custom", "lower", "unsupported", "libcall")
 
+# Calls the `.gisel` predicate/value grammar knows.  `query_body` and `pred`
+# rewrite C++ observations into these; anything else is a host helper the
+# corpus cannot evaluate, and must be refused rather than copied through (a
+# copied name parses to nothing and makes the whole corpus invalid).
+DSL_CALLS = {
+    "slot", "elem_of", "scalar_of", "sort_of", "num_elems", "bits_of",
+    "size_of", "size_in_bytes_of", "addr_space", "align_of", "mem_ty",
+    "mem_slot", "mem_ordering", "mem_failure_ordering", "is_pow2",
+    "is_float16", "is_bfloat16", "is_byte_sized", "imm", "ty", "int_of_size",
+    "urem", "udiv", "mul", "select", "replace", "scalar_or_vec_of", "vec_of",
+    "elt_type_to", "elt_size_to", "div_lanes", "pow2_ceil", "same_as", "pow2",
+    "pow2_min", "multiple_of", "clamp", "clamp_min", "clamp_max",
+    "min_vector_size", "in", "in_pairs", "in_triples", "is_fixed_vector",
+}
+
 
 def apply_gate(line, gate):
     if not gate:
@@ -2187,6 +2274,12 @@ def apply_gate(line, gate):
         return "%s when (%s and %s)" % (body, gate, when)
     if line.startswith("scalarize(") or line.startswith("imm_idx("):
         return line          # both are markers, not rules with predicates
+    if line.startswith(("clamp_min(", "clamp_max(")):
+        # The gate belongs to the enclosing `if`, so the rule is conditional;
+        # the grammar has no `when` for a clamp yet.  Emitting it anyway makes
+        # `--emit=inc` produce text the corpus parser rejects, which is worse
+        # than a refusal that names the statement.
+        raise Refuse("gated %s" % line.split("(")[0])
     return line + " when " + gate
 
 
@@ -2657,6 +2750,31 @@ def member_types(path):
     return out
 
 
+def file_consts(path):
+    """File-scope `LLT` constants and type lists the constructor reads.
+
+    AMDGPU declares `constexpr LLT S96 = LLT::scalar(96);` and
+    `constexpr std::initializer_list<LLT> AllS32Vectors = {...};` above the
+    constructor.  They are not class members and not constructor locals, so
+    without this scan a rule that names one emits a dangling reference
+    (`legal in(slot(0), AllS32Vectors)` with no set of that name) instead of
+    a refusal.
+    """
+    text = "\n".join(strip_comments(open(path).read()))
+    types = [(m.group(1), m.group(2).strip())
+             for m in re.finditer(
+                 r"^(?:static\s+)?(?:constexpr\s+)?LLT\s+(\w+)\s*=\s*"
+                 r"([^;]+);\s*$", text, re.M)]
+    sets = [(m.group(1), [x.strip() for x in split_top(m.group(2))])
+            for m in re.finditer(
+                r"^(?:constexpr\s+)?std::initializer_list<LLT>\s+(\w+)\s*"
+                r"(?:=\s*)?\{([^}]*)\}\s*;?\s*$", text, re.M)]
+    ints = {m.group(1): int(m.group(2)) for m in re.finditer(
+        r"^(?:static\s+)?(?:constexpr\s+)?(?:unsigned|int)\s+(\w+)\s*=\s*"
+        r"(\d+)\s*;\s*$", text, re.M)}
+    return types, sets, ints
+
+
 def constructor_text(path):
     lines = strip_comments(open(path).read())
     text = "\n".join(lines)
@@ -2894,6 +3012,21 @@ def find_source(spec, args):
         "or set %s" % (spec.name, spec.env))
 
 
+def parse_problem(text):
+    """Why `text` is not a gisel corpus, or None when it parses."""
+    if str(ROOT) not in sys.path:
+        sys.path.insert(0, str(ROOT))
+    try:
+        from gisel.ast import parse_program
+    except Exception as e:                      # pragma: no cover
+        return "cannot import gisel.ast: %s" % e
+    try:
+        parse_program(text)
+    except Exception as e:
+        return str(e)
+    return None
+
+
 def transcribe(spec, source, out):
     """Run the transcription; return (exit code, generated text)."""
     source = Path(source)
@@ -2905,6 +3038,12 @@ def transcribe(spec, source, out):
     imp = Importer(spec.name, text, spec.prefix)
     for name, rhs in member_types(source):
         imp.t.add(name, rhs, 0)
+    consts, lists, ints = file_consts(source)
+    imp.t.int_consts = ints
+    for name, rhs in consts:
+        imp.t.add(name, rhs, 0)
+    for name, elems in lists:
+        imp.t.sets.setdefault(name, elems)
     body, first_line = constructor_text(source)
     imp.block(body, first_line)
     for fix in spec.deviations:
@@ -2969,7 +3108,15 @@ def transcribe(spec, source, out):
                   % (spec.name, unnamed))
             rc = 1
 
-    if out is not None:
+    # The corpus is gisel source: text the parser rejects is a refusal like
+    # any other, not something to write.  A probe of AMDGPU used to emit
+    # `replace(ty(LLT::integer(32)))` and `clamp_max(...) when ...`, both of
+    # which parse to nothing, so "N rules transcribed" overstated the result.
+    problem = parse_problem(generated)
+    if problem is not None:
+        print("  emitted text does not parse: %s" % problem)
+        rc = 1
+    elif out is not None:
         Path(out).write_text(generated)
     return rc, generated
 
