@@ -142,6 +142,24 @@ class ImporterBugsAreRefusals(unittest.TestCase):
         self.assertIn("RecursionError", importer.p.refused[0][1])
 
 
+class ProbeMode(unittest.TestCase):
+    """`--probe` measures a target that has no pinned corpus yet."""
+
+    def test_probe_reports_counts_and_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "P.gisel"
+            r = run("--probe", "Example:Ex", "--src", str(FIXTURE))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("rulesets", r.stdout)
+            self.assertNotIn("DRIFT", r.stdout)
+            self.assertFalse(out.exists())
+
+    def test_probe_needs_a_source(self):
+        r = run("--probe", "Example:Ex")
+        self.assertEqual(r.returncode, 2)
+        self.assertIn("--probe needs --src", r.stderr)
+
+
 class LambdaPredicates(unittest.TestCase):
     """A predicate lambda is read by its body, whatever the return type."""
 
@@ -267,7 +285,7 @@ class PinnedCounts(unittest.TestCase):
     def test_all_is_pinned_or_explicit_source_only(self):
         r = run("X86", "--all")
         self.assertEqual(r.returncode, 2)
-        self.assertIn("exactly one of TARGET or --all", r.stderr)
+        self.assertIn("exactly one of TARGET, --all or --probe", r.stderr)
 
 
 class RisCvCorpus(unittest.TestCase):

@@ -2766,13 +2766,18 @@ def render(imp):
 class Target:
     """One pinned constructor: relative source, prefix, expected counts."""
 
-    def __init__(self, name, prefix, rel, rulesets, rules, deviations=()):
+    def __init__(self, name, prefix, rel, rulesets, rules, deviations=(),
+                 pending=False):
         self.name = name
         self.prefix = prefix
         self.rel = rel
         self.rulesets = rulesets
         self.rules = rules
         self.deviations = deviations
+        # A pending target has no reviewed corpus yet: `--probe` transcribes
+        # it to measure the gap, and the pinned-count drift check does not
+        # apply because there is no count to pin.
+        self.pending = pending
 
     @property
     def env(self):
@@ -2935,7 +2940,7 @@ def transcribe(spec, source, out):
 
     rc = 1 if refusals else 0
     # The pin only applies to the canonical upstream file, not to fixtures.
-    if source.name == "%sLegalizerInfo.cpp" % spec.name:
+    if not spec.pending and source.name == "%sLegalizerInfo.cpp" % spec.name:
         if (rulesets, rules) != (spec.rulesets, spec.rules):
             print("  DRIFT: %s pinned at %d rulesets / %d rules, got %d / %d"
                   % (spec.name, spec.rulesets, spec.rules, rulesets, rules))
@@ -2975,6 +2980,11 @@ def main(argv=None):
                     help="source .cpp (default: $GS_<TARGET>_SRC or --llvm-src)")
     ap.add_argument("--all", action="store_true",
                     help="transcribe every pinned target")
+    ap.add_argument("--probe", metavar="NAME:PREFIX",
+                    help="transcribe a target that has no reviewed corpus "
+                         "yet: report counts and refusals, skip the pinned "
+                         "counts check, and write nothing unless --out is given")
+    ap.add_argument("--src", help="source .cpp for --probe")
     ap.add_argument("--llvm-src", help="LLVM source root containing lib/Target")
     ap.add_argument("--pin",
                     help="pin file naming the upstream commit and source shas "
@@ -2988,16 +2998,28 @@ def main(argv=None):
     ap.add_argument("--stats", action="store_true")
     args = ap.parse_args(argv)
 
-    if args.all == bool(args.target):
-        ap.error("pass exactly one of TARGET or --all")
+    if sum(map(bool, (args.target, args.all, args.probe))) != 1:
+        ap.error("pass exactly one of TARGET, --all or --probe")
     if args.all and (args.source or args.out):
         ap.error("a source path and --out are single-target; "
                  "use --llvm-src/--out-dir")
     if not args.all and (args.out_dir or args.check):
         ap.error("--out-dir/--check are --all options")
+    if args.probe and args.src:
+        args.source = args.src
+    if args.probe and not args.source:
+        ap.error("--probe needs --src PATH (it has no pinned path)")
+    if args.probe and args.target:
+        ap.error("--probe cannot be combined with a TARGET")
 
-    specs = [TARGETS[t] for t in sorted(TARGETS)] if args.all \
-        else [TARGETS[args.target]]
+    if args.probe:
+        name, _, prefix = args.probe.partition(":")
+        specs = [Target(name, prefix or name[:1].upper(), "", 0, 0,
+                        pending=True)]
+    elif args.all:
+        specs = [TARGETS[t] for t in sorted(TARGETS)]
+    else:
+        specs = [TARGETS[args.target]]
     out_dir = Path(args.out_dir) if args.out_dir else ROOT / "tests" / "corpus"
 
     rc = 0
@@ -3005,6 +3027,8 @@ def main(argv=None):
         source = find_source(spec, args)
         if args.all:
             dest = out_dir / spec.corpus_name
+        elif spec.pending:
+            dest = Path(args.out) if args.out else None
         else:
             dest = Path(args.out) if args.out else out_dir / spec.corpus_name
         if args.check:
