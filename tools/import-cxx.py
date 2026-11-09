@@ -601,6 +601,19 @@ def _split_top_op(text, op):
     return parts
 
 
+# `X::y(` that names a type or an enum, not a host function call.
+TYPE_NAMESPACES = {"LLT", "ElementCount", "AtomicOrdering", "AMDGPUAS",
+                   "AMDGPUSubtarget", "CodeModel", "TypeSize", "KnownBits"}
+
+
+def _host_call(text):
+    """True when `text` calls a host function, not a type/enum constructor."""
+    for m in re.finditer(r"\b([A-Za-z_]\w*)::[A-Za-z_]\w*\s*\(", text):
+        if m.group(1) not in TYPE_NAMESPACES:
+            return True
+    return False
+
+
 def _looks_type(value):
     """True when a `.gisel` value expression already denotes an LLT."""
     return value.startswith(("elem_of(", "ty(", "vec_of(", "scalar_or_vec_of(",
@@ -653,6 +666,7 @@ class Translator:
         self.bool_helpers = {}  # static bool helpers used as `if` gates
         self.aligns = {}        # align lambdas: name -> (cond, then, else)
         self.named_preds = {}   # LegalityPredicate variables
+        self.param_preds = {}   # local `auto F = [](Query, unsigned i)`
         self.int_ternary = {}   # cpp int name -> (gate, value if true, else)
         self.refused = []
         self.opaque = []        # host predicates copied as `opaque("...")`
@@ -718,6 +732,7 @@ class Translator:
         # Normalise the power-of-two test before anything decides a call is
         # already a `.gisel` observation: `isPowerOf2_64(x)` is `is_pow2(x)`.
         text = re.sub(r"isPowerOf2_\d+\(|isPowerOf2\(", "is_pow2(", text)
+        text = re.sub(r"llvm::has_single_bit<[^>]*>\(", "is_pow2(", text)
         m = re.fullmatch(r"sameSize\(\s*(\d+)\s*,\s*(\d+)\s*\)", text)
         if m:
             # `sameSize(i, j)` is `Types[i].getSizeInBits() ==
@@ -750,6 +765,13 @@ class Translator:
             return self.features[text]
         if text in self.named_preds:
             return "(%s)" % self.named_preds[text]
+        m = re.fullmatch(r"(\w+)\s*\(\s*(?:Query|Q)\s*,\s*(.+)\)",
+                         text, re.S)
+        if m and m.group(1) in self.param_preds:
+            param, body = self.param_preds[m.group(1)]
+            idx = self.slot_index(m.group(2))
+            body = re.sub(r"\b%s\b" % re.escape(param), idx, body)
+            return self.body_pred(body)
         if text.startswith("(") and text.endswith(")") and self._balanced(text[1:-1]):
             return self.pred(text[1:-1])
         for op, kw in (("||", "or"), ("&&", "and")):
@@ -873,6 +895,13 @@ class Translator:
                 re.fullmatch(r"XLen\s*==\s*\d+", text):
             return self.feature(text)
         if "Query." in text:
+            if _host_call(text):
+                # A host helper inside a predicate
+                # (`SIRegisterInfo::getX(Query.Types[i])`).  `opaque(...)`
+                # copies a whole predicate, not a sub-expression, so this
+                # statement has to be written by hand instead of being
+                # emitted as text the corpus parser rejects.
+                raise Refuse("host call %r" % text)
             return self.query_body(text)
         raise Refuse(text)
 
@@ -1752,6 +1781,12 @@ class Translator:
             return text          # a kind tag, not a type name
         if re.fullmatch(r"[A-Za-z_]\w*\s*\(.*\)", text, re.S):
             return text          # already `.gisel` (`bits_of(slot(0))`, ...)
+        env = getattr(self, "env", {})
+        if isinstance(env.get(text), int):
+            return str(env[text])
+        consts = getattr(self.t, "int_consts", {})
+        if text in consts:
+            return str(consts[text])
         named = self.t.name(text)
         if named == text.strip():
             # Not a declared type and not an observation: a local integer or a
@@ -2471,10 +2506,11 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
         # vector where a scalar is expected and trips mutationIsSane.
         op = "widen" if method == "minScalarEltSameAsIf" else "narrow"
         out.append("%s(slot(%d), same_as(%d)) when %s" % (op, a, b, g))
-    elif method == "maxScalarIf":
+    elif method in ("minScalarIf", "maxScalarIf"):
         idx = idx_of(args[1], env)
-        out.append("narrow(slot(%d), ty(%s)) when %s"
-                   % (idx, tr.t.name(args[2]), tr.pred_lambda(args[0])))
+        out.append("%s(slot(%d), ty(%s)) when %s"
+                   % ("widen" if method == "minScalarIf" else "narrow",
+                      idx, tr.t.name(args[2]), tr.pred_lambda(args[0])))
     elif method in ("widenScalarToNextPow2", "widenScalarOrEltToNextPow2",
                     "widenScalarOrEltToNextPow2OrMinSize"):
         idx = idx_of(args[0], env)
@@ -2820,7 +2856,9 @@ class Importer:
                                 if v.get("bool")}
         self.tr.aligns = parse_aligns(source)
         self.named_preds = {}
+        self.param_preds = {}
         self.tr.named_preds = self.named_preds
+        self.tr.param_preds = self.param_preds
         self.rulesets = []
         self.gate = []
         self.env = {}
@@ -2893,7 +2931,18 @@ class Importer:
         if re.match(r"auto\s+\w+\s*=\s*\[", st):
             if "LegalityQuery" in st:
                 m = re.match(r"auto\s+(\w+)\s*=\s*(.+)$", st, re.S)
-                self.named_preds[m.group(1)] = self.tr.pred_lambda(m.group(2))
+                pm = re.match(
+                    r"\[.*?\]\s*\(\s*const\s+LegalityQuery\s*&?\s*\w+"
+                    r"\s*,\s*(?:unsigned|int)\s+(\w+)\s*\)\s*\{(.*)\}$",
+                    m.group(2), re.S)
+                if pm:
+                    # `auto F = [=](const LegalityQuery &Q, unsigned i)`: the
+                    # second argument names a slot, so it is a helper to
+                    # inline per call, not a fixed predicate.
+                    self.param_preds[m.group(1)] = (pm.group(1), pm.group(2))
+                else:
+                    self.named_preds[m.group(1)] = self.tr.pred_lambda(
+                        m.group(2))
             return          # otherwise an align helper, parsed from the source
         if re.match(r"auto\s+\w+\s*=\s*\{", st):
             m = re.match(r"auto\s+(\w+)\s*=\s*\{(.*)\}$", st, re.S)
