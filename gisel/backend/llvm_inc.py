@@ -73,6 +73,7 @@ SHIM_TABLE = {
     ("narrow", "elem", "ty"): Shim("coreMaxScalarOrElt", 1),
     ("more", "slot", "pow2"): Shim("coreMoreElementsToNextPow2", 0),
     ("fewer", "slot", "ty"): Shim("coreFewerElementsToType", 1),
+    ("fewer", "slot", "int"): Shim("fewerElementsIf", 1),
     ("bitcast", "slot", "ty"): Shim("coreBitcastTo", 1),
     ("widen", "slot", "replace"): Shim("coreWidenTo", 1, type_payload=True),
     ("narrow", "slot", "replace"): Shim("coreNarrowTo", 1, type_payload=True),
@@ -766,6 +767,18 @@ class IncEmitter:
 
         guard = r["predicate"]
         unguarded = guard.get("kind") == "leaf" and guard.get("name") == "true"
+        if shim.method == "fewerElementsIf":
+            # FewerElements to an exact element count has no `core` helper, but
+            # `fewerElementsIf` is public and takes the mutation directly, so
+            # the generated `.inc` needs no addition to LLVM's headers.
+            pred = ("[](const LegalityQuery &) { return true; }" if unguarded
+                    else "[=](const LegalityQuery &Query) { return %s; }"
+                         % self.boolean(guard))
+            return ("      .fewerElementsIf(%s, "
+                    "LegalizeMutations::changeElementCountTo(%d, "
+                    "ElementCount::getFixed(%s)))"
+                    % (pred, r["type_idx"], self._payload(r, shim)),
+                    ("types", {r["type_idx"]}))
         if unguarded and shim.unguarded:
             cov = ("all",) if shim.method in ALL_COVERING_SHIMS else (
                 "types", {r["type_idx"]})
