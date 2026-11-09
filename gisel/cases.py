@@ -1576,6 +1576,12 @@ def main(argv=None):
         print("cases: --queries and --oracle must be provided together",
               file=sys.stderr)
         return 2
+    if args.queries and args.rulesets:
+        # A fixed query file is already the set to compress; silently ignoring
+        # the filter would make the caller believe it got one chunk.
+        print("cases: --ruleset filters generated cases; with --queries the "
+              "file is already fixed", file=sys.stderr)
+        return 2
     if args.queries:
         generation = generate_from_queries(
             doc, features, args.queries, args.oracle,

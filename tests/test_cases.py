@@ -85,6 +85,17 @@ class RulesetFilter(unittest.TestCase):
         with self.assertRaises(ValueError):
             cases.generate(doc, features, only_rulesets=["NOPE"])
 
+    def test_ruleset_with_queries_is_an_error(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = write(d, FIXTURE)
+            rc = cases.main([
+                str(src), "--out", str(Path(d) / "out.jsonl"),
+                "--queries", str(Path(d) / "q.jsonl"),
+                "--oracle", str(Path(d) / "o.jsonl"),
+                "--ruleset", "B_ADD",
+            ])
+        self.assertEqual(rc, 2)
+
 
 class Shapes(unittest.TestCase):
     def test_three_kinds(self):
