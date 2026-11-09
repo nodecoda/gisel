@@ -2249,6 +2249,31 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
                          r"\s*\(\s*(\d+)\s*\)", text)
         if m:
             return "slot(%s), pow2" % m.group(1)
+        m = re.fullmatch(r"(?:LegalizeMutations::)?scalarize"
+                         r"\s*\(\s*(.+?)\s*\)", text, re.S)
+        if m:
+            i = idx_of(m.group(1), env)
+            return ("slot(%d), replace(elem_of(slot(%d)))" % (i, i))
+        m = re.fullmatch(r"(?:LegalizeMutations::)?widenScalarOrEltToNextPow2"
+                         r"\s*\((.*)\)", text, re.S)
+        if m:
+            args = split_top(m.group(1))
+            i = idx_of(args[0], env)
+            n = tr.int_expr(args[1]) if len(args) > 1 and args[1].strip() else "0"
+            # The mutation itself has no pow2 guard: `widenScalarIf(P, M)`
+            # applies it whenever P holds.  Spell the new size out so the
+            # evaluator does not add `sizeNotPow2` on top of P.
+            return ("slot(%d), replace(elt_size_to(slot(%d), "
+                    "pow2_at_least(bits_of(scalar_of(slot(%d))), %s)))"
+                    % (i, i, i, n))
+        m = re.fullmatch(r"(?:LegalizeMutations::)?widenScalarOrEltToNextMultipleOf"
+                         r"\s*\((.*)\)", text, re.S)
+        if m:
+            args = split_top(m.group(1))
+            i = idx_of(args[0], env)
+            return ("slot(%d), replace(elt_size_to(slot(%d), "
+                    "align_to(bits_of(scalar_of(slot(%d))), %s)))"
+                    % (i, i, i, tr.int_expr(args[1])))
         m = re.fullmatch(r"(?:LegalizeMutations::)?fewerElementsToNextPow2"
                          r"\s*\(\s*(\d+)\s*\)", text)
         if m:
@@ -2265,14 +2290,14 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
             # count directly when it is a literal.
             return "slot(%s), %s" % (m.group(1), m.group(2).strip())
         m = re.fullmatch(r"(?:LegalizeMutations::)?changeElementSizeTo"
-                         r"\s*\(\s*(\d+)\s*,\s*(.+)\)", text, re.S)
+                         r"\s*\(\s*(.+?)\s*,\s*(.+)\)", text, re.S)
         if m:
-            i, arg = m.group(1), m.group(2).strip()
+            i, arg = idx_of(m.group(1), env), m.group(2).strip()
             if re.fullmatch(r"\d+", arg):
                 src = "bits_of(slot(%s))" % arg
             else:
                 src = "size_of(ty(%s))" % tr.t.name(arg)
-            return "slot(%s), replace(elt_size_to(slot(%s), %s))" % (i, i, src)
+            return "slot(%d), replace(elt_size_to(slot(%d), %s))" % (i, i, src)
         m = re.fullmatch(r"(?:LegalizeMutations::)?changeElementTo\s*\(\s*(\d+)"
                          r"\s*,\s*(.+)\)", text, re.S)
         if m:

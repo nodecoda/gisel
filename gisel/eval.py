@@ -565,6 +565,9 @@ class Evaluator:
             return self.int_value(a[0], types, mems, config, imms) // self.int_value(a[1], types, mems, config, imms)
         if k == "pow2Ceil":
             return pow2ceil(self.int_value(a[0], types, mems, config, imms))
+        if k == "pow2AtLeast":
+            return max(pow2ceil(self.int_value(a[0], types, mems, config, imms)),
+                       self.int_value(a[1], types, mems, config, imms))
         if k == "alignTo":
             return align_to(self.int_value(a[0], types, mems, config, imms),
                             self.int_value(a[1], types, mems, config, imms))
@@ -822,7 +825,7 @@ def _kind_predicate(tag, t):
 def _slot_of(on_node):
     if on_node.get("kind") == "slot":
         return on_node["index"]
-    if on_node.get("kind") == "elemOf":
+    if on_node.get("kind") in ("elemOf", "scalarOf"):
         inner = on_node["args"][0]
         if inner.get("kind") != "slot":
             raise EvalError("bad_on", "nested ElemOf has no type-index projection")
@@ -843,7 +846,8 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
         # Terminal action: guard is the whole rule.
         return True, ("invalid",)
     idx = _slot_of(on_node)
-    on_form = "elem" if on_node.get("kind") == "elemOf" else "slot"
+    on_form = {"elemOf": "elem", "scalarOf": "scalar"}.get(
+        on_node.get("kind"), "slot")
 
     if to_node is None:
         # scalarize

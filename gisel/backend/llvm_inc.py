@@ -81,6 +81,14 @@ SHIM_TABLE = {
     ("widen", "elem", "ty"): Shim("coreMinScalarOrElt", 1),
     ("widen", "elem", "sameAs"): Shim("coreMinScalarSameAs", 1),
     ("widen", "elem", "minVectorSize"): Shim("coreWidenVectorEltsToVectorMinSize", 1),
+    ("widen", "scalar", "pow2"): Shim("coreWidenScalarOrEltToNextPow2", 0),
+    ("widen", "scalar", "pow2Min"): Shim("coreWidenScalarOrEltToNextPow2", 1),
+    ("widen", "scalar", "multipleOf"): Shim("coreWidenScalarOrEltToNextMultipleOf", 1),
+    ("widen", "scalar", "ty"): Shim("coreMinScalarOrElt", 1),
+    ("widen", "scalar", "sameAs"): Shim("coreMinScalarSameAs", 1),
+    ("widen", "scalar", "select"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
+    ("widen", "scalar", "int"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
+    ("widen", "scalar", "replace"): Shim("coreWidenTo", 1, type_payload=True),
     ("widen", "slot", "select"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
     ("widen", "slot", "int"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
     ("narrow", "slot", "ty"): Shim("coreMaxScalar", 1),
@@ -143,7 +151,7 @@ FOR_ACTION = {
 }
 
 # coreObservationForm(): only the forms the corpora use, plus the identity.
-ONSERVATION_FORM = {"elemOf": "elem"}
+ONSERVATION_FORM = {"elemOf": "elem", "scalarOf": "scalar"}
 
 # The three predicates whose C++ is a `LegalityPredicates::` call on the query.
 QUERY_PREDICATES = {"in", "inPairs", "inTriples", "inMemDesc"}
@@ -319,6 +327,9 @@ class IncEmitter:
             return "(%s).FailureOrdering" % self.value(n["args"][0])
         if k == "pow2Ceil":
             return "llvm::PowerOf2Ceil(%s)" % self.value(n["args"][0])
+        if k == "pow2AtLeast":
+            return "std::max(llvm::PowerOf2Ceil(%s), %s)" % tuple(
+                self.value(a) for a in n["args"])
         if k == "alignTo":
             return "llvm::alignTo(%s, %s)" % tuple(
                 self.value(a) for a in n["args"])
