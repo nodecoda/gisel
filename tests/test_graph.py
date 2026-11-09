@@ -63,6 +63,30 @@ ruleset G_UMIN: G_UMIN
 """
 
 
+SHIFT_MIX = """\
+type S8 = LLT::scalar(8)
+type S32 = LLT::scalar(32)
+type V16S8 = LLT::fixed_vector(16, 8)
+
+ruleset G_ASHR: G_ASHR
+    legal in_pairs(slot(0), slot(1), [[V16S8, V16S8], [S32, S32]])
+    widen(slot(1), ty(S32))
+    narrow(slot(1), same_as(0)) when sort_of(slot(0)) == vector
+"""
+
+
+SHIFT_SCALAR_LOOP = """\
+type S8 = LLT::scalar(8)
+type S32 = LLT::scalar(32)
+type S64 = LLT::scalar(64)
+
+ruleset G_SHL: G_SHL
+    legal in_pairs(slot(0), slot(1), [[S64, S64]])
+    widen(slot(0), ty(S32)) when bits_of(slot(0)) == 8
+    narrow(slot(0), ty(S8)) when bits_of(slot(0)) == 32
+"""
+
+
 REFINABLE = """\
 type S3 = LLT::scalar(3)
 type S8 = LLT::scalar(8)
@@ -157,6 +181,36 @@ class GraphFixture(unittest.TestCase):
         self.assertEqual(public["classes_before"], plain.classes)
         self.assertGreater(public["classes"], public["classes_before"])
         self.assertGreater(public["states"], plain.public()["states"])
+
+    def test_mir_shape_filter_drops_a_mixed_shift_ring(self):
+        # (v16s8, s32) round-trips through widen/narrow in the rule table, but
+        # no MIR holds that shape: the verifier demands both shift operands be
+        # scalars or both be vectors.  The state must not be built, and the
+        # drop has to be visible as `shape`, not silently disappear.
+        report = self.build(SHIFT_MIX)
+        public = report.public()
+        self.assertEqual(public["cycles"], 0)
+        self.assertGreater(public["shape"], 0)
+
+        original = graph._shape_representative
+        graph._shape_representative = (
+            lambda opcode, pools: tuple(pool[0] for pool in pools))
+        try:
+            unfiltered = self.build(SHIFT_MIX)
+        finally:
+            graph._shape_representative = original
+        self.assertGreater(unfiltered.public()["cycles"], 0)
+
+    def test_the_shape_filter_does_not_hide_a_scalar_ring(self):
+        # The negative control for the filter above: a ring the verifier does
+        # accept (scalar -> scalar) must still be reported.
+        public = self.build(SHIFT_SCALAR_LOOP).public()
+        self.assertGreater(public["cycles"], 0)
+        # `shape` still counts the mixed (scalar, vector) class tuples this
+        # fixture's free slot produces; the point is that the scalar ring
+        # survives the filter.
+        for sample in public["cycle_samples"]:
+            self.assertTrue(sample)
 
     def test_refine_is_not_the_default(self):
         plain = self.build(FIXTURE)

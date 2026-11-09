@@ -246,6 +246,18 @@ class VerifierShapes(unittest.TestCase):
         self.assertTrue(cases.type_shape_ok("G_FPTOSI_SAT", ok))
         self.assertFalse(cases.type_shape_ok("G_FPTOSI_SAT", short))
 
+    def test_shifts_and_rotates_keep_one_shape_category(self):
+        # MachineVerifier.cpp: "Shifts and rotates require operands to be
+        # either all scalars or all vectors".  A mixed pair never reaches the
+        # legalizer, so it is not a query the runner can ask.
+        scalar = [E.parse_case_llt("s32"), E.parse_case_llt("s32")]
+        vector = [E.parse_case_llt("v16s8"), E.parse_case_llt("v16s8")]
+        mixed = [E.parse_case_llt("v16s8"), E.parse_case_llt("s32")]
+        for opcode in ("G_SHL", "G_LSHR", "G_ASHR", "G_ROTR", "G_ROTL"):
+            self.assertTrue(cases.type_shape_ok(opcode, scalar), opcode)
+            self.assertTrue(cases.type_shape_ok(opcode, vector), opcode)
+            self.assertFalse(cases.type_shape_ok(opcode, mixed), opcode)
+
     def test_shape_check_survives_a_short_tuple(self):
         # `nslots` comes from the slots the ruleset names, not from the opcode's
         # arity: a hand-written ruleset may expose one slot of a two-slot

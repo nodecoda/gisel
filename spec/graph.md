@@ -86,11 +86,17 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 - evaluator 或原子观察遇到未实现/逃逸节点时，计入 `opaque`。
 - mutation 结果不在当前有限候选域时，计入 `outside`，不建边。
 - mutation 没有改变目标类型时，计入 `stuck`，不建边，也不当作环。
+- 一个类元组找不到任何**形状合法**的成员组合时，不建状态，计入 `shape`。
+  判据来自通用 MIR verifier，不是规则集：例如 `G_SHL`/`G_LSHR`/`G_ASHR`/
+  `G_ROTR`/`G_ROTL` 的两个类型槽必须同为标量或同为向量
+  （`MachineVerifier.cpp`："Shifts and rotates require operands to be either
+  all scalars or all vectors"）。一个 `(v16i8, s32)` 的 shift 查询没有
+  任何 MIR 能表达，官方侧在 legalizer 之前就会拒绝，所以它不是状态。
 - 其余结果在同一 opcode 内重新分类并建一条边；mutation 不得改变 opcode。
 
 边标签包含 action、type index 和 `(ruleset_index, rule_index)`。DFS 使用三色
 标记，文本和 JSON 都输出 `config`、`states`、`edges`、`outcomes`、`terminal`、
-`opaque`、`outside`、`cycles`。`outcomes` 始终包含 `moves`、`no-rule`、
+`opaque`、`outside`、`shape`、`cycles`。`outcomes` 始终包含 `moves`、`no-rule`、
 `terminal`、`opaque`、`outside`、`stuck` 六个键，零值也显式打印，避免读者把
 “没有这个字段”误读成“没有发生”。最多打印 5 条环，每条最多 6 个节点。
 
@@ -106,6 +112,7 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 | `outcomes` | object | `moves`/`no-rule`/`terminal`/`opaque`/`outside`/`stuck` 六个计数，零值也在 |
 | `terminal` | object | 终结动作名 → 计数 |
 | `opaque` / `outside` | int | 上面两个计数的便捷副本 |
+| `shape` | int | 因没有 MIR-legal 成员组合而没有建状态的类元组数（不是规则缺口，是 MIR 形状约束） |
 | `cycles` | int | 找到的环数 |
 | `cycle_samples` | array | 最多 5 条，每条最多 6 个节点 |
 | `classes` | int | 参与建图的类总数 |

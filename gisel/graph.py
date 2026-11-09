@@ -539,6 +539,7 @@ class Report:
     class_tables: dict | None = None
     skipped: list | None = None
     classes_before: int | None = None
+    shape_skipped: int = 0
 
     def public(self):
         outcomes = collections.Counter(s["outcome"] for s in self.states.values())
@@ -561,6 +562,7 @@ class Report:
             "cycle_samples": [[_node_text(x) for x in sample]
                               for sample in samples],
             "classes": self.classes,
+            "shape": self.shape_skipped,
             **({"classes_before": self.classes_before}
                if self.classes_before is not None else {}),
             "uncovered": self.uncovered,
@@ -583,6 +585,37 @@ def _skip_matcher(entries):
     entries = tuple(entries)
     return lambda opcode: any(opcode == e or opcode.startswith(e + "_")
                               for e in entries)
+
+
+_SHAPE_SEARCH_LIMIT = 4096
+
+
+def _shape_representative(opcode, pools):
+    """A member tuple whose shape the MIR verifier accepts, or ``None``.
+
+    Class pools are Cartesian, so a class tuple can hold no legalizer-visible
+    combination at all: AArch64 ``G_ASHR`` crosses a vector source with a
+    scalar amount, and ``MachineVerifier`` rejects that before the legalizer
+    runs ("Shifts and rotates require operands to be either all scalars or all
+    vectors").  Such a class tuple is not a state the official side can be
+    asked about, so the graph must not build it.
+    """
+    if len(pools) < 2:
+        return tuple(pool[0] for pool in pools)
+    options = []
+    for pool in pools:
+        seen = {}
+        for t in pool:
+            vector = t[0] == "vector"
+            sig = (vector, t[1] if vector else None,
+                   t[2] if vector else None, t[3] if vector else None)
+            seen.setdefault(sig, t)
+        options.append(list(seen.values()))
+    for combo in itertools.islice(itertools.product(*options),
+                                  _SHAPE_SEARCH_LIMIT):
+        if AN.type_shape_ok(opcode, combo):
+            return tuple(combo)
+    return None
 
 
 def _state_key(opcode, type_classes, mem_class, imm_class=None):
@@ -621,6 +654,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     skipped = set()
     total_classes = 0
     classes_before = 0
+    shape_skipped = 0
     started = time.monotonic()
 
     for rs_idx, rs in enumerate(doc["rulesets"]):
@@ -700,6 +734,11 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                              if mem_classes else [None])
                 imm_range = (range(len(imm_classes.members))
                              if imm_classes else [None])
+                pools = [type_classes[i].members[cls[i]] for i in range(n)]
+                representative = _shape_representative(opcode, pools)
+                if representative is None:
+                    shape_skipped += 1
+                    continue
                 for mc in mem_range:
                     for ic in imm_range:
                         key = _state_key(opcode, cls, mc, ic)
@@ -707,14 +746,12 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                             continue
                         states[key] = {
                             "key": key,
-                            "pools": [type_classes[i].members[cls[i]]
-                                      for i in range(n)],
+                            "pools": pools,
                             "mem_pool": (mem_classes.members[mc]
                                          if mem_classes else None),
                             "imm_pool": (imm_classes.members[ic]
                                          if imm_classes else None),
-                            "types": tuple(type_classes[i].members[cls[i]][0]
-                                           for i in range(n)),
+                            "types": representative,
                             "mem": (mem_classes.members[mc][0]
                                     if mem_classes else None),
                             "imm": (imm_classes.members[ic][0]
@@ -880,7 +917,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
 
     return Report(config, states, dict(edges), total_classes, uncovered,
                   closure, injected, class_tables, sorted(skipped),
-                  classes_before if refine else None)
+                  classes_before if refine else None, shape_skipped)
 
 
 @dataclass(frozen=True)
@@ -934,7 +971,12 @@ def _state_members(state):
     pools = state["pools"]
     mem_pool = state["mem_pool"] or [None]
     imm_pool = state.get("imm_pool") or [None]
+    opcode = state["key"][0]
     for types in itertools.product(*pools):
+        # A concrete member the MIR verifier rejects is not a query the
+        # legalizer can be asked; auditing it would invent a closure violation.
+        if not AN.type_shape_ok(opcode, types):
+            continue
         for mem in mem_pool:
             for imm in imm_pool:
                 yield types, mem, imm
@@ -1106,6 +1148,7 @@ def main(argv=None):
         print("terminal    : %s" % output["terminal"])
         print("opaque      : %d" % output["opaque"])
         print("outside     : %d" % output["outside"])
+        print("shape       : %d" % output["shape"])
         print("cycles      : %d" % output["cycles"])
         if output["uncovered"]:
             print("uncovered   : %s" % sorted(set(output["uncovered"])))

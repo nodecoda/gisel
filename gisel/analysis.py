@@ -354,3 +354,82 @@ def derive_features(doc, path=None, configs=None):
     if configs:
         table = E.Features({c: rows[c] for c in configs if c in rows})
     return table
+
+
+# Shapes the generic MIR verifier rejects before the legalizer can run.  A
+# query of such a shape is not reachable, so it is not part of the domain: the
+# runner would either abort on the official side or answer a question that no
+# `llc` input can ask.
+#
+# Every entry names where the rule comes from.  A shape rule is a claim about
+# LLVM, so it is either quoted from a verifier check or marked `semantics` when
+# the verifier does not check the opcode and only the opcode's meaning
+# constrains it.  Opcodes with no entry are *not* guessed at: the cartesian
+# product still produces whatever the rules admit.
+#
+# This is a filter on the *question*, not on the answer: it never decides what
+# a legal query means, only whether the question can be asked at all.
+
+def _same_element(a, b):
+    return E.llt_eq(a[3], b[3])
+
+
+def _same_lane_count(a, b):
+    return E.is_vector(a) == E.is_vector(b) and (
+        not E.is_vector(a) or a[1] == b[1])
+
+
+def type_shape_ok(opcode, types):
+    if opcode == "G_MERGE_VALUES":
+        # MachineVerifier.cpp: G_MERGE_VALUES takes scalars only.
+        return all(not E.is_vector(t) for t in types)
+    if opcode == "G_UNMERGE_VALUES":
+        if all(not E.is_vector(t) for t in types):
+            return True
+        # Vector form is the converse of G_CONCAT_VECTORS: same element type
+        # and the same scalability on every slot.
+        if all(E.is_vector(t) for t in types):
+            first = types[0]
+            return all(t[2] == first[2] and _same_element(t, first)
+                       for t in types[1:])
+        return False
+    if opcode == "G_CONCAT_VECTORS":
+        if len(types) < 2:
+            return False
+        # MachineVerifier.cpp:1602 -- "G_CONCAT_VECTOR requires vector source
+        # and destination operands" and "num dest and source elements should
+        # match".  The query carries (dst, src); the second source is the same
+        # type as the first, so the destination has twice the lanes.
+        #
+        # The verifier does not compare element types, but concatenation is
+        # defined as gluing two vectors of one element type: `concat(v2s16,
+        # v2s16)` is `v4s16`, never `v4s32`.  A mismatched pair reaches the
+        # bitcast rule, whose mutation changes the total size and trips
+        # mutationIsSane.  Semantics, not the verifier.
+        return (E.is_vector(types[0]) and E.is_vector(types[1])
+                and types[0][1] == types[1][1] * 2
+                and _same_element(types[0], types[1]))
+    if opcode == "G_SHUFFLE_VECTOR":
+        if len(types) < 2:
+            return False
+        # MachineVerifier.cpp:1945 -- "must have vector src", "must have
+        # vector dst", "cannot change element type".
+        return (E.is_vector(types[0]) and E.is_vector(types[1])
+                and _same_element(types[0], types[1]))
+    if opcode in ("G_SHL", "G_LSHR", "G_ASHR", "G_ROTR", "G_ROTL"):
+        if len(types) < 2:
+            return True
+        # MachineVerifier.cpp:1611 -- "Shifts and rotates require operands to
+        # be either all scalars or all vectors".  A scalar shift amount on a
+        # vector source never reaches the legalizer: MIR cannot hold it, so a
+        # graph state that mixes the two shapes is not a question the official
+        # side can be asked.
+        return (all(E.is_vector(t) for t in types[:2])
+                or all(not E.is_vector(t) for t in types[:2]))
+    if opcode in ("G_FPTOSI_SAT", "G_FPTOUI_SAT"):
+        if len(types) < 2:
+            return False
+        # semantics: the saturated conversion keeps the lane count.  The
+        # verifier has no case for these opcodes, so this is the only source.
+        return _same_lane_count(types[0], types[1])
+    return True
