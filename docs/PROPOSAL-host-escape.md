@@ -1,6 +1,7 @@
 # 变更说明：AMDGPU 剩余 10 条拒绝与“表达式级宿主逃逸点”
 
-状态：**待批准**（未改 `spec/grammar.md`、`gisel/dsl.py`、`gisel/eval.py`、任何后端）
+状态：**不采纳（2026-11-09）** —— 决定跳过 AMDGPU，不为此扩语法。
+本文保留为设计记录；未改 `spec/grammar.md`、`gisel/dsl.py`、`gisel/eval.py`、任何后端。
 
 ## 1 现状
 

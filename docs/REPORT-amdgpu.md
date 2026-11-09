@@ -1,5 +1,12 @@
 # AMDGPU：最后一个没有接入的 GlobalISel legalizer
 
+
+> **决定（2026-11-09）：跳过 AMDGPU，不接入。** 本报告保留为评估记录：导入器
+> 已能把构造函数读成 796 条规则、7 条拒绝；剩余 7 条都需要变异侧的宿主逃逸点
+> （`mutate(...)`），属于语法变更，决定不为此扩语法。AMDGPU 不冻结语料、不进
+> `PIN.json` / `TARGETS` / cases 配置 / runner。后续若要重启，从 §3 的 7 条和
+> `docs/PROPOSAL-host-escape.md` 继续。
+
 一句话：**上游一共 11 个 legalizer 构造函数，语料收了 9 个；BPF 的构造函数是空的，
 真正剩下的只有 AMDGPU。** 导入器已经能把 AMDGPU 读成一份**能解析、能 lint**
 的语料（796 条规则），但还有 7 条语句拒绝，其中一部分要动 DSL 本身。本轮做
