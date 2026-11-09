@@ -163,5 +163,62 @@ class Queries(unittest.TestCase):
                 ab.validate_queries(queries, features)
 
 
+SWAP = AB / "swap-source-ctor.py"
+
+
+class SwapSourceCtor(unittest.TestCase):
+    """`restore` puts back the text it replaced, and only that text."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.tree = Path(self.tmp.name)
+        self.src = (self.tree / "llvm/lib/Target/X86/GISel/"
+                    "X86LegalizerInfo.cpp")
+        self.src.parent.mkdir(parents=True)
+        self.inc = self.tree / "generated.inc"
+        self.inc.write_text("// generated\n")
+        self.original = ("X86LegalizerInfo::X86LegalizerInfo("
+                         "const X86Subtarget &STI, const X86TargetMachine &TM)\n"
+                         "    : Subtarget(STI) {\n"
+                         "  legal(s32);\n"
+                         "}\n")
+        self.src.write_text(self.original)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def swap(self, mode):
+        argv = [sys.executable, str(SWAP), mode, "--target", "x86",
+                "--tree", str(self.tree)]
+        if mode == "apply":
+            argv += ["--inc", str(self.inc)]
+        return subprocess.run(argv, capture_output=True, text=True)
+
+    def test_apply_then_restore_is_byte_exact(self):
+        self.assertEqual(self.swap("apply").returncode, 0)
+        self.assertIn('#include "X86LegalizerInfo.inc"',
+                      self.src.read_text())
+        self.assertEqual(self.swap("restore").returncode, 0)
+        self.assertEqual(self.src.read_text(), self.original)
+
+    def test_restore_leaves_an_unpatched_tree_alone(self):
+        self.assertEqual(self.swap("apply").returncode, 0)
+        # The worktree moved on: the patch was committed or repaired by hand.
+        newer = self.original.replace("legal(s32);",
+                                      "legal(s32); legal(s64);")
+        self.src.write_text(newer)
+        self.assertEqual(self.swap("restore").returncode, 0)
+        self.assertEqual(self.src.read_text(), newer)
+
+    def test_a_second_apply_refreshes_a_stale_backup(self):
+        self.assertEqual(self.swap("apply").returncode, 0)
+        newer = self.original.replace("legal(s32);",
+                                      "legal(s32); legal(s64);")
+        self.src.write_text(newer)
+        self.assertEqual(self.swap("apply").returncode, 0)
+        self.assertEqual(self.swap("restore").returncode, 0)
+        self.assertEqual(self.src.read_text(), newer)
+
+
 if __name__ == "__main__":
     unittest.main()

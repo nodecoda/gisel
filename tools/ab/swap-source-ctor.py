@@ -81,6 +81,11 @@ def _matching_brace(text, start):
     raise SystemExit("unbalanced braces after constructor")
 
 
+def _is_patched(text, inc):
+    """True when the constructor body still points at a generated fragment."""
+    return ('#include "%s"' % inc) in text
+
+
 def _tuple_target(name):
     if name not in TARGETS:
         raise SystemExit("unknown target %r (known: %s)"
@@ -114,7 +119,11 @@ def cmd_apply(args):
 
     backup = tree / ".gisel-swap" / spec["source"]
     backup.parent.mkdir(parents=True, exist_ok=True)
-    if not backup.exists():
+    # A backup only means anything while the file it came from is patched.
+    # A worktree that was patched in an earlier session and then committed
+    # (or repaired by hand) would otherwise be restored to that old text and
+    # silently lose the edits made since.
+    if not (backup.exists() and _is_patched(text, spec["inc"])):
         shutil.copyfile(source, backup)
     inc_path = source.parent / spec["inc"]
     shutil.copyfile(args.inc, inc_path)
@@ -142,6 +151,10 @@ def cmd_restore(args):
     tree = Path(args.tree).resolve()
     source = tree / spec["source"]
     backup = tree / ".gisel-swap" / spec["source"]
+    if not _is_patched(source.read_text(), spec["inc"]):
+        print("%s: %s is not patched, nothing to restore"
+              % (args.target, source))
+        return 0
     if not backup.exists():
         raise SystemExit("no backup at %s" % backup)
     shutil.copyfile(backup, source)
