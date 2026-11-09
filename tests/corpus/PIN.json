@@ -1,6 +1,6 @@
 {
   "schema": 1,
-  "comment": "The upstream revision every corpus rule came from. `tools/import-cxx.py --all --pin tests/corpus/PIN.json --git-repo <llvm> --check` must reproduce the three .gisel files byte for byte. The commit is a plain upstream llvm-project commit: local patches in a worktree (the A/B harness carries one) cannot change what was imported.",
+  "comment": "The upstream revision every corpus rule came from. `tools/import-cxx.py --all --pin tests/corpus/PIN.json --git-repo <llvm> --check` must reproduce the three .gisel files byte for byte. The commit is a plain upstream llvm-project commit: local patches in a worktree cannot change what was imported, so the corpus keeps the reviewed deviations below. `patches` lists the unmerged upstream PRs this repository carries; the official side of the A/B harness is built from a tree with them applied, which is why the corpus asks for the post-fix behaviour. When they land upstream, move `commit` past them and delete both the patches and the deviations.",
   "repo": "llvm/llvm-project",
   "commit": "9bfc850b9940566bef17a34601826775349ba0e6",
   "sources": {
@@ -16,5 +16,32 @@
       "path": "llvm/lib/Target/RISCV/GISel/RISCVLegalizerInfo.cpp",
       "sha256": "ad529e1f1a9e62fa8bbd3a7d68f2b46f41f3cf8f1e74556c709bffbd43b9e889"
     }
-  }
+  },
+  "patches": [
+    {
+      "pr": 238306,
+      "title": "[GlobalISel] Keep the lane count in maxScalarEltSameAsIf",
+      "commit": "b826bc84a415"
+    },
+    {
+      "pr": 238277,
+      "title": "[X86][GlobalISel] Don't widen G_BUILD_VECTOR to legalize it",
+      "commit": "526dababf69f"
+    },
+    {
+      "pr": 235976,
+      "title": "[X86][GlobalISel] Mark vector G_CTPOP legal when VPOPCNT is available",
+      "commit": "462829fdac83"
+    },
+    {
+      "pr": 237650,
+      "title": "[GlobalISel] Pick a sub-register result class that has the value type",
+      "commit": "d03da6ee503e"
+    },
+    {
+      "pr": 239136,
+      "title": "[TableGen] Diagnose !head/!tail of a deferred empty list",
+      "commit": "cfdc9e57a2db"
+    }
+  ]
 }

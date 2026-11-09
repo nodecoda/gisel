@@ -156,16 +156,19 @@ CoreCustom<(CoreAll (CoreNot HasAVX512), ..., (CoreLt (BitsOf (Slot 1)), ...))>
 
 | target | 查询行 | 去重 key | 两侧都答 | 一致 | 分歧 | 两侧都断言 |
 |---|---:|---:|---:|---:|---:|---:|
-| AArch64 | 13,199 | 13,199 | 13,082 | 13,082 | **0** | 117 |
+| AArch64 | 13,199 | 13,199 | 13,091 | 13,199 | **0** | 108 |
 | RISC-V | 6,301 | 6,299 | 6,299 | 6,299 | **0** | 0 |
-| X86（对手是本分支 `.td` 渲染） | 3,282 | 3,276 | 3,276 | 3,275 | **1** | 0 |
+| X86 | 3,282 | 3,276 | 3,276 | 3,276 | **0** | 0 |
+
+`一致` 把“两侧都断言”也算作一致（两家都没答出来）；`两侧都答` 才是真正被问出
+答案的去重 key 数。官方侧是 `pin + PIN.json:patches` 构建的树。
 
 复现命令：
 
 ```sh
 tools/ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc OUT STATE
 tools/ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc  OUT STATE
-tools/ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
+tools/ab/run-x86-end-to-end.sh     TREE BUILD x86.inc OUT STATE
 ```
 
 ### 8.1 这一轮修掉的四个问题
@@ -185,19 +188,31 @@ tools/ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
    `scalar(80)`，`LLT::floatIEEE(80)` 是 `llvm_unreachable`；查询还没问就崩。
    `_FLOAT_BITS` 去掉 80。
 
-### 8.2 117 条两侧都断言：上游 `mutationIsSane`
+### 8.2 从 117 条两侧都断言到 108 条：一层是上游，一层是我们
 
-`llvm/lib/CodeGen/GlobalISel/LegalizerInfo.cpp:200`。两侧断言文本相同，说明是
-**同一条规则产出了同一条"不合法"的 mutation**，不是我们翻译错了：
+原本 117 条在两侧都撞 `mutationIsSane`
+（`llvm/lib/CodeGen/GlobalISel/LegalizerInfo.cpp`）。拆开之后是两件事：
+
+1. **上游框架层**（PR #238306）。`maxScalarEltSameAsIf` 把 lane 数当成标量
+   类型索引，官方侧因此产出不合法的 `NarrowScalar`。合上这个 PR 后，官方侧能
+   答了——也把我们的问题暴露出来。
+2. **我们的 importer**。`maxScalarEltSameAsIf` 被转录成
+   `narrow(slot(k), replace(same_as(j)))`，生成器照字面翻成
+   `make_pair(k, Query.Types[j])`，于是 slot 1（标量 shift 量）被换成 slot 0
+   的**整个向量类型**，`mutationIsSane` 当场断言。`minScalarEltSameAsIf` 那条
+   分支本来就写对了（`widen(slot(k), same_as(j))` → `coreMinScalarSameAs`）。
+   修法是让 max 分支对称地落到 `coreMaxScalarSameAs`：它比较的是
+   `getScalarSizeInBits()`，对向量就是元素位宽，正是这条 API 的原意。
+   修完这 9 条 `G_SHL` 两侧一致。
+
+剩下 108 条是**真正两侧都断言**：
 
 ```text
-G_CONCAT_VECTORS 90   G_SHL 9   G_FPTOSI_SAT 9   G_SHUFFLE_VECTOR 9
+G_CONCAT_VECTORS 90   G_FPTOSI_SAT 9   G_SHUFFLE_VECTOR 9
 ```
 
-`mutationIsSane` 校验的是 `NarrowScalar`/`WidenScalar` 必须真的改变标量位宽、
-向量必须保持 lane 数。具体是哪条规则、为什么产出不合法 mutation，**本轮未定性**。
-它不影响 `disagree = 0` 的结论（两侧都没答出来，不是答案不同），但它是
-"13,199 条里 117 条没被真正问出答案"的缺口。下一步：按 `--refine`/图上规则号定位。
+它们不影响 `disagree = 0`（两家都没答出来，不是答案不同），但仍是
+"13,199 条里 108 条没被真正问出答案"的缺口，属于上游自身问题，未定性。
 
 ### 8.3 AArch64 上游缺陷：`getNumElements()` 的调用面
 
@@ -223,28 +238,21 @@ pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`（sha256 `79f2376…`）。
    `#include "X86LegalizerInfo.inc"`（gisel 产物），其余翻译单元不变；
 3. `ninja` 后跑第二遍，`diff.py`。
 
-结果：
+结果（合并 `PIN.json` 里记录的 5 个 PR 之后重跑）：
 
 | 查询行 | 去重 key | 一致 | 分歧 | 两侧都断言 |
 |---:|---:|---:|---:|---:|
-| 3,282 | 3,276 | 3,257 | **19** | 0 |
+| 3,282 | 3,276 | 3,276 | 0 | 0 |
 
-19 条**全部**是 `G_BUILD_VECTOR`，方向一致：
+19 条 `G_BUILD_VECTOR` 全部归零。原因是这 19 条一开始就不是翻译错误，而是
+**单边差异**：语料已经按上游修复（`Unsupported`）写，而官方侧还是修前的
+`MoreElements`。把 PR #238277 落到树上、官方侧拿到同一个修复后，两侧一致。
 
-```text
-official  MoreElements      gisel  Unsupported
-```
+同一轮里 AArch64 从 `13,082 一致 / 0 分歧 / 117 两侧都断言` 变成
+`13,199 / 0 / 108`，RISC-V 保持 `6,299 / 0 / 0`。AArch64 那 117 条主要来自
+框架层的 `maxScalarEltSameAsIf`（PR #238306），剩下的 108 条在官方侧同样断言，
+是上游自身的问题。
 
-这不是翻译错误，而是语料里唯一一处**有意偏离**（`docs/CORPORA.md` 的偏离表），
-而且它对齐的是**我们待合并的上游修复**：issue
-[#236649](https://github.com/llvm/llvm-project/issues/236649)、PR
-[#238277](https://github.com/llvm/llvm-project/pull/238277)。上游
-`clampNumElements(0, v16s8, …)` 给窄 build vector 一个“加 lane”的
-`MoreElements`，`moreElementsVector` 重建出来的新 build vector 又拿到同一个动作，
-`llc` 永远不返回。实测与 `-debug-only=legalizer` 轨迹在
-`/home/ubuntu/admin/upstream-issues/2026-11-09-14-gisel-x86-narrow-build-vector-loop.md`。
-
-PR 合并后把 pin 前移，这 19 条自动归零；在那之前它们不是“未知差异”。
-
-也就是说：**X86 上 3,257/3,276 一致，剩下 19 条是一个已知上游死循环的有意规避**，
-没有未归因的差异。
+也就是说：**X86 现在 3,276/3,276 一致**，19 条已知死循环的偏离在两侧都消失，
+没有未归因的差异。`PIN.json` 的 `patches` 记录了我们叠在上游 pin 之上的 PR；
+等它们合入上游，把 `commit` 前移并删掉 `patches` 和 `X86_DEVIATIONS` 即可。

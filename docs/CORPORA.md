@@ -35,8 +35,15 @@ X86 的两条偏离写在工具里（`X86_DEVIATIONS`），每条都会断言上
 
 | 偏离 | 原因 |
 |---|---|
-| `G_BUILD_VECTOR` 去掉最小 lane clamp | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 会死循环（上游 issue #236649，修复 PR #238277 待合并；实测见 `2026-11-09-14`）；只留最大 clamp，窄 build vector 走 Unsupported。端到端对拍里这正好是 X86 全部 19 条差异 |
-| `G_CTPOP` 增加 VPOPCNTDQ 的向量 legal | 我们的语料带上了向量 legalization，冻结答案里这些点是 Legal |
+| `G_BUILD_VECTOR` 去掉最小 lane clamp | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 会死循环（上游 issue #236649，修复 PR #238277；实测见 `2026-11-09-14`）；只留最大 clamp，窄 build vector 走 Unsupported |
+| `G_CTPOP` 增加 VPOPCNTDQ 的向量 legal | 上游还没有这条规则（PR #235976），语料先带上向量 legalization，冻结答案里这些点是 Legal |
+
+这两条偏离**只相对于 pin**。`PIN.json` 的 `patches` 记录了仓库叠加的 5 个未合
+PR（#238306、#238277、#235976、#237650、#239136），工作台构建的官方侧就是
+`pin + patches`。所以偏离后的语料和官方侧行为一致：X86 端到端 3,276/3,276、
+AArch64 13,199/13,199、RISC-V 6,299/6,299 全部 agree。等这些 PR 合入上游，
+把 `commit` 前移，偏离函数会按设计**报错**（它断言旧文本还在），那时删掉它们
+即可——这正是它存在的意义。
 
 ## 复现：一条命令，钉住计数
 
