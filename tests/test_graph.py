@@ -252,6 +252,29 @@ class OracleAlignment(unittest.TestCase):
         self.assertEqual(result["disagree"], 0)
 
 
+    def test_a_shape_invalid_dump_point_is_unaskable_not_uncovered(self):
+        # `--oracle` used to return 1 for a dump point the graph never built,
+        # even when the reason was the MIR shape rule (`(v16s8, s32)` shift).
+        # That is not a graph gap: count it separately.
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_source(directory, SHIFT_MIX)
+            oracle = Path(directory) / "oracle.jsonl"
+            oracle.write_text(json.dumps({
+                "config": "none", "name": "G_ASHR",
+                "types": ["v16s8", "s32"], "mem": None, "imms": [],
+                "action": "NarrowScalar", "type_idx": 1,
+                "new_type": "s8"}) + "\n")
+            doc = cases.document(source)
+            features = cases.derive_features(doc)
+            report = graph.build(source, "none", features)
+            result = graph.oracle_check(report, oracle,
+                                        E.Evaluator(doc, features), True)
+        self.assertEqual(result["total"], 1)
+        self.assertEqual(result["unaskable"], 1)
+        self.assertEqual(result["uncovered"], 0)
+        self.assertEqual(result["disagree"], 0)
+
+
 MEM_FIXTURE = """\
 type S8 = LLT::scalar(8)
 type S32 = LLT::scalar(32)

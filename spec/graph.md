@@ -162,8 +162,14 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 ## Oracle 和退出码
 
 `--oracle FILE` 对同配置的每个 JSONL 点先定位图状态，再用同一个 evaluator 比较
-`(action, type_idx, new_type)`。缺失状态、答案差异和 evaluator 错误都会打印到
-JSON 字段 `oracle` 并使命令返回 1。oracle 只用于检查，不是图的输入规则。
+`(action, type_idx, new_type)`，结果在 JSON 字段 `oracle` 里。点分三类：
+
+- `matched` / `agree`：图上有状态，答案逐项一致；
+- `unaskable`：点的类型元组违反 MIR 形状约束（例如 `(v16s8, s32)` 的 shift）。
+  这类点本来就不会建状态，单独计数，**不**让命令失败；
+- `uncovered`：形状合法却没有对应状态——这是真缺口，使命令返回 1。
+
+答案差异和 evaluator 错误同样返回 1。oracle 只用于检查，不是图的输入规则。
 
 - `0`：没有环，且闭包/oracle 检查（若请求）通过；
 - `1`：发现环、注入边成环、闭包失败或 oracle 不一致；

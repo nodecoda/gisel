@@ -984,7 +984,7 @@ def _state_members(state):
 
 def oracle_check(report, oracle_path, evaluator, extended):
     result = {"total": 0, "matched": 0, "agree": 0, "disagree": 0,
-              "uncovered": 0, "errors": 0, "first": None}
+              "uncovered": 0, "unaskable": 0, "errors": 0, "first": None}
     with open(oracle_path) as stream:
         for line in stream:
             if not line.strip():
@@ -1005,7 +1005,14 @@ def oracle_check(report, oracle_path, evaluator, extended):
             key = (_class_key(tables, query["name"], types, mem, imms)
                    if tables else None)
             if key is None or key not in report.states:
-                result["uncovered"] += 1
+                # A dump point whose shape no MIR can hold is not a graph
+                # gap: `shape` already dropped it on purpose.  Keep the two
+                # buckets apart so `uncovered` still means "reachable point
+                # the graph failed to build".
+                if not AN.type_shape_ok(query["name"], types):
+                    result["unaskable"] += 1
+                else:
+                    result["uncovered"] += 1
                 continue
             result["matched"] += 1
             try:
