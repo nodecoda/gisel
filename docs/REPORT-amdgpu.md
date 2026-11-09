@@ -2,7 +2,7 @@
 
 一句话：**上游一共 11 个 legalizer 构造函数，语料收了 9 个；BPF 的构造函数是空的，
 真正剩下的只有 AMDGPU。** 导入器已经能把 AMDGPU 读成一份**能解析、能 lint**
-的语料（639 条规则），但还有 114 条语句拒绝，其中约一半要动 DSL 本身。本轮做
+的语料（725 条规则），但还有 72 条语句拒绝，其中约一半要动 DSL 本身。本轮做
 盘点、一个可复现的探针、把“悄悄产出非法文本”这类缺陷堵死，并按 §4 选定的
 逃逸点路线落下 `opaque(...)`；语料仍未收。
 
@@ -11,9 +11,9 @@
 | 项 | 值 |
 |---|---:|
 | rulesets | 142 |
-| rules | 639 |
-| refused | 114 |
-| builder 调用 | 592 |
+| rules | 725 |
+| refused | 72 |
+| builder 调用 | 642 |
 | 其中 `opaque` 规则 | 16 处 / 7 个不同表达式 |
 | lint | 0 error / 7 warning |
 
@@ -57,17 +57,18 @@ python3 -m gisel lint /tmp/amdgpu.gisel
 （`git log -1 -- docs/REPORT-amdgpu.md`）——数字随导入器变化，源 sha 是稳定锚点。
 
 ```
-142 rulesets, 639 rules, 114 refused
-TOTAL  592 calls  646 rules
+142 rulesets, 725 rules, 72 refused
+TOTAL  642 calls  726 rules
 
-lint: 0 error(s), 7 warning(s), 639 rule(s)
+lint: 0 error(s), 7 warning(s), 725 rule(s)
 ```
 
 7 条 warning 都是 `arity unknown`（`G_BUILD_VECTOR_TRUNC`、`G_MERGE_VALUES` 等），
-与 X86 上已知的那一类相同，不是语法问题。592 个 builder 调用已经能读：
+与 X86 上已知的那一类相同，不是语法问题。642 个 builder 调用已经能读：
 `legalFor`(131)、`scalarize`(97)、`lower`(53)、`clampScalar`(50, 100 条规则)、
 `widenScalarToNextPow2`(41)、`customFor`(35)、`minScalar`(32)、
-`clampMaxNumElements`(24)、`widenScalarFor`(17) 等。地址空间指针类型（160/128/192
+`clampMaxNumElementsStrict`(30, 60 条规则)、`clampMaxNumElements`(24)、
+`widenScalarFor`(17) 等。地址空间指针类型（160/128/192
 位的 fat pointer）和 43 个 subtarget feature 都已经进语料头部。
 
 ### 2.1 先把“能解析”变成硬约束
@@ -93,12 +94,10 @@ lint: 0 error(s), 7 warning(s), 639 rule(s)
 
 这条约束对现有 9 份语料零影响（`--all --check` 9/9 逐字节相同）。
 
-## 3 114 条拒绝：按“要做什么”分类
+## 3 72 条拒绝：按“要做什么”分类
 
 | 类别 | 条数 | 要做什么 |
 |---|---:|---|
-| `clampMaxNumElementsStrict` | 30 | DSL 新原语。C++ 把它定义成 `alignNumElementsTo` + `clampMaxNumElements`（`LegalizerInfo.h:1327`）：“先按 N 补 undef 到整倍数，再夹上界”。`clamp_max` 已有，缺“补齐到 N 的倍数” |
-| `if` 块里的 clamp（gated clamp_max） | 12 | 语法缺“带谓词的 clamp”。要么给它加 `when`，要么让 importer 拆成 `actionIf` 形态 |
 | lane 变异体 | 14 | `oneMoreElement`(11) / `moreEltsToNext32Bit`(2) / `fewerEltsToSize64Vector`(1)，`more(slot, pow2)` 覆盖不了 |
 | `widenScalarToNextMultipleOf` | 9 | DSL 新原语：加宽到 Size 的整数倍（不是 next pow2，`LegalizerInfo.h:989`） |
 | 变异 lambda 形态 | 17 | bitcast 到算出来的类型(10)、`scalarize` 作变异体(6)、`changeElementSizeTo`(1)；返回 `std::pair<unsigned, LLT>` 的 lambda |
@@ -113,8 +112,10 @@ lint: 0 error(s), 7 warning(s), 639 rule(s)
 | `moreElementsToNextExistingRegClass` | 1 | 返回 `LegalizeMutation` 的 helper，不是谓词；属于变异侧原语 |
 | `minScalarIf(...)` | 1 | 其他 |
 
-粗分：**约 10 条是拼写/常量求值**，**约 100 条要 DSL + `--emit=inc` + `eval` 同步
-扩原语**，**3 条仍是宿主 helper 的边角**（谓词值逃逸已经能吃整数字面量形态）。
+本轮清掉的两类（原 30 + 12）走的是 §6 第 3 步的第一批原语：
+
+- `clampMaxNumElementsStrict`（30 条）→ `align_lanes` + `clamp_max` 两条规则；
+- `if` 块里的 clamp（12 条）→ `clamp_min/max ... when P`。
 
 ## 4 真正的分水岭：文件内的 C++ 谓词
 
@@ -199,8 +200,9 @@ LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool �
    本轮已完成，并顺带堵住“悄悄产出非法文本”。
 2. ~~定下 §4：逃逸点还是新原语。~~ 已选**逃逸点**并落地 `opaque(...)`，含
    谓词值形态 `opaque("helper(ST, i)(Query)")`（解锁 6 条规则）。
-3. DSL 原语分批：`align_lanes`（解锁 30 条）→ `widen_to_multiple`（9）→
-   lane 数 `+1` / 补到 32 位（16）→ 带谓词的 clamp（12）→ bitcast 到算出来的类型（6）。
+3. DSL 原语分批：~~`align_lanes`（30）~~、~~带谓词的 clamp（12）~~ 已完成；
+   剩下 `widen_to_multiple`（9）→ lane 数 `+1` / 补到 32 位（14）→
+   bitcast 到算出来的类型（6）。
 4. 0 拒绝之后再进 `PIN.json` / `TARGETS` / cases 配置 / runner，最后才是端到端。
    顺序反了会拿 127 条缺口冒充“已接入”。
 

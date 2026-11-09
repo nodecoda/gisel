@@ -319,6 +319,9 @@ class IncEmitter:
             return "(%s).FailureOrdering" % self.value(n["args"][0])
         if k == "pow2Ceil":
             return "llvm::PowerOf2Ceil(%s)" % self.value(n["args"][0])
+        if k == "alignTo":
+            return "llvm::alignTo(%s, %s)" % tuple(
+                self.value(a) for a in n["args"])
         if k == "mul":
             return "(%s * %s)" % tuple(self.value(a) for a in n["args"])
         if k == "urem":

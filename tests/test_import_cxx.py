@@ -159,11 +159,15 @@ class ParseGuard(unittest.TestCase):
                 "ruleset R_G_ADD: G_ADD\n    legal true\n")
         self.assertIsNone(module.parse_problem(text))
 
-    def test_gated_clamp_does_not_parse(self):
+    def test_gated_clamp_parses(self):
+        # A clamp inside a constructor `if` used to be a refusal because the
+        # grammar had no `when` for it.  It has one now; the gate is a normal
+        # conjunct of the desugared rule's predicate.
         module = self._module()
-        text = ("ruleset R_G_ADD: G_ADD\n"
+        text = ("type s32 = LLT::scalar(32)\n\n"
+                "ruleset R_G_ADD: G_ADD\n"
                 "    clamp_max(0, s32, 2) when true\n")
-        self.assertIsNotNone(module.parse_problem(text))
+        self.assertIsNone(module.parse_problem(text))
 
 
 class ConstructorContracts(unittest.TestCase):

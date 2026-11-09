@@ -561,6 +561,9 @@ class Evaluator:
             return self.int_value(a[0], types, mems, config, imms) // self.int_value(a[1], types, mems, config, imms)
         if k == "pow2Ceil":
             return pow2ceil(self.int_value(a[0], types, mems, config, imms))
+        if k == "alignTo":
+            return align_to(self.int_value(a[0], types, mems, config, imms),
+                            self.int_value(a[1], types, mems, config, imms))
         if k == "intOfSize":
             return integer_type(self.int_value(a[0], types, mems, config, imms),
                                 self.extended(config))

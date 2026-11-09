@@ -2115,6 +2115,14 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
         out.append("clamp_max(%s, %s, %s)" % (idx_of(args[0], env),
                                               tr.t.name(args[1]),
                                               tr.int_expr(args[2])))
+    elif method == "clampMaxNumElementsStrict":
+        # LegalizerInfo.h:1327 spells this as alignNumElementsTo followed by
+        # clampMaxNumElements, so the corpus keeps both rules.  Folding them
+        # into one statement would hide a mutation the evaluator must apply.
+        idx = idx_of(args[0], env)
+        elt, lanes = tr.t.name(args[1]), tr.int_expr(args[2])
+        out.append("align_lanes(%s, %s, %s)" % (idx, elt, lanes))
+        out.append("clamp_max(%s, %s, %s)" % (idx, elt, lanes))
     elif method == "clampNumElements":
         idx = idx_of(args[0], env)
         elt = tr.t.elem_of(args[1])
@@ -2359,12 +2367,6 @@ def apply_gate(line, gate):
         return "%s when (%s and %s)" % (body, gate, when)
     if line.startswith("scalarize(") or line.startswith("imm_idx("):
         return line          # both are markers, not rules with predicates
-    if line.startswith(("clamp_min(", "clamp_max(")):
-        # The gate belongs to the enclosing `if`, so the rule is conditional;
-        # the grammar has no `when` for a clamp yet.  Emitting it anyway makes
-        # `--emit=inc` produce text the corpus parser rejects, which is worse
-        # than a refusal that names the statement.
-        raise Refuse("gated %s" % line.split("(")[0])
     return line + " when " + gate
 
 

@@ -8,8 +8,9 @@ schema-0.4 normal form used by the C++/JSON backends.
     stmt := legal|lower|custom|unsupported|libcall <pred>
           | widen|narrow|more|fewer|bitcast ( <expr> , <expr> ) [ when <pred> ]
           | scalarize ( <expr> ) [ when <pred> ]
-          | clamp_min ( INT , TYPE , <expr> )
-          | clamp_max ( INT , TYPE , <expr> )        # lanes: int or select(...)
+          | clamp_min ( INT , TYPE , <expr> ) [ when <pred> ]
+          | clamp_max ( INT , TYPE , <expr> ) [ when <pred> ]  # lanes: int or select(...)
+          | align_lanes ( INT , TYPE , <expr> ) [ when <pred> ]  # pad lanes to a multiple
     pred := or of ( and of ( not | primary ) )
     primary := true | ( pred ) | feature ( STR ) | FEATURE_NAME
             | in ( expr , [TYPE,...] | TYPE )
@@ -69,7 +70,7 @@ UNARY_CALL = {"elem_of": "elemOf", "scalar_of": "scalarOf", "sort_of": "sortOf",
 BINARY_CALL = {"vec_of": "vecOf", "scalar_or_vec_of": "scalarOrVecOf",
                "elt_type_to": "eltTypeTo", "elt_size_to": "eltSizeTo",
                "div_lanes": "divLanes", "mul": "mul", "urem": "urem",
-               "udiv": "udiv", "clamp": "clamp"}
+               "udiv": "udiv", "clamp": "clamp", "align_to": "alignTo"}
 
 # A canonical type literal: scalar (s8/i32/f16/bf16), pointer (p0:64/p0:*),
 # fixed vector (v16s8, v2p0:*) or scalable vector (nxv16i8).
@@ -215,14 +216,17 @@ class Parser:
             if self.peek() and self.peek().t == "ID" and self.peek().v == "when":
                 self.next(); pred = self.parse_pred()
             return {"op": k, "on": on, "to": None, "pred": pred, "_line": line}
-        if k in ("clamp_min", "clamp_max"):
+        if k in ("clamp_min", "clamp_max", "align_lanes"):
             self.expect("(")
             idx = self.next().v; self.expect(",")
             elt = self.next().v; self.expect(",")
             lanes = self.parse_expr()
             self.expect(")")
+            pred = None
+            if self.peek() and self.peek().t == "ID" and self.peek().v == "when":
+                self.next(); pred = self.parse_pred()
             return {"op": k, "idx": idx, "elt": elt, "lanes": lanes,
-                    "_line": line}
+                    "pred": pred, "_line": line}
         raise ValueError(f"line {kw.line}: unknown statement {k!r}")
 
     # predicate grammar: or -> and -> not -> primary
@@ -510,6 +514,32 @@ def compile_stmt(st):
         return {"action": "FewerElements", "type_idx": type_idx_of(st["on"]),
                 "op": "scalarize", "on": st["on"],
                 "predicate": pred if pred is not None else leaf("true", [])}
+    if op == "align_lanes":
+        # `clampMaxNumElementsStrict` in C++ is `alignNumElementsTo` followed by
+        # `clampMaxNumElements` (LegalizerInfo.h:1264, 1327): pad the lane
+        # count up to a multiple of N, then split into N-lane pieces.  The
+        # clamp half is the existing `clamp_max`; this half is a MoreElements
+        # to a computed type, so the evaluator and the C++ both see the same
+        # two rules upstream installs.
+        idx, elt, lanes = st["idx"], st["elt"], st["lanes"]
+        to = call1("replace", call2(
+            "vecOf",
+            call2("alignTo", call1("numElems", slot(idx)), lanes),
+            call1("elemOf", slot(idx))))
+        cmp = call2("ne", call2("urem", call1("numElems", slot(idx)), lanes),
+                    int_(0))
+        fixed = [
+            call2("eq", call1("sortOf", slot(idx)), kind_("kindVector")),
+            call1("not", call2("eq", call1("sortOf", slot(idx)),
+                               kind_("kindScalableVector"))),
+            call2("eq", call1("elemOf", slot(idx)), call1("ty", type_(elt))),
+            cmp,
+        ]
+        if st.get("pred") is not None:
+            fixed.append(st["pred"])
+        return {"action": "MoreElements", "type_idx": int(idx), "op": "more",
+                "on": slot(idx), "to": to,
+                "predicate": _node("all", args=fixed)}
     if op in ("clamp_min", "clamp_max"):
         idx, elt, lanes = st["idx"], st["elt"], st["lanes"]
         if op == "clamp_min":
@@ -526,6 +556,8 @@ def compile_stmt(st):
             call2("eq", call1("elemOf", slot(idx)), call1("ty", type_(elt))),
             cmp,
         ]
+        if st.get("pred") is not None:
+            fixed.append(st["pred"])
         guard = _node("all", args=fixed)
         return {"action": action, "type_idx": int(idx), "op": opname,
                 "on": slot(idx), "to": to, "predicate": guard}
@@ -646,7 +678,7 @@ def _tc(node, arity, errs, names=None):
     if k in ("memOrdering", "memFailureOrdering"):
         need(0, "MemDesc")
         return "Ordering"
-    if k in ("mul", "urem", "udiv"):
+    if k in ("mul", "urem", "udiv", "alignTo"):
         need(0, "Int"); need(1, "Int")
         return "Int"
     if k == "pow2Ceil":

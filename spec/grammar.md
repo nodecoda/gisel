@@ -90,6 +90,8 @@ lattice    := ("widen"|"narrow"|"more"|"fewer") "(" expr "," expr ")"
 bitcast    := "bitcast" "(" expr "," expr ")" [ "when" pred ]
 scalarize  := "scalarize" "(" expr ")" [ "when" pred ]
 clamp      := ("clamp_min"|"clamp_max") "(" INT "," type "," expr ")"
+              [ "when" pred ]
+align      := "align_lanes" "(" INT "," type "," expr ")" [ "when" pred ]
 ```
 
 - 一个 `ruleset` 可以挂多个 opcode；规则按书写顺序匹配（`evaluate:860`）。
@@ -97,7 +99,16 @@ clamp      := ("clamp_min"|"clamp_max") "(" INT "," type "," expr ")"
   不是 core 规则（`tests/test_artifacts.py` 计数 1074 = 1071 + 3）。
 - `clamp_min/max` 是**语法糖**，前端展开成一条 `more`/`fewer` 规则：四个 guard
   （是向量、不是可伸缩向量、元素类型相等、lane 数越界）加
-  `replace(vec_of(n, elem_of(slot(i))))`（`dsl.py:478-497`）。
+  `replace(vec_of(n, elem_of(slot(i))))`（`dsl.py:478-497`）。`when` 追加第五个
+  conjunct——这是构造函数 `if` 里出现 clamp 时的唯一写法；没有它，整条 builder
+  链会被拒绝。
+- `align_lanes(i, T, N)` 是 `clampMaxNumElementsStrict` 的前半
+  （`LegalizerInfo.h:1264` 的 `alignNumElementsTo`）：guard 是“固定向量 + 元素
+  类型相等 + lane 数不是 N 的倍数”，变异是
+  `replace(vec_of(align_to(num_elems(slot(i)), N), elem_of(slot(i))))`。上游把它
+  和 `clampMaxNumElements` 连用，所以导入器写成两条规则；**不要**在语法层合并，
+  否则 `eval` 会少做一次变异。`align_to(x, n)` 是值层原语（C++ 的
+  `llvm::alignTo`），与 `pow2_ceil` 并列。
 
 ## 4 表达式
 
