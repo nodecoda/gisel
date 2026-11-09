@@ -227,8 +227,10 @@ LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool �
 2. 子目标特征多（43 个 feature），配置轴要挑代表点（`gfx900`/`gfx90a`/`gfx1100`/
    `gfx1200` + wave32/64），不是把配置全乘起来。
 3. `cases` 的笛卡尔积在 AMDGPU 上会爆：142 rulesets，3~4 槽的 ruleset 不少。
-   X86 74k 状态已经 68 秒；AMDGPU 直接全量必然不可跑，需要按 ruleset 分块 + 只取
-   声明过的类型（`gisel cases` 的等价类压缩要先用上，再测一次规模）。
+   实测（796 条规则的探针语料）：`timeout 120 python3 -m gisel cases
+   /tmp/amdgpu-final.gisel --out ... --json` 返回 124，120 秒内没有写出任何
+   查询。X86 74k 状态已经 68 秒；AMDGPU 直接全量不可跑，需要按 ruleset 分块 +
+   只取声明过的类型（`gisel cases` 的等价类压缩要先用上，再测一次规模）。
 
 ## 6 建议顺序
 
