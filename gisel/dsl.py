@@ -701,7 +701,7 @@ def _tc(node, arity, errs, names=None):
         return "Type"
     if k == "pow2":
         return "Int"
-    if k == "pow2Min":
+    if k in ("pow2Min", "multipleOf"):
         need(0, "Int")
         return "Int"
     if k == "select":

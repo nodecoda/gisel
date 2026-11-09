@@ -2077,6 +2077,12 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
                            % (on, tr.int_expr(args[1])))
             else:
                 out.append("widen(%s, pow2)" % on)
+    elif method == "widenScalarToNextMultipleOf":
+        # `sizeNotMultipleOf` is scalar-only and the mutation calls
+        # `changeElementSize(alignTo(ssz, N))` (LegalizerInfo.h:989) -- exactly
+        # the `multiple_of` target form, which already has a `core` shim.
+        out.append("widen(slot(%s), multiple_of(%s))"
+                   % (idx_of(args[0], env), tr.int_expr(args[1])))
     elif method == "widenVectorEltsToVectorMinSize":
         idx = idx_of(args[0], env)
         out.append("widen(elem_of(slot(%d)), min_vector_size(%s))"
