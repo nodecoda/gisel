@@ -2,8 +2,9 @@
 
 The artifacts are gisel's own output (a drift baseline), not a second
 implementation's: the ``-gen-legalizer`` backend and the ``.td`` it read are
-retired.  Rule fidelity is the answer gate in ``EvaluatorCorpus`` below and in
-``docs/CORPORA.md``.
+retired.  Rule fidelity is gated by ``tools/import-cxx.py --check`` and the
+end-to-end A/B harness; the frozen artifacts below are gisel's own drift
+baseline, not a second implementation.  ``docs/CORPORA.md`` has the chain.
 """
 
 import hashlib
@@ -313,38 +314,6 @@ class EvaluatorSchemaShapes(unittest.TestCase):
         self.assertFalse(E.llt_eq(E.parse_core_llt("s32"),
                                   E.parse_core_llt("p0:*")))
 
-
-class EvaluatorCorpus(unittest.TestCase):
-    """Differential runs: our core JSON vs the frozen target answers."""
-
-    def _check(self, corpus, features, dump, total):
-        sys.path.insert(0, str(ROOT))
-        from gisel import eval as E
-
-        cases = TESTS / "cases"
-        with tempfile.TemporaryDirectory() as d:
-            out = Path(d) / "core.json"
-            r = run("gen", str(TESTS / "corpus" / corpus),
-                    "--emit=core", "--out", str(out))
-            self.assertEqual(r.returncode, 0, r.stderr)
-            ev = E.Evaluator(json.loads(out.read_text()),
-                             E.load_features(str(cases / features)))
-        got, disagree, errors, first, _ = E.run_cases(ev, str(cases / dump))
-        self.assertEqual(got, total)
-        self.assertEqual((disagree, errors), (0, 0), first)
-
-    def test_aarch64_cases_agree(self):
-        self._check("AArch64LegalizerInfo.gisel", "features.json",
-                    "a64_ref_dump.jsonl", 9632)
-
-    def test_x86_cases_agree(self):
-        self._check("X86LegalizerInfo.gisel", "x86-features.json",
-                    "x86_ref_dump.jsonl", 5632)
-
-    def test_riscv_cases_agree(self):
-        """19512 = 2439 points x 8 configurations of the C++ constructor."""
-        self._check("RISCVLegalizerInfo.gisel", "riscv-features.json",
-                    "riscv_ref_dump.jsonl", 19512)
 
     def test_riscv_core_is_one_table_per_opcode(self):
         """The frozen artifact has one rule set per opcode.

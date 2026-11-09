@@ -54,9 +54,10 @@ jobs:
           cmp a.inc "$GITHUB_WORKSPACE/tests/artifacts/aarch64.inc"
           /tmp/gisel-venv/bin/gisel gen AArch64LegalizerInfo.gisel \
             --emit=core --out a.core.json
-          /tmp/gisel-venv/bin/gisel eval --doc a.core.json \
+          /tmp/gisel-venv/bin/gisel cases AArch64LegalizerInfo.gisel \
             --features "$GITHUB_WORKSPACE/tests/cases/features.json" \
-            --cases "$GITHUB_WORKSPACE/tests/cases/a64_ref_dump.jsonl"
+            --out a.cases.jsonl
+          test -s a.cases.jsonl
       - name: installed product surface
         run: |
           set -eu

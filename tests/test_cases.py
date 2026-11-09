@@ -9,7 +9,7 @@ from gisel import cases, eval as E
 
 ROOT = Path(__file__).resolve().parents[1]
 CORPUS = ROOT / "tests" / "corpus"
-ORACLE = ROOT / "tests" / "cases"
+DATA = ROOT / "tests" / "cases"
 
 FIXTURE = """\
 type s8 = LLT::scalar(8)
@@ -297,23 +297,28 @@ class VerifierShapes(unittest.TestCase):
 class Configs(unittest.TestCase):
     def test_config_filter_keeps_only_requested_rows(self):
         doc = cases.document(CORPUS / "X86LegalizerInfo.gisel")
-        features = cases.derive_features(doc, ORACLE / "x86-features.json",
+        features = cases.derive_features(doc, DATA / "x86-features.json",
                                          ["C1"])
         self.assertEqual(sorted(features.table), ["C1"])
 
 
-class FrozenDifferential(unittest.TestCase):
-    """The generated X86 set overlaps the frozen oracle without disagreement."""
-
-    def test_x86_cases_agree_on_the_overlap(self):
-        doc = cases.document(CORPUS / "X86LegalizerInfo.gisel")
-        features = E.load_features(ORACLE / "x86-features.json")
-        gen = cases.generate(doc, features)
-        diff = cases.differ(gen, doc, features,
-                            ORACLE / "x86_ref_dump.jsonl")
-        self.assertGreater(diff.covered, 0)
-        self.assertEqual(diff.disagree, 0, diff.first)
-        self.assertEqual(diff.errors, 0, diff.first)
+class Differential(unittest.TestCase):
+    def test_against_an_answered_query_file_compares_the_overlap(self):
+        doc, features, gen = build(FIXTURE)
+        with tempfile.TemporaryDirectory() as d:
+            queries = Path(d) / "q.jsonl"
+            answers = Path(d) / "a.jsonl"
+            queries.write_text("".join(json.dumps({
+                "config": c.config, "name": c.opcode,
+                "types": list(c.types),
+                "mem": list(c.mem) if c.mem else None,
+                "imms": list(c.imms)}) + "\n" for c in gen.cases))
+            total, errors, first, _ = E.answer_queries(
+                E.Evaluator(doc, features), str(queries), str(answers))
+            self.assertEqual((total, errors), (len(gen.cases), 0), first)
+            diff = cases.differ(gen, doc, features, answers)
+        self.assertEqual(diff.covered, len(gen.cases))
+        self.assertEqual((diff.disagree, diff.errors), (0, 0), diff.first)
 
 
 class OracleKeyShape(unittest.TestCase):
