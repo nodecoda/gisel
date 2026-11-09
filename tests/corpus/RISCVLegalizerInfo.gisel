@@ -38,7 +38,6 @@ feature R_subtargetInfoHasZbb = STI.hasStdExtZbb()
 
 type R_sXLen_lo = LLT::scalar(32)
 type R_sXLen_hi = LLT::scalar(64)
-type R_sDoubleXLen_lo = LLT::scalar(64)
 type R_sDoubleXLen_hi = LLT::scalar(128)
 type R_p0 = LLT::pointer(0, XLen)
 type R_s1 = LLT::scalar(1)
@@ -83,7 +82,7 @@ type R_nxv4p0 = LLT::scalable_vector(4, R_p0)
 type R_nxv8p0 = LLT::scalable_vector(8, R_p0)
 type R_nxv16p0 = LLT::scalable_vector(16, R_p0)
 select R_sXLen = if R_XLen_64 then R_sXLen_hi else R_sXLen_lo
-select R_sDoubleXLen = if R_XLen_64 then R_sDoubleXLen_hi else R_sDoubleXLen_lo
+select R_sDoubleXLen = if R_XLen_64 then R_sDoubleXLen_hi else R_sXLen_hi
 pred R_has64BitScalar = (R_XLen_64 or R_hasStdExtD)
 select R_maxScalar = if R_has64BitScalar then R_s64 else R_s32
 type_set R_BoolVecTys = [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]

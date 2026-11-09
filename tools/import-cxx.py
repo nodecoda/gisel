@@ -88,6 +88,10 @@ FEATURE_NAMES = {
         "ST.hasMOPS()": "hasMOPS",
         "ST.hasNEON()": "hasNEON",
     },
+    "WebAssembly": {
+        "ST.hasAddr64()": "HasAddr64",
+        "ST.hasSignExt()": "HasSignExt",
+    },
     "RISCV": {
         "ST.enableUnalignedScalarMem()": "enableUnalignedScalarMem",
         "ST.getELen() == 64": "getELen_64",
@@ -203,6 +207,18 @@ BUILTIN_LLT = {
 }
 
 
+def _llt_float_ieee(text):
+    """`LLT::floatIEEE(N)` -> the named shortcut the DSL grammar knows.
+
+    `floatIEEE` is the general constructor; the DSL spells the sized IEEE
+    types as `float16()/float32()/float64()/float128()`.  Same LLT, so the
+    rewrite is a spelling change, not a translation.  A size with no named
+    shortcut is left alone and then refused with its source line.
+    """
+    return re.sub(r"LLT::floatIEEE\(\s*(16|32|64|128)\s*\)",
+                  lambda m: "LLT::float%s()" % m.group(1), text)
+
+
 class Types:
     """C++ LLT constants found in the constructor."""
 
@@ -213,6 +229,7 @@ class Types:
         self.refused = []
 
     def name(self, cpp):
+        cpp = _llt_float_ieee(cpp)
         if cpp in self.by_cpp:
             return self.by_cpp[cpp]
         canon = "?" + _norm(cpp).replace(PREFIX, "")
@@ -285,7 +302,7 @@ class Types:
 
     def add(self, cpp_name, rhs, line):
         emitted = PREFIX + cpp_name
-        text = self.translate_refs(rhs)
+        text = _llt_float_ieee(self.translate_refs(rhs))
         if split_ternary(text.strip()):
             # `cond ? A : B` -> a named `select` (same as a reference site).
             self.by_cpp[cpp_name] = self.name(text)
@@ -303,32 +320,66 @@ class Types:
                     self.refused.append((line, "type %s: cannot normalize %r"
                                          % (cpp_name, rhs)))
                     return
-                lo, hi = pick
+                cond, then_bits, else_bits = pick
                 kind = "scalar" if text.startswith("LLT::scalar") else "integer"
-                self._declare_pair(cpp_name, kind, lo, hi)
+                self._declare_pair(cpp_name, kind, then_bits, else_bits, cond)
                 return
         self.by_cpp[cpp_name] = emitted
         self.decl.append((cpp_name, emitted, text))
 
     def _width_select(self, expr):
-        """`XLen`, `2 * XLen` -> the (rv32, rv64) literal pair."""
+        """A feature-dependent width -> (condition, then bits, else bits).
+
+        Two spellings reach here: RISC-V's `XLen` shorthand and a general
+        `cond ? N : M` ternary (WebAssembly's `ST.hasAddr64() ? 64 : 32`).
+        Both become a named `select` over two literal widths; the condition is
+        kept as C++ text and rendered through `Translator.feature`, so it can
+        be any predicate the feature table can answer.
+        """
+        m = re.fullmatch(r"(.+?)\s*\?\s*(\d+)\s*:\s*(\d+)", expr.strip(),
+                         re.S)
+        if m:
+            return m.group(1).strip(), int(m.group(2)), int(m.group(3))
         e = expr.replace(" ", "")
         if e == "XLen":
-            return 32, 64
+            return "XLen == 64", 64, 32
         if e in ("2*XLen", "XLen*2"):
-            return 64, 128
+            return "XLen == 64", 128, 64
         return None
 
-    def _declare_pair(self, cpp_name, kind, lo, hi):
+    def _existing_name(self, kind, bits):
+        """A declared type with this LLT value, if the file already has one.
+
+        Two names for one LLT are the same `const LLT` in C++, so the `.inc`
+        emitter (which resolves rule types by value, not by the name the rule
+        spelled) would fold them into whichever name was declared last.  Reuse
+        the existing name instead: the generated constructor then reads like
+        the source, and no `Wasm_p0i_lo` stands in for `Wasm_i32`.
+        """
+        rhs = "LLT::%s(%d)" % (kind, bits)
+        for _, name, text in self.decl:
+            if text == rhs:
+                return name
+        return None
+
+    def _declare_pair(self, cpp_name, kind, then_bits, else_bits, cond):
         emitted = PREFIX + cpp_name
-        base = PREFIX + "sel" + cpp_name
-        self.by_cpp["__lo_" + cpp_name] = "%s_lo" % emitted
-        self.by_cpp["__hi_" + cpp_name] = "%s_hi" % emitted
-        self.decl.append((None, "%s_lo" % emitted, "LLT::%s(%d)" % (kind, lo)))
-        self.decl.append((None, "%s_hi" % emitted, "LLT::%s(%d)" % (kind, hi)))
+        lo, hi = sorted((then_bits, else_bits))
+        names = {}
+        for bits, suffix in ((lo, "_lo"), (hi, "_hi")):
+            name = self._existing_name(kind, bits)
+            if name is None:
+                name = "%s%s" % (emitted, suffix)
+                self.decl.append((None, name, "LLT::%s(%d)" % (kind, bits)))
+            names[bits] = name
+        lo_name, hi_name = names[lo], names[hi]
+        self.by_cpp["__lo_" + cpp_name] = lo_name
+        self.by_cpp["__hi_" + cpp_name] = hi_name
         self.by_cpp[cpp_name] = emitted
         self.selects = getattr(self, "selects", [])
-        self.selects.append((emitted, emitted + "_lo", emitted + "_hi"))
+        then_name, else_name = ((hi_name, lo_name) if then_bits >= else_bits
+                                else (lo_name, hi_name))
+        self.selects.append((emitted, then_name, else_name, cond))
 
 
 # ---------------------------------------------------------------------------
@@ -1815,8 +1866,9 @@ class Importer:
         if m:
             self.named_preds[m.group(1)] = self.tr.pred(m.group(2))
             return
-        if re.match(r"auto\s*&\s*\w+\s*=", st):
-            m = re.match(r"auto\s*&\s*(\w+)\s*=\s*(.+)$", st, re.S)
+        if re.match(r"(?:auto|LegalizeRuleSet)\s*&\s*\w+\s*=", st):
+            m = re.match(r"(?:auto|LegalizeRuleSet)\s*&\s*(\w+)\s*=\s*(.+)$",
+                         st, re.S)
             return self.chain(m.group(1), m.group(2), line)
         if st.startswith("getActionDefinitionsBuilder"):
             return self.chain(None, st, line)
@@ -2130,15 +2182,18 @@ def render(imp):
     out.append('include "llvm/Target/LegalizerInfo.td"')
     out.append('include "llvm/Target/Target.td"')
     out.append("")
+    # A width select's guard is a feature like any other: resolve the guard
+    # names first, so the `feature` block below already contains them.
+    select_lines = [
+        "select %s = if %s then %s else %s"
+        % (emitted, imp.tr.feature(cond), then_name, else_name)
+        for emitted, then_name, else_name, cond in getattr(t, "selects", [])]
     for cpp, name in sorted(imp.tr.features.items(), key=lambda kv: kv[1]):
         out.append("feature %s = %s" % (name, cpp))
     out.append("")
     for _, name, rhs in t.decl:
         out.append("type %s = %s" % (name, rhs))
-    for emitted, _lo, _hi in getattr(t, "selects", []):
-        out.append("select %s = if %s then %s else %s"
-                   % (emitted, imp.tr.feature("XLen == 64"),
-                      _hi, _lo))
+    out.extend(select_lines)
     for name, text in getattr(t, "preds", []):
         out.append("pred %s = %s" % (name, text))
     for name, cond, then, els in getattr(t, "anon", []):
@@ -2195,6 +2250,10 @@ TARGETS = {
         "M68k", "M68k",
         "lib/Target/M68k/GISel/M68kLegalizerInfo.cpp",
         6, 13),
+    "WebAssembly": Target(
+        "WebAssembly", "Wasm",
+        "lib/Target/WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp",
+        29, 109),
 }
 
 

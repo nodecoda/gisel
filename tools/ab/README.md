@@ -33,6 +33,7 @@ is back on the baseline include.
 | `x86-ctor` | generated constructor object | retired with the `.td` path; kept only for old logs |
 | `aarch64` | generated constructor object | does not modify the build |
 | `m68k` | generated constructor object | 41-query smoke target; single `default` config |
+| `wasm` | generated constructor object | 942 queries; `wasm32|wasm64` × `±sign-ext` |
 
 Adapters live in `tools/ab/targets/*.json`: include path, library, ninja
 target, runner builder, feature table, optional axes, query-count contract.

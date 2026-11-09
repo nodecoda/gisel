@@ -31,9 +31,9 @@ class WasmCorpus(unittest.TestCase):
         doc = cases.document(WASM)
         features = cases.derive_features(doc)
         generation = cases.generate(doc, features)
-        self.assertNotIn("Wasm_SEXT_INREG#0", generation.stats["unwitnessed"])
+        self.assertNotIn("Wasm_G_SEXT_INREG#0", generation.stats["unwitnessed"])
         witnesses = [case for case in generation.cases
-                     if case.ruleset == "Wasm_SEXT_INREG" and case.rule == 0]
+                     if case.ruleset == "Wasm_G_SEXT_INREG" and case.rule == 0]
         self.assertTrue(witnesses)
         self.assertTrue(any(case.imms for case in witnesses))
 

@@ -1,0 +1,6 @@
+{
+  "wasm32":          {"ST.hasAddr64()": false, "ST.hasSignExt()": false},
+  "wasm32-signext":  {"ST.hasAddr64()": false, "ST.hasSignExt()": true},
+  "wasm64":          {"ST.hasAddr64()": true,  "ST.hasSignExt()": false},
+  "wasm64-signext":  {"ST.hasAddr64()": true,  "ST.hasSignExt()": true}
+}

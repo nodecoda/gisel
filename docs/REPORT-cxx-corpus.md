@@ -125,7 +125,7 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 - 换上游修订需要改 `TARGETS` 里的计数并重新生成，不是运行时参数；这是
   有意为之。当前三份输入钉的是和冻结答案同一次构建的源码修订（sha 见上表），
   不一定是最新 upstream；换修订就要连答案一起重冻。
-- WebAssembly 仍是人工转写的小探针，不在 `--all` 里；M68k 已转正（见 §9）。
+- M68k 已转正（见 §9），WebAssembly 已转正（见 §10）。
 - LLVM 研究分支上残留的 `.td` / `-gen-legalizer*` 代码不在本仓库清理范围；
   gisel 这边已经不再读它。
 
@@ -165,3 +165,33 @@ M68k 是 LLVM 的 experimental target，构建时要加
 `LLVM_EXPERIMENTAL_TARGETS_TO_BUILD=M68k`；`toolset/configure.sh` 已支持这个
 环境变量。它的 runner 用的是 `tools/ab/query_runner_common.h`，每目标文件约
 30 行；其余 target 的接入按同一模板走。
+
+## 10 WebAssembly 转正（2026-11-09）
+
+WebAssembly 原本是人工转写的探针（108 条，用来找 imm 轴的缺口）。它现在和
+M68k 一样走 `import-cxx`：
+
+- 语料从 pin `9bfc850b9940` 的 `WebAssemblyLegalizerInfo.cpp` 转录，
+  **29 rulesets / 109 rules / 0 refused**，`.gisel` 逐字节可复现；
+- 查询集 942 条（`wasm32`/`wasm64` × `±sign-ext` 四个配置）；
+- 端到端 **942/942 agree、0 disagree、0 unanswerable**：
+  `tools/ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc OUT`。
+
+为了做到 0 拒绝，转录器补了三处（都是拼写归一，不是新增语义）：
+
+| C++ | 处理 | 为什么不是语义改动 |
+|---|---|---|
+| `LLT::floatIEEE(32/64)` | `_llt_float_ieee()` → `LLT::float32()/float64()` | 同一个 LLT；DSL 只认命名捷径 |
+| `LLT::integer(ST.hasAddr64() ? 64 : 32)` | 通用三元 → `select … if HasAddr64`（原来硬编码 RISC-V 的 `XLen == 64`） | 特征相关的宽度本来就落成 `select`，只是条件文本现在来自源码 |
+| `Wasm_i32` 与 `Wasm_p0i_lo` 同为 `LLT::integer(32)` | `_declare_pair()` 复用已声明的名字 | 一个 LLT 一个名字；否则 `.inc` 发射器按值取名会把规则里的 `Wasm_i32` 折成最后声明的那个别名 |
+
+第三个还暴露了 `.inc` 的一个既有事实：AST 在解析时把具名类型解析成 LLT 值，
+发射器只能按**值**取回名字，所以同名值有多个名字时“最后声明者赢”。语料因此
+保持“一个 LLT 一个名字”，RISC-V 的 `sDoubleXLen_lo`（= `sXLen_hi`）随之并入
+`sXLen_hi`，`tests/artifacts/riscv.*` 同步重生成（语义逐条相同，只有行号/名字变化，
+`strip_origin` 后 JSON 相等）。
+
+两个配置轴都是构造函数真正读的：`ST.hasAddr64()`（wasm32 vs wasm64）与
+`ST.hasSignExt()`（`mvp` vs `generic` CPU）。前者改 `p0` 宽度和
+`p0i/p0s` 两个 select，后者改 `G_SEXT_INREG` 的 legal 规则——两条都在
+抽样查询里验证过会翻转答案，不是恒真轴。

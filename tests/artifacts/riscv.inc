@@ -34,7 +34,6 @@
 
   const LLT R_sXLen_lo = LLT::scalar(32);
   const LLT R_sXLen_hi = LLT::scalar(64);
-  const LLT R_sDoubleXLen_lo = LLT::scalar(64);
   const LLT R_sDoubleXLen_hi = LLT::scalar(128);
   const LLT R_p0 = LLT::pointer(0, XLen);
   const LLT R_s1 = LLT::scalar(1);

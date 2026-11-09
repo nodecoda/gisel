@@ -3,8 +3,10 @@
 > 历史说明：本报告写作时 `.td` 渲染器仍存在；它已在 `docs/REPORT-no-td.md` 中移除。
 > 这是工作台报告：`tools/import-cxx.py` 是工作台工具，不是 gisel 的功能；边界见 `docs/SCOPE.md`。
 
-状态: 证据记录（2026-11-06）。语料: `tests/corpus/M68kLegalizerInfo.gisel`（13 条）、
-`tests/corpus/WebAssemblyLegalizerInfo.gisel`（108 条）。
+状态: 证据记录（2026-11-06，2026-11-09 追补）。语料:
+`tests/corpus/M68kLegalizerInfo.gisel`（13 条）、
+`tests/corpus/WebAssemblyLegalizerInfo.gisel`（109 条，已由 `import-cxx` 转录；
+本报告 §4 保留当初人工转写时的拼写记录）。
 
 ## 1 结论
 
@@ -12,9 +14,11 @@
   X86 已有 `.td`+`.gisel`（1075 条），其余 5 个没有。
 - 取最小的 M68k（52 行）和中等且换了一组 API 的 WebAssembly（234 行）各压一遍：
   - **M68k: 13/13 条可表达，0 缺口。**
-  - **WebAssembly: 109/109 条可表达。** 第一轮压出 1 条缺口（`G_SEXT_INREG` 的
-    legal 规则读 imm 0），当天补上 imm 轴（`imm(i)` 观察子 + 同质集合），
-    现在 109 条全部可表达。
+  - **WebAssembly: 109/109 条可表达，且已转正。** 第一轮压出 1 条缺口
+    （`G_SEXT_INREG` 的 legal 规则读 imm 0），当天补上 imm 轴（`imm(i)` 观察子 +
+    同质集合）。2026-11-09 起语料改由 `tools/import-cxx.py` 从 C++ 转录，
+    29 rulesets / 109 rules / **0 refused**，并跑通端到端
+    **942/942 agree**（见 §8）。
 - 两份 `.gisel` 的 `--emit=inc` 片段都用**未修改的** LLVM 头文件编译通过
   （`-fsyntax-only`，反例见 §6），也就是说除了那一条，C++ 侧没有 shim 缺口。
 
@@ -40,13 +44,15 @@
 `narrow(slot(0), ty(s32))`（两条 core 规则），shim 落到
 `coreMinScalar`/`coreMaxScalar`。
 
-## 4 WebAssembly：29 条 builder 链 → 108 条规则
+## 4 WebAssembly：29 条 builder 链 → 109 条规则（人工转写期的记录）
 
 覆盖的 API：`legalFor`、`legalForCartesianProduct`、`legalForTypesWithMemDesc`、
 `widenScalarToNextPow2`、`clampScalar`、`minScalar`、`scalarSameSizeAs`、`lower`、
 `lowerIfMemSizeNotByteSizePow2`、`legalIf`（带 imm）。前 9 个可表达，最后一个不行。
 
-转写时有 5 处拼写选择，没有一处是语法糖：
+转写时有 5 处拼写选择，没有一处是语法糖。这些现在都由转录器自动完成
+（`LLT::floatIEEE` 归一、通用三元宽度、`_declare_pair` 复用同名 LLT）；下表是
+当初手工对齐时留下的依据：
 
 | C++ | `.gisel` | 依据 |
 |---|---|---|
@@ -94,7 +100,7 @@ legal (feature("Subtarget.hasSignExt()") and in(slot(0), [Wasm_i32, Wasm_i64])
 | C++ | core IR | 结论 | 成本 |
 |---|---|---|---|
 | `immInSet(i, S)` / `immIs(i, v)` | `imm(i)` + Int 集合 | **已补**（D-20261107-80）：`imm(i)` 观察子（SortInt）+ `in` 接受 Int 集合，`domain.imms` 填下标；5 个后端 + eval 全覆盖 | 已完成；LLVM 侧 `.td` 还差 `CoreImm`，只影响「生成的 .td 再喂 llvm-tblgen」 |
-| `LLT::floatIEEE(n)` | 无（只认 `float32()`） | 前端可消除：`normalize_llt` 加一行 | 极低；无测试受影响 |
+| `LLT::floatIEEE(n)` | 无（只认 `float32()`） | **已消除**：转录器 `_llt_float_ieee()` 归一到 `float32()/float64()/float128()` | 0 |
 | `LLT::integer(<任意 C++ 表达式>)` | 只能整数字面量 | 保留：`select` 已覆盖「按特征选类型」；按特征选**整数**（bit 数）目前无人用 | 0（无用到） |
 | `lowerIfMemSizeNotByteSizePow2()` | 可合成 | 不需要改；C++ 侧已验证编译（`TypeSize` 有隐式 `operator uint64_t`，`TypeSize.h:384`） | 0 |
 | `scalarSameSizeAs` | `same_as(n)` | 不需要改 | 0 |
@@ -144,3 +150,29 @@ status=2                      # 反例证明片段真的被编译
 - 唯一的缺口落在 **imm 轴**，而它恰好是 core IR 从 `.td` 迁过来时被丢掉的一列
   （`(Opcode, Types, MMODescs, Imms)` 里的最后一列）。**已补**（D-20261107-80），
   RISCV 迁移的前置条件不再缺这一块。
+
+## 8 转正后的端到端证据（2026-11-09）
+
+```
+$ python3 tools/import-cxx.py WebAssembly --pin tests/corpus/PIN.json \
+    --git-repo /home/ubuntu/llvm/trees/explore/llvm \
+    --out tests/corpus/WebAssemblyLegalizerInfo.gisel
+tests/corpus/WebAssemblyLegalizerInfo.gisel: 29 rulesets, 109 rules, 0 refused
+
+$ tools/ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc /tmp/wasm-e2e
+/tmp/wasm-e2e/runner.official: 942 queries, 0 unanswerable
+/tmp/wasm-e2e/runner.ours: 942 queries, 0 unanswerable
+{"agree": 942, "disagree": 0, "unanswerable": 0, ...}
+```
+
+配置轴（两个都是构造函数真读的）：
+
+| config | triple | CPU | `hasAddr64` | `hasSignExt` |
+|---|---|---|---|---|
+| `wasm32` | `wasm32-unknown-unknown` | `mvp` | false | false |
+| `wasm32-signext` | `wasm32-unknown-unknown` | `generic` | false | true |
+| `wasm64` | `wasm64-unknown-unknown` | `mvp` | true | false |
+| `wasm64-signext` | `wasm64-unknown-unknown` | `generic` | true | true |
+
+`generic` 是默认 CPU，特征表里含 `sign-ext`；要关掉得显式用 `mvp`（空基线），
+否则“无 sign-ext”这个配置根本不存在。

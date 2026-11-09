@@ -1,42 +1,17 @@
-//===- WebAssemblyLegalizerInfo.gisel - free-form legalizer rules -*- gisel -*-===//
+//===- WebAssemblyLegalizerInfo.gisel - imported from WebAssemblyLegalizerInfo.cpp -*- gisel -*-===//
 //
-// Part of the LLVM Project, under the Apache License v2.0 with LLVM Exceptions.
-// See https://llvm.org/LICENSE.txt for license information.
-// SPDX-License-Identifier: Apache-2.0 WITH LLVM-exception
+// One-shot transcription: `tools/import-cxx.py WebAssembly WebAssemblyLegalizerInfo.cpp`.
+// Source sha256 c6409b1d4eb1b44a7e8d0b9fbb4332497e4cb6d7f2c74ba42482ccb392a5edd8.  Do not edit by hand; re-run the importer instead.
 //
-//===----------------------------------------------------------------------===//
-//
-// Hand-transcribed from llvm/lib/Target/WebAssembly/GISel/
-// WebAssemblyLegalizerInfo.cpp (234 lines, 29 builder chains).  There is no
-// .td for this target, so this file is a coverage probe: it asks whether the
-// free-form DSL can express the builder chains a third target uses.
-//
-// Spelling notes (the C++ text is preserved where the front end can normalize
-// it; these three are the places where it cannot):
-//
-//   LLT::floatIEEE(32/64)   -> LLT::float32()/LLT::float64().  Same LLT; the
-//                              front end normalizes the named shortcuts only.
-//   LLT::integer(ST.hasAddr64() ? 64 : 32)  -> `select ... if HasAddr64`.
-//                              A feature-dependent *integer* width cannot be
-//                              written inline (the RHS is normalized, not
-//                              evaluated).
-//   scalarSameSizeAs(t, s)  -> widen(t, same_as(s)) + narrow(t, same_as(s));
-//                              the shim keeps the C++ guard
-//                              (coreMinScalarSameAs/coreMaxScalarSameAs).
-//   clampScalar(i, lo, hi)  -> widen(i, ty(lo)) + narrow(i, ty(hi)); the shim
-//                              coreMinScalar/coreMaxScalar is the same pair.
-//
-// This is also the corpus that pins the immediate axis: G_SEXT_INREG's legal
-// rule reads imm 0, and it is the only rule here that does.  `imm(i)` is the
-// observation (`Query.Immediates[i]`), `in(imm(0), [8, 16])` is `immInSet`
-// and `imm(0) == 32` is `immIs`.  See docs/REPORT-wasm.md and D-20261107-80.
+// The importer refuses what it cannot translate; every refusal below is a
+// statement that still has to be written by hand (or taught to the importer).
 //
 //===----------------------------------------------------------------------===//
 include "llvm/Target/LegalizerInfo.td"
 include "llvm/Target/Target.td"
 
-feature Wasm_HasAddr64 = Subtarget.hasAddr64()
-feature Wasm_HasSignExt = Subtarget.hasSignExt()
+feature Wasm_HasAddr64 = ST.hasAddr64()
+feature Wasm_HasSignExt = ST.hasSignExt()
 
 type Wasm_i8 = LLT::integer(8)
 type Wasm_i16 = LLT::integer(16)
@@ -46,29 +21,29 @@ type Wasm_f32 = LLT::float32()
 type Wasm_f64 = LLT::float64()
 type Wasm_s32 = LLT::scalar(32)
 type Wasm_s64 = LLT::scalar(64)
-type Wasm_p0 = LLT::pointer(0, Subtarget.hasAddr64() ? 64 : 32)
+type Wasm_p0 = LLT::pointer(0, ST.hasAddr64() ? 64 : 32)
 select Wasm_p0i = if Wasm_HasAddr64 then Wasm_i64 else Wasm_i32
 select Wasm_p0s = if Wasm_HasAddr64 then Wasm_s64 else Wasm_s32
 
-ruleset Wasm_IMPLICIT_DEF: G_IMPLICIT_DEF
+ruleset Wasm_G_IMPLICIT_DEF: G_IMPLICIT_DEF
     legal in(slot(0), [Wasm_i32, Wasm_i64, Wasm_f32, Wasm_f64, Wasm_p0])
     widen(slot(0), pow2)
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
 
-ruleset Wasm_CONSTANT: G_CONSTANT
+ruleset Wasm_G_CONSTANT: G_CONSTANT
     legal in(slot(0), [Wasm_i32, Wasm_i64, Wasm_p0])
     widen(slot(0), pow2)
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
 
-ruleset Wasm_ARITH: G_ADD G_SUB G_MUL G_UDIV G_SDIV G_UREM G_SREM G_AND G_OR G_XOR
+ruleset Wasm_G_ADD: G_ADD G_SUB G_MUL G_UDIV G_SDIV G_UREM G_SREM G_AND G_OR G_XOR
     legal in(slot(0), [Wasm_i32, Wasm_i64])
     widen(slot(0), pow2)
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
 
-ruleset Wasm_SHIFT: G_ASHR G_LSHR G_SHL
+ruleset Wasm_G_ASHR: G_ASHR G_LSHR G_SHL
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_i32], [Wasm_i64, Wasm_i64]])
     widen(slot(0), pow2)
     widen(slot(0), ty(Wasm_s32))
@@ -76,7 +51,7 @@ ruleset Wasm_SHIFT: G_ASHR G_LSHR G_SHL
     widen(slot(1), same_as(0))
     narrow(slot(1), same_as(0))
 
-ruleset Wasm_BITCOUNT: G_CTLZ G_CTTZ G_CTPOP
+ruleset Wasm_G_CTLZ: G_CTLZ G_CTTZ G_CTPOP
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_i32], [Wasm_i64, Wasm_i64]])
     widen(slot(1), pow2)
     widen(slot(1), ty(Wasm_s32))
@@ -84,19 +59,19 @@ ruleset Wasm_BITCOUNT: G_CTLZ G_CTTZ G_CTPOP
     widen(slot(0), same_as(1))
     narrow(slot(0), same_as(1))
 
-ruleset Wasm_BITCOUNT_POISON: G_CTLZ_ZERO_POISON G_CTTZ_ZERO_POISON
+ruleset Wasm_G_CTLZ_ZERO_POISON: G_CTLZ_ZERO_POISON G_CTTZ_ZERO_POISON
     lower true
 
-ruleset Wasm_ROTATE: G_ROTL G_ROTR
+ruleset Wasm_G_ROTL: G_ROTL G_ROTR
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_i32], [Wasm_i64, Wasm_i64]])
     widen(slot(1), same_as(0))
     narrow(slot(1), same_as(0))
     lower true
 
-ruleset Wasm_FUNNEL_SHIFT: G_FSHL G_FSHR
+ruleset Wasm_G_FSHL: G_FSHL G_FSHR
     lower true
 
-ruleset Wasm_ICMP: G_ICMP
+ruleset Wasm_G_ICMP: G_ICMP
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_i32], [Wasm_i32, Wasm_i64], [Wasm_i32, Wasm_p0]])
     widen(slot(1), pow2)
     widen(slot(0), ty(Wasm_s32))
@@ -104,76 +79,76 @@ ruleset Wasm_ICMP: G_ICMP
     widen(slot(1), ty(Wasm_s32))
     narrow(slot(1), ty(Wasm_s64))
 
-ruleset Wasm_MINMAX: G_UMIN G_UMAX G_SMIN G_SMAX
+ruleset Wasm_G_UMIN: G_UMIN G_UMAX G_SMIN G_SMAX
     lower true
 
-ruleset Wasm_SCMP: G_SCMP G_UCMP
+ruleset Wasm_G_SCMP: G_SCMP G_UCMP
     lower true
 
-ruleset Wasm_EXT: G_ANYEXT G_SEXT G_ZEXT
+ruleset Wasm_G_ANYEXT: G_ANYEXT G_SEXT G_ZEXT
     legal in_pairs(slot(0), slot(1), [[Wasm_i64, Wasm_i32]])
     widen(slot(0), ty(Wasm_s64))
     narrow(slot(0), ty(Wasm_s64))
     widen(slot(1), ty(Wasm_s32))
     narrow(slot(1), ty(Wasm_s32))
 
-ruleset Wasm_TRUNC: G_TRUNC
+ruleset Wasm_G_TRUNC: G_TRUNC
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_i64]])
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s32))
     widen(slot(1), ty(Wasm_s64))
     narrow(slot(1), ty(Wasm_s64))
 
-ruleset Wasm_SEXT_INREG: G_SEXT_INREG
-    legal (Wasm_HasSignExt and in(slot(0), [Wasm_i32, Wasm_i64]) and (in(imm(0), [8, 16]) or (in(slot(0), Wasm_i64) and imm(0) == 32)))
+ruleset Wasm_G_SEXT_INREG: G_SEXT_INREG
+    legal (Wasm_HasSignExt and (in(slot(0), [Wasm_i32, Wasm_i64]) and (in(imm(0), [8, 16]) or (slot(0) == Wasm_i64 and imm(0) == 32))))
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
     lower true
 
-ruleset Wasm_FP: G_FCONSTANT G_FABS G_FNEG G_FCEIL G_FFLOOR G_INTRINSIC_TRUNC G_FNEARBYINT G_FRINT G_INTRINSIC_ROUNDEVEN G_FSQRT G_FADD G_FSUB G_FMUL G_FDIV
+ruleset Wasm_G_FCONSTANT: G_FCONSTANT G_FABS G_FNEG G_FCEIL G_FFLOOR G_INTRINSIC_TRUNC G_FNEARBYINT G_FRINT G_INTRINSIC_ROUNDEVEN G_FSQRT G_FADD G_FSUB G_FMUL G_FDIV
     legal in(slot(0), [Wasm_f32, Wasm_f64])
     widen(slot(0), ty(Wasm_s32))
 
-ruleset Wasm_FCOPYSIGN: G_FCOPYSIGN
+ruleset Wasm_G_FCOPYSIGN: G_FCOPYSIGN
     legal in(slot(0), [Wasm_f32, Wasm_f64])
     widen(slot(0), ty(Wasm_s32))
     widen(slot(1), same_as(0))
     narrow(slot(1), same_as(0))
 
-ruleset Wasm_FPEXT: G_FPEXT
+ruleset Wasm_G_FPEXT: G_FPEXT
     legal in_pairs(slot(0), slot(1), [[Wasm_f64, Wasm_f32]])
     widen(slot(0), ty(Wasm_s64))
     narrow(slot(0), ty(Wasm_s64))
     widen(slot(1), ty(Wasm_s32))
     narrow(slot(1), ty(Wasm_s32))
 
-ruleset Wasm_FPTRUNC: G_FPTRUNC
+ruleset Wasm_G_FPTRUNC: G_FPTRUNC
     legal in_pairs(slot(0), slot(1), [[Wasm_f32, Wasm_f64]])
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s32))
     widen(slot(1), ty(Wasm_s64))
     narrow(slot(1), ty(Wasm_s64))
 
-ruleset Wasm_BITCAST: G_BITCAST
+ruleset Wasm_G_BITCAST: G_BITCAST
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_f32], [Wasm_f32, Wasm_i32], [Wasm_i64, Wasm_f64], [Wasm_f64, Wasm_i64]])
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
     widen(slot(1), ty(Wasm_s32))
     narrow(slot(1), ty(Wasm_s64))
 
-ruleset Wasm_FPTOINT: G_FPTOSI G_FPTOUI
+ruleset Wasm_G_FPTOSI: G_FPTOSI G_FPTOUI
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_f32], [Wasm_i32, Wasm_f64], [Wasm_i64, Wasm_f32], [Wasm_i64, Wasm_f64]])
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
     widen(slot(1), ty(Wasm_s32))
 
-ruleset Wasm_INTTOFP: G_SITOFP G_UITOFP
+ruleset Wasm_G_SITOFP: G_SITOFP G_UITOFP
     legal in_pairs(slot(0), slot(1), [[Wasm_f32, Wasm_i32], [Wasm_f32, Wasm_i64], [Wasm_f64, Wasm_i32], [Wasm_f64, Wasm_i64]])
     widen(slot(0), ty(Wasm_s32))
     widen(slot(1), ty(Wasm_s32))
     narrow(slot(1), ty(Wasm_s64))
 
-ruleset Wasm_SELECT: G_SELECT
+ruleset Wasm_G_SELECT: G_SELECT
     legal in_pairs(slot(0), slot(1), [[Wasm_i32, Wasm_i32], [Wasm_i64, Wasm_i32], [Wasm_f32, Wasm_i32], [Wasm_f64, Wasm_i32], [Wasm_p0, Wasm_i32]])
     widen(slot(0), pow2)
     widen(slot(0), ty(Wasm_s32))
@@ -181,38 +156,38 @@ ruleset Wasm_SELECT: G_SELECT
     widen(slot(1), ty(Wasm_s32))
     narrow(slot(1), ty(Wasm_s32))
 
-ruleset Wasm_PTRTOINT: G_PTRTOINT
+ruleset Wasm_G_PTRTOINT: G_PTRTOINT
     legal in_pairs(slot(0), slot(1), [[Wasm_p0i, Wasm_p0]])
     widen(slot(0), ty(Wasm_p0s))
     narrow(slot(0), ty(Wasm_p0s))
 
-ruleset Wasm_INTTOPTR: G_INTTOPTR
+ruleset Wasm_G_INTTOPTR: G_INTTOPTR
     legal in_pairs(slot(0), slot(1), [[Wasm_p0, Wasm_p0i]])
     widen(slot(1), ty(Wasm_p0s))
     narrow(slot(1), ty(Wasm_p0s))
 
-ruleset Wasm_PTR_ADD: G_PTR_ADD G_PTRMASK
+ruleset Wasm_G_PTR_ADD: G_PTR_ADD G_PTRMASK
     legal in_pairs(slot(0), slot(1), [[Wasm_p0, Wasm_p0i]])
     widen(slot(1), ty(Wasm_p0s))
     narrow(slot(1), ty(Wasm_p0s))
 
-ruleset Wasm_ADDR: G_FRAME_INDEX G_GLOBAL_VALUE
-    legal in(slot(0), Wasm_p0)
+ruleset Wasm_G_FRAME_INDEX: G_FRAME_INDEX G_GLOBAL_VALUE
+    legal in(slot(0), [Wasm_p0])
 
-ruleset Wasm_LOAD: G_LOAD
+ruleset Wasm_G_LOAD: G_LOAD
     legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(Wasm_i32, Wasm_p0, Wasm_i8, 1), mem_desc(Wasm_i32, Wasm_p0, Wasm_i16, 1), mem_desc(Wasm_i32, Wasm_p0, Wasm_i32, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i8, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i16, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i32, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i64, 1), mem_desc(Wasm_f32, Wasm_p0, Wasm_f32, 1), mem_desc(Wasm_f64, Wasm_p0, Wasm_f64, 1), mem_desc(Wasm_p0, Wasm_p0, Wasm_p0, 1)])
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
-    lower (not(is_byte_sized(mem_ty(mem_slot(0)))) or not(is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))))
+    lower (not is_byte_sized(mem_ty(mem_slot(0))) or not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0)))))
 
-ruleset Wasm_EXTLOAD: G_ZEXTLOAD G_SEXTLOAD
+ruleset Wasm_G_ZEXTLOAD: G_ZEXTLOAD G_SEXTLOAD
     legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(Wasm_i32, Wasm_p0, Wasm_i8, 1), mem_desc(Wasm_i32, Wasm_p0, Wasm_i16, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i8, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i16, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i32, 1)])
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
-    lower (not(is_byte_sized(mem_ty(mem_slot(0)))) or not(is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))))
+    lower (not is_byte_sized(mem_ty(mem_slot(0))) or not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0)))))
 
-ruleset Wasm_STORE: G_STORE
+ruleset Wasm_G_STORE: G_STORE
     legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(Wasm_i32, Wasm_p0, Wasm_i8, 1), mem_desc(Wasm_i32, Wasm_p0, Wasm_i16, 1), mem_desc(Wasm_i32, Wasm_p0, Wasm_i32, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i8, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i16, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i32, 1), mem_desc(Wasm_i64, Wasm_p0, Wasm_i64, 1), mem_desc(Wasm_f32, Wasm_p0, Wasm_f32, 1), mem_desc(Wasm_f64, Wasm_p0, Wasm_f64, 1), mem_desc(Wasm_p0, Wasm_p0, Wasm_p0, 1)])
     widen(slot(0), ty(Wasm_s32))
     narrow(slot(0), ty(Wasm_s64))
-    lower (not(is_byte_sized(mem_ty(mem_slot(0)))) or not(is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))))
+    lower (not is_byte_sized(mem_ty(mem_slot(0))) or not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0)))))

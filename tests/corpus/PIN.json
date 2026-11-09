@@ -19,6 +19,10 @@
     "M68k": {
       "path": "llvm/lib/Target/M68k/GISel/M68kLegalizerInfo.cpp",
       "sha256": "f796bb977e0b77f56374c10243acb24e3818df7d9637eed2fc0df4c6e0295c36"
+    },
+    "WebAssembly": {
+      "path": "llvm/lib/Target/WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp",
+      "sha256": "c6409b1d4eb1b44a7e8d0b9fbb4332497e4cb6d7f2c74ba42482ccb392a5edd8"
     }
   },
   "patches": [

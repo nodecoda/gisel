@@ -373,9 +373,11 @@ class EvaluatorCorpus(unittest.TestCase):
 class ProbeCorpus(unittest.TestCase):
     """Probe corpora: every backend must still accept the source.
 
-    M68k and WebAssembly are transcribed by hand from their C++, so there is
-    no golden artifact to compare against; what is checked is that the source
-    survives every backend and lands in the canonical form intact.
+    M68k and WebAssembly are imported from pinned C++ (see
+    `tests/test_import_cxx.py`), but they have no frozen artifact baseline the
+    way X86/AArch64/RISC-V do; what is checked here is that each source
+    survives every backend and lands in the canonical form intact.  WebAssembly
+    is also the corpus that pins the immediate axis.
     """
 
     PROBES = (("M68kLegalizerInfo", 6, 13), ("WebAssemblyLegalizerInfo", 29, 109))
@@ -412,8 +414,8 @@ class ProbeCorpus(unittest.TestCase):
             self.assertEqual(r.returncode, 0, r.stderr)
             feats = d / "f.json"
             feats.write_text(json.dumps({"signext": {
-                "Subtarget.hasSignExt()": True,
-                "Subtarget.hasAddr64()": True}}))
+                "ST.hasSignExt()": True,
+                "ST.hasAddr64()": True}}))
             cases = d / "c.jsonl"
             cases.write_text("\n".join(rows) + "\n")
             r = run("eval", "--doc", str(core), "--features", str(feats),
