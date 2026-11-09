@@ -73,7 +73,8 @@ def load_target(name: str) -> dict:
         raise HarnessError("%s: missing %s" % (path, ", ".join(missing)))
     if doc["schema"] != 1:
         raise HarnessError("%s: unsupported schema %r" % (path, doc["schema"]))
-    if doc["strategy"] not in ("swap-library", "generated-ctor"):
+    if doc["strategy"] not in ("swap-library", "swap-source",
+                               "generated-ctor"):
         raise HarnessError("%s: unknown strategy %r"
                            % (path, doc["strategy"]))
     return doc
@@ -250,6 +251,23 @@ def answer(runner: Path, queries: Path, out: Path):
                  runner, queries, out])
 
 
+
+def swap_source(mode: str, target: dict, tree: Path, inc: Path | None = None):
+    """Patch the constructor body to include `inc` (or restore the original).
+
+    `swap-source-ctor.py` keeps the untouched file under `TREE/.gisel-swap`, so
+    restore is byte exact even if the run dies in the middle.
+    """
+    cmd = [sys.executable, ROOT / "tools" / "ab" / "swap-source-ctor.py", mode,
+           "--target", target["name"], "--tree", tree]
+    if mode == "apply":
+        cmd += ["--inc", inc]
+    proc = run_capture(cmd)
+    if proc.returncode:
+        raise HarnessError("swap-source-ctor %s failed: %s"
+                           % (mode, proc.stderr.strip()))
+
+
 def install_inc(target: dict, tree: Path, build: Path, inc: Path):
     dest = build / target["swap_inc"]
     if not dest.parent.exists():
@@ -408,7 +426,35 @@ def cmd_run(args) -> int:
         record["official_cache"] = "off" if args.no_cache else (
             "hit" if cache_hit else "miss")
         rc = 0
-        if target["strategy"] == "swap-library":
+        if target["strategy"] == "swap-source":
+            swap_source("restore", target, tree)   # no backup yet is fine
+            ninja(build, target["ninja_target"])
+            if cache_hit:
+                shutil.copyfile(cache_path, official)
+            else:
+                runner = build_swap_runner(target, tree, build, out,
+                                           "runner.official")
+                answer(runner, queries, official)
+                record["official_runner_sha256"] = sha256(runner)
+                shutil.copyfile(official, cache_path)
+            body_error = None
+            try:
+                swap_source("apply", target, tree, inc)
+                ninja(build, target["ninja_target"])
+                runner = build_swap_runner(target, tree, build, out,
+                                           "runner.ours")
+                record["ours_runner_sha256"] = sha256(runner)
+                answer(runner, queries, ours)
+            except BaseException as exc:  # keep the tree restorable
+                body_error = exc
+            try:
+                swap_source("restore", target, tree)
+                ninja(build, target["ninja_target"])
+            except BaseException as exc:
+                raise HarnessError("restore failed after run: %s" % exc)
+            if body_error is not None:
+                raise body_error
+        elif target["strategy"] == "swap-library":
             if cache_hit:
                 shutil.copyfile(cache_path, official)
             else:

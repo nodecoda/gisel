@@ -90,4 +90,4 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 |---|---:|---:|---:|---:|---|
 | AArch64 | 13,199 | 13,082 | 0 | 117 | 上游 `mutationIsSane`，未定性 |
 | RISC-V | 6,301 | 6,299 | 0 | 0 | — |
-| X86 | 3,282 | 3,275 | 1 | 0 | 官方一侧还是本分支 `.td` 渲染，不是 pin 的 C++（见 `REPORT-coverage.md` §8.4） |
+| X86 | 3,282 | 3,257 | 19 | 0 | 全部是 `G_BUILD_VECTOR` 的**有意偏离**：上游窄 build vector 加 lane 会死循环（`2026-11-09-14`），语料改为 `Unsupported` |

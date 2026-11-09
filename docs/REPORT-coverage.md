@@ -142,6 +142,11 @@ CoreCustom<(CoreAll (CoreNot HasAVX512), ..., (CoreLt (BitsOf (Slot 1)), ...))>
 
 结论：`.td` 路径不仅多余，而且已经和手写代码不一致。这也解释了为什么它该被删。
 
+2026-11-09 更新：`.td` 渲染链已经整个删除（emitter、`LegalizerInfo.td`、
+`X86/AArch64` 的 `.td`、64 个 TableGen 测试），X86 的官方一侧换回 pin 的
+手写 `X86LegalizerInfo.cpp` 后，这条 `G_UITOFP` 差异**消失**——新的一组
+3,282 条查询里没有它。第 7 节在这里保留的是"为什么这条链该删"，不是当前结果。
+
 ## 8 第二、第三个 target 的端到端（2026-11-09）
 
 同一条链：`cpp -> import-cxx -> .gisel -> cases -> 查询 -> 两侧 runner`。
@@ -206,14 +211,35 @@ G_CONCAT_VECTORS 90   G_SHL 9   G_FPTOSI_SAT 9   G_SHUFFLE_VECTOR 9
 提交上游前必须先搜重；语料 pin 的 sha 已随之指向打过补丁的源文件，规则内容未变
 （重新导入逐字节相同）。
 
-### 8.4 X86 的"对手"是问题
+### 8.4 X86：把对手换成 pin 的手写构造函数
 
-X86 这一轮仍然拿本分支的 `.td` 渲染当 official——`lib/Target/X86/X86LegalizerInfo.inc`
-是 `-gen-legalizer` 从 `.td` 生成的，而 `.td` 正是这次要删的中间格式。
-所以 X86 那 1 条分歧（`G_UITOFP (s32, v4s32)`：`.td` 侧 `Custom`，gisel 侧
-`Unsupported`）**不能直接说成"现网 vs 我们"**：它证明的是 `.td` 转写错了，
-手写 C++（上游 `X86LegalizerInfo.cpp`）与 gisel 一致。
+`.td` 渲染链已经删干净（`-gen-legalizer`、`LegalizerInfo.td`、两个 target 的
+`.td`、64 个 TableGen 测试、`X86LegalizerTable`）。X86 的构建树文件恢复成
+pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`（sha256 `79f2376…`）。
+`tools/ab/run-x86-end-to-end.sh` 的做法：
 
-要让 X86 也变成"手写 C++ vs gisel"，需要把构建树里的 X86 构造函数恢复成上游
-手写版本，再用 `swap-source-ctor.py` 那种"替换构造体为 include"的方式编 ours。
-**本轮未做**：当前 X86 树文件还是 inc-only 状态，`-gen-legalizer` 后端也还在。
+1. restore → `ninja libLLVMX86CodeGen` → 这是**现网**，跑一遍查询；
+2. `swap-source-ctor.py apply --target x86`：只把构造体换成
+   `#include "X86LegalizerInfo.inc"`（gisel 产物），其余翻译单元不变；
+3. `ninja` 后跑第二遍，`diff.py`。
+
+结果：
+
+| 查询行 | 去重 key | 一致 | 分歧 | 两侧都断言 |
+|---:|---:|---:|---:|---:|
+| 3,282 | 3,276 | 3,257 | **19** | 0 |
+
+19 条**全部**是 `G_BUILD_VECTOR`，方向一致：
+
+```text
+official  MoreElements      gisel  Unsupported
+```
+
+这不是翻译错误，而是语料里唯一一处**有意偏离**（`docs/CORPORA.md` 的偏离表）：
+上游 `clampNumElements(0, v16s8, …)` 会给窄 build vector 一个“加 lane”的
+`MoreElements`，而 `moreElementsVector` 重建出来的新 build vector 又拿到同一个
+动作，`llc` 永远不返回。最小复现和 `-debug-only=legalizer` 的轨迹已落到
+`/home/ubuntu/admin/upstream-issues/2026-11-09-14-gisel-x86-narrow-build-vector-loop.md`。
+
+也就是说：**X86 上 3,257/3,276 一致，剩下 19 条是一个已知上游死循环的有意规避**，
+没有未归因的差异。

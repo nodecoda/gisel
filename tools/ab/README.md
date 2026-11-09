@@ -16,6 +16,10 @@ python3 tools/ab/ab.py run --target x86-ctor \
   --compare full
 ```
 
+`tools/ab/run-x86-end-to-end.sh TREE BUILD x86.inc OUT STATE` does the same
+without the ledger: official from the pinned constructor, ours after swapping
+the body, then `diff.json`.
+
 `--compare action` is the coarse smoke gate; `full` (default) compares
 `(action, type_idx, new_type)`.  `--dry-run` validates the adapter, query file
 and baseline without touching the build.  `ab.py verify` checks that the build
@@ -25,8 +29,8 @@ is back on the baseline include.
 
 | adapter | strategy | notes |
 |---|---|---|
-| `x86-ctor` | generated constructor object | does not modify the build |
-| `x86` | swap the build's `.inc` and rebuild the library | needs a dedicated build |
+| `x86` | swap the constructor body for `#include` and rebuild | official is the pinned hand-written constructor |
+| `x86-ctor` | generated constructor object | retired with the `.td` path; kept only for old logs |
 | `aarch64` | generated constructor object | does not modify the build |
 
 Adapters live in `tools/ab/targets/*.json`: include path, library, ninja

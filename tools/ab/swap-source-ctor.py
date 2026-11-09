@@ -23,6 +23,19 @@ import sys
 from pathlib import Path
 
 TARGETS = {
+    "x86": {
+        "source": "llvm/lib/Target/X86/GISel/X86LegalizerInfo.cpp",
+        "ctor": "X86LegalizerInfo::X86LegalizerInfo(",
+        "inc": "X86LegalizerInfo.inc",
+        "subtarget": "X86Subtarget",
+        "body": """\
+{
+  (void)TM;
+#include "__INC__"
+  verify(*STI.getInstrInfo());
+}
+""",
+    },
     "aarch64": {
         "source": "llvm/lib/Target/AArch64/GISel/AArch64LegalizerInfo.cpp",
         "ctor": ("AArch64LegalizerInfo::AArch64LegalizerInfo("
@@ -76,9 +89,9 @@ def _tuple_target(name):
 
 
 def cmd_apply(args):
-    if args.target == "x86":
+    if args.target == "x86" and args.build and not args.tree:
         if not args.build:
-            raise SystemExit("x86 needs --build")
+            raise SystemExit("x86 needs --build or --tree")
         build = Path(args.build).resolve()
         dest = build / "lib" / "Target" / "X86" / "X86LegalizerInfo.inc"
         backup = build / ".gisel-swap" / "X86LegalizerInfo.inc"
@@ -105,7 +118,9 @@ def cmd_apply(args):
         shutil.copyfile(source, backup)
     inc_path = source.parent / spec["inc"]
     shutil.copyfile(args.inc, inc_path)
-    body = _body(spec["subtarget"], spec["inc"])
+    template = spec.get("body")
+    body = (template.replace("__INC__", spec["inc"])
+            if template else _body(spec["subtarget"], spec["inc"]))
     source.write_text(text[:brace] + body + text[end + 1:])
     print("%s: %s patched, %s written (original in %s)"
           % (args.target, source, inc_path, backup))
@@ -113,7 +128,7 @@ def cmd_apply(args):
 
 
 def cmd_restore(args):
-    if args.target == "x86":
+    if args.target == "x86" and args.build and not args.tree:
         build = Path(args.build).resolve()
         dest = build / "lib" / "Target" / "X86" / "X86LegalizerInfo.inc"
         backup = build / ".gisel-swap" / "X86LegalizerInfo.inc"
@@ -141,14 +156,14 @@ def main(argv=None):
     parser = argparse.ArgumentParser(prog="swap-source-ctor")
     parser.add_argument("mode", choices=("apply", "restore"))
     parser.add_argument("--target", required=True,
-                        choices=sorted(TARGETS) + ["x86"])
+                        choices=sorted(TARGETS))
     parser.add_argument("--tree")
     parser.add_argument("--build")
     parser.add_argument("--inc")
     args = parser.parse_args(argv)
     if args.mode == "apply" and not args.inc:
         parser.error("apply needs --inc")
-    if args.target != "x86" and not args.tree:
+    if not args.tree and args.target != "x86":
         parser.error("%s needs --tree" % args.target)
     return cmd_apply(args) if args.mode == "apply" else cmd_restore(args)
 

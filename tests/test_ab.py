@@ -43,7 +43,7 @@ def query(name="G_ADD", types=("s32",)):
 class Adapters(unittest.TestCase):
     def test_x86_and_aarch64_adapters_load(self):
         x86 = ab.load_target("x86")
-        self.assertEqual(x86["strategy"], "swap-library")
+        self.assertEqual(x86["strategy"], "swap-source")
         self.assertEqual(x86["inc_name"], "X86LegalizerInfo.inc")
         a64 = ab.load_target("aarch64")
         self.assertEqual(a64["strategy"], "generated-ctor")
