@@ -39,6 +39,7 @@ class LintCorpus(unittest.TestCase):
         # Probe corpora: the .gisel is the only artifact, so a
         # silent change in what the front end accepts shows up here first.
         for name, nrules in (("M68kLegalizerInfo", 13),
+                             ("PowerPCLegalizerInfo", 25),
                              ("WebAssemblyLegalizerInfo", 109)):
             r = run("lint", str(CORPUS / f"{name}.gisel"))
             self.assertEqual(r.returncode, 0, r.stderr)

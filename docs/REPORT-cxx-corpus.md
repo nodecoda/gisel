@@ -125,7 +125,7 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 - 换上游修订需要改 `TARGETS` 里的计数并重新生成，不是运行时参数；这是
   有意为之。当前三份输入钉的是和冻结答案同一次构建的源码修订（sha 见上表），
   不一定是最新 upstream；换修订就要连答案一起重冻。
-- M68k 已转正（见 §9），WebAssembly 已转正（见 §10）。
+- M68k 已转正（见 §9），WebAssembly 已转正（见 §10），PowerPC 已转正（见 §11）。
 - LLVM 研究分支上残留的 `.td` / `-gen-legalizer*` 代码不在本仓库清理范围；
   gisel 这边已经不再读它。
 
@@ -195,3 +195,30 @@ M68k 一样走 `import-cxx`：
 `ST.hasSignExt()`（`mvp` vs `generic` CPU）。前者改 `p0` 宽度和
 `p0i/p0s` 两个 select，后者改 `G_SEXT_INREG` 的 legal 规则——两条都在
 抽样查询里验证过会翻转答案，不是恒真轴。
+
+## 11 PowerPC 转正（2026-11-09）
+
+PowerPC 的构造函数 91 行、15 个规则集 / 25 条规则，两处曾拒绝转录，现在 0 拒绝：
+
+| C++ | 处理 |
+|---|---|
+| `static LegalityPredicate isRegisterType(unsigned)` | 新增：`parse_helpers` 收录“整段 lambda 体”的 helper，`local_pred` 逐语句内联（早返回、局部变量、`if (c) { ... }` 块） |
+| `bitcastIf(typeIsNot(0, V4S32), changeTo(0, V4S32))` | 新增：`bitcastIf` 的 mutation 是直接的 `changeTo(...)` 时走 `mutation()`，不再当作 pair/lambda |
+
+顺带修了两个内联细节：`parse_helpers` 先剥行注释（否则 `// ...` 会和下一条语句
+粘在一起），以及 `Query.Types[i].getElementType().getSizeInBits()` 要先于
+`getSizeInBits()` 规则改写，否则会生成 `size_of(slot(0).getElementType())`。
+
+查询集 98 条（单 `default` 配置，`powerpc64le`），端到端
+**98/98 agree、0 disagree、1 unanswerable**：
+
+```
+tools/ab/run-ppc-end-to-end.sh TREE BUILD ppc.inc OUT
+{"agree": 98, "disagree": 0, "unanswerable": 1}
+```
+
+那 1 条是 `G_AND v16s32`：官方构造函数自己也 abort，两侧一致，所以不是规则差异，
+是上游缺陷——`bitcastIf(typeIsNot(0, V4S32), changeTo(0, V4S32))` 的谓词
+没限制宽度，而 `Bitcast` 的 `mutationIsSane` 要求新旧类型位宽相等。复现和补丁写法
+记在 `/home/ubuntu/admin/upstream-issues/2026-11-09-15-gisel-ppc-bitcast-size-assert.md`
+（待提 issue）。

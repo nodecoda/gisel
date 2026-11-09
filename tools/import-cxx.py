@@ -842,6 +842,11 @@ class Translator:
         if len(call) != len(tmpl["params"]):
             raise Refuse(text)
         sub = dict(zip(tmpl["params"], call))
+        if tmpl.get("stmt"):
+            body = tmpl["body"]
+            for p in tmpl["params"]:
+                body = re.sub(r"\b%s\b" % re.escape(p), sub[p], body)
+            return self.body_pred(body)
         idx = _subst(tmpl["idx"], sub)
         typeset = _subst(tmpl["set"], sub)
         elems = self.t.sets.get(typeset) or [typeset]
@@ -890,6 +895,8 @@ class Translator:
                 (r"__T\((.+?)\)\.getElementCount\(\)\.getFixedValue\(\)",
                  r"num_elems(slot(\1))"),
                 (r"__T\((.+?)\)\.getNumElements\(\)", r"num_elems(slot(\1))"),
+                (r"__T\((.+?)\)\.getElementType\(\)\.getSizeInBits\(\)",
+                 r"bits_of(elem_of(slot(\1)))"),
                 (r"__T\((.+?)\)\.getSizeInBits\(\)", r"size_of(slot(\1))"),
                 (r"__T\((.+?)\)\.getElementType\(\)", r"elem_of(slot(\1))"),
                 (r"__T\((.+?)\)\.getAddressSpace\(\)", r"addr_space(slot(\1))"),
@@ -1048,6 +1055,10 @@ class Translator:
         if self.opcode:
             body = re.sub(r"Query\.Opcode", self.opcode, body)
         stmts = [x.strip() for x, _ in split_statements(body) if x.strip()]
+        return self._body_stmts(self._subst_locals(stmts))
+
+    def _subst_locals(self, stmts):
+        """Fold `const LLT T = Query.Types[i];` aliases into their uses."""
         env, rest = {}, []
         for st in stmts:
             m = re.fullmatch(r"(?:const\s+)?(?:unsigned|int|bool|LLT|auto)\s*&?\s*"
@@ -1071,8 +1082,8 @@ class Translator:
                               lambda _m, v=val: v, text)
             if text == before:
                 break
-        return self._body_stmts(
-            [x.strip() for x, _ in split_statements(text) if x.strip()])
+        return [x.strip() for x, _ in split_statements(text)
+                if x.strip() and x.strip() != ";"]
 
     def _body_stmts(self, stmts):
         if not stmts:
@@ -1082,6 +1093,18 @@ class Translator:
             cond, then = self._if_parts(st)
             cond = self.pred(cond)
             rest = self._body_stmts(stmts[1:]) if len(stmts) > 1 else None
+            # `_if_parts` flattens `if (c) { ... }` to its statements; more
+            # than one (or a declaration first) means the block is a nested
+            # predicate, not a `return X`.
+            block = [x.strip() for x, _ in split_statements(then) if x.strip()]
+            if len(block) > 1:
+                val = self._body_stmts(self._subst_locals(block))
+                if rest is None:
+                    return "(%s and %s)" % (cond, val)
+                return "((%s and %s) or (not (%s) and %s))" % (
+                    cond, val, cond, rest)
+            if block:
+                then = block[0]
             if then in ("return false", "return true"):
                 val = "false" if then == "return false" else "true"
                 if rest is None:
@@ -1197,6 +1220,10 @@ def _subst(text, sub):
 
 def parse_helpers(source):
     """`static LegalityPredicate F(...) { ... return all(typeInSet(i, S), P); }`"""
+    # Line comments would glue to the next statement in `split_statements`
+    # (the `//` line has no `;` of its own), so the helper is read without
+    # them.  Line count is preserved, and refusals carry constructor lines.
+    source = "\n".join(strip_comments(source))
     out = {}
     for m in re.finditer(r"static\s+LegalityPredicate\s+(\w+)\s*\((.*?)\)\s*\{(.*?)^\}",
                          source, re.S | re.M):
@@ -1213,6 +1240,20 @@ def parse_helpers(source):
         body = body.strip().rstrip(";")
         out[name] = {"params": names, "idx": rm.group(1), "set": rm.group(2),
                      "body": body}
+        continue
+    # A helper whose predicate is a whole lambda body: early returns, locals.
+    # `local_pred` inlines it statement by statement, the same way it reads a
+    # lambda written inline in the constructor.
+    for m in re.finditer(r"static\s+LegalityPredicate\s+(\w+)\s*\((.*?)\)\s*\{"
+                         r"(.*?)^\}", source, re.S | re.M):
+        name, params, body = m.group(1), m.group(2), m.group(3)
+        pm = re.search(r"return\s+\[[^\]]*\]\(const LegalityQuery\s*&\s*Query\)"
+                       r"\s*\{(.*?)\};", body, re.S)
+        if not pm:
+            continue
+        out[name] = {"params": [p.split()[-1].lstrip("&*")
+                                for p in split_top(params)],
+                     "body": pm.group(1), "stmt": True}
     return out
 
 
@@ -1569,7 +1610,15 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
         pred, mut = args[0], args[1]
         op = {"widenScalarIf": "widen", "narrowScalarIf": "narrow",
               "bitcastIf": "bitcast"}[method]
-        to = tr.mutation_lambda(mut) if op == "bitcast" else mutation(mut)
+        if op == "bitcast" and re.fullmatch(
+                r"(?:LegalizeMutations::)?changeTo\s*\(.*\)", mut.strip(), re.S):
+            # `bitcastIf(P, changeTo(i, T))` names the target type directly;
+            # `mutation_lambda` reads the pair/lambda spellings only.
+            to = tr.mutation(mut)
+        elif op == "bitcast":
+            to = tr.mutation_lambda(mut)
+        else:
+            to = mutation(mut)
         out.append("%s(%s) when %s" % (op, to, tr.pred_lambda(pred)))
     elif method == "immIdx":
         out.append("imm_idx(%s)" % idx_of(args[0], env))
@@ -2254,6 +2303,10 @@ TARGETS = {
         "WebAssembly", "Wasm",
         "lib/Target/WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp",
         29, 109),
+    "PowerPC": Target(
+        "PowerPC", "P",
+        "lib/Target/PowerPC/GISel/PPCLegalizerInfo.cpp",
+        15, 25),
 }
 
 

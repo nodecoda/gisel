@@ -380,7 +380,9 @@ class ProbeCorpus(unittest.TestCase):
     is also the corpus that pins the immediate axis.
     """
 
-    PROBES = (("M68kLegalizerInfo", 6, 13), ("WebAssemblyLegalizerInfo", 29, 109))
+    PROBES = (("M68kLegalizerInfo", 6, 13),
+              ("PowerPCLegalizerInfo", 15, 25),
+              ("WebAssemblyLegalizerInfo", 29, 109))
 
     def test_all_backends_accept_the_probe(self):
         for name, _, nrules in self.PROBES:
