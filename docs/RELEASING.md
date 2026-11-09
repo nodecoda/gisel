@@ -71,14 +71,14 @@ work=$(mktemp -d) && cp tests/corpus/AArch64LegalizerInfo.gisel "$work/"
 cd "$work"
 /tmp/ci/bin/gisel --version
 /tmp/ci/bin/gisel lint AArch64LegalizerInfo.gisel
-for e in inc check table core; do
+for e in inc check core; do
   /tmp/ci/bin/gisel gen AArch64LegalizerInfo.gisel --emit=$e --out "a.$e"
 done
 ```
 
-The **four** artifacts must match `tests/artifacts/` (`core` modulo `origin`).
-`tests/artifacts/` holds eight files: four artifacts for each of the two
-transcribed targets, plus `SHA256`.
+The **three** artifacts must match `tests/artifacts/` (`core` modulo `origin`).
+`tests/artifacts/` holds nine files: three artifacts for each of the three
+transcribed targets (`X86`, `AArch64`, `RISC-V`), plus `SHA256`.
 
 ## 3.5. Product-surface checklist
 

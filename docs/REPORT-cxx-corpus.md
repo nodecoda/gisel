@@ -9,7 +9,7 @@
 upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
   -> tools/import-cxx.py      （一次性转录，0 拒绝）
   -> tests/corpus/*.gisel
-  -> gisel gen --emit={inc,check,table,core}
+  -> gisel gen --emit={inc,check,core}
 ```
 
 | 目标 | 源 sha256（前 12 位） | rulesets | rules | 拒绝 |
@@ -77,7 +77,7 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 独立的配置轴，合成一个会改变语义，所以保留两个名字。这是“重命名”不是
 “化简”。
 
-语义保持的证据：三个目标的冻结查询答案门全部仍然 agree；`inc/table/core`
+语义保持的证据：三个目标的冻结查询答案门全部仍然 agree；`inc/core`
 产物重新冻结后测试全绿。名字只影响可读性和产物字节，不影响求值。
 
 ## 4 三个真实 bug

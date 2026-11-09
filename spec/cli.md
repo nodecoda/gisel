@@ -17,8 +17,9 @@ gisel 只有这七个命令。新增一个命令等于新增一块产品面，�
 | `eval` | 用 schema-0.4 正常形回答查询 | `--doc`、`--features`、`--cases` | 汇总或 `--answers OUT` 的答案 JSONL |
 | `graph` | 在类型×类空间上建商图并找环 | 源文件、`--emit=core` | stdout 报告（`--json` 可机读） |
 
-`--emit` 的四个值对应四类产物，后缀只是约定：`inc`（C++ 链）、`check`
-（JSON）、`table`（C++ 表）、`core`（schema-0.4 JSON）。
+`--emit` 的三个值对应三类产物，后缀只是约定：`inc`（C++ 链）、`check`
+（JSON）、`core`（schema-0.4 JSON）。`table`（C++ 表）已于 2026-11-09 移除，
+见 `spec/m3-scope.md`。
 
 `cases` 与 `domain` 产出的是**问题**，不是答案文件；答案由外部 legalizer 或
 `eval` 给出，比较命令在工作台（`tools/ab/diff.py`）。

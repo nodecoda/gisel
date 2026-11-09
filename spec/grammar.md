@@ -64,14 +64,14 @@ LLT      := Scalar(bits) | Integer(bits) | Float(bits) | BFloat16
 ```
 
 - `LLT` 是结构化的：`p0:64` 与 `p0:*` 是 `Pointer(0, 64)` 与
-  `Pointer(0, None)`，不是字符串；`table.py` 不再解析 C++ 文本。
+  `Pointer(0, None)`，不是字符串；没有后端再从 C++ 文本反解类型。
 - 规则类型位置的值是 `LLT | SelectValue | SetValue`。`SelectValue` 的
   `arms` 是 `(predicate, TypeValue)`；`SetValue` 保留 `of/arity/elems`。
 - `NamedType.source` 是 `LLT::scalar(...)` 原文，只为渲染保留；语义字段是
   `llt`。
 - `TypeSet.value` / `TypeList.value` 是解析后的成员值；`type_set X = Y.Elems`
   在解析时展开，不保留源引用。
-- `RuleSet.name` 是 `ruleset` 的 `def` 名；它不参与语义，`eval`/`table`/
+- `RuleSet.name` 是 `ruleset` 的 `def` 名；它不参与语义，`eval`/
   `core` 只把它当输出标签。
 - 规则体由 `dsl.Parser` 编译成 schema-0.4 节点后，`parse_program` 再把其中
   的类型名解析成 `LLT`/`SelectValue`/`SetValue`。解析不到的名字保留为字符串，

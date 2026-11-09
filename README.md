@@ -240,7 +240,7 @@ python3 tools/ab/diff.py runner.answers.jsonl eval.answers.jsonl --json
 gisel/ast.py            Program / declarations / rule sets / structured LLT
 gisel/dsl.py            lexer, rule parser, core-IR normal form
 gisel/backend/llvm_inc.py  AST -> .inc (M1)
-gisel/backend/check_json.py / table.py / core_json.py   M2 / M3 / M4
+gisel/backend/check_json.py / core_json.py              M2 / M4
 gisel/eval.py           standalone evaluator (34,776 frozen points, 0 disagreements)
 gisel/cases.py          equivalence/boundary/outside case generation
 gisel/answers.py        answer-file reader (the A/B comparison is tools/ab/diff.py)

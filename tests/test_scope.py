@@ -133,6 +133,29 @@ class License(unittest.TestCase):
         self.assertNotIn("license = {file", text)
 
 
+class EmitIsTheProductSurface(unittest.TestCase):
+    """`--emit` names the artifacts the product still ships.
+
+    `table` was removed on 2026-11-09.  Four hand-written places used to list
+    it (the CLI choices, CI, RELEASING.md, spec/cli.md); this test keeps them
+    from drifting apart again.
+    """
+
+    def test_the_three_backends(self):
+        from gisel.cli import BACKENDS
+        self.assertEqual(set(BACKENDS), {"inc", "check", "core"})
+
+    def test_no_workflow_still_generates_a_table(self):
+        text = (ROOT / ".github" / "workflows" / "ci.yml").read_text()
+        self.assertNotIn("--emit=table", text)
+        self.assertNotIn(".table.inc", text)
+
+    def test_the_cli_contract_lists_three_products(self):
+        text = SPEC_CLI.read_text()
+        self.assertNotIn("`--emit` 的四个值", text)
+        self.assertIn("`--emit` 的三个值", text)
+
+
 class SpecMatchesCommands(unittest.TestCase):
     """`spec/cli.md` is normative, so its table must equal the real surface."""
 

@@ -110,13 +110,13 @@ from gisel.backend.core_json import strip_origin as _strip_origin  # noqa: E402
 
 
 class SelfBaseline(unittest.TestCase):
-    """RISC-V's four artifacts are frozen from gisel (same as X86/AArch64 now).
+    """The three artifacts are frozen from gisel (same for every target).
 
     The gate catches corpus or generator drift; it does not claim byte
     equality with `llvm-tblgen` (`docs/CORPORA.md`).
     """
 
-    def test_all_four_outputs_match_the_frozen_files(self):
+    def test_all_outputs_match_the_frozen_files(self):
         for name, src in SELF_BASELINE:
             with tempfile.TemporaryDirectory() as d:
                 for emit, suffix in (("inc", "inc"),

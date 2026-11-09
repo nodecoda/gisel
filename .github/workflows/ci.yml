@@ -32,7 +32,7 @@ jobs:
           export PATH="$shim:$PATH"
           out=$(mktemp -d)
           for target in X86 AArch64 RISCV; do
-            for emit in inc check table core; do
+            for emit in inc check core; do
               python3 -m gisel.cli gen "tests/corpus/${target}LegalizerInfo.gisel" \
                 --emit="$emit" --out "$out/$target.$emit"
             done
@@ -50,8 +50,8 @@ jobs:
           /tmp/gisel-venv/bin/gisel --version
           /tmp/gisel-venv/bin/gisel lint AArch64LegalizerInfo.gisel
           /tmp/gisel-venv/bin/gisel gen AArch64LegalizerInfo.gisel \
-            --emit=table --out a.table.inc
-          cmp a.table.inc "$GITHUB_WORKSPACE/tests/artifacts/aarch64.table.inc"
+            --emit=inc --out a.inc
+          cmp a.inc "$GITHUB_WORKSPACE/tests/artifacts/aarch64.inc"
           /tmp/gisel-venv/bin/gisel gen AArch64LegalizerInfo.gisel \
             --emit=core --out a.core.json
           /tmp/gisel-venv/bin/gisel eval --doc a.core.json \
