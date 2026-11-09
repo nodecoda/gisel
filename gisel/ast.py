@@ -443,7 +443,7 @@ def _convert_type_value(v, resolve_name):
             raise
     if isinstance(v, dict) and "select" in v:
         sel = v["select"]
-        arms = tuple((sel["cond"], _convert_type_value(sel["then"], resolve_name)),)
+        arms = ((sel["cond"], _convert_type_value(sel["then"], resolve_name)),)
         return SelectValue(arms, _convert_type_value(sel["else"], resolve_name),
                            legacy_guard=False)
     raise ValueError("bad type value %r" % (v,))
@@ -739,25 +739,49 @@ def feature_scope_error(features: dict[str, Feature]):
     return None
 
 
+def walk_nodes(value):
+    """Yield every expression node reachable from a rule field.
+
+    Rule fields mix three shapes: predicate dicts, plain lists/tuples, and the
+    `SelectValue`/`SetValue` dataclasses a type position can hold.  Both
+    escape-point audits below must see all three; a walker that only recurses
+    into dict/list silently rewrites `escapes: 0` when an `opaque(...)` sits
+    inside a `select_type`.
+    """
+    if isinstance(value, dict):
+        yield value
+        for v in value.values():
+            yield from walk_nodes(v)
+    elif isinstance(value, (list, tuple)):
+        for v in value:
+            yield from walk_nodes(v)
+    elif isinstance(value, SelectValue):
+        for cond, then in value.arms:
+            yield from walk_nodes(cond)
+            yield from walk_nodes(then)
+        yield from walk_nodes(value.otherwise)
+    elif isinstance(value, SetValue):
+        for e in value.elems:
+            yield from walk_nodes(e)
+
+
+def _rule_fields(rule: Rule):
+    yield rule.predicate
+    yield rule.on
+    yield rule.to
+
+
 def host_escapes(program: Program) -> list[str]:
-    """Every `opaque("...")` predicate, deduplicated, in source order."""
+    """Every `opaque("...")`, deduplicated, in source order."""
     found = []
-
-    def walk(n):
-        if isinstance(n, dict):
-            if n.get("kind") == "leaf" and n.get("name") == "opaque":
-                for e in n.get("args", []):
-                    if e not in found:
-                        found.append(e)
-            for v in n.values():
-                walk(v)
-        elif isinstance(n, list):
-            for v in n:
-                walk(v)
-
     for rs in program.rulesets:
         for rule in rs.rules:
-            walk(rule.predicate)
+            for field in _rule_fields(rule):
+                for n in walk_nodes(field):
+                    if n.get("kind") == "leaf" and n.get("name") == "opaque":
+                        for e in n.get("args", []):
+                            if e not in found:
+                                found.append(e)
     return found
 
 
@@ -765,24 +789,15 @@ def undeclared_features(program: Program) -> list[tuple[int, str, str]]:
     """[(line, ruleset, expr)] for every feature() with no declaration."""
     declared = {d.cxx for d in program.decls if isinstance(d, Feature)}
     out = []
-
-    def walk(node, line, ruleset):
-        if isinstance(node, dict):
-            if node.get("kind") == "leaf" and node.get("name") == "hasFeature":
-                expr = node.get("args", [None])[0]
-                if expr not in declared:
-                    out.append((line, ruleset, expr))
-            for value in node.values():
-                walk(value, line, ruleset)
-        elif isinstance(node, (list, tuple)):
-            for value in node:
-                walk(value, line, ruleset)
-
     for rs in program.rulesets:
         for rule in rs.rules:
-            walk(rule.predicate, rule.line, rs.name)
-            walk(rule.on, rule.line, rs.name)
-            walk(rule.to, rule.line, rs.name)
+            for field in _rule_fields(rule):
+                for node in walk_nodes(field):
+                    if (node.get("kind") == "leaf"
+                            and node.get("name") == "hasFeature"):
+                        expr = node.get("args", [None])[0]
+                        if expr not in declared:
+                            out.append((rule.line, rs.name, expr))
     return out
 
 

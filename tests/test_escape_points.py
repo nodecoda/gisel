@@ -99,6 +99,55 @@ class OpaqueIsAPredicateHole(unittest.TestCase):
             self.assertIn("expected expr", r.stderr)
 
 
+class InlineSelectType(unittest.TestCase):
+    """`select_type(...)` in a type position is the fourth shape a value has.
+
+    It is inline by definition (no record name), so both the escape-point
+    audit and the `.inc` renderer have to handle it without a declaration.
+    """
+
+    SOURCE = """\
+feature F = Subtarget.hasAVX()
+type S32 = LLT::scalar(32)
+type S16 = LLT::scalar(16)
+
+ruleset T_G_ADD: G_ADD
+    legal in(slot(0), select_type(F, S32, S16))
+"""
+
+    def test_every_backend_accepts_it(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text(self.SOURCE)
+            for emit in ("inc", "check", "core"):
+                out = Path(d) / ("T." + emit)
+                r = run("gen", str(src), f"--emit={emit}", "--out", str(out))
+                self.assertEqual(r.returncode, 0, f"{emit}: {r.stderr}")
+            inc = (Path(d) / "T.inc").read_text()
+            self.assertIn("(F ? S32 : S16)", inc)
+
+    def test_an_opaque_guard_is_inside_the_hole_audit(self):
+        text = ("type S32 = LLT::scalar(32)\n"
+                "type S16 = LLT::scalar(16)\n"
+                "ruleset T_G_ADD: G_ADD\n"
+                "    legal in(slot(0), select_type(opaque(\"host()\"), "
+                "S32, S16))\n")
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text(text)
+            program = ast.parse_program(text)
+            self.assertEqual(ast.host_escapes(program), ["host()"])
+            core = Path(d) / "T.core.json"
+            check = Path(d) / "T.check.json"
+            self.assertEqual(run("gen", str(src), "--emit=core",
+                                 "--out", str(core)).returncode, 0)
+            self.assertEqual(run("gen", str(src), "--emit=check",
+                                 "--out", str(check)).returncode, 0)
+            self.assertEqual(json.loads(core.read_text())["escapes"],
+                             ["host()"])
+            self.assertEqual(json.loads(check.read_text())["escapes"], 1)
+
+
 class FrozenCorporaUseOnlyFeature(unittest.TestCase):
     def test_every_corpus_has_zero_escapes_and_clean_feature_scope(self):
         paths = sorted(CORPUS.glob("*.gisel"))

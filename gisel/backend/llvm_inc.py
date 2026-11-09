@@ -237,6 +237,16 @@ class IncEmitter:
     def _type_value(self, v):
         if isinstance(v, str):
             return self._type(v)
+        if (isinstance(v, A.SelectValue)
+                and A.value_key(v) not in self.names.select):
+            # An inline `select_type(...)` has no declaration name.  Render
+            # the same conditional expression `_select_text` gives a named
+            # `select`; the value is identical, only the spelling differs.
+            expr = self._type_value(v.otherwise)
+            for cond, then in reversed(v.arms):
+                expr = "(%s ? %s : %s)" % (
+                    self._pred_node(cond), self._type_value(then), expr)
+            return expr
         return self.names.value_name(v)
 
     def _feature(self, expr):
