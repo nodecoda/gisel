@@ -33,9 +33,10 @@ is back on the baseline include.
 | `x86-ctor` | generated constructor object | retired with the `.td` path; kept only for old logs |
 | `aarch64` | generated constructor object | does not modify the build |
 | `m68k` | generated constructor object | 41-query smoke target; single `default` config |
-| `ppc` | generated constructor object | 98 queries; one `default` config; 1 query asserts on both sides (upstream `bitcastIf`) |
-| `wasm` | generated constructor object | 942 queries; `wasm32|wasm64` × `±sign-ext` |
-| `arm` | generated constructor object | 1,670 queries; 7 configs across soft-float / VFP2 / VFP4 / NEON / V5T / hardware divide / AEABI; Thumb1 excluded (constructor registers no rule) |
+| `ppc` | generated constructor object | 94 queries; one `default` config; 1 query asserts on both sides (upstream `bitcastIf`) |
+| `wasm` | generated constructor object | 886 queries; `wasm32|wasm64` × `±sign-ext` |
+| `arm` | generated constructor object | 1,614 queries; 7 configs across soft-float / VFP2 / VFP4 / NEON / V5T / hardware divide / AEABI; Thumb1 excluded (constructor registers no rule) |
+| `mips` | generated constructor object | 1,656 queries; 5 configs across MSA / MIPS32r2 / unaligned access; 9 queries abort upstream (`--allow-ref-asserts 9`) |
 
 Adapters live in `tools/ab/targets/*.json`: include path, library, ninja
 target, runner builder, feature table, optional axes, query-count contract.

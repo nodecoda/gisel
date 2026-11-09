@@ -139,7 +139,7 @@ and compares the two answer streams.  That workbench has its own report,
 
 What it does not do: it does not generate the `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than
-guessing, and none of the seven corpora is an independent hand-written second
+guessing, and none of the eight corpora is an independent hand-written second
 statement -- they were extracted from LLVM's hand-written C++ constructors
 with our own tooling as a preparation for self-proof.  All of them go straight
 from the hand-written `.cpp` constructor to `.gisel`
@@ -161,7 +161,7 @@ the frozen answer dumps).
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 | v0.4 | RISCV corpus (workbench import) | 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
 | v0.5 | `cases` | equivalence/boundary/outside; X86 3,277 cases (383 oracle-covered), AArch64 9,705 cases (439 oracle-covered), 0 disagreements | done |
-| v0.6 | more A/B targets | M68k 41, WebAssembly 942, PowerPC 98, ARM 1,670 queries; `disagree = 0` on each | done |
+| v0.6 | more A/B targets | M68k 35, WebAssembly 886, PowerPC 94, ARM 1,614, Mips 1,656 queries; `disagree = 0` on each | done |
 
 `-gen-legalizer*` in the M1–M3 rows is this project's TableGen backend
 (`utils/TableGen/LegalizerInfoEmitter.cpp` on the LLVM research branch), not an

@@ -50,7 +50,8 @@ def _classify(a, b):
     return "new_type"
 
 
-def compare(ref, ours, mode="full", details_limit=100):
+def compare(ref, ours, mode="full", details_limit=100,
+            allow_ref_asserts=None):
     """Full-set comparison: a key on one side only is a failure.
 
     ``mode="action"`` is the coarse smoke gate: it compares only the action
@@ -66,8 +67,16 @@ def compare(ref, ours, mode="full", details_limit=100):
     agree = 0
     unanswerable = 0
     disagree = []
+    ref_asserted = []
     for k in matched:
         a, b = ref[k], ours[k]
+        if (allow_ref_asserts is not None and a[0] == "unanswerable"
+                and a[1] == "asserted" and b[0] == "answered"):
+            # The reference asserted before answering and ours answered.  Only
+            # counted as a known class when the caller pins how many to expect:
+            # an unpinned assert is a difference, not a footnote.
+            ref_asserted.append((k, a, b))
+            continue
         same_unanswerable = (a[0] == b[0] == "unanswerable"
                              and a[1] == b[1])
         if mode == "action":
@@ -95,6 +104,8 @@ def compare(ref, ours, mode="full", details_limit=100):
         "agree": agree,
         "unanswerable": unanswerable,
         "disagree": len(disagree),
+        "ref_asserted": len(ref_asserted),
+        "ref_asserted_keys": [repr(k) for k, _, _ in ref_asserted[:20]],
         "missing_ref": len(set(ours) - set(ref)),
         "missing_ours": len(set(ref) - set(ours)),
         "first": disagree[:20],
@@ -115,11 +126,17 @@ def main(argv=None):
                     help="action: coarse smoke gate; full: acceptance")
     ap.add_argument("--details", type=int, default=100,
                     help="maximum first_details entries (default 100)")
+    ap.add_argument("--allow-ref-asserts", type=int, default=None,
+                    metavar="N",
+                    help="count the queries whose reference answer is "
+                         "'asserted' as a known class, not a difference; the "
+                         "run fails unless exactly N of them are found")
     args = ap.parse_args(argv)
 
     ref, e1 = A.load(args.ref)
     ours, e2 = A.load(args.ours)
-    result = compare(ref, ours, args.compare, args.details)
+    result = compare(ref, ours, args.compare, args.details,
+                     args.allow_ref_asserts)
     result["errors"] = e1 + e2
     if args.json:
         print(json.dumps(result, indent=1, sort_keys=True))
@@ -138,6 +155,11 @@ def main(argv=None):
             print("MISSING in ours: %r" % (key,))
     if result["errors"]:
         return 2
+    if (args.allow_ref_asserts is not None
+            and result["ref_asserted"] != args.allow_ref_asserts):
+        print("ref asserted on %d queries, expected %d"
+              % (result["ref_asserted"], args.allow_ref_asserts))
+        return 1
     if (result["missing_ref"] or result["missing_ours"]
             or result["disagree"]):
         return 1

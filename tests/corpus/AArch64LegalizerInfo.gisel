@@ -529,7 +529,7 @@ ruleset A_G_INDEXED_LOAD: G_INDEXED_LOAD
 
 ruleset A_G_INDEXED_SEXTLOAD: G_INDEXED_SEXTLOAD G_INDEXED_ZEXTLOAD
     unsupported mem_ordering(mem_slot(0)) >= ordering_unordered
-    legal (in(slot(0), [A_s16, A_s32, A_s64]) and (not (slot(1) != ty(A_p0)) and ((slot(0) == ty(A_s16) and mem_ty(mem_slot(0)) == ty(A_s8)) or (not (slot(0) == ty(A_s16)) and ((slot(0) == ty(A_s32) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16))) or (not (slot(0) == ty(A_s32)) and ((slot(0) == ty(A_s64) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16) or mem_ty(mem_slot(0)) == ty(A_s32))) or (not (slot(0) == ty(A_s64)) and not true))))))))
+    legal (in(slot(0), [A_s16, A_s32, A_s64]) and (not (slot(1) != ty(A_p0)) and ((slot(0) == ty(A_s16) and mem_ty(mem_slot(0)) == ty(A_s8)) or (not (slot(0) == ty(A_s16)) and ((slot(0) == ty(A_s32) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16))) or (not (slot(0) == ty(A_s32)) and (slot(0) == ty(A_s64) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16) or mem_ty(mem_slot(0)) == ty(A_s32)))))))))
     unsupported true
 
 ruleset A_G_CONSTANT: G_CONSTANT

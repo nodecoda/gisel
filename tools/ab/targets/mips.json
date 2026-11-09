@@ -1,0 +1,19 @@
+{
+  "schema": 1,
+  "name": "mips",
+  "source": "tests/corpus/MipsLegalizerInfo.gisel",
+  "strategy": "generated-ctor",
+  "baseline_inc": null,
+  "swap_inc": null,
+  "inc_name": "MipsLegalizerInfo.inc",
+  "library": "lib/libLLVMMipsCodeGen.so.24.0git",
+  "ninja_target": null,
+  "touch_source": "llvm/lib/Target/Mips/MipsLegalizerInfo.cpp",
+  "runner": {
+    "source": "tools/ab/mips_query_runner.cpp",
+    "builder": "tools/ab/build-mips-runner.sh",
+    "mode": "dual"
+  },
+  "features": "tests/cases/mips-features.json",
+  "query_count": 1656
+}

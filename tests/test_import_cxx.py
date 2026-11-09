@@ -43,6 +43,10 @@ ARM_SRC = Path(os.environ.get(
     "GS_ARM_SRC",
     "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/ARM/"
     "ARMLegalizerInfo.cpp"))
+MIPS_SRC = Path(os.environ.get(
+    "GS_MIPS_SRC",
+    "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/Mips/"
+    "MipsLegalizerInfo.cpp"))
 
 
 def run(*args, env=None):
@@ -145,7 +149,8 @@ class ReimportedCorpora(unittest.TestCase):
                 ("M68k", M68K_SRC, 6, 13),
                 ("WebAssembly", WASM_SRC, 29, 109),
                 ("PowerPC", PPC_SRC, 15, 25),
-                ("ARM", ARM_SRC, 52, 96)):
+                ("ARM", ARM_SRC, 52, 96),
+                ("Mips", MIPS_SRC, 48, 95)):
             if not src.exists():
                 continue
             with self.subTest(target=target), \
@@ -169,15 +174,15 @@ class PinnedRevision(unittest.TestCase):
         r = run("--all", "--pin", str(PIN), "--git-repo", str(LLVM_GIT),
                 "--check")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(r.stdout.count(": matches"), 7, r.stdout)
-        self.assertEqual(r.stdout.count(": read "), 7, r.stdout)
+        self.assertEqual(r.stdout.count(": matches"), 8, r.stdout)
+        self.assertEqual(r.stdout.count(": read "), 8, r.stdout)
 
     def test_pin_records_one_commit_for_every_target(self):
         pin = json.loads(PIN.read_text())
         self.assertEqual(len(pin["commit"]), 40, pin["commit"])
         self.assertEqual(sorted(pin["sources"]),
-                         ["AArch64", "ARM", "M68k", "PowerPC", "RISCV",
-                          "WebAssembly", "X86"])
+                         ["AArch64", "ARM", "M68k", "Mips", "PowerPC",
+                          "RISCV", "WebAssembly", "X86"])
         for name, entry in pin["sources"].items():
             self.assertEqual(len(entry["sha256"]), 64, name)
             self.assertIn("llvm/lib/Target/", entry["path"])

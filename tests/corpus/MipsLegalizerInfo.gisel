@@ -1,0 +1,217 @@
+//===- MipsLegalizerInfo.gisel - imported from MipsLegalizerInfo.cpp -*- gisel -*-===//
+//
+// One-shot transcription: `tools/import-cxx.py Mips MipsLegalizerInfo.cpp`.
+// Source sha256 3660b66b709c5eec9431e54010d1da9e241a460aa528ff213b444ebc0e96b525.  Do not edit by hand; re-run the importer instead.
+//
+// The importer refuses what it cannot translate; every refusal below is a
+// statement that still has to be written by hand (or taught to the importer).
+//
+//===----------------------------------------------------------------------===//
+include "llvm/Target/LegalizerInfo.td"
+include "llvm/Target/Target.td"
+
+feature Mips_hasMSA = ST.hasMSA()
+feature Mips_hasMips32r2 = ST.hasMips32r2()
+feature Mips_systemSupportsUnalignedAccess = ST.systemSupportsUnalignedAccess()
+
+type Mips_s1 = LLT::scalar(1)
+type Mips_s8 = LLT::scalar(8)
+type Mips_s16 = LLT::scalar(16)
+type Mips_s32 = LLT::scalar(32)
+type Mips_s64 = LLT::scalar(64)
+type Mips_v16s8 = LLT::fixed_vector(16, 8)
+type Mips_v8s16 = LLT::fixed_vector(8, 16)
+type Mips_v4s32 = LLT::fixed_vector(4, 32)
+type Mips_v2s64 = LLT::fixed_vector(2, 64)
+type Mips_p0 = LLT::pointer(0, 32)
+
+ruleset Mips_G_ADD: G_ADD G_SUB G_MUL
+    legal ((in(slot(0), [Mips_s32])) or (not (in(slot(0), [Mips_s32])) and (Mips_hasMSA and in(slot(0), [Mips_v16s8, Mips_v8s16, Mips_v4s32, Mips_v2s64]))))
+    widen(slot(0), ty(Mips_s32))
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_UADDO: G_UADDO G_UADDE G_USUBO G_USUBE G_UMULO
+    lower in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s1]])
+
+ruleset Mips_G_UMULH: G_UMULH
+    legal in(slot(0), [Mips_s32])
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_LOAD: G_LOAD G_STORE
+    legal ((((in(slot(0), [Mips_s32]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 8) or (in(slot(0), [Mips_s32]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 16 and (Mips_systemSupportsUnalignedAccess or 16 <= align_of(mem_slot(0)))) or (in(slot(0), [Mips_s32]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 32) or (in(slot(0), [Mips_p0]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 32) or (in(slot(0), [Mips_s64]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 64 and (Mips_systemSupportsUnalignedAccess or 64 <= align_of(mem_slot(0)))))) or (not (((in(slot(0), [Mips_s32]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 8) or (in(slot(0), [Mips_s32]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 16 and (Mips_systemSupportsUnalignedAccess or 16 <= align_of(mem_slot(0)))) or (in(slot(0), [Mips_s32]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 32) or (in(slot(0), [Mips_p0]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 32) or (in(slot(0), [Mips_s64]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 64 and (Mips_systemSupportsUnalignedAccess or 64 <= align_of(mem_slot(0)))))) and (Mips_hasMSA and ((in(slot(0), [Mips_v16s8]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 128) or (in(slot(0), [Mips_v8s16]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 128) or (in(slot(0), [Mips_v4s32]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 128) or (in(slot(0), [Mips_v2s64]) and in(slot(1), [Mips_p0]) and size_of(mem_ty(mem_slot(0))) == 128)))))
+    custom (not ((not sort_of(slot(0)) == scalar or slot(1) != ty(Mips_p0) or slot(0) == ty(Mips_s1))) and (not ((size_of(slot(0)) > 64 or size_of(mem_ty(mem_slot(0))) > 64)) and ((not is_pow2(size_of(mem_ty(mem_slot(0))))) or (not (not is_pow2(size_of(mem_ty(mem_slot(0))))) and (not Mips_systemSupportsUnalignedAccess and (size_of(mem_ty(mem_slot(0))) > align_of(mem_slot(0))))))))
+    widen(slot(0), ty(Mips_s32))
+    lower true
+
+ruleset Mips_G_IMPLICIT_DEF: G_IMPLICIT_DEF
+    legal in(slot(0), [Mips_s32, Mips_s64])
+
+ruleset Mips_G_UNMERGE_VALUES: G_UNMERGE_VALUES
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s64]])
+
+ruleset Mips_G_MERGE_VALUES: G_MERGE_VALUES
+    legal in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s32]])
+
+ruleset Mips_G_ZEXTLOAD: G_ZEXTLOAD G_SEXTLOAD
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(Mips_s32, Mips_p0, Mips_s8, 8), mem_desc(Mips_s32, Mips_p0, Mips_s16, 8)])
+    widen(slot(0), ty(Mips_s32))
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_ZEXT: G_ZEXT G_SEXT G_ANYEXT
+    legal not true
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_TRUNC: G_TRUNC
+    legal not true
+    narrow(slot(1), ty(Mips_s32))
+
+ruleset Mips_G_SELECT: G_SELECT
+    legal in_pairs(slot(0), slot(1), [[Mips_p0, Mips_s32], [Mips_s32, Mips_s32], [Mips_s64, Mips_s32]])
+    widen(slot(0), ty(Mips_s32))
+    widen(slot(1), ty(Mips_s32))
+
+ruleset Mips_G_BR: G_BR
+    legal true
+
+ruleset Mips_G_BRCOND: G_BRCOND
+    legal in(slot(0), [Mips_s32])
+    widen(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_BRJT: G_BRJT
+    legal in_pairs(slot(0), slot(1), [[Mips_p0, Mips_s32]])
+
+ruleset Mips_G_BRINDIRECT: G_BRINDIRECT
+    legal in(slot(0), [Mips_p0])
+
+ruleset Mips_G_PHI: G_PHI
+    legal in(slot(0), [Mips_p0, Mips_s32, Mips_s64])
+    widen(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_AND: G_AND G_OR G_XOR
+    legal in(slot(0), [Mips_s32])
+    widen(slot(0), ty(Mips_s32))
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_SDIV: G_SDIV G_SREM G_UDIV G_UREM
+    legal ((in(slot(0), [Mips_s32])) or (not (in(slot(0), [Mips_s32])) and (Mips_hasMSA and in(slot(0), [Mips_v16s8, Mips_v8s16, Mips_v4s32, Mips_v2s64]))))
+    widen(slot(0), ty(Mips_s32))
+    libcall in(slot(0), [Mips_s64])
+
+ruleset Mips_G_SHL: G_SHL G_ASHR G_LSHR
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32]])
+    widen(slot(1), ty(Mips_s32))
+    narrow(slot(1), ty(Mips_s32))
+    widen(slot(0), ty(Mips_s32))
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_ICMP: G_ICMP
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32], [Mips_s32, Mips_p0]])
+    widen(slot(1), ty(Mips_s32))
+    narrow(slot(1), ty(Mips_s32))
+    widen(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_CONSTANT: G_CONSTANT
+    legal in(slot(0), [Mips_s32])
+    widen(slot(0), ty(Mips_s32))
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_PTR_ADD: G_PTR_ADD G_INTTOPTR
+    legal in_pairs(slot(0), slot(1), [[Mips_p0, Mips_s32]])
+
+ruleset Mips_G_PTRTOINT: G_PTRTOINT
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_p0]])
+
+ruleset Mips_G_FRAME_INDEX: G_FRAME_INDEX
+    legal in(slot(0), [Mips_p0])
+
+ruleset Mips_G_GLOBAL_VALUE: G_GLOBAL_VALUE G_JUMP_TABLE
+    legal in(slot(0), [Mips_p0])
+
+ruleset Mips_G_DYN_STACKALLOC: G_DYN_STACKALLOC
+    lower in_pairs(slot(0), slot(1), [[Mips_p0, Mips_s32]])
+
+ruleset Mips_G_VASTART: G_VASTART
+    legal in(slot(0), [Mips_p0])
+
+ruleset Mips_G_BSWAP: G_BSWAP
+    legal (Mips_hasMips32r2 and in(slot(0), [Mips_s32]))
+    lower (not Mips_hasMips32r2 and in(slot(0), [Mips_s32]))
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_BITREVERSE: G_BITREVERSE
+    lower in(slot(0), [Mips_s32])
+    narrow(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_CTLZ: G_CTLZ
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32]])
+    narrow(slot(0), ty(Mips_s32))
+    narrow(slot(1), ty(Mips_s32))
+
+ruleset Mips_G_CTLZ_ZERO_POISON: G_CTLZ_ZERO_POISON
+    lower in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32]])
+
+ruleset Mips_G_CTTZ: G_CTTZ
+    lower in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32]])
+    narrow(slot(0), ty(Mips_s32))
+    narrow(slot(1), ty(Mips_s32))
+
+ruleset Mips_G_CTTZ_ZERO_POISON: G_CTTZ_ZERO_POISON
+    lower in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32], [Mips_s64, Mips_s64]])
+
+ruleset Mips_G_CTPOP: G_CTPOP
+    lower in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32]])
+    widen(slot(0), ty(Mips_s32))
+    narrow(slot(0), ty(Mips_s32))
+    widen(slot(1), ty(Mips_s32))
+    narrow(slot(1), ty(Mips_s32))
+
+ruleset Mips_G_FCONSTANT: G_FCONSTANT
+    legal in(slot(0), [Mips_s32, Mips_s64])
+
+ruleset Mips_G_FADD: G_FADD G_FSUB G_FMUL G_FDIV G_FABS G_FSQRT
+    legal ((in(slot(0), [Mips_s32, Mips_s64])) or (not (in(slot(0), [Mips_s32, Mips_s64])) and (Mips_hasMSA and in(slot(0), [Mips_v16s8, Mips_v8s16, Mips_v4s32, Mips_v2s64]))))
+
+ruleset Mips_G_FCMP: G_FCMP
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s32], [Mips_s32, Mips_s64]])
+    widen(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_FCEIL: G_FCEIL G_FFLOOR
+    libcall in(slot(0), [Mips_s32, Mips_s64])
+
+ruleset Mips_G_FPEXT: G_FPEXT
+    legal in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s32]])
+
+ruleset Mips_G_FPTRUNC: G_FPTRUNC
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s64]])
+
+ruleset Mips_G_FPTOSI: G_FPTOSI
+    legal in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s64], [Mips_s32, Mips_s32]])
+    libcall in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s64], [Mips_s64, Mips_s32]])
+    widen(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_FPTOUI: G_FPTOUI
+    libcall in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s64], [Mips_s64, Mips_s32]])
+    lower in_pairs(slot(0), slot(1), [[Mips_s32, Mips_s64], [Mips_s32, Mips_s32]])
+    widen(slot(0), ty(Mips_s32))
+
+ruleset Mips_G_SITOFP: G_SITOFP
+    legal in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s32], [Mips_s32, Mips_s32]])
+    libcall in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s64], [Mips_s32, Mips_s64]])
+    widen(slot(1), ty(Mips_s32))
+
+ruleset Mips_G_UITOFP: G_UITOFP
+    libcall in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s64], [Mips_s32, Mips_s64]])
+    custom in_pairs(slot(0), slot(1), [[Mips_s64, Mips_s32], [Mips_s32, Mips_s32]])
+    widen(slot(1), ty(Mips_s32))
+
+ruleset Mips_G_SEXT_INREG: G_SEXT_INREG
+    lower true
+
+ruleset Mips_G_MEMCPY: G_MEMCPY G_MEMMOVE G_MEMSET
+    libcall true
+
+ruleset Mips_G_FENCE: G_FENCE
+    legal true
+
+ruleset Mips_G_TRAP: G_TRAP G_DEBUGTRAP G_UBSANTRAP
+    legal true

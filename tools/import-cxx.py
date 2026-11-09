@@ -103,6 +103,11 @@ FEATURE_NAMES = {
         "ST.isThumb1Only()": "isThumb1Only",
         "ST.useSoftFloat()": "useSoftFloat",
     },
+    "Mips": {
+        "ST.hasMSA()": "hasMSA",
+        "ST.hasMips32r2()": "hasMips32r2",
+        "ST.systemSupportsUnalignedAccess()": "systemSupportsUnalignedAccess",
+    },
     "RISCV": {
         "ST.enableUnalignedScalarMem()": "enableUnalignedScalarMem",
         "ST.getELen() == 64": "getELen_64",
@@ -437,6 +442,11 @@ def _binop_at(text, ops):
     return -1, None
 
 
+def _is_assert(st):
+    """True for `assert(...)` / `static_assert(...)`: a build-time contract."""
+    return re.match(r"(?:static_)?assert\s*\(", st.strip()) is not None
+
+
 def _arith(text):
     """C++ integer arithmetic the DSL spells as `mul`/`urem`/`pow2_ceil`."""
     text = re.sub(r"\b(\d+)[uUlL]+\b", r"\1", text)   # `1u`, `8LL`, ...
@@ -519,8 +529,23 @@ class Translator:
         # a local helper that also answers for scalars and scalable vectors,
         # where LLT::getNumElements() is not defined.  Same observation.
         text = re.sub(r"\bnumElements\(", "num_elems(", text)
+        # A mem operand read directly inside a lambda body: `getSizeInBits()`
+        # is the memory type's total width, `AlignInBits` its alignment.
+        text = re.sub(r"Query\.MMODescrs\[(\d+)\]\.MemoryTy"
+                      r"\.getSizeInBits\(\)",
+                      r"size_of(mem_ty(mem_slot(\1)))", text)
+        text = re.sub(r"Query\.MMODescrs\[(\d+)\]\.AlignInBits",
+                      r"align_of(mem_slot(\1))", text)
+        # Normalise the power-of-two test before anything decides a call is
+        # already a `.gisel` observation: `isPowerOf2_64(x)` is `is_pow2(x)`.
+        text = re.sub(r"isPowerOf2_\d+\(|isPowerOf2\(", "is_pow2(", text)
+        helper = self.query_helper(text)
+        if helper is not None:
+            return helper
         if text in self.feature_aliases:
             return self.feature_aliases[text]
+        if isinstance(getattr(self, "env", {}).get(text), bool):
+            return "true" if self.env[text] else "not true"
         if self._single_call(text) and re.fullmatch(r"(slot|elem_of|scalar_of|sort_of|num_elems|bits_of|size_of|"
                         r"size_in_bytes_of|addr_space|align_of|mem_ty|mem_slot|"
                         r"mem_ordering|mem_failure_ordering|is_pow2|is_float16|"
@@ -555,7 +580,6 @@ class Translator:
                 lhs, ">=" if m.group(2) == "!=" else "<")
         text = re.sub(r"AtomicOrdering::(\w+)",
                       lambda m: _ordering(m.group(1)), text)
-        text = re.sub(r"isPowerOf2_\d+\(|isPowerOf2\(", "is_pow2(", text)
         m = re.fullmatch(r"(?:::)?(all|any)\s*\((.*)\)", text, re.S)
         if m:
             parts = split_top(m.group(2))
@@ -625,6 +649,65 @@ class Translator:
         if "Query." in text:
             return self.query_body(text)
         raise Refuse(text)
+
+    def query_helper(self, text):
+        """Named C++ query helpers that are one observation spelled in code.
+
+        Both come from the Mips constructor's file-local helpers, and both are
+        pure functions of the query, so inlining them keeps the rule form
+        rather than hiding a rule behind an opaque predicate:
+
+          `CheckTyN(N, Query, {t, ...})`                  -> `in(slot(N), [...])`
+          `CheckTy0Ty1MemSizeAlign(Query, {{v, p, bits, allowUnaligned}, ...})`
+              -> one disjunct per entry: the two slots, the memory type's bit
+                 width, and -- unless the entry says unaligned access is fine --
+                 an alignment at least that wide.
+          `isUnalignedMemmoryAccess(memBits, alignBits)` -> `memBits > alignBits`
+
+        Anything else returns None and the caller keeps refusing.
+        """
+        m = re.fullmatch(r"CheckTyN\s*\(\s*(\d+)\s*,\s*Query\s*,"
+                         r"\s*\{(.*)\}\s*\)", text, re.S)
+        if m:
+            return "in(slot(%s), [%s])" % (
+                m.group(1),
+                ", ".join(self.t.name(x) for x in split_top(m.group(2))))
+        m = re.fullmatch(r"CheckTy0Ty1MemSizeAlign\s*\(\s*Query\s*,"
+                         r"\s*\{(.*)\}\s*\)", text, re.S)
+        if m:
+            alts = []
+            for row in split_top(m.group(1)):
+                row = row.strip()
+                if not (row.startswith("{") and row.endswith("}")):
+                    return None
+                fields = split_top(row[1:-1])
+                if len(fields) != 4:
+                    return None
+                val, ptr, bits, flag = (f.strip() for f in fields)
+                parts = ["in(slot(0), [%s])" % self.t.name(val),
+                         "in(slot(1), [%s])" % self.t.name(ptr),
+                         "size_of(mem_ty(mem_slot(0))) == %s" % bits]
+                try:
+                    allowed = const_eval(flag, getattr(self, "env", {}))
+                except Refuse:
+                    allowed = None
+                if allowed is True:
+                    pass
+                elif allowed is False:
+                    parts.append("%s <= align_of(mem_slot(0))" % bits)
+                else:
+                    parts.append("(%s or %s <= align_of(mem_slot(0)))"
+                                 % (self.pred(flag), bits))
+                # `and`, not `all(...)`: the grammar's call arguments are
+                # expressions, and a type list `[A, B]` is not one.
+                alts.append("(%s)" % " and ".join(parts))
+            return "(%s)" % " or ".join(alts)
+        m = re.fullmatch(r"isUnalignedMemmoryAccess\s*\(\s*(.+?)\s*,"
+                         r"\s*(.+?)\s*\)", text, re.S)
+        if m:
+            return "(%s > %s)" % (self.expr_text(m.group(1)),
+                                  self.expr_text(m.group(2)))
+        return None
 
     @staticmethod
     def _single_call(text):
@@ -1087,7 +1170,10 @@ class Translator:
         """A lambda body of `if (...)` early returns -> one predicate."""
         if self.opcode:
             body = re.sub(r"Query\.Opcode", self.opcode, body)
-        stmts = [x.strip() for x, _ in split_statements(body) if x.strip()]
+        # `assert(x && "msg");` states a contract the C++ build enforces; it
+        # neither accepts nor rejects a query, so it is not part of the rule.
+        stmts = [x.strip() for x, _ in split_statements(body)
+                 if x.strip() and not _is_assert(x)]
         return self._body_stmts(self._subst_locals(stmts))
 
     def _subst_locals(self, stmts):
@@ -1119,6 +1205,7 @@ class Translator:
                 if x.strip() and x.strip() != ";"]
 
     def _body_stmts(self, stmts):
+        stmts = [x for x in stmts if not _is_assert(x)]
         if not stmts:
             raise Refuse("empty predicate lambda")
         st = stmts[0].rstrip(";").strip()
@@ -1129,7 +1216,8 @@ class Translator:
             # `_if_parts` flattens `if (c) { ... }` to its statements; more
             # than one (or a declaration first) means the block is a nested
             # predicate, not a `return X`.
-            block = [x.strip() for x, _ in split_statements(then) if x.strip()]
+            block = [x.strip() for x, _ in split_statements(then)
+                     if x.strip() and not _is_assert(x)]
             if len(block) > 1:
                 val = self._body_stmts(self._subst_locals(block))
                 if rest is None:
@@ -1138,6 +1226,14 @@ class Translator:
                     cond, val, cond, rest)
             if block:
                 then = block[0]
+            # A trailing `return false` adds nothing: the fold below would
+            # spell `(c and v) or (not c and false)`, which is just `c and v`.
+            if rest == "not true":
+                if then in ("return false", "return true"):
+                    return cond if then == "return true" else "not (%s)" % cond
+                if then.startswith("return "):
+                    val = self.pred(then[len("return "):])
+                    return "(%s and %s)" % (cond, val)
             if then in ("return false", "return true"):
                 val = "false" if then == "return false" else "true"
                 if rest is None:
@@ -1345,6 +1441,8 @@ def const_eval(text, env):
         return env[text]
     if re.fullmatch(r"-?\d+", text):
         return int(text)
+    if text in ("true", "false"):
+        return text == "true"
     m = re.fullmatch(r"(.+?)\s*\?\s*(-?\d+)\s*:\s*(-?\d+)", text, re.S)
     if m:
         cond = const_eval(m.group(1), env)
@@ -1931,6 +2029,16 @@ class Importer:
         if re.match(r"(const\s+)?bool\s+\w+\s*=", st):
             m = re.match(r"(?:const\s+)?bool\s+(\w+)\s*=\s*(.+)$", st, re.S)
             name, expr = m.group(1), " ".join(m.group(2).split())
+            try:
+                value = const_eval(expr, self.env)
+            except Refuse:
+                value = None
+            if isinstance(value, bool):
+                # `bool NoAlignRequirements = true;` is a named constant, not a
+                # subtarget observation; folding it here keeps a literal out of
+                # the feature table (and out of the evaluator's key space).
+                self.env[name] = value
+                return
             self.tr.features[expr] = PREFIX + name
             self.tr.feature_aliases[name] = PREFIX + name
             return
@@ -2369,6 +2477,10 @@ TARGETS = {
         "ARM", "A",
         "lib/Target/ARM/ARMLegalizerInfo.cpp",
         52, 96),
+    "Mips": Target(
+        "Mips", "Mips",
+        "lib/Target/Mips/MipsLegalizerInfo.cpp",
+        48, 95),
 }
 
 

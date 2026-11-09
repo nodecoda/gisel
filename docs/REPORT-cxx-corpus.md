@@ -174,8 +174,8 @@ M68k 一样走 `import-cxx`：
 
 - 语料从 pin `9bfc850b9940` 的 `WebAssemblyLegalizerInfo.cpp` 转录，
   **29 rulesets / 109 rules / 0 refused**，`.gisel` 逐字节可复现；
-- 查询集 942 条（`wasm32`/`wasm64` × `±sign-ext` 四个配置）；
-- 端到端 **942/942 agree、0 disagree、0 unanswerable**：
+- 查询集 886 条（`wasm32`/`wasm64` × `±sign-ext` 四个配置）；
+- 端到端 **886/886 agree、0 disagree、0 unanswerable**：
   `tools/ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc OUT`。
 
 为了做到 0 拒绝，转录器补了三处（都是拼写归一，不是新增语义）：
@@ -269,7 +269,7 @@ ARM: 52 rulesets, 96 rules, 0 refused
 | `armv7-soft` | `armv7-linux-gnueabi` / `generic` / `+soft-float` | 软浮点 + NEON |
 
 这一步抓到一个真错：`cortex-a5` 的 `hasVFP4Base()` 是**真**（VFPv4-D16），我第一版
-按“A5 老”写成假，1,670 条里 `G_FMA s32` 一条从 Legal 变 Libcall——`ab.py` 的
+按“A5 老”写成假，1,614 条里 `G_FMA s32` 一条从 Legal 变 Libcall——`ab.py` 的
 三方矩阵（官方 / 我们 / 求值器）直接把它挑出来了。改真值后归零。
 
 ### 12.2 结果
@@ -277,14 +277,14 @@ ARM: 52 rulesets, 96 rules, 0 refused
 ```
 python3 -m gisel gen tests/corpus/ARMLegalizerInfo.gisel --emit=inc --out /tmp/arm.inc
 tools/ab/run-arm-end-to-end.sh TREE BUILD /tmp/arm.inc OUT
-{"agree": 1670, "disagree": 0, "unanswerable": 0}
+{"agree": 1614, "disagree": 0, "unanswerable": 0}
 
 python3 tools/ab/ab.py run --target arm --tree TREE --build BUILD \
   --queries OUT/queries.jsonl --out OUT2
-target=arm compare=full queries=1670 agree=1670 disagree=0 unanswerable=0 rc=0
+target=arm compare=full queries=1614 agree=1614 disagree=0 unanswerable=0 rc=0
 ```
 
-`bundle.json` 的三方矩阵是 `all_agree 1670`：官方库、生成的构造函数、gisel 求值器
+`bundle.json` 的三方矩阵是 `all_agree 1614`：官方库、生成的构造函数、gisel 求值器
 三者同答案。
 
 ### 12.3 未覆盖
@@ -304,3 +304,90 @@ target=arm compare=full queries=1670 agree=1670 disagree=0 unanswerable=0 rc=0
   的 `legal`（s64 + align 32）把它挡在前面。
 - 这三条和 WebAssembly 报的 `shadowed/unexercised` 是同一口径：列出来、不静默，
   也不为了清零去改分区。
+
+## 13 Mips 转正（2026-11-09）
+
+Mips 的 legalizer 也在 `lib/Target/Mips/MipsLegalizerInfo.cpp`（没有 `GISel/`
+子目录），构造函数 264 行、48 rulesets / 95 rules。它一开始有 7 条拒绝，分四种形状：
+
+| C++ | 处理 |
+|---|---|
+| `CheckTyN(0, Query, {s32})` | `query_helper()`：纯查询函数，内联成 `in(slot(0), [...])` |
+| `CheckTy0Ty1MemSizeAlign(Query, {{v, p, bits, allowUnaligned}, ...})` | 内联成“一项一个析取分支”：两个槽、内存类型的位宽、以及（除非该项声明允许非对齐）`bits <= align_of(mem_slot(0))` |
+| `isUnalignedMemmoryAccess(a, b)` | 就是 `a > b` |
+| `assert(...);`（构造函数和 lambda 里都有） | 跳过：断言是构建期契约，不是规则的一部分 |
+
+第三条断言里有个坑：`CheckTy0Ty1MemSizeAlign` 的第一个分支要求“内存位宽是 2 的幂”，
+但这条由每个分支的常量相等隐含了，所以直接按分支展开就够，不需要额外的 `is_pow2`。
+
+`bool NoAlignRequirements = true;` 这种**常量** bool 现在折进环境，不再变成
+`feature Mips_NoAlignRequirements = true` 这样的假配置轴；`true`/`false` 也进了
+`const_eval`。
+
+配置轴三个，先用探针打出 `MipsSubtarget` 真值再写表：
+
+| config | CPU / mattr | MSA | MIPS32r2 | 非对齐访问 |
+|---|---|---:|---:|---:|
+| `mips32` | `mips32` | ✗ | ✗ | ✗ |
+| `mips32r2` | `mips32r2` | ✗ | ✓ | ✗ |
+| `mips32r6` | `mips32r6` | ✗ | ✓ | ✓ |
+| `mips32r5-msa` | `mips32r5` `+msa,+fp64` | ✓ | ✓ | ✗ |
+| `mips32r6-msa` | `mips32r6` `+msa,+fp64` | ✓ | ✓ | ✓ |
+
+MSA 要求 `+fp64`，否则 `createTargetMachine` 直接 abort。
+
+### 13.1 结果
+
+```
+tools/ab/run-mips-end-to-end.sh TREE BUILD /tmp/mips.inc OUT
+{"agree": 1647, "disagree": 0, "ref_asserted": 9}
+```
+
+1,656 条查询里 1,647 条两侧同答案，9 条**官方侧断言、我们侧给答案**。那 9 条是
+同一形状：`G_LOAD` 读 4 字节非对齐内存、值槽比 32 位宽（`s33`/`s63`/`s64`），
+发生在不支持非对齐访问的三个配置上。上游 `customIf` 里
+
+```cpp
+assert(QueryMemSize != 32 && "4 byte load and store are legal");
+```
+
+的前提不成立：它的 `legalIf` 只给 `s32`/`p0` 声明了 32 位访问，值槽更宽时
+根本到不了 `legalIf`。这是上游缺陷，不是规则差异：
+
+```sh
+llc -mtriple=mips-unknown-linux-gnu -mcpu=mips32r2 -global-isel \
+    -run-pass=legalizer -o /dev/null /tmp/mips-load.mir
+llc: .../MipsLegalizerInfo.cpp:144: ... Assertion `QueryMemSize != 32 && "4 byte load and store are legal"' failed.
+```
+
+MIR 和补丁建议落在
+`/home/ubuntu/admin/upstream-issues/2026-11-09-16-gisel-mips-4byte-unaligned-load-assert.md`。
+
+这一类在 `diff.py` 里是**显式**的：`--allow-ref-asserts 9` 把它记成已知类别，
+数量对不上就 rc=1。它不是“忽略”，是“钉住”：新增一类断言会让数字变，跑挂。
+
+### 13.2 顺带修的两处出题缺陷（影响所有 target）
+
+Mips 的断言把两个一直存在的问题顶了出来，修在 `gisel/cases.py`，因此**所有
+target 的查询数都变了**（LOOP.md 里的表是新的）：
+
+1. **MMO 的对齐必须是 2 的幂。** boundary 探针原来用 `align ± 1`，会造出
+   `align 15` 这种 MMO；上游 `isUnalignedMemmoryAccess` 在断言构建里第一件事就是
+   `assert(isPowerOf2_64(AlignInBits))`。现在探的是相邻的 2 的幂（`align/2`、`align*2`）。
+2. **读内存的 opcode 必须带内存描述符，且内存位宽不能超过值槽。**
+   `G_LOAD` 少一个 MMO 时上游会读 `MMODescrs[0]`（空 ArrayRef → 断言）；
+   `QueryMemSize <= Size` 也是上游自己写下的契约。这两条现在在 `emit()` 这个
+   唯一出口上判，boundary/outside 探针也走同一条路。
+
+计数从 X86 3,217 / AArch64 12,952 / RISC-V 6,301 / M68k 41 / WebAssembly 942 /
+PowerPC 98 / ARM 1,670 变成 3,027 / 12,583 / 6,149 / 35 / 886 / 94 / 1,614，
+每个 target 都按新题面重跑过对拍，`disagree = 0` 不变。
+
+### 13.3 未覆盖
+
+- `Mips_G_ZEXT#0` / `Mips_G_TRUNC#0` 是 `legal not true`（C++ 里
+  `.legalIf([](const LegalityQuery &) { return false; })`），cases 记成
+  `unexercised`——它本来就不可满足，不是漏题。
+- `Mips_G_ZEXTLOAD#1/#2` 是 `shadowed`：同轴上更早的规则先命中。
+- `legalizeCustom()` 里 Mips 自己拆 load/store 的逻辑不在对拍面内：
+  我们只比 `getAction()`，不比后续的 legalize 结果（和 PPC、ARM 同一口径）。

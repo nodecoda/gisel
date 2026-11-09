@@ -31,6 +31,10 @@
     "ARM": {
       "path": "llvm/lib/Target/ARM/ARMLegalizerInfo.cpp",
       "sha256": "b86441eb03f4e50291053f61da8a94c542224767d705933d54b2fd3761a59b02"
+    },
+    "Mips": {
+      "path": "llvm/lib/Target/Mips/MipsLegalizerInfo.cpp",
+      "sha256": "3660b66b709c5eec9431e54010d1da9e241a460aa528ff213b444ebc0e96b525"
     }
   },
   "patches": [

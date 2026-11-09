@@ -482,7 +482,7 @@
       .unsupported();
   getActionDefinitionsBuilder({G_INDEXED_SEXTLOAD, G_INDEXED_ZEXTLOAD})
       .coreUnsupportedIf([=](const LegalityQuery &Query) { return isAtLeastOrStrongerThan((Query.MMODescrs[0]).Ordering, AtomicOrdering::Unordered); })
-      .coreLegalIf([=](const LegalityQuery &Query) { return ((Query.Types[0] == A_s16 || Query.Types[0] == A_s32 || Query.Types[0] == A_s64)) && ((!((Query.Types[1] != A_p0))) && ((((Query.Types[0] == A_s16)) && (((Query.MMODescrs[0]).MemoryTy == A_s8))) || ((!((Query.Types[0] == A_s16))) && ((((Query.Types[0] == A_s32)) && ((((Query.MMODescrs[0]).MemoryTy == A_s8)) || (((Query.MMODescrs[0]).MemoryTy == A_s16)))) || ((!((Query.Types[0] == A_s32))) && ((((Query.Types[0] == A_s64)) && ((((Query.MMODescrs[0]).MemoryTy == A_s8)) || (((Query.MMODescrs[0]).MemoryTy == A_s16)) || (((Query.MMODescrs[0]).MemoryTy == A_s32)))) || ((!((Query.Types[0] == A_s64))) && (!(true))))))))); })
+      .coreLegalIf([=](const LegalityQuery &Query) { return ((Query.Types[0] == A_s16 || Query.Types[0] == A_s32 || Query.Types[0] == A_s64)) && ((!((Query.Types[1] != A_p0))) && ((((Query.Types[0] == A_s16)) && (((Query.MMODescrs[0]).MemoryTy == A_s8))) || ((!((Query.Types[0] == A_s16))) && ((((Query.Types[0] == A_s32)) && ((((Query.MMODescrs[0]).MemoryTy == A_s8)) || (((Query.MMODescrs[0]).MemoryTy == A_s16)))) || ((!((Query.Types[0] == A_s32))) && (((Query.Types[0] == A_s64)) && ((((Query.MMODescrs[0]).MemoryTy == A_s8)) || (((Query.MMODescrs[0]).MemoryTy == A_s16)) || (((Query.MMODescrs[0]).MemoryTy == A_s32))))))))); })
       .unsupported();
   getActionDefinitionsBuilder(G_CONSTANT)
       .legalFor({A_p0, A_s8, A_s16, A_s32, A_s64})
