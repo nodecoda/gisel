@@ -47,14 +47,15 @@ AArch64 12,952/12,952、RISC-V 6,299/6,299 全部 agree。等这些 PR 合入上
 
 ## 复现：一条命令，钉住计数
 
-导入器是**一次性转录工具**，不是通用 C++ 解析器：目标只有三个，路径和规则数
-写死在 `TARGETS` 里，认不出的语句带行号拒绝。重新生成并逐字节对照仓库里的
-语料：
+导入器是**一次性转录工具**，不是通用 C++ 解析器：目标写死在 `TARGETS` 里
+（X86 / AArch64 / RISC-V / M68k），路径和规则数也在那里，认不出的语句带行号
+拒绝。重新生成并逐字节对照仓库里的语料：
 
 ```sh
 GS_X86_SRC=.../X86LegalizerInfo.cpp \
 GS_AARCH64_SRC=.../AArch64LegalizerInfo.cpp \
 GS_RISCV_SRC=.../RISCVLegalizerInfo.cpp \
+GS_M68K_SRC=.../M68kLegalizerInfo.cpp \
   python3 tools/import-cxx.py --all --check
 ```
 
@@ -73,6 +74,7 @@ python3 tools/import-cxx.py X86 .../X86LegalizerInfo.cpp \
 | X86 | `79f2376096c3` | 63 | 328 |
 | AArch64 | `2b5377c3eedd` | 117 | 744 |
 | RISC-V | `ad529e1f1a9e` | 96 | 402 |
+| M68k | `f796bb977e0b` | 6 | 13 |
 
 换上游修订不是改参数，而是改工具：计数断言会立刻报 `DRIFT`。
 
@@ -86,7 +88,7 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 | X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | 无 emitter；gisel 自己的输出（**自基线**）+ 冻结答案 | 生成器回归；规则保真靠 `tests/cases/x86_ref_dump.jsonl` 与工作台对拍 |
 | AArch64 | `AArch64/GISel/AArch64LegalizerInfo.cpp` | 同上 | 同上 | 同上 |
 | RISC-V | `RISCV/GISel/RISCVLegalizerInfo.cpp` | 同上 | 同上 | 同上 |
-| M68k | `M68kLegalizerInfo.cpp` | 人工转写（探针，13 条） | 无 | 语法可表达性 |
+| M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-m68k-end-to-end.sh` |
 | WebAssembly | `WebAssemblyLegalizerInfo.cpp` | 人工转写（探针，108 条） | 无 | 语法可表达性 |
 
 ## 证据分三层，别混

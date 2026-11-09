@@ -27,6 +27,10 @@ AARCH64_SRC = Path(os.environ.get(
     "GS_AARCH64_SRC",
     "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/AArch64/GISel/"
     "AArch64LegalizerInfo.cpp"))
+M68K_SRC = Path(os.environ.get(
+    "GS_M68K_SRC",
+    "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/M68k/GISel/"
+    "M68kLegalizerInfo.cpp"))
 
 
 def run(*args, env=None):
@@ -122,10 +126,11 @@ class ImporterBugsAreRefusals(unittest.TestCase):
 class ReimportedCorpora(unittest.TestCase):
     """Every pinned constructor reproduces its checked-in `.gisel`."""
 
-    def test_x86_and_aarch64_reimport(self):
+    def test_pinned_targets_reimport(self):
         for target, src, rulesets, rules in (
                 ("X86", X86_SRC, 63, 328),
-                ("AArch64", AARCH64_SRC, 117, 744)):
+                ("AArch64", AARCH64_SRC, 117, 744),
+                ("M68k", M68K_SRC, 6, 13)):
             if not src.exists():
                 continue
             with self.subTest(target=target), \
@@ -149,13 +154,14 @@ class PinnedRevision(unittest.TestCase):
         r = run("--all", "--pin", str(PIN), "--git-repo", str(LLVM_GIT),
                 "--check")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
-        self.assertEqual(r.stdout.count(": matches"), 3, r.stdout)
-        self.assertEqual(r.stdout.count(": read "), 3, r.stdout)
+        self.assertEqual(r.stdout.count(": matches"), 4, r.stdout)
+        self.assertEqual(r.stdout.count(": read "), 4, r.stdout)
 
     def test_pin_records_one_commit_for_every_target(self):
         pin = json.loads(PIN.read_text())
         self.assertEqual(len(pin["commit"]), 40, pin["commit"])
-        self.assertEqual(sorted(pin["sources"]), ["AArch64", "RISCV", "X86"])
+        self.assertEqual(sorted(pin["sources"]),
+                         ["AArch64", "M68k", "RISCV", "X86"])
         for name, entry in pin["sources"].items():
             self.assertEqual(len(entry["sha256"]), 64, name)
             self.assertIn("llvm/lib/Target/", entry["path"])

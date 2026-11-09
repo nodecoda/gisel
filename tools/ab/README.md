@@ -32,9 +32,18 @@ is back on the baseline include.
 | `x86` | swap the constructor body for `#include` and rebuild | official is the pinned hand-written constructor |
 | `x86-ctor` | generated constructor object | retired with the `.td` path; kept only for old logs |
 | `aarch64` | generated constructor object | does not modify the build |
+| `m68k` | generated constructor object | 41-query smoke target; single `default` config |
 
 Adapters live in `tools/ab/targets/*.json`: include path, library, ninja
 target, runner builder, feature table, optional axes, query-count contract.
+
+A new target's runner is a ~30 line file: include its subtarget and legalizer
+headers, alias `TargetSubtarget`/`TargetLegalizer`, include
+`query_runner_common.h`, then return the config table, the target
+initializers, and the legalizer constructor.  `build-query-runner.sh` derives
+the include paths and the `libLLVM<TARGET>{CodeGen,Desc,Info}` list from the
+target name; `build-m68k-runner.sh` is the thin per-target wrapper the adapter
+names.
 
 ## Artifacts
 

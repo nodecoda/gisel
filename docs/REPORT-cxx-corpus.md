@@ -17,6 +17,7 @@ upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
 | X86 | `79f2376096c3` | 63 | 328 | 0 |
 | AArch64 | `2b5377c3eedd` | 117 | 744 | 0 |
 | RISC-V | `ad529e1f1a9e` | 96 | 402 | 0 |
+| M68k | `f796bb977e0b` | 6 | 13 | 0 |
 
 `tests/artifacts/` 的十二份产物已按新语料重生成。它们**是 gisel 自己的冻结
 输出**，用于抓漂移，不是“与上游逐字节一致”的 oracle；规则保真靠
@@ -124,7 +125,7 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
 - 换上游修订需要改 `TARGETS` 里的计数并重新生成，不是运行时参数；这是
   有意为之。当前三份输入钉的是和冻结答案同一次构建的源码修订（sha 见上表），
   不一定是最新 upstream；换修订就要连答案一起重冻。
-- M68k / WebAssembly 仍是人工转写的小探针，不在 `--all` 里。
+- WebAssembly 仍是人工转写的小探针，不在 `--all` 里；M68k 已转正（见 §9）。
 - LLVM 研究分支上残留的 `.td` / `-gen-legalizer*` 代码不在本仓库清理范围；
   gisel 这边已经不再读它。
 
@@ -147,3 +148,20 @@ widen 到 64，我们生成的 inc 不动，随后另一条 `changeElementSize(0
 `v2i63` 的总位宽 126 不是 2 的幂，但标量谓词先看 `isScalar()`，所以旧拼写
 静默不命中。修复后重生成 AArch64 语料只改 2 行，`tests/artifacts/aarch64.*`
 同步重生成；RISC-V / X86 语料逐字节不变（X86 源已漂移，比较时按单目标跑）。
+
+## 9 M68k 转正（2026-11-09）
+
+M68k 的构造函数是 52 行、6 条 builder 链、13 条规则，没有任何 helper 或
+subtarget 条件，是验证“新增一个 target 只差一个 `TARGETS` 条目”的最小样本。
+它现在和另外三个目标一样：
+
+- 语料从 pin `9bfc850b9940` 的 `M68kLegalizerInfo.cpp` 转录，0 拒绝，
+  `.gisel` 逐字节可复现；
+- 查询集 41 条（单 `default` 配置）；
+- 端到端 41/41 agree、0 disagree、0 unanswerable：
+  `tools/ab/run-m68k-end-to-end.sh TREE BUILD m68k.inc OUT`。
+
+M68k 是 LLVM 的 experimental target，构建时要加
+`LLVM_EXPERIMENTAL_TARGETS_TO_BUILD=M68k`；`toolset/configure.sh` 已支持这个
+环境变量。它的 runner 用的是 `tools/ab/query_runner_common.h`，每目标文件约
+30 行；其余 target 的接入按同一模板走。

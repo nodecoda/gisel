@@ -15,6 +15,10 @@
     "RISCV": {
       "path": "llvm/lib/Target/RISCV/GISel/RISCVLegalizerInfo.cpp",
       "sha256": "ad529e1f1a9e62fa8bbd3a7d68f2b46f41f3cf8f1e74556c709bffbd43b9e889"
+    },
+    "M68k": {
+      "path": "llvm/lib/Target/M68k/GISel/M68kLegalizerInfo.cpp",
+      "sha256": "f796bb977e0b77f56374c10243acb24e3818df7d9637eed2fc0df4c6e0295c36"
     }
   },
   "patches": [

@@ -1723,9 +1723,9 @@ def apply_gate(line, gate):
 
 
 class Importer:
-    def __init__(self, target, source=""):
+    def __init__(self, target, source="", prefix=None):
         global PREFIX, CURRENT_TARGET
-        PREFIX = target[0].upper() + "_"
+        PREFIX = (prefix or target[0].upper()) + "_"
         CURRENT_TARGET = target
         self.p = Program()
         self.t = Types()
@@ -2191,6 +2191,10 @@ TARGETS = {
         "RISCV", "R",
         "lib/Target/RISCV/GISel/RISCVLegalizerInfo.cpp",
         96, 402),
+    "M68k": Target(
+        "M68k", "M68k",
+        "lib/Target/M68k/GISel/M68kLegalizerInfo.cpp",
+        6, 13),
 }
 
 
@@ -2257,7 +2261,7 @@ def transcribe(spec, source, out):
     STATS["rules"].clear()
     USED_RENAMES["select"].clear()
     USED_RENAMES["feature"].clear()
-    imp = Importer(spec.name, text)
+    imp = Importer(spec.name, text, spec.prefix)
     for name, rhs in member_types(source):
         imp.t.add(name, rhs, 0)
     body, first_line = constructor_text(source)

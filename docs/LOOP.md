@@ -25,15 +25,15 @@
 ```sh
 python3 tools/import-cxx.py --all --pin tests/corpus/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
-# 三个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
+# 四个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
 ```
 
 为什么必须用 commit：A/B 的官方一侧要打本地补丁（例如 AArch64 的
 `getNumElements()`，见 `2026-11-09-13`），工作区里的文件已经不是 pin 的内容。
 提取只认 pin，补丁就污染不了语料。
 
-产物：`tests/corpus/{X86,AArch64,RISCV}LegalizerInfo.gisel`。规则数和拒绝数写进
-工具的 `TARGETS`，漂移就 rc=1。
+产物：`tests/corpus/{X86,AArch64,RISCV,M68k}LegalizerInfo.gisel`。规则数和拒绝数
+写进工具的 `TARGETS`，漂移就 rc=1。
 
 ## 2 出题
 
@@ -47,7 +47,7 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 产物是一行一个查询的 JSONL，**不带答案**：`config/name/types/mem/imms`。
 口径（等价类、边界、outside、见证）在 `spec/cases.md` 和
 `docs/ALGORITHM-cases.md`；每个 target 的查询数是契约的一部分，脚本里写死
-（X86 3,217 / AArch64 12,952 / RISC-V 6,301），变了就停下来看新题目。
+（X86 3,217 / AArch64 12,952 / RISC-V 6,301 / M68k 41），变了就停下来看新题目。
 
 ## 3 对拍
 
@@ -55,6 +55,7 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 tools/ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
 tools/ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc  OUT STATE
 tools/ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc   OUT STATE
+tools/ab/run-m68k-end-to-end.sh    TREE BUILD m68k.inc OUT
 ```
 
 官方一侧必须是**从 pin 的 C++ 构建出来的构造函数**；我们的一侧把
@@ -91,6 +92,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 | AArch64 | 12,952 | 12,952 | 12,952 | 0 | 0 | — |
 | RISC-V | 6,301 | 6,299 | 6,299 | 0 | 0 | — |
 | X86 | 3,217 | 3,211 | 3,211 | 0 | 0 | — |
+| M68k | 41 | 41 | 41 | 0 | 0 | 单配置，规则 13 条 |
 
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
 `patches`（`PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
