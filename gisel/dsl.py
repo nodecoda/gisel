@@ -61,7 +61,8 @@ UNARY_CALL = {"elem_of": "elemOf", "scalar_of": "scalarOf", "sort_of": "sortOf",
               "mem_slot": "memSlot", "mem_ty": "memTy", "mem_ordering": "memOrdering",
               "mem_failure_ordering": "memFailureOrdering",
               "is_bfloat16": "isBFloat16", "is_float16": "isFloat16",
-              "is_pow2": "isPow2", "replace": "replace", "pow2_ceil": "pow2Ceil",
+              "is_pow2": "isPow2", "is_fixed_vector": "isFixedVector",
+              "replace": "replace", "pow2_ceil": "pow2Ceil",
               "multiple_of": "multipleOf", "same_as": "sameAs",
               "min_vector_size": "minVectorSize", "int_of_size": "intOfSize",
               "ty": "ty", "pow2_min": "pow2Min"}
@@ -264,7 +265,8 @@ class Parser:
             return self.parse_combinator()
         # Bool-returning observers can stand alone as a predicate primary
         if self.peek() and self.peek().t == "ID" and self.peek().v in (
-                "is_bfloat16", "is_float16", "is_byte_sized", "is_pow2"):
+                "is_bfloat16", "is_float16", "is_byte_sized", "is_pow2",
+                "is_fixed_vector"):
             return self.parse_expr()
         # comparison
         left = self.parse_expr()
@@ -712,6 +714,9 @@ def _tc(node, arity, errs, names=None):
     if k in ("isPow2", "isBFloat16", "isFloat16", "isByteSized"):
         # A type predicate: isBFloat16 takes a type, isPow2 a byte count.
         need_any(0, {"Type", "Int"})
+        return "Bool"
+    if k == "isFixedVector":
+        need(0, "Type")
         return "Bool"
     raise ValueError(f"typecheck: unknown node kind {k!r}")
 

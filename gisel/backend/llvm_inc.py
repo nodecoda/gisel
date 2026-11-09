@@ -275,6 +275,8 @@ class IncEmitter:
             return "(%s).isByteSized()" % self.value(n["args"][0])
         if k == "isBFloat16":
             return "(%s).isBFloat16()" % self.value(n["args"][0])
+        if k == "isFixedVector":
+            return "(%s).isFixedVector()" % self.value(n["args"][0])
         if k == "isFloat16":
             return "(%s).isFloat16()" % self.value(n["args"][0])
         if k == "isPow2":
@@ -349,7 +351,8 @@ class IncEmitter:
             return self._membership(n)
         if k in CMP_OP:
             return self._compare(n)
-        if k in ("isPow2", "isByteSized", "isBFloat16", "isFloat16"):
+        if k in ("isPow2", "isByteSized", "isBFloat16", "isFloat16",
+                 "isFixedVector"):
             return self.value(n)
         raise ValueError(f"no C++ boolean for node {n!r}")
 

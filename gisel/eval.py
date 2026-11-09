@@ -648,6 +648,9 @@ class Evaluator:
             return bits % 8 == 0
         if k == "isBFloat16":
             return is_bf16(self.llt_value(a[0], types, mems, config, imms))
+        if k == "isFixedVector":
+            return is_fixed_vector(
+                self.llt_value(a[0], types, mems, config, imms))
         if k == "isFloat16":
             t = self.llt_value(a[0], types, mems, config, imms)
             return t[0] == "float" and t[1] == 16
