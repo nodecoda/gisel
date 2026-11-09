@@ -134,79 +134,80 @@ def _add_literal(info, slot, text):
 
 
 def _walk_info(node, info):
-    if not isinstance(node, dict):
-        return
-    k = node.get("kind")
-    if k == "slot":
-        info.slots.add(node["index"])
-    if k == "memSlot":
-        info.uses_mem = True
-    if k == "imm":
-        info.imms.add(node["index"])
-    if k in ("memOrdering", "memFailureOrdering"):
-        info.uses_ordering = True
+    """Record what one rule reads.
 
-    if k == "in":
-        lhs, rhs = node["args"]
-        if (isinstance(lhs, dict) and lhs.get("kind") == "imm"
-                and isinstance(rhs, dict) and rhs.get("of") == "Int"):
-            index = lhs["index"]
-            info.imms.add(index)
-            for value in rhs.get("elems", []):
-                if isinstance(value, int):
-                    info.imm_values.setdefault(index, set()).add(value)
-        slot = _slot_of(lhs)
-        if slot is not None:
-            info.slots.add(slot)
-            for text in _literals(rhs):
-                _add_literal(info, slot, text)
-    elif k in ("inPairs", "inTriples"):
-        args = node["args"]
-        slots = [x["index"] for x in args[:-1] if x.get("kind") == "slot"]
-        for i, e in enumerate(args[-1].get("elems", [])):
-            if isinstance(e, list):
-                for j, text in enumerate(e):
-                    if j < len(slots) and isinstance(text, str):
-                        _add_literal(info, slots[j], text)
-    elif k == "inMemDesc":
-        info.uses_mem = True
-        for e in node["args"][3].get("elems", []):
-            if isinstance(e, list) and len(e) == 4:
-                info.mem_entries.append(tuple(e))
-    elif k in ("eq", "ne", "lt", "le", "gt", "ge"):
-        a, b = node["args"]
-        for expr, other in ((a, b), (b, a)):
-            if other.get("kind") != "int":
-                continue
-            if isinstance(expr, dict) and expr.get("kind") == "imm":
-                index = expr["index"]
+    The traversal is `ast.walk_nodes`: it descends through every dict value,
+    so an inline `select_type` arm is inspected too.  The old hand-written
+    recursion only followed `args`/`arg`/`set` and silently skipped a select
+    guard -- a feature or slot inside one never reached the axes.
+    """
+    for n in A.walk_nodes(node):
+        k = n.get("kind")
+        if k == "slot":
+            info.slots.add(n["index"])
+        if k == "memSlot":
+            info.uses_mem = True
+        if k == "imm":
+            info.imms.add(n["index"])
+        if k in ("memOrdering", "memFailureOrdering"):
+            info.uses_ordering = True
+
+        if k == "in":
+            lhs, rhs = n["args"]
+            if (isinstance(lhs, dict) and lhs.get("kind") == "imm"
+                    and isinstance(rhs, dict) and rhs.get("of") == "Int"):
+                index = lhs["index"]
                 info.imms.add(index)
-                info.imm_thresholds.setdefault(index, set()).add(other["value"])
-                continue
-            obs = _mem_observation(expr)
-            if obs is not None:
-                info.uses_mem = True
-                info.mem_obs.add((obs, other["value"]))
-                continue
-            slot = _slot_of(expr)
-            dim = _dim_of(expr)
-            if slot is not None and dim is not None:
+                for value in rhs.get("elems", []):
+                    if isinstance(value, int):
+                        info.imm_values.setdefault(index, set()).add(value)
+            slot = _slot_of(lhs)
+            if slot is not None:
                 info.slots.add(slot)
-                info.thresholds.setdefault(slot, set()).add((dim, other["value"]))
-    elif k == "leaf" and node.get("name") == "isPow2":
-        slot = _slot_of(node)
-        if slot is not None:
-            info.slots.add(slot)
-            for n in L.POW2:
-                info.thresholds.setdefault(slot, set()).add(("bits", n))
-
-    for key in ("args", "arg", "set"):
-        v = node.get(key)
-        if isinstance(v, list):
-            for x in v:
-                _walk_info(x, info)
-        elif isinstance(v, dict):
-            _walk_info(v, info)
+                for text in _literals(rhs):
+                    _add_literal(info, slot, text)
+        elif k in ("inPairs", "inTriples"):
+            args = n["args"]
+            slots = [x["index"] for x in args[:-1] if x.get("kind") == "slot"]
+            for i, e in enumerate(args[-1].get("elems", [])):
+                if isinstance(e, list):
+                    for j, text in enumerate(e):
+                        if j < len(slots) and isinstance(text, str):
+                            _add_literal(info, slots[j], text)
+        elif k == "inMemDesc":
+            info.uses_mem = True
+            for e in n["args"][3].get("elems", []):
+                if isinstance(e, list) and len(e) == 4:
+                    info.mem_entries.append(tuple(e))
+        elif k in ("eq", "ne", "lt", "le", "gt", "ge"):
+            a, b = n["args"]
+            for expr, other in ((a, b), (b, a)):
+                if other.get("kind") != "int":
+                    continue
+                if isinstance(expr, dict) and expr.get("kind") == "imm":
+                    index = expr["index"]
+                    info.imms.add(index)
+                    info.imm_thresholds.setdefault(index, set()).add(
+                        other["value"])
+                    continue
+                obs = _mem_observation(expr)
+                if obs is not None:
+                    info.uses_mem = True
+                    info.mem_obs.add((obs, other["value"]))
+                    continue
+                slot = _slot_of(expr)
+                dim = _dim_of(expr)
+                if slot is not None and dim is not None:
+                    info.slots.add(slot)
+                    info.thresholds.setdefault(slot, set()).add(
+                        (dim, other["value"]))
+        elif k == "leaf" and n.get("name") == "isPow2":
+            slot = _slot_of(n)
+            if slot is not None:
+                info.slots.add(slot)
+                for value in L.POW2:
+                    info.thresholds.setdefault(slot, set()).add(
+                        ("bits", value))
 
 
 def inspect_rule(rule):
@@ -315,7 +316,12 @@ def document(source):
 
 
 def derive_features(doc, path=None, configs=None):
-    """Feature table from a file, or one derived from the document's guards."""
+    """Feature table from a file, or one derived from the document's guards.
+
+    A feature can appear in a rule predicate or in a `select_type` inside an
+    `on`/`to` mutation; every field is walked, so a configuration axis is
+    never dropped just because it lives in the mutation.
+    """
     if path:
         table = E.load_features(path)
         if configs:
@@ -324,23 +330,16 @@ def derive_features(doc, path=None, configs=None):
         return table
     exprs = []
     seen = set()
-
-    def walk(n):
-        if isinstance(n, dict):
-            if n.get("kind") == "leaf" and n.get("name") == "hasFeature":
-                expr = n["args"][0]
-                if expr not in seen:
-                    seen.add(expr)
-                    exprs.append(expr)
-            for v in n.values():
-                walk(v)
-        elif isinstance(n, list):
-            for v in n:
-                walk(v)
-
     for rs in doc["rulesets"]:
         for rule in rs["rules"]:
-            walk(rule["predicate"])
+            for field in (rule["predicate"], rule.get("on"), rule.get("to")):
+                for node in A.walk_nodes(field):
+                    if (node.get("kind") == "leaf"
+                            and node.get("name") == "hasFeature"):
+                        expr = node["args"][0]
+                        if expr not in seen:
+                            seen.add(expr)
+                            exprs.append(expr)
 
     rows = {}
     rows["none"] = {e: False for e in exprs}
@@ -355,5 +354,3 @@ def derive_features(doc, path=None, configs=None):
     if configs:
         table = E.Features({c: rows[c] for c in configs if c in rows})
     return table
-
-
