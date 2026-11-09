@@ -2114,6 +2114,12 @@ def const_eval(text, env):
         return env[text]
     if re.fullmatch(r"G_\w+", text):
         return text          # an opcode name, not a value
+    arith = re.sub(r"(?<=\d)[uUlL]+", "", text)
+    if re.fullmatch(r"[\d\s()+*/%-]+", arith):
+        try:
+            return int(eval(arith, {"__builtins__": {}}, {}))
+        except Exception:
+            raise Refuse(text)
     raise Refuse(text)
 
 
@@ -2580,7 +2586,10 @@ def mem_desc_tables(tr, text):
         if re.fullmatch(r"\d+", al):
             variants = [(None, int(al))]
         else:
-            variants = tr.align_variants(al)
+            try:
+                variants = tr.int_splits(al)
+            except Refuse:
+                variants = tr.align_variants(al)
         parsed.append((tr.t.name(t0), tr.t.name(t1), tr.t.name(mt), variants))
 
     n = max(len(p[3]) for p in parsed)

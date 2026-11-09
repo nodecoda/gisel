@@ -2,7 +2,7 @@
 
 一句话：**上游一共 11 个 legalizer 构造函数，语料收了 9 个；BPF 的构造函数是空的，
 真正剩下的只有 AMDGPU。** 导入器已经能把 AMDGPU 读成一份**能解析、能 lint**
-的语料（765 条规则），但还有 32 条语句拒绝，其中约一半要动 DSL 本身。本轮做
+的语料（778 条规则），但还有 25 条语句拒绝，其中一部分要动 DSL 本身。本轮做
 盘点、一个可复现的探针、把“悄悄产出非法文本”这类缺陷堵死，并按 §4 选定的
 逃逸点路线落下 `opaque(...)`；语料仍未收。
 
@@ -11,10 +11,10 @@
 | 项 | 值 |
 |---|---:|
 | rulesets | 142 |
-| rules | 765 |
-| refused | 32 |
-| builder 调用 | 682 |
-| 其中 `opaque` 规则 | 16 处 / 7 个不同表达式 |
+| rules | 778 |
+| refused | 25 |
+| builder 调用 | 689 |
+| 其中 `opaque` 规则 | 22 处 / 18 条规则 / 10 个不同表达式 |
 | lint | 0 error / 7 warning |
 
 ## 1 盘点：11 个构造函数
@@ -57,18 +57,20 @@ python3 -m gisel lint /tmp/amdgpu.gisel
 （`git log -1 -- docs/REPORT-amdgpu.md`）——数字随导入器变化，源 sha 是稳定锚点。
 
 ```
-142 rulesets, 765 rules, 32 refused
-TOTAL  682 calls  766 rules
+142 rulesets, 778 rules, 25 refused
+TOTAL  689 calls  779 rules
 
-lint: 0 error(s), 7 warning(s), 765 rule(s)
+lint: 0 error(s), 7 warning(s), 778 rule(s)
 ```
 
 7 条 warning 都是 `arity unknown`（`G_BUILD_VECTOR_TRUNC`、`G_MERGE_VALUES` 等），
-与 X86 上已知的那一类相同，不是语法问题。642 个 builder 调用已经能读：
-`legalFor`(131)、`scalarize`(97)、`lower`(53)、`clampScalar`(50, 100 条规则)、
-`widenScalarToNextPow2`(41)、`customFor`(35)、`minScalar`(32)、
+与 X86 上已知的那一类相同，不是语法问题。689 个 builder 调用已经能读：
+`legalFor`(131)、`scalarize`(101)、`lower`(56)、`clampScalar`(50, 100 条规则)、
+`widenScalarToNextPow2`(44)、`customFor`(35)、`minScalar`(35)、
 `clampMaxNumElementsStrict`(30, 60 条规则)、`clampMaxNumElements`(24)、
-`widenScalarFor`(17) 等。地址空间指针类型（160/128/192
+`legalIf`(18)、`moreElementsIf`(18)、`widenScalarFor`(17)、`lowerFor`(15)、
+`legalForTypesWithMemDesc`(8, 14 条规则)、`legalForCartesianProduct`(13, 14
+条规则) 等。统计表 TOTAL 比正文多 1 条，是构造期 `if (false)` 丢弃的那条。地址空间指针类型（160/128/192
 位的 fat pointer）和 43 个 subtarget feature 都已经进语料头部。
 
 ### 2.1 先把“能解析”变成硬约束
@@ -94,22 +96,23 @@ lint: 0 error(s), 7 warning(s), 765 rule(s)
 
 这条约束对现有 9 份语料零影响（`--all --check` 9/9 逐字节相同）。
 
-## 3 32 条拒绝：按“要做什么”分类
+## 3 25 条拒绝：按“要做什么”分类
 
 | 类别 | 条数 | 要做什么 |
 |---|---:|---|
-| memdesc 的具名/表达式 align | 7 | `GlobalAlign8 = ST.hasUnalignedBufferAccessEnabled() ? 0 : 8`：align 字段需要一个“配置选的整数”，现在没有拼写 |
-| `LegalizeMutations::widenScalarOrEltToNextPow2` | 4 | 具名变异器的拼写 |
-| `getScalarTypeFromMemDesc` | 3 | 变异体读 memdesc |
 | 嵌套集合参数 `{{...}}` | 4 | 便宜：`legalFor`/`lowerFor` 的集合套集合展开 |
+| `getScalarTypeFromMemDesc` | 3 | 变异体读 memdesc |
 | `clampNumElements` 的元素类型写法 | 3 | `clampNumElements(0, V16S32, V32S32)` 取元素类型的写法 |
-| 构造函数里的局部 lambda / 未知常量 | 5 | `needToSplitMemOp`(1)、`MaxRegisterSize`(2)、`TypeIdx`(2) |
+| `bitcast` 的复杂 lambda 体 | 4 | `fewerElementsIf`/`widenScalarIf` 里多行的 `std::pair` 体（LOAD/STORE/MERGE/UNMERGE） |
 | `narrowScalarIf` 三参数形态 | 2 | 谓词 + 变异 + 变异 |
+| `customIf: unknown name 'MaxRegisterSize'` | 2 | `MaxRegisterSize` 是构造函数里按配置算的变量 |
 | `isIllegalRegisterType(ST, VecTypeIdx)` | 2 | 第二参是构造函数变量（循环里算出来的 slot），不是整数字面量，谓词值逃逸不敢猜 |
+| 构造函数里的局部 lambda | 1 | `needToSplitMemOp` |
+| `notValidElt` 二参 lambda | 2 | 第二个参数是构造期算出的 slot（`LitTyIdx`/`BigTyIdx`），目前只按整数字面量认 |
 | `moreElementsToNextExistingRegClass` | 1 | 返回 `LegalizeMutation` 的 helper，不是谓词；属于变异侧原语 |
 | `minScalarIf(...)` | 1 | 其他 |
 
-本轮清掉的六类（原 30 + 12 + 9 + 14 + 6 + 11）走的是 §6 第 3 步的第一批原语：
+本轮清掉的七类（原 30 + 12 + 9 + 14 + 6 + 11 + 7）走的是 §6 第 3 步的原语：
 
 - `clampMaxNumElementsStrict`（30 条）→ `align_lanes` + `clamp_max` 两条规则；
 - `if` 块里的 clamp（12 条）→ `clamp_min/max ... when P`；
@@ -121,7 +124,11 @@ lint: 0 error(s), 7 warning(s), 765 rule(s)
   `LLT::integer(N)`、以及 `bitcastIf` 的 inline lambda；
 - 变异 lambda 形态（11 条）→ `scalarize(i)` 展开成 `replace(elem_of(...))`，
   `changeElementSizeTo` 接受变量下标，`widenScalarOrEltToNextPow2(i, Min)` 展开成
-  `replace(elt_size_to(..., pow2_at_least(...)))`（变异本身没有 pow2 隐式 guard）。
+  `replace(elt_size_to(..., pow2_at_least(...)))`（变异本身没有 pow2 隐式 guard）；
+- memdesc 的具名/表达式 align（7 条）→ align 允许“配置选的整数”
+  （`GlobalAlign8 = ST.hasUnalignedBufferAccessEnabled() ? 0 : 8`），导入器把整张表
+  按 gate 拆成互斥的两份；纯整数表达式（`2 * 8`）在导入期折成 16。
+  这一批只动导入器，没有新增语法。
 
 ## 4 真正的分水岭：文件内的 C++ 谓词
 
@@ -157,22 +164,32 @@ X86 `feature("Subtarget.is64Bit()")` 是同一个决定，只是 AMDGPU 把它�
 导入器现在把“lambda 体是单条 `return <宿主表达式>`”的谓词转成 `opaque(...)`：
 
 ```
-Opaque (3 host predicate(s), copied as `opaque(...)`; the generated C++ evaluates them, gisel cannot):
+Opaque (10 host predicate(s), copied as `opaque(...)`; the generated C++ evaluates them, gisel cannot):
+  isRegisterClassType(ST, 0)(Query)
+  isRegisterClassType(ST, 1)(Query)
   isLoadStoreLegal(ST, Query)
   hasBufferRsrcWorkaround(Query.Types[0])
+  shouldBitcastLoadStoreType(ST, Query.Types[0], Query.MMODescrs[0].MemoryTy)
   shouldWidenLoad(ST, Query, G_LOAD)
+  isRegisterType(ST, 0)(Query)
+  isRegisterType(ST, 1)(Query)
+  notValidElt(Query, LitTyIdx)
+  notValidElt(Query, BigTyIdx)
 ```
 
-当前 16 处规则走这条口，7 个不同表达式：
+当前 22 处（18 条规则）走这条口，10 个不同表达式：
 
 ```
-isLoadStoreLegal(ST, Query)              x3
-hasBufferRsrcWorkaround(Query.Types[0])  x2
-shouldWidenLoad(ST, Query, G_LOAD)       x1
-isRegisterType(ST, 0)(Query)             x4
-isRegisterType(ST, 1)(Query)             x3
-isRegisterClassType(ST, 0)(Query)        x2
-isRegisterClassType(ST, 1)(Query)        x1
+isRegisterClassType(ST, 0)(Query)                                          x2
+isRegisterClassType(ST, 1)(Query)                                          x1
+isLoadStoreLegal(ST, Query)                                                x3
+hasBufferRsrcWorkaround(Query.Types[0])                                    x2
+shouldBitcastLoadStoreType(ST, Query.Types[0], Query.MMODescrs[0].MemoryTy) x2
+shouldWidenLoad(ST, Query, G_LOAD)                                         x1
+isRegisterType(ST, 0)(Query)                                               x4
+isRegisterType(ST, 1)(Query)                                               x3
+notValidElt(Query, LitTyIdx)                                               x2
+notValidElt(Query, BigTyIdx)                                               x2
 ```
 
 `isRegisterType(ST, 0)` 这类是**谓词值**（`LegalityPredicate = std::function<bool(const
@@ -185,7 +202,7 @@ LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool �
 现在内联栈挡住同名重入，失败才退回 `opaque`。
 
 这条口子也修掉了一个统计错误：头部原先把“解析到、但所在语句因别的理由被拒绝”的
-谓词也算进去（13），现在只列真正出现在正文里的（3 个不同表达式）。
+谓词也算进去（13），现在只列真正出现在正文里的（10 个不同表达式 / 22 处）。
 
 ## 5 与端到端对拍的距离
 
@@ -208,10 +225,11 @@ LegalityQuery&)>`），必须补 `(Query)` 才能在规则 lambda 里当 bool �
    谓词值形态 `opaque("helper(ST, i)(Query)")`（解锁 6 条规则）。
 3. DSL 原语分批：~~`align_lanes`（30）~~、~~带谓词的 clamp（12）~~ 已完成；
    ~~`widen_to_multiple`（9）~~、~~lane 数 `+1` / 补到 32 位（14）~~、
-   ~~bitcast 到算出来的类型（6）~~、~~变异 lambda 形态（11）~~ 已完成；
-   下一批是 memdesc 具名 align（7）。
+   ~~bitcast 到算出来的类型（6）~~、~~变异 lambda 形态（11）~~、
+   ~~memdesc 具名/表达式 align（7，导入器侧，无语法变更）~~ 已完成；
+   下一批是嵌套集合参数（4），然后 `getScalarTypeFromMemDesc`（3）。
 4. 0 拒绝之后再进 `PIN.json` / `TARGETS` / cases 配置 / runner，最后才是端到端。
-   顺序反了会拿 32 条缺口冒充“已接入”。
+   顺序反了会拿 25 条缺口冒充“已接入”。
 
 ## 7 复现
 
