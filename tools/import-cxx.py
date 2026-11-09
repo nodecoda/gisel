@@ -1619,20 +1619,33 @@ def emit_chain_call(tr, p, chain, method, args, line, env=None):
               "customForCartesianProduct": "custom",
               "lowerForCartesianProduct": "lower",
               "libcallForCartesianProduct": "libcall"}[method]
+        # A configuration-chosen set is one runtime value: when the same
+        # alias appears in several argument positions, every position takes
+        # the same branch.  Expanding each position independently invents
+        # unreachable combinations (`isShader and not isShader`) with the wrong
+        # operand sets, and the emitter cannot drop them reliably.
+        refs = [a.strip() for a in args]
+        unique = []
+        for r in refs:
+            if r not in unique:
+                unique.append(r)
+        expansions = {r: expand_sets(r) for r in unique}
         if len(args) <= 2:
-            b_ref = args[1] if len(args) > 1 else args[0]
-            for ga, a in expand_sets(args[0]):
-                for gb, b in expand_sets(b_ref):
-                    rows = [[x, y] for x in a for y in b]
-                    pred = "in_pairs(slot(0), slot(1), [%s])" % ", ".join(
-                        "[" + ", ".join(r) + "]" for r in rows)
-                    out.append(act(op, pred,
-                                   " and ".join(x for x in (ga, gb) if x) or None))
-        else:
-            for combo in _product([expand_sets(a) for a in args]):
+            for combo in _product([expansions[r] for r in unique]):
+                choice = dict(zip(unique, combo))
                 gates = [g for g, _ in combo if g]
-                parts = ["in(slot(%d), [%s])" % (i, ", ".join(xs))
-                         for i, (_, xs) in enumerate(combo)]
+                a, b = (choice[refs[0]][1], choice[refs[1]][1]
+                        if len(refs) > 1 else choice[refs[0]][1])
+                rows = [[x, y] for x in a for y in b]
+                pred = "in_pairs(slot(0), slot(1), [%s])" % ", ".join(
+                    "[" + ", ".join(r) + "]" for r in rows)
+                out.append(act(op, pred, " and ".join(gates) or None))
+        else:
+            for combo in _product([expansions[r] for r in unique]):
+                choice = dict(zip(unique, combo))
+                gates = [g for g, _ in combo if g]
+                parts = ["in(slot(%d), [%s])" % (i, ", ".join(choice[r][1]))
+                         for i, r in enumerate(refs)]
                 out.append(act(op, " and ".join(parts),
                                " and ".join(gates) or None))
     elif method in ("legalForTypesWithMemDesc",):
