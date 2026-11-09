@@ -1,7 +1,7 @@
 //===- AArch64LegalizerInfo.gisel - imported from AArch64LegalizerInfo.cpp -*- gisel -*-===//
 //
 // One-shot transcription: `tools/import-cxx.py AArch64 AArch64LegalizerInfo.cpp`.
-// Source sha256 91ef7c82b67c69829d2b5c32bfda8b51c62864cb872e26c83392915afdba86d0.  Do not edit by hand; re-run the importer instead.
+// Source sha256 2b5377c3eedddf82f17758e7cab763d99ce362e4c5422bb8e24bc4b7c8945d55.  Do not edit by hand; re-run the importer instead.
 //
 // The importer refuses what it cannot translate; every refusal below is a
 // statement that still has to be written by hand (or taught to the importer).

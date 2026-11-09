@@ -1,5 +1,6 @@
 """`tools/import-cxx.py`: the C++ constructor -> `.gisel` importer."""
 
+import json
 import os
 import re
 import subprocess
@@ -12,6 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / "tools" / "import-cxx.py"
 CORPUS = ROOT / "tests" / "corpus"
 FIXTURE = ROOT / "tests" / "fixtures" / "legalizer-ctor.cpp"
+PIN = CORPUS / "PIN.json"
+LLVM_GIT = Path(os.environ.get("GS_LLVM_GIT", "/home/ubuntu/llvm/llvm-project"))
 RISCV_SRC = Path(os.environ.get(
     "GS_RISCV_SRC",
     "/home/ubuntu/llvm/trees/explore/llvm/lib/Target/RISCV/GISel/"
@@ -98,18 +101,25 @@ class ReimportedCorpora(unittest.TestCase):
                     body((CORPUS / ("%sLegalizerInfo.gisel" % target)).read_text()))
 
 
-class AllTargets(unittest.TestCase):
-    @unittest.skipUnless(
-        all(p.exists() for p in (X86_SRC, AARCH64_SRC, RISCV_SRC)),
-        "pinned constructors not all present")
-    def test_all_check_reproduces_every_corpus(self):
-        env = dict(os.environ,
-                   GS_X86_SRC=str(X86_SRC),
-                   GS_AARCH64_SRC=str(AARCH64_SRC),
-                   GS_RISCV_SRC=str(RISCV_SRC))
-        r = run("--all", "--check", env=env)
+class PinnedRevision(unittest.TestCase):
+    """The corpus provenance is a commit, not a working tree."""
+
+    @unittest.skipUnless(PIN.exists() and LLVM_GIT.exists(),
+                         "pin file or LLVM checkout not present")
+    def test_pin_reproduces_every_corpus(self):
+        r = run("--all", "--pin", str(PIN), "--git-repo", str(LLVM_GIT),
+                "--check")
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         self.assertEqual(r.stdout.count(": matches"), 3, r.stdout)
+        self.assertEqual(r.stdout.count(": read "), 3, r.stdout)
+
+    def test_pin_records_one_commit_for_every_target(self):
+        pin = json.loads(PIN.read_text())
+        self.assertEqual(len(pin["commit"]), 40, pin["commit"])
+        self.assertEqual(sorted(pin["sources"]), ["AArch64", "RISCV", "X86"])
+        for name, entry in pin["sources"].items():
+            self.assertEqual(len(entry["sha256"]), 64, name)
+            self.assertIn("llvm/lib/Target/", entry["path"])
 
 
 class ReviewedNames(unittest.TestCase):

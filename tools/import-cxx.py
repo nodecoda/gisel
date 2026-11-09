@@ -24,9 +24,12 @@ Exit codes: 0 imported, 1 refused or drifted from the pinned counts,
 
 import argparse
 import hashlib
+import json
 import os
 import re
+import subprocess
 import sys
+import tempfile
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -2176,18 +2179,59 @@ TARGETS = {
 }
 
 
+_PINNED_SOURCES = {}
+
+
+def pinned_source(spec, pin_path, git_repo):
+    """Materialise a target's source from the pinned commit.
+
+    The provenance of every rule is a commit, not a working tree: a developer
+    may carry local patches (the A/B harness does), and those must not change
+    what the corpus was transcribed from.  ``git show`` reads the blob the pin
+    names, and the recorded sha256 is checked before the importer sees it.
+    """
+    key = (str(pin_path), str(git_repo), spec.name)
+    if key in _PINNED_SOURCES:
+        return _PINNED_SOURCES[key]
+    pin = json.loads(Path(pin_path).read_text())
+    entry = pin["sources"][spec.name]
+    proc = subprocess.run(
+        ["git", "-C", str(git_repo), "show",
+         "%s:%s" % (pin["commit"], entry["path"])],
+        capture_output=True, text=True)
+    if proc.returncode != 0:
+        raise SystemExit("%s: %s is not in %s: %s"
+                         % (spec.name, pin["commit"], git_repo,
+                            proc.stderr.strip()))
+    digest = hashlib.sha256(proc.stdout.encode()).hexdigest()
+    if digest != entry["sha256"]:
+        raise SystemExit(
+            "%s: %s:%s is sha256 %s, pin says %s"
+            % (spec.name, pin["commit"], entry["path"], digest,
+               entry["sha256"]))
+    tmp = Path(tempfile.mkdtemp(prefix="gisel-pin-")) / Path(entry["path"]).name
+    tmp.write_bytes(proc.stdout.encode())
+    _PINNED_SOURCES[key] = tmp
+    print("%s: read %s from %s" % (spec.name, entry["path"], pin["commit"][:12]))
+    return tmp
+
+
 def find_source(spec, args):
-    """Explicit --source, then $GS_<TARGET>_SRC, then --llvm-src + pinned path."""
+    """--source, --pin + --git-repo, $GS_<TARGET>_SRC, or --llvm-src."""
     if args.source:
         return Path(args.source)
+    if args.pin:
+        if not args.git_repo:
+            raise SystemExit("--pin needs --git-repo (the LLVM checkout)")
+        return pinned_source(spec, args.pin, args.git_repo)
     env = os.environ.get(spec.env)
     if env:
         return Path(env)
     if args.llvm_src:
         return Path(args.llvm_src) / spec.rel
     raise SystemExit(
-        "%s: no source; pass --source, --llvm-src, or set %s"
-        % (spec.name, spec.env))
+        "%s: no source; pass --source, --pin/--git-repo, --llvm-src, "
+        "or set %s" % (spec.name, spec.env))
 
 
 def transcribe(spec, source, out):
@@ -2271,6 +2315,11 @@ def main(argv=None):
     ap.add_argument("--all", action="store_true",
                     help="transcribe every pinned target")
     ap.add_argument("--llvm-src", help="LLVM source root containing lib/Target")
+    ap.add_argument("--pin",
+                    help="pin file naming the upstream commit and source shas "
+                         "(the corpus provenance)")
+    ap.add_argument("--git-repo",
+                    help="LLVM checkout that contains the pinned commit")
     ap.add_argument("--out", help="output .gisel (single target)")
     ap.add_argument("--out-dir", help="output directory in --all mode")
     ap.add_argument("--check", action="store_true",

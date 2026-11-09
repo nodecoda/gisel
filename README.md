@@ -13,6 +13,8 @@ LLVM's hand-written legalizer into `.gisel` and the two-implementation A/B
 live in the workbench (`tools/`) and are not part of gisel — see
 [docs/SCOPE.md](docs/SCOPE.md) for the boundary and the rule that keeps it
 fixed.
+The loop those tools implement (pin → cases → A/B → attribution) is in
+[docs/LOOP.md](docs/LOOP.md).
 
 ```sh
 # from a checkout: the corpus and frozen artifacts ship with the repo,

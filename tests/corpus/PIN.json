@@ -1,0 +1,20 @@
+{
+  "schema": 1,
+  "comment": "The upstream revision every corpus rule came from. `tools/import-cxx.py --all --pin tests/corpus/PIN.json --git-repo <llvm> --check` must reproduce the three .gisel files byte for byte. The commit is a plain upstream llvm-project commit: local patches in a worktree (the A/B harness carries one) cannot change what was imported.",
+  "repo": "llvm/llvm-project",
+  "commit": "9bfc850b9940566bef17a34601826775349ba0e6",
+  "sources": {
+    "X86": {
+      "path": "llvm/lib/Target/X86/GISel/X86LegalizerInfo.cpp",
+      "sha256": "79f2376096c3271910840a42c6270932011078df9fff343bfd96c226523336cd"
+    },
+    "AArch64": {
+      "path": "llvm/lib/Target/AArch64/GISel/AArch64LegalizerInfo.cpp",
+      "sha256": "2b5377c3eedddf82f17758e7cab763d99ce362e4c5422bb8e24bc4b7c8945d55"
+    },
+    "RISCV": {
+      "path": "llvm/lib/Target/RISCV/GISel/RISCVLegalizerInfo.cpp",
+      "sha256": "ad529e1f1a9e62fa8bbd3a7d68f2b46f41f3cf8f1e74556c709bffbd43b9e889"
+    }
+  }
+}
