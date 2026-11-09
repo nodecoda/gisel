@@ -1078,8 +1078,8 @@ def main(argv=None):
         print()
     if args.json:
         print(json.dumps({"reports": public}, indent=1, sort_keys=True))
-    bad = any(r.public()["cycles"] for r in reports)
-    bad = bad or any(not r.closure["ok"] for r in reports)
+    bad = any(output["cycles"] for output in public)
+    bad = bad or any(not output["closure"]["ok"] for output in public)
     if args.oracle:
         bad = bad or any(getattr(r, "oracle")["disagree"] or
                          getattr(r, "oracle")["errors"] or

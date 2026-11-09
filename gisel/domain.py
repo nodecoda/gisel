@@ -29,6 +29,7 @@ from . import ast as A
 from . import axes as axesmod
 from . import cases as C
 from . import eval as E
+from . import output
 from . import dsl
 
 
@@ -284,10 +285,10 @@ def main(argv=None):
         rows = rows[:max_points]
     rows.sort(key=lambda q: (q["config"], q["name"], tuple(q["types"]),
                              json.dumps(q["mem"])))
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w") as f:
-        for row in rows:
-            f.write(json.dumps(row, sort_keys=True) + "\n")
+    rc = output.write_lines(
+        args.out, (json.dumps(row, sort_keys=True) + "\n" for row in rows))
+    if rc:
+        return rc
 
     types, mems, _ = effective_axes(args.source, args.pointer_width, axes)
     stats = {

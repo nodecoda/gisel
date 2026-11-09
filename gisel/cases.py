@@ -43,6 +43,7 @@ from . import ast as A
 from . import axes as axesmod
 from . import answers as answer_file
 from . import eval as E
+from . import output
 from .backend import core_json
 
 KINDS = ("equivalence", "boundary", "outside")
@@ -1598,10 +1599,12 @@ def main(argv=None):
             print("gisel cases: %s" % exc, file=sys.stderr)
             return 2
 
-    Path(args.out).parent.mkdir(parents=True, exist_ok=True)
-    with open(args.out, "w") as f:
-        for case in generation.cases:
-            f.write(json.dumps(case.query(), sort_keys=True) + "\n")
+    rc = output.write_lines(
+        args.out,
+        (json.dumps(case.query(), sort_keys=True) + "\n"
+         for case in generation.cases))
+    if rc:
+        return rc
 
     stats = dict(generation.stats)
     if args.against:
