@@ -558,6 +558,13 @@ def parse_program(text: str) -> Program:
     # forward references in `type X = ... Y ...` work like they did before.
     features = {n: Feature(n, p, ln) for k, n, p, _src, ln in raw_decls
                 if k == "feature"}
+    bad_feature = feature_scope_error(features)
+    if bad_feature is not None:
+        line, name, ident = bad_feature
+        raise ValueError(
+            f"line {line}: feature {name} reads {ident!r}; a feature is a "
+            "constructor-time boolean (configuration axis) and must not "
+            "read the query")
     pred_src = {n: (p, ln) for k, n, p, _src, ln in raw_decls if k == "pred"}
     type_src = {n: (p, ln) for k, n, p, _src, ln in raw_decls if k == "type"}
     raw_selects = {n: (p, ln) for k, n, p, _src, ln in raw_decls
@@ -692,6 +699,66 @@ def parse_program(text: str) -> Program:
 
     return Program(decls, rulesets, features, preds, named_types,
                    select_types, setlike)
+
+
+# Objects that only exist inside a rule's `LegalityQuery` lambda.  A `feature`
+# declaration is emitted in the legalizer constructor (see `llvm_inc`), so a
+# right-hand side naming one of these cannot compile.  This is a boundary
+# check on the escape point, not a C++ parser: only whole identifiers are
+# rejected, and declared feature names stay legal.
+QUERY_SCOPE_NAMES = ("Query", "MMODescr", "MMO", "MI", "MRI", "MF")
+
+
+def _names_identifier(text: str, name: str) -> bool:
+    """True when C++ text uses `name` as a whole identifier."""
+    start = 0
+    while True:
+        i = text.find(name, start)
+        if i < 0:
+            return False
+        before = text[i - 1] if i else ""
+        after = text[i + len(name)] if i + len(name) < len(text) else ""
+        if not (before.isalnum() or before == "_") and not (
+                after.isalnum() or after == "_"):
+            return True
+        start = i + len(name)
+
+
+def feature_scope_error(features: dict[str, Feature]):
+    """The first `feature` whose right-hand side reads the query, if any.
+
+    `feature` is a constructor-time boolean and becomes a configuration axis;
+    `Query`/machine objects are only visible inside the predicate lambda, so
+    such a declaration is not a configuration axis at all.  Rejecting it here
+    gives every exit (gen/check/lint/cases/domain/eval/graph) the same gate.
+    """
+    for name, f in features.items():
+        for ident in QUERY_SCOPE_NAMES:
+            if _names_identifier(f.cxx, ident):
+                return (f.line, name, ident)
+    return None
+
+
+def host_escapes(program: Program) -> list[str]:
+    """Every `opaque("...")` predicate, deduplicated, in source order."""
+    found = []
+
+    def walk(n):
+        if isinstance(n, dict):
+            if n.get("kind") == "leaf" and n.get("name") == "opaque":
+                for e in n.get("args", []):
+                    if e not in found:
+                        found.append(e)
+            for v in n.values():
+                walk(v)
+        elif isinstance(n, list):
+            for v in n:
+                walk(v)
+
+    for rs in program.rulesets:
+        for rule in rs.rules:
+            walk(rule.predicate)
+    return found
 
 
 def undeclared_features(program: Program) -> list[tuple[int, str, str]]:

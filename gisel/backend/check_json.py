@@ -45,7 +45,7 @@ def emit_check(gs):
         '  "entries": %d,' % v["entries"],
         '  "rule_sets": %d,' % c["rule_sets"],
         '  "rules": %d,' % c["rules"],
-        '  "escapes": 0,',
+        '  "escapes": %d,' % len(A.host_escapes(gs)),
         '  "entries_without_table_translation": 0,',
         '  "rule_sets_without_table_translation": 0,',
         '  "core_rules": %d,' % c["core_rules"],

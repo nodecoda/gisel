@@ -203,24 +203,7 @@ class CoreJson:
         evaluates it, but nothing in gisel can.  Listing them here is what
         makes the scope of an analysis statement checkable.
         """
-        found = []
-
-        def walk(n):
-            if isinstance(n, dict):
-                if n.get("kind") == "leaf" and n.get("name") == "opaque":
-                    for e in n.get("args", []):
-                        if e not in found:
-                            found.append(e)
-                for v in n.values():
-                    walk(v)
-            elif isinstance(n, list):
-                for v in n:
-                    walk(v)
-
-        for rs in self.program.rulesets:
-            for rule in rs.rules:
-                walk(rule.predicate)
-        return found
+        return A.host_escapes(self.program)
 
     def emit(self, source_name, lines=None):
         lines = lines or {}
