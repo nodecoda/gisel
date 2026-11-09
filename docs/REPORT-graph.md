@@ -5,7 +5,7 @@
 本报告的每个数字都绑定这棵树：
 
 ```text
-commit   e44fc0d   (2026-11-10)
+commit   9e59c9d   (2026-11-10)
 version  gisel 0.3.0
 targets  X86 / AArch64 / RISC-V corpus at tests/corpus/PIN.json
 ```
@@ -41,13 +41,13 @@ GI
 python3 -m gisel graph /tmp/gisel-graph-report/fixture.gisel \
   --config none --json > /tmp/gisel-graph-report/fixture.json
 # rc=0  states=4 edges=1 cycles=0
-# sha256 19fa888162e09bd1f06bf8401730b81d7b3eb0a89bfba246e005bbcac158017c
+# sha256 2ed41c9e96363b929f4db480fd960fdabd2c1614b0b1cdad2c640cb5772b6cc8
 
 python3 -m gisel graph /tmp/gisel-graph-report/fixture.gisel \
   --config none --inject-edge --json > /tmp/gisel-graph-report/fixture-inject.json
 # rc=1  states=4 edges=2 cycles=1
 # injected: G_ADD[3] -> G_ADD[1]（原边 1 -> 3 的反向）
-# sha256 ca478513691faadae24ec99b9c051eb2addc40bb551fb4aa508db930263abebe
+# sha256 8609d5a267b914a2aad3189586011a706fb06d92f1e4125b8b39d1e87d06f7ad
 ```
 
 注入边是必需的负控：没有它，“0 环”可能只是 DFS 没跑到。
@@ -57,19 +57,22 @@ python3 -m gisel graph /tmp/gisel-graph-report/fixture.gisel \
 ```sh
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --json > /tmp/graph-x86.json
-# rc=0, 72.6 s, 425 MB RSS
-# sha256 3639cfc0cbd57c9ce930bc7d8d42a0bd42d0112eb0c60dcfd9e7f19146c2d829
+# rc=0, 65.5 s, 373 MB RSS
+# sha256 969ccf0b05086041e3b286e06bdf541a43430ad4ffc32ab08a1790412cc597fa
 ```
 
-| config | states | edges | moves | no-rule | terminal | opaque | outside | classes | cycles |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| C0 | 77,231 | 26,731 | 26,731 | 37,478 | 7,923 | 1,016 | 4,083 | 3,985 | 0 |
-| C1 | 77,220 | 25,869 | 25,869 | 38,421 | 8,844 | 1,020 | 3,066 | 3,974 | 0 |
-| C2 | 77,152 | 25,457 | 25,457 | 38,282 | 9,311 | 1,020 | 3,082 | 4,021 | 0 |
-| C3 | 77,231 | 26,603 | 26,603 | 37,473 | 8,224 | 1,016 | 3,915 | 3,985 | 0 |
+| config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| C0 | 66,888 | 24,565 | 24,565 | 30,634 | 6,856 | 1,016 | 3,817 | 10,343 | 3,985 | 0 |
+| C1 | 66,877 | 23,874 | 23,874 | 31,349 | 7,777 | 1,020 | 2,857 | 10,343 | 3,974 | 0 |
+| C2 | 66,809 | 23,462 | 23,462 | 31,214 | 8,240 | 1,020 | 2,873 | 10,343 | 4,021 | 0 |
+| C3 | 66,888 | 24,437 | 24,437 | 30,629 | 7,157 | 1,016 | 3,649 | 10,343 | 3,985 | 0 |
 
 `uncovered` 始终是两个 variadic opcode：`G_INTRINSIC`、`G_INTRINSIC_W_SIDE_EFFECTS`
 （bundled opcode manifest 没有固定槽数）。
+
+`shape` 是 shift/rotate 的形状约束丢掉的类元组数（见 §5）；它不含在 `states`
+里，也不假装成 `outside`。
 
 ## 3 X86 C1 的闭包审计
 
@@ -77,13 +80,13 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --config C1 \
   --check-closure --json > /tmp/graph-x86-c1-closure.json
-# rc=1, 22.3 s
-# sha256 337c6b520ee344b4c33e79d12b752fcf6396f00228807144edf62eb6fceffbdd
+# rc=1, 20.5 s
+# sha256 10396f0baff079c84eaf1f5313b9536449a7ce8407c4f972eae7404fc68af6ff
 ```
 
 | 指标 | 值 |
 |---|---:|
-| states | 77,220 |
+| states | 66,877 |
 | closure.ok | false |
 | closure.count | 321 |
 | kinds.partition | 228 |
@@ -115,46 +118,45 @@ RISC-V 的 `mem_desc` 里，memory type 是一个配置相关的 `select`
 python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
   --features tests/cases/riscv-features.json --config rv64gc --json \
   > /tmp/graph-riscv.json
-# rc=0, 2m53s
-# sha256 a9c46c4422f72da62bf430213b965987b8545024c8db8d70d6c517f3f70f798c
+# rc=0, 172.1 s, 638 MB RSS
+# sha256 ecc8b4284baf975614112b260920036a4b17898995ec0da6671d17a9a98019b8
 ```
 
-| config | states | edges | moves | no-rule | terminal | opaque | outside | classes | cycles |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| rv64gc | 585,652 | 42,895 | 42,895 | 443,249 | 62,187 | 29,175 | 8,146 | 8,551 | 0 |
+| config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| rv64gc | 566,006 | 37,841 | 37,841 | 432,723 | 58,995 | 29,175 | 7,272 | 19,646 | 8,551 | 0 |
 
 `uncovered = ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']`
 （imm 轴或 variadic 槽数未给定）。`--check-closure` 在 RISC-V 上没有跑，属于
 未覆盖。
 
-## 5 AArch64 baseline：147 个环
+## 5 AArch64 baseline：0 个环（去掉 MIR 不可达的形状之后）
 
 ```sh
 python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json --config baseline --json \
   > /tmp/graph-a64.json
-# rc=1（有环）, 7m59s
-# sha256 a7924bcdd420388bd7e6f76cb0e7990a08c64532505e7420a366ad615e382c15
+# rc=0, 455.0 s, 1.4 GB RSS
+# sha256 cf09eea9d830ab87f9f73acc2d709e463a641afd7f19dcaf0d93c9c1e13a4655
 ```
 
-| config | states | edges | moves | no-rule | terminal | opaque | outside | classes | cycles |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| baseline | 1,196,559 | 201,764 | 201,764 | 461,871 | 280,021 | 223,747 | 29,156 | 15,773 | **147** |
+| config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| baseline | 1,152,444 | 189,983 | 189,983 | 452,941 | 275,101 | 211,204 | 23,215 | 44,115 | 15,773 | **0** |
 
 `uncovered = ['G_SEXTLOAD', 'G_LOAD', 'G_STORE', 'G_INDEXED_LOAD',
 'G_INDEXED_SEXTLOAD', 'G_INDEXED_ZEXTLOAD', 'G_INTRINSIC',
 'G_INTRINSIC_W_SIDE_EFFECTS']`（memory/imm 轴或 variadic 槽数未给定）。
 
-### 环在哪里
+### 上一版报的 147 个环是什么
 
-147 条全部是 `G_ASHR` 的 2-环，样本形如：
+全部是 `G_ASHR` 的 2-环，样本形如：
 
 ```text
 G_ASHR[31,36] -> G_ASHR[31,42] -> G_ASHR[31,36]
-G_ASHR[32,36] -> G_ASHR[32,42] -> G_ASHR[32,36]
 ```
 
-具体类型追踪（同一个 evaluator，不走商图）确认了这条链：
+日志里的具体类型是 `(<16 x i8>, s32)`——向量源 + 标量移位量，走这条链：
 
 ```text
 G_ASHR (nxv16i8, s32)
@@ -164,46 +166,48 @@ G_ASHR (nxv16i8, s8)
 G_ASHR (nxv16i8, s32)                  # 回到起点
 ```
 
-对全部 49×49 个具体类型对做 12 步追踪：**285 条具体环**，全部是
-`slot0 = nxv16i8`（以及同类小元素向量）且 `slot1` 在 8/16 与 32 之间往返；
-54 个查询因 payload 不支持（指针/元素宽度）抛异常，按 graph 的既有规则算
-opaque。
+### 为什么这 147 个环不是上游死循环
 
-### 归因
+三条证据，都在本机 `llc` 上跑过（`builds/explore`，带 PR 238306）：
 
-`AArch64LegalizerInfo.cpp:253-265` 的链条同时包含：
+1. **MIR verifier 拒绝这个形状**。把 `(v16i8, s32)` 的 `G_ASHR` 写成 MIR 喂给
+   `llc -mtriple=aarch64 -run-pass=legalizer`：
 
-- `.clampScalar(1, s32, s64)`：把 shift amount 抬到至少 32 位；
-- `.maxScalarEltSameAsIf(isVector(0), 1, 0)`：把 shift amount 压到 slot 0 的
-  元素宽度（v16i8 → 8 位）。
+   ```text
+   *** Bad machine code: Shifts and rotates require operands to be either all
+   scalars or all vectors ***
+   ```
 
-两者方向相反。对 `(v16i8, s32)` 这种混合查询，任何一遍 legalize 都会在两个
-状态之间往返，商图上就是 2-环。
+   MIR parser 在进 legalizer 之前就 abort；加 `-verify-machineinstrs=false`
+   也一样，因为 MIR 解析本身会 verify。所以这个查询没有合法输入。
+2. **形状合法的组合不环**。`(v16i8, v4i32)`（同为向量）在带补丁的构建上被
+   `maxScalarEltSameAsIf` 收成 `(v16i8, v4i8)` 后 legal，rc=0；未打补丁的
+   `builds/pr-lane` 在同一条规则上断言 `mutationIsSane` 失败——这正是 PR
+   238306 修的东西，也说明补丁后的 mutation 只改元素宽度、不改形状。
+3. **legalizer 自己不会造出混合形状**：补丁后的目标是
+   `Types[TypeIdx].changeElementSize(...)`，向量仍是向量。从合法输入出发，
+   到不了 `(vector, scalar)`。
 
-### 这算不算上游 bug
+结论：147 是“把两个类型槽当独立轴叉乘”的产物，不是规则表里的活锁，也不是
+上游 bug。修复不在规则侧，而在有限域：`cases.type_shape_ok` 增加 shift/rotate
+条款（引用 `MachineVerifier.cpp`），`graph` 对每个类元组找**至少一个**形状合法
+的成员组合，找不到就不建状态，并把数量记成 `shape`。
 
-需要分开说，不能直接下结论：
+数字变化（同一命令、同一配置）：
 
-1. **IR 层可能不可达**。LLVM IR 要求 shift 的两个操作数同型，`(v16i8, s32)`
-   不会从合法 IR 直接产生；它可能由 combine 或别的 target 变换构造出来，但
-   本仓库没有证据。
-2. **上游的字面语义更奇怪**。`maxScalarEltSameAsIf` 的目标是
-   `Query.Types[SmallTypeIdx]` **整个类型**（这里就是 v16i8），不是
-   `changeElementSize(8)`。把 s32 “narrow” 成 128 位的向量，会被 legalizer 的
-   mutation 断言拒绝。
-3. **我们的语料对这条规则是显式 deviation**：`tools/import-cxx.py:2611-2620`
-   把它落成 `narrow(slot(k), same_as(j))`，注释说明 `replace(same_as(k))` 会
-   产生 vector-where-scalar，触发 `mutationIsSane`。所以这 147 条环首先是
-   *模型* 里的环，是否对应上游运行时行为要单独判定。
+```text
+states  1,196,559 -> 1,152,444      (-44,115 = shape)
+edges     201,764 ->   189,983
+opaque    223,747 ->   211,204
+outside    29,156 ->    23,215
+cycles        147 ->         0
+```
 
-结论：**这是一个待定性的发现，不是 `cycles=0` 的反例失败**。登记为上游
-triage 事项；在定性之前，AArch64 的图结论写成“`G_ASHR` 在混合
-vector/scalar 查询上存在 2-环，可达性待确认”。
+`shape` 正好等于 states 的减少量：被删掉的每一个类元组都只贡献状态，没有贡献
+一条边。
 
-### AArch64 的其他未覆盖项
-
-- 另外四个配置没有跑；`--check-closure` 没有跑。
-- 单配置 8 分钟、1.2M 状态是当前的成本上限；AArch64 的候选积仍然偏大。
+仍然成立的前提：`--check-closure` 没有在 AArch64 上跑；0 环是代表点商图上的
+结论，闭包未验证。
 
 ## 6 历史更正：6 个自环是假环
 
@@ -225,9 +229,10 @@ vector/scalar 查询上存在 2-环，可达性待确认”。
 
 ## 7 未覆盖
 
-- AArch64 baseline 及另外四个配置没有在当前 commit 上重跑；`--check-closure`
-  也未跑。AArch64 的候选积（约 1.17M states）不在本轮优化范围。
+- AArch64 baseline 已重跑（§5），但另外四个配置和 `--check-closure` 没有跑。
+  单配置约 8 分钟、1.15M states 是当前的成本上限。
 - RISC-V 的 `--check-closure`、imm 轴和 ordering 轴没有跑。
-- 图只做静态商图，不实现“动态跑一遍 legalize 循环”；MIR/`llc` 不在范围。
+- `gisel graph` 不生成 MIR、不跑 `llc`；§5 的定性用 `llc` 手工做了三次单点
+  验证，那不是命令的一部分。
 - `G_INTRINSIC*` 等 variadic opcode 的槽数没有进 manifest，因此被报成
   `uncovered`，不是 0 环证据的一部分。

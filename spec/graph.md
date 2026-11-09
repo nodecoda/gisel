@@ -172,4 +172,6 @@ JSON 字段 `oracle` 并使命令返回 1。oracle 只用于检查，不是图�
 实现必须保持以下语义：指针变宽/变窄后是整数，不构造 8 位指针；clamp lane
 使用精确值；条件位宽和 lane 上界按当前配置求值；谓词保持三值；`sizeIs`
 读取总位宽，`elementTypeIs` 读取元素位宽；域外是 `outside`；不变 mutation
-是 `stuck`。
+是 `stuck`。类型槽的标量/向量形状是 MIR verifier 的约束（shift/rotate 必须
+同为标量或同为向量），混合形状的类元组计入 `shape`、不建状态；它不是规则集的
+判断，也不能被当成 `outside`。

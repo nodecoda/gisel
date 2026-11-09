@@ -126,14 +126,17 @@ done
 | `b993b0c` | 分析读规则的**全部**字段（`on`/`to`/内联 select）；feature 只出现在 mutation 里也不再丢配置轴 |
 | `db07b3b` | lint 与 `.inc` 共用 `shim_for`；所有出口都拒绝未声明类型（`[s32]` 不再 inc 能过、core 不能过） |
 | `e44fc0d` | `graph.Domain.successor` 单点判定域外；closure 审计每个非 opaque 状态的全部成员；`--refine` 把“无后继”成员单独分桶；迭代 DFS |
+| `ed1c005` | `cases` 打印软预算（`slot_budget`/`candidate_max`/`candidate_over_budget`） |
+| `15c4fc3` | 文档对齐：`check`/`core` 是 canonical 形；graph/riscv 报告按快照重写 |
+| `9e59c9d` | 形状过滤上移到 `analysis.type_shape_ok`，补 shift/rotate 条款；`graph` 对类元组做形状可行性判定并输出 `shape` |
 
 验证：`310 passed, 94 subtests passed`；`import-cxx --all --check` 9/9 matches。
 
 ## 8 剩余
 
-- P6：`docs/REPORT-graph.md` 已按 `e44fc0d` 重写；AArch64 baseline 已重跑，
-  发现 `G_ASHR` 混合 vector/scalar 查询上的 147 个商图 2-环（见报告 §5）。
-  可达性与上游定性是独立 triage 事项，不要直接写成“上游死循环”。
+- P6 已完成：`docs/REPORT-graph.md` 绑定 `9e59c9d`；AArch64 的 147 个
+  `G_ASHR` 2-环定性为 MIR 不可达形状（verifier 拒绝 `(vector, scalar)`），
+  加形状过滤后 cycles=0，见报告 §5。
 - D5 已落地：`cases` 的 stats 打印 `slot_budget` / `candidate_max` /
   `candidate_over_budget`；`spec/axes.md` 与 `docs/ALGORITHM-cases.md`
   已改成“软预算”。
