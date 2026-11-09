@@ -24,6 +24,10 @@
 
 ## 2 盘点：实现了 GlobalISel legalizer 的 target
 
+> 这一节是 2026-11-08 的现场记录，只扫了 `*/GISel/*LegalizerInfo.cpp`，漏掉了
+> `ARM/ARMLegalizerInfo.cpp`、`Mips/MipsLegalizerInfo.cpp` 和 AMDGPU；当前盘点以
+> `docs/REPORT-amdgpu.md` §1 为准（11 个构造函数，9 个已收）。
+
 `llvm/lib/Target/*/GISel/*LegalizerInfo.cpp`：
 
 | target | 行数 | 现状 |

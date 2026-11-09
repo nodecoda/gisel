@@ -577,6 +577,12 @@ class Translator:
         # Normalise the power-of-two test before anything decides a call is
         # already a `.gisel` observation: `isPowerOf2_64(x)` is `is_pow2(x)`.
         text = re.sub(r"isPowerOf2_\d+\(|isPowerOf2\(", "is_pow2(", text)
+        m = re.fullmatch(r"sameSize\(\s*(\d+)\s*,\s*(\d+)\s*\)", text)
+        if m:
+            # `sameSize(i, j)` is `Types[i].getSizeInBits() ==
+            # Types[j].getSizeInBits()` (LegalityPredicates.cpp:215).
+            return ("size_of(slot(%s)) == size_of(slot(%s))"
+                    % (m.group(1), m.group(2)))
         helper = self.query_helper(text)
         if helper is None:
             helper = self.legality_helper(text)
@@ -2353,6 +2359,11 @@ class Importer:
         if re.match(r"LegalityPredicate\s+\w+\s*=", st):
             return self.predicate_var(st, line)
         if re.match(r"verify\s*\(", st) or st.startswith("using namespace "):
+            return
+        if re.match(r"assert\s*\(", st):
+            # `assert(ST.hasMad64_32());` states a contract the C++ build
+            # enforces; it accepts and rejects no query, so it is plumbing.
+            self.ignored.append((line, st))
             return
         if (re.match(r"this->\w+\s*=", st) or re.match(r"(?:GR|TM)\s*=", st)
                 or st.startswith("LLVM_DEBUG(")):

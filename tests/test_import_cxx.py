@@ -142,6 +142,22 @@ class ImporterBugsAreRefusals(unittest.TestCase):
         self.assertIn("RecursionError", importer.p.refused[0][1])
 
 
+class ConstructorContracts(unittest.TestCase):
+    """`assert` is plumbing; `sameSize` is a real predicate."""
+
+    SRC = ROOT / "tests" / "fixtures" / "legalizer-ctor-contracts.cpp"
+
+    def test_assert_is_plumbing_and_same_size_transcribes(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "T.gisel"
+            r = run("RISCV", str(self.SRC), "--out", str(out))
+            self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
+            self.assertIn("1 rulesets, 1 rules, 0 refused", r.stdout)
+            self.assertIn("ignored line 3: assert(ST.hasStdExtZbb())", r.stdout)
+            text = out.read_text()
+        self.assertIn("legal size_of(slot(0)) == size_of(slot(1))", text)
+
+
 class ProbeMode(unittest.TestCase):
     """`--probe` measures a target that has no pinned corpus yet."""
 
