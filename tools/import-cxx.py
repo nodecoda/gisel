@@ -1191,6 +1191,16 @@ class Translator:
         """`bitcastIf`'s new-type lambda -> a `.gisel` type expression."""
         body = re.sub(r"\bQ\.", "Query.", text)
         body = body.replace(".getSizeInBits().getKnownMinValue()", ".getSizeInBits()")
+        # A body whose local is reassigned inside an `if` is a `select`; the
+        # specialised patterns below only cover a single return.  Try the
+        # statement reader first, and keep the old path as the fallback.
+        raw = self._lambda_body(text)
+        if raw is not None and re.search(r"\bif\s*\(", raw):
+            try:
+                return self._mutation_body_value(
+                    raw, getattr(self, "env", {}))
+            except Refuse:
+                pass
         body = re.sub(r"numElements\((Query\.Types\[\d+\])\)",
                       r"\1.getNumElements()", body)
         aliases = dict(re.findall(
@@ -1484,24 +1494,25 @@ class Translator:
         return text[bopen + 1:bclose - 1]
 
     def _mutation_body_value(self, body, env):
-        """`{ decls; return pair(i, T); }` -> `slot(i), replace(<value>)`."""
+        """`{ decls; [if (...) X = ...;] return pair(i, T); }` -> a rule.
+
+        An `if` that only reassigns local variables is a `select` in the value
+        language; declarations inside the block do not escape it.  Anything
+        else (a loop, a host call) is refused, not guessed.
+        """
         body = re.sub(r"//[^\n]*", "", body)
-        ret, decls = None, []
-        for st, _ in split_statements(body):
-            st = st.strip().rstrip(";").strip()
-            if not st or _is_assert(st):
-                continue
-            if st.startswith("return "):
-                ret = st[len("return "):].strip()
-                continue
-            dm = re.fullmatch(
-                r"(?:const\s+)?(?:unsigned|int|auto|LLT|bool)\s*&?\s*(\w+)"
-                r"\s*=\s*(.+)", st, re.S)
-            if not dm:
-                raise Refuse(st)
-            decls.append((dm.group(1), dm.group(2).strip()))
+        stmts = [st.strip().rstrip(";").strip()
+                 for st, _ in split_statements(body)]
+        stmts = [st for st in stmts if st and not _is_assert(st)]
+        ret = None
+        if stmts and stmts[-1].startswith("return "):
+            ret = stmts.pop()[len("return "):].strip()
+        elif any(st.startswith("return ") for st in stmts):
+            raise Refuse("return in the middle")
         if ret is None:
             raise Refuse("no return")
+        binds = {}
+        self._mutation_stmts(stmts, binds, env)
         pm = re.fullmatch(
             r"(?:std::)?(?:make_pair|pair(?:\s*<[^>]*>)?)\s*\((.*)\)",
             ret, re.S)
@@ -1511,11 +1522,37 @@ class Translator:
         if len(args) != 2:
             raise Refuse(ret)
         idx_text, ty_expr = args[0].strip(), args[1].strip()
-        binds = {}
-        for var, expr in decls:
-            binds[var] = self._helper_value(expr, binds, env)
         value = self._helper_value(ty_expr, binds, env)
         return "slot(%s), replace(%s)" % (idx_of(idx_text, env), value)
+
+    def _mutation_stmts(self, stmts, binds, env):
+        """Apply declarations, assignments and `if` reassignments to `binds`."""
+        for st in stmts:
+            dm = re.fullmatch(
+                r"(?:const\s+)?(?:unsigned|int|auto|LLT|bool)\s*&?\s*(\w+)"
+                r"\s*=\s*(.+)", st, re.S)
+            if dm:
+                binds[dm.group(1)] = self._helper_value(
+                    dm.group(2).strip(), binds, env)
+                continue
+            if st.startswith("if"):
+                cond, then = self._if_parts(st)
+                block = [x.strip() for x, _ in split_statements(then)
+                         if x.strip() and not _is_assert(x)]
+                inner = dict(binds)
+                self._mutation_stmts(block, inner, env)
+                g = self._helper_pred(cond, binds, env)
+                for var, val in inner.items():
+                    if var in binds and val != binds[var]:
+                        binds[var] = "select(%s, %s, %s)" % (
+                            g, val, binds[var])
+                continue
+            am = re.fullmatch(r"(\w+)\s*=\s*(.+)", st, re.S)
+            if am and am.group(1) in binds:
+                binds[am.group(1)] = self._helper_value(
+                    am.group(2).strip(), binds, env)
+                continue
+            raise Refuse(st)
 
     def _helper_value(self, text, binds, env):
         """A C++ type expression inside a mutation helper -> `.gisel` value."""
@@ -1526,6 +1563,23 @@ class Translator:
             return str(int(re.sub(r"[uUlL]+$", "", t)))
         if t.startswith("-"):
             return "sub(0, %s)" % self._helper_value(t[1:], binds, env)
+        m = re.fullmatch(r"1\s*<<\s*Log2_32_Ceil\((.*)\)", t, re.S)
+        if m:
+            # `1 << ceil(log2(n))` is pow2ceil(n), the value primitive.
+            return "pow2_ceil(%s)" % self._helper_value(m.group(1), binds, env)
+        m = re.fullmatch(r"(?:llvm::)?alignTo<\s*(\d+)\s*>\((.*)\)",
+                         t, re.S)
+        if m:
+            return "align_to(%s, %s)" % (
+                self._helper_value(m.group(2), binds, env), m.group(1))
+        m = re.fullmatch(r"(?:llvm::)?alignTo\((.*)\)", t, re.S)
+        if m:
+            args = split_top(m.group(1))
+            if len(args) != 2:
+                raise Refuse(text)
+            return "align_to(%s, %s)" % (
+                self._helper_value(args[0], binds, env),
+                self._helper_value(args[1], binds, env))
         tern = split_ternary(t)
         if tern:
             return "select(%s, %s, %s)" % (
