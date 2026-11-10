@@ -609,24 +609,17 @@ python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel \
   --features tests/cases/riscv-features.json --out /tmp/rv-cases.jsonl --json
 ```
 
-当前语料实测（2026-11-08）：
+当前语料实测（2026-11-10，逐项见 `docs/REPORT-cases.md`）：
 
 | target | configs | cases | equivalence | boundary | outside | rules | witnessed | shadowed | unexercised | 时间 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| X86 | 4 | 3,273 | 998 | 1,951 | 324 | 328 | 292 | 14 | 22 | ~1.7 s |
-| AArch64 | 9 | 9,911 | 2,851 | 6,047 | 1,013 | 743 | 315 | 25 | 403 | ~10 s |
-| RISC-V | 8 | 6,148 | 1,980 | 3,363 | 805 | 413 | 322 | 9 | 82 | ~18 s |
+| X86 | 4 | 3,027 | 1,117 | 1,522 | 388 | 328 | 319 | 4 | 5 | 1.8 s |
+| AArch64 | 9 | 12,595 | 5,225 | 6,292 | 1,078 | 743 | 584 | 35 | 124 | 3m17s |
+| RISC-V | 8 | 6,149 | 2,242 | 3,059 | 848 | 413 | 355 | 12 | 46 | 2m11s |
 
-对拍（只比较生成集与冻结 dump 的交集）：
-
-```text
-X86:     covered=379  agree=379  disagree=0  errors=0  uncovered=2894
-AArch64: covered=493  agree=493  disagree=0  errors=0  uncovered=9418
-RISC-V:  covered=1327 agree=1327 disagree=0  errors=0  uncovered=4821
-```
-
-`uncovered` 不是通过，只是「oracle 里没有这个点」。真正的不分歧结论只在
-`covered` 上成立。
+早期基于冻结 dump 的交集对拍（`x86_ref_dump.jsonl` 等）已于 2026-11-10
+删除；那些数字只属于历史快照，不再作为证据。现在的 G 侧证据是
+`ab/EVIDENCE.json` 里的 `G/*` 与 `D/x86`，由 `ab/verify-evidence.sh` 校验。
 
 复杂度上界很粗：`O(configs × Π_slots |B_slot| × rules)`。真正的约束是
 `|B| ≤ 20,000`、每槽 16 个候选、boundary 每条规则 24 条，所以时间是
