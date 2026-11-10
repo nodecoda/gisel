@@ -47,9 +47,9 @@ one_lane_vector` 抓个正着。
 
 | target | 规则 | 修复前 有见证 | 修复后 有见证 | shadowed | unexercised | 查询数 |
 |---|---:|---:|---:|---:|---:|---:|
-| X86 | 328 | 292 (89.0%) | **319 (97.3%)** | 4 | 5 | 3,217 |
-| AArch64 | 743 | 312 (42.0%) | **584 (78.6%)** | 35 | 124 | 12,595 |
-| RISC-V | 413 | 320 (77.5%) | **355 (85.9%)** | 12 | 46 | 6,301 |
+| X86 | 328 | 292 (89.0%) | **318 (97.0%)** | 5 | 5 | 3,019 |
+| AArch64 | 743 | 312 (42.0%) | **575 (77.4%)** | 38 | 130 | 12,559 |
+| RISC-V | 413 | 320 (77.5%) | **355 (85.9%)** | 12 | 46 | 6,086 |
 
 另外加了一次**定向搜索**：全局候选集没找到见证时，单独用该规则自己命名的类型
 及其邻居枚举一遍。它只多找到 1 条（AArch64）——说明剩下的不是“搜得不够”，而是
@@ -69,7 +69,7 @@ clamp_min(0, X_s64, 2)      # 触发条件是“s64 向量且 lane < 2”
 
 AArch64 剩下的 171 条集中在 `G_STORE` / `G_LOAD`（多槽 + mem 描述）、
 `G_ICMP`、`G_EXTRACT/INSERT_VECTOR_ELT`。2026-11-10 已把这 171 条逐条定性，
-并把定向搜索的种子扩到 `on`/`to` 里的目标类型，见证数从 572 升到 584；
+并把定向搜索的种子扩到 `on`/`to` 里的目标类型，见证数从 572 升到 584；比较结果槽过滤后为 575；
 剩下的 159 条按原因分成四类，见 §9。
 
 ## 5 门禁
@@ -277,11 +277,11 @@ pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`（sha256 `79f2376…`）。
 非法形状查询，都在本节修掉（见 §8.2）。
 
 也就是说：**X86 现在 3,211/3,211 一致**，19 条已知死循环的偏离在两侧都消失，
-没有未归因的差异。查询行数从 3,282 变成 3,217，是形状过滤丢掉的 65 条非法
-元组，不是题目被跳过。`PIN.json` 的 `patches` 记录了我们叠在上游 pin 之上的 PR；
+没有未归因的差异。X86 查询行数从 3,282 变成 3,019，是形状过滤（含比较结果槽）
+丢掉的非法元组，不是题目被跳过。`PIN.json` 的 `patches` 记录了我们叠在上游 pin 之上的 PR；
 等它们合入上游，把 `commit` 前移并删掉 `patches` 和 `X86_DEVIATIONS` 即可。
 
-## 9 AArch64 的 159 条无见证：逐条定性（2026-11-10）
+## 9 AArch64 的 168 条无见证：逐条定性（2026-11-10）
 
 命令：
 
@@ -290,7 +290,7 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json \
   --axes tests/cases/aarch64-mem-orderings.axes.json \
   --out /tmp/a64.jsonl --strict-coverage --json
-# 743 rules, 584 witnessed, 159 unwitnessed (124 unexercised, 35 shadowed)
+# 743 rules, 575 witnessed, 168 unwitnessed (130 unexercised, 38 shadowed)
 ```
 
 机器可读的逐条清单在 `docs/coverage/AArch64-unwitnessed.json`（每条带源码行、
@@ -298,9 +298,9 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 
 | 分类 | 条数 | 判定 |
 |---|---:|---|
-| `dead-predicate` | 95 | 谓词在声明域里对任何类型都为假 |
+| `dead-predicate` | 101 | 谓词在声明域里对任何类型都为假 |
 | `dead-guard` | 29 | 谓词能成立，但动作的隐式 shim 守卫永远为假 |
-| `dominated` | 17 | 谓词能成立，但每个采样点都被更早的规则先答掉 |
+| `dominated` | 20 | 谓词能成立，但每个采样点都被更早的规则先答掉 |
 | `satisfiable-outside-query-product` | 18 | 在更宽的轴里可满足，但当前查询集没采到那个 mem×类型组合 |
 
 ### 9.1 这一轮多找到的 12 条：目标类型也是种子
@@ -314,10 +314,12 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 轴，并进去会改变基础查询集。定向搜索用 `literals | targets`，于是
 `clamp_max(s32, 4)` 的种子 `v4s32` 带来邻居 `v8s32`，这条规则第一次有了见证。
 
-效果：AArch64 572 → 584 条见证，`cases` 用时 3m17s（旧 3m34s，噪声内）。
-另外 3 个 target 的查询集不变。
+效果：AArch64 572 → 584 条见证。随后比较结果槽过滤（`G_ICMP`/`G_FCMP` 的
+type0 必须是整数）撤掉了 9 条只靠非法比较形状成立的见证，落到 575；这 9 条
+按原因归入 6 条 `dead-predicate` 和 3 条 `dominated`。三个 target 的查询集都
+随这个过滤变化，当前数字以本节表格为准。
 
-### 9.2 95 条 `dead-predicate`：LLT 造不出触发值
+### 9.2 101 条 `dead-predicate`：LLT 造不出触发值
 
 最大的一类是 `clamp_min(0, s32, 2)`（G_ADD/G_MUL/… 共几十条）：
 

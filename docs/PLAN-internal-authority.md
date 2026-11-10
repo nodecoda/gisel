@@ -117,8 +117,8 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | 门 | 要求 | 当前状态 |
 |---|---|---|
 | 参照系 | 明确“对 pin+patches 权威”，deviation 点名 | 有 `PIN.json`；需在权威声明里写清 |
-| G 题面 | `domain + cases + 字面量展开`，不只 `cases` | X86 用 `domain` 91,340；AArch64 用 `cases` 12,595；未统一 |
-| 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 124 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
+| G 题面 | `domain + cases + 字面量展开`，不只 `cases` | X86 用 `domain` 91,340；AArch64 用 `cases` 12,559；未统一 |
+| 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 130 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
 | U 题面 | 上游运行期规则表 + 独立类型宇宙 | 缺 |
 | 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 四个大 target 在 `--refine` 后全 0：X86 277→0、AArch64 2,671→0、RISC-V 2,864→0、Wasm 302→0（`REPORT-graph`） |
 | 不可答点 | 单列，不混入 agree | X86 1,418 条已单列并钉数；AArch64 已归零（`REPORT-cases` §8.2） |

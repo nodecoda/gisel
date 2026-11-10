@@ -48,7 +48,7 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 产物是一行一个查询的 JSONL，**不带答案**：`config/name/types/mem/imms`。
 口径（等价类、边界、outside、见证）在 `spec/cases.md` 和
 `docs/ALGORITHM-cases.md`；每个 target 的查询数是契约的一部分，脚本里写死
-（X86 3,027 / AArch64 12,583 / RISC-V 6,149 / M68k 35 / PowerPC 94 /
+（X86 3,019 / AArch64 12,559 / RISC-V 6,086 / M68k 35 / PowerPC 94 /
 WebAssembly 886 / ARM 1,614 / Mips 1,656），
 变了就停下来看新题目。
 
@@ -96,9 +96,9 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 
 | target | 查询行 | 去重 key | 一致 | 分歧 | 两侧都断言 | 备注 |
 |---|---:|---:|---:|---:|---:|---|
-| AArch64 | 12,583 | 12,583 | 12,583 | 0 | 0 | — |
-| RISC-V | 6,149 | 6,147 | 6,147 | 0 | 2 | 2 条两侧都断言 |
-| X86 | 3,027 | 3,021 | 3,021 | 0 | 0 | 6 条重复 key（3027 行 → 3021 key） |
+| AArch64 | 12,559 | 12,559 | 12,559 | 0 | 0 | — |
+| RISC-V | 6,086 | 6,084 | 6,084 | 0 | 0 | 2 条重复 key（6086 行 → 6084 key） |
+| X86 | 3,019 | 3,013 | 3,013 | 0 | 0 | 6 条重复 key（3019 行 → 3013 key） |
 | M68k | 35 | 35 | 35 | 0 | 0 | 单配置，规则 13 条 |
 | PowerPC | 94 | 94 | 94 | 0 | 0 | 单配置，规则 25 条；断言那条已落到 `unanswerable`（两侧一致） |
 | WebAssembly | 886 | 886 | 886 | 0 | 0 | wasm32/wasm64 × ±sign-ext，规则 109 条 |
@@ -111,6 +111,11 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 aarch64 12,595 / x86 3,027 / spirv 5,136` 条查询，`disagree = 0`；
 `ppc` 的 1 条、`mips` 的 9 条（`ref_asserted`）、`spirv` 的 4 条（两侧都断言）与表里一致。
 
+2026-11-10 比较结果槽过滤后，X86 / AArch64 / RISC-V 用新查询集重跑：
+`x86 3,019 / aarch64 12,559 / riscv 6,086` 条，`disagree = 0`，两侧答案文件
+逐字节相同（X86 6 条、RISC-V 2 条重复 key）。证据在 `ab/EVIDENCE.json` 的
+`G/x86`、`G/aarch64`、`G/riscv`，由 `ab/verify-evidence.sh` 校验。
+
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
 `patches`（`PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
 `Unsupported`，差异归零。
@@ -122,7 +127,7 @@ AArch64 的 117 条要拆成两层看：PR #238306 修好官方侧的 `mutationI
 那 108 条不是上游的锅，是**我们自己造的非法查询**：逐槽候选做笛卡尔积，
 造出了 `(v16s8, v2s32)`、`(v16s8, s32)`、`(v2i64, f16)` 这类真实 MIR 里不可能
 出现的类型组合，官方 legalizer 正确地拒绝了它们。加了 opcode 形状约束之后
-108 条归零，规则见证数不变（584；2026-11-10 把定向搜索的种子扩到 `to` 里的目标类型后又多 12 条，见 `REPORT-coverage` §9）。详见 `docs/ALGORITHM-cases.md` 的
+108 条归零，规则见证数为 575（定向搜索加目标类型种子后曾到 584；比较结果槽过滤撤掉 9 条非法见证，见 `REPORT-coverage` §9）。详见 `docs/ALGORITHM-cases.md` 的
 「形状：槽不是独立轴」。
 
 查询行数因此从 13,199 / 3,282 变成 12,952 / 3,217；RISC-V 没有这类形状，
