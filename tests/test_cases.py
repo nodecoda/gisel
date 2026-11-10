@@ -142,6 +142,27 @@ class Shapes(unittest.TestCase):
         self.assertEqual(gen.stats["shadowed"], 1)
         self.assertEqual(gen.stats["unexercised"], 0)
 
+    def test_the_mutation_target_type_seeds_the_directed_search(self):
+        # The rule names its trigger type only in `to`: clamp_max to v4s32
+        # fires on a wider vector of the same element.  The declared domain
+        # has v4s32 but not v16s32, so only a search seeded from the target
+        # (and its neighbours) can witness it.
+        text = """\
+type s32 = LLT::scalar(32)
+type v4s32 = LLT::fixed_vector(4, 32)
+
+ruleset B_ADD: G_ADD
+    legal in(slot(0), s32)
+    clamp_max(0, s32, num_elems(ty(v4s32)))
+"""
+        doc, features, gen = build(text)
+        self.assertEqual(gen.stats["witnessed"], 2)
+        self.assertEqual(gen.stats["shadowed"], 0)
+        directed = [c for c in gen.cases
+                    if c.rule == 1 and "directed" in c.reason]
+        self.assertTrue(directed)
+        self.assertNotIn(directed[0].types[0], ("s32", "v4s32"))
+
     def test_rule_no_config_enables_is_unexercised(self):
         with tempfile.TemporaryDirectory() as d:
             doc = cases.document(write(d, GATED))

@@ -108,6 +108,7 @@ def _literals(node):
 @dataclass
 class RuleInfo:
     literals: dict = field(default_factory=dict)   # slot -> set[(dim, n)]
+    targets: dict = field(default_factory=dict)    # slot -> set[(dim, n)] from on/to
     thresholds: dict = field(default_factory=dict)  # slot -> set[(dim, n)]
     mem_entries: list = field(default_factory=list)  # (t0, t1, mty, align)
     mem_obs: set = field(default_factory=set)  # ("size"|"align", literal)
@@ -214,8 +215,28 @@ def inspect_rule(rule):
     info = RuleInfo()
     _walk_info(rule["predicate"], info)
     for key in ("on", "to"):
-        if rule.get(key):
-            _walk_info(rule[key], info)
+        node = rule.get(key)
+        if not node:
+            continue
+        _walk_info(node, info)
+        # A mutation's target type is a seed for the directed witness search
+        # even though it is not a value the rule *matches*: `clamp_min(0, s32,
+        # 2)` and `widen(elem_of(slot(0)), min_vector_size(64))` name their
+        # type only inside `to`.  Keep these out of `literals`, which the main
+        # candidate axes use, so the base query set does not move.
+        slot = _slot_of(node)
+        if slot is None:
+            continue
+        for n in A.walk_nodes(node):
+            if n.get("kind") != "ty":
+                continue
+            args = n.get("args") or []
+            for text in _literals(args[0] if args else None):
+                try:
+                    t = E.parse_case_llt(text)
+                except E.EvalError:
+                    continue
+                info.targets.setdefault(slot, set()).add(t)
     return info
 
 

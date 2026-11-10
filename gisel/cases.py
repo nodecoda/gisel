@@ -926,10 +926,12 @@ def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
     per_slot = []
     for s in slots:
         cand = set(infos[ri].literals.get(s, set()))
+        cand |= infos[ri].targets.get(s, set())
         for leaf in list(cand):
             cand |= L.neighbours(leaf)
         if not cand:
-            cand = {default[s] if s < len(default) else E.parse_case_llt("s32")}
+            cand = {default[s] if s < len(default)
+                    else E.parse_case_llt("s32")}
         values = sorted(cand, key=_candidate_key)
         if not scalable_ok:
             values = [x for x in values
@@ -945,7 +947,10 @@ def _rule_witness(evaluator, rs_idx, ri, rs, configs, infos, default,
         mem_trials += [(mty, int(align), ordering, failure)
                        for _, _, mty, align in mem_entries
                        for ordering, failure in mem_pairs]
-    search = per if per is not None else [list(v) for v in per_slot]
+    # Free slots are filled from the ruleset axis; cap them so a three-slot
+    # opcode does not multiply the directed search by the whole product.
+    search = ([list(v[:16]) for v in per] if per is not None
+              else [list(v) for v in per_slot])
     for config in configs:
         for combo in itertools.product(*per_slot):
             for types in _compatible_types(opcode, default, slots, combo,
