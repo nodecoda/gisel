@@ -345,9 +345,9 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
 
 - AArch64 只跑了 `baseline`；另外四个配置的图和闭包没有跑。单配置约 8 分钟、
   1.15M states 是当前的成本上限。
-- RISC-V 的 imm 轴、ordering 轴没有跑；闭包在 `rv64gc` 上跑过，未通过（§4）。
+- RISC-V 的 imm 轴、ordering 轴没有跑；闭包在 `rv64gc` 上跑过，`--refine` 后通过（§4）。
 - SPIR-V 单配置 420 s 超时，没有图和闭包数字。
 - `G_INTRINSIC*` 等 variadic opcode 的槽数没有进 manifest，因此被报成
   `uncovered`，不是 0 环证据的一部分。
-- `--refine` 是逐轴、单槽的：跨槽规则（`G_LOAD`/`G_STORE`/`same_as` 条件）
-  拆不动，所以 RISC-V/WebAssembly 的残余不能靠 refine 掩盖。
+- `--refine` 已扩到跨槽目标（按被写入槽的具体目标类型拆），所以 RISC-V/
+  WebAssembly 也能到 `closure.count=0`。它仍是 opt-in，因为会改变“原子”定义。
