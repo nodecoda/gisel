@@ -45,6 +45,9 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 物理边界：`pyproject.toml` 只打包 `gisel*`，`tools/` 和 `docs/` 不随 wheel
 发布。工作台脚本是仓库内的开发工具，不是产品面。
 
+这些工作台工具正在按 §7 的三分法迁出；迁移期间路径不变、行为不变，
+归属以 §7 为准。
+
 语料的来源同样按这条分：`tests/corpus/` 是**输入**，由工作台工具从上游手写的
 `*LegalizerInfo.cpp` 规则转出后冻结（X86/AArch64 中途经过本项目引入的 `.td`）；
 每份语料的来源和它能证明什么见 `docs/CORPORA.md`。
@@ -93,3 +96,28 @@ gisel 只负责“规则文本 ↔ 规则产物 / 查询”。**证明两条规�
 宿主 C++ 的边界单独定义在 `spec/escape-points.md`：`feature` 是配置轴，
 `opaque` 是谓词洞，变异侧没有第三个口。新增或改变逃逸口同样属于本节的审批
 范围。仓库根 `AGENTS.md` 是这条规则的执行面。
+
+## 7 三分法：gisel / upstream-source / ab（2026-11-10）
+
+工作台正在从本仓库拆成两个独立项目。拆完之后，本仓库只有 gisel 本体。
+
+| 项目 | 位置 | 做什么 | 不做 |
+|---|---|---|---|
+| **gisel** | 本仓库 | `.gisel` → `inc/check/core`；`.gisel` → `cases/domain` | 不读 LLVM 源码、不编译、不跑对拍 |
+| **upstream-source** | `/home/ubuntu/llvm/upstream-source` | 上游 C++ → `.gisel`（import）；上游规则表 → `U` 题面 + 覆盖率（oracle） | 不生成 `inc`、不跑对拍、不做归因 |
+| **ab** | `/home/ubuntu/llvm/ab` | 任意 query JSONL + 两个 runner → answers / diff / 归因 / 负控 | 不生成题面、不改 `.gisel` |
+
+依赖方向：`upstream-source → gisel`、`ab → gisel`；反向禁止。两个新项目只调
+gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
+
+迁移状态：
+
+| WP | 内容 | 状态 |
+|---|---|---|
+| WP0 | 边界与契约（本表 + 两个新仓库的 `SCOPE.md`/`CONTRACTS.md`） | 完成 |
+| WP1 | `tools/import-cxx.py`、importer 测试、`PIN.json` → upstream-source | 待做 |
+| WP2 | `tools/ab/*`、`tests/test_ab.py` → ab | 待做 |
+
+迁移期间 `tools/` 仍在原处，行为不变。query/answer 格式的 canonical 规范仍是
+本仓库 `spec/cases-format.md`；两个新项目的 `CONTRACTS.md` 只能引用它，不能
+单方面扩展字段。
