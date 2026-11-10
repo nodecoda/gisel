@@ -19,6 +19,7 @@ from pathlib import Path
 from . import ast as A
 from . import eval as E
 from . import llt as L
+from . import contract
 from .backend import core_json
 
 
@@ -391,88 +392,17 @@ def derive_features(doc, path=None, configs=None):
 # This is a filter on the *question*, not on the answer: it never decides what
 # a legal query means, only whether the question can be asked at all.
 
-def _same_element(a, b):
-    return E.llt_eq(a[3], b[3])
-
-
-def _same_lane_count(a, b):
-    return E.is_vector(a) == E.is_vector(b) and (
-        not E.is_vector(a) or a[1] == b[1])
-
-
-def _integer_scalar_or_vector(t):
-    """True for the result of a comparison: integer scalar or integer vector."""
-    return (not E.is_vector(t) and t[0] == "scalar") or (
-        E.is_vector(t) and t[3][0] == "scalar")
-
-
 def type_shape_ok(opcode, types):
-    if opcode in ("G_ICMP", "G_FCMP"):
-        # type0 is the comparison result: an integer (or integer vector).
-        # A float there is not a question the legalizer can be asked; without
-        # this check `narrow(slot(0), s8)` turns f16 into f8 and the graph
-        # reports a bogus domain exit.  MachineVerifier.cpp:1622 additionally
-        # requires both sides to agree on scalar-vs-vector and lane count.
-        if len(types) < 2:
-            return False
-        # The operand slot is deliberately not kind-checked: X86's table
-        # constrains it by size only (`legalFor({s8, s32})` touches type 0,
-        # `clampScalar(1, s32, ...)` preserves the kind), so `s32` there is a
-        # question the table really answers.  The result slot, by contrast,
-        # is always an integer; a float there is not valid MIR.
-        if not _integer_scalar_or_vector(types[0]):
-            return False
-        return _same_lane_count(types[0], types[1])
-    if opcode == "G_MERGE_VALUES":
-        # MachineVerifier.cpp: G_MERGE_VALUES takes scalars only.
-        return all(not E.is_vector(t) for t in types)
-    if opcode == "G_UNMERGE_VALUES":
-        if all(not E.is_vector(t) for t in types):
-            return True
-        # Vector form is the converse of G_CONCAT_VECTORS: same element type
-        # and the same scalability on every slot.
-        if all(E.is_vector(t) for t in types):
-            first = types[0]
-            return all(t[2] == first[2] and _same_element(t, first)
-                       for t in types[1:])
-        return False
-    if opcode == "G_CONCAT_VECTORS":
-        if len(types) < 2:
-            return False
-        # MachineVerifier.cpp:1602 -- "G_CONCAT_VECTOR requires vector source
-        # and destination operands" and "num dest and source elements should
-        # match".  The query carries (dst, src); the second source is the same
-        # type as the first, so the destination has twice the lanes.
-        #
-        # The verifier does not compare element types, but concatenation is
-        # defined as gluing two vectors of one element type: `concat(v2s16,
-        # v2s16)` is `v4s16`, never `v4s32`.  A mismatched pair reaches the
-        # bitcast rule, whose mutation changes the total size and trips
-        # mutationIsSane.  Semantics, not the verifier.
-        return (E.is_vector(types[0]) and E.is_vector(types[1])
-                and types[0][1] == types[1][1] * 2
-                and _same_element(types[0], types[1]))
-    if opcode == "G_SHUFFLE_VECTOR":
-        if len(types) < 2:
-            return False
-        # MachineVerifier.cpp:1945 -- "must have vector src", "must have
-        # vector dst", "cannot change element type".
-        return (E.is_vector(types[0]) and E.is_vector(types[1])
-                and _same_element(types[0], types[1]))
-    if opcode in ("G_SHL", "G_LSHR", "G_ASHR", "G_ROTR", "G_ROTL"):
-        if len(types) < 2:
-            return True
-        # MachineVerifier.cpp:1611 -- "Shifts and rotates require operands to
-        # be either all scalars or all vectors".  A scalar shift amount on a
-        # vector source never reaches the legalizer: MIR cannot hold it, so a
-        # graph state that mixes the two shapes is not a question the official
-        # side can be asked.
-        return (all(E.is_vector(t) for t in types[:2])
-                or all(not E.is_vector(t) for t in types[:2]))
-    if opcode in ("G_FPTOSI_SAT", "G_FPTOUI_SAT"):
-        if len(types) < 2:
-            return False
-        # semantics: the saturated conversion keeps the lane count.  The
-        # verifier has no case for these opcodes, so this is the only source.
-        return _same_lane_count(types[0], types[1])
-    return True
+    """True when the tuple is a question the MIR verifier would pass on.
+
+    A query of a shape the verifier rejects is not reachable from IR: the
+    runner would either abort before answering or answer a question no `llc`
+    input can ask.  Those tuples are not part of the domain.
+
+    The rules live in `gisel/data/contract-shapes.jsonc`, one entry per
+    opcode, each carrying the verifier check it transcribes as `source`.
+    Opcodes with no entry are not guessed at: the cartesian product still
+    produces whatever the rules admit.  This is a filter on the *question*,
+    not on the answer: it never decides what a legal query means.
+    """
+    return contract.check(opcode, types)

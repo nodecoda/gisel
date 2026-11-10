@@ -117,9 +117,9 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | 门 | 要求 | 当前状态 |
 |---|---|---|
 | 参照系 | 明确“对 pin+patches 权威”，deviation 点名 | 有 `PIN.json`；需在权威声明里写清 |
-| G 题面 | `domain + cases + 字面量展开`，不只 `cases` | X86 用 `domain` 91,340；AArch64 用 `cases` 12,559；未统一 |
+| G 题面 | `domain + cases + 字面量展开`，不只 `cases` | 三个 target 都用 `domain`：X86 91,340（4 配置）；AArch64 8,432,640（9 配置）；RISC-V 2,029,976（8 配置）。`cases` 仍在，作规则感知的压缩补充 |
 | 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 130 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
-| U 题面 | 上游运行期规则表 + 独立类型宇宙 | 缺 |
+| U 题面 | 上游运行期规则表 + 独立类型宇宙 | 有：`upstream-source` 的 oracle 模块，9 个 target；证据见 `ab/EVIDENCE.json` 的 9 条 `U/*` |
 | 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 四个大 target 在 `--refine` 后全 0：X86 277→0、AArch64 2,671→0、RISC-V 2,864→0、Wasm 302→0（`REPORT-graph`） |
 | 不可答点 | 单列、计数并钉数 | X86 648 条（2026-11-11：删掉按 slot 0 查表的短路后实测；旧 1,418 里 528 条其实可答）；AArch64 domain 39,056/配置；`cases` 侧已归零（`REPORT-cases` §8.2） |
 | 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 有；全量回归未成门禁 |
@@ -162,9 +162,9 @@ forall q in U: Ans_g(q) = Ans_u(q)
 |---|---|---|
 | L0 | 转录 + `inc` 编译 | 有 |
 | L1 | `G` 题面对拍 | 有 |
-| L2 | 负控注入能被抓 | 缺 |
-| L3 | `U` 题面对拍 | 缺 |
-| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 部分缺 |
+| L2 | 负控注入能被抓 | 有：9×`G-neg/*` + 9×`U-neg/*`（`ab/EVIDENCE.json`），注入动作翻转/谓词放宽后必须报分歧 |
+| L3 | `U` 题面对拍 | 有：9×`U/*`（`ab/EVIDENCE.json`） |
+| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（`graph --check-closure`）、frozen oracle 有（`ab/freeze-*.sh`）；全量回归（MIR/llc）与 CI（ab/upstream-source）缺 |
 
 “内部权威”应该是 L4 的 target 才授予。X86、AArch64、RISC-V 分别授，不要用
 一个总开关。
@@ -195,5 +195,6 @@ gisel 成为源之后，流程反过来：
 > **对明确的 fork baseline，双向题面 + 分区完备 + 负控有效 + 一步能闭包 +
 > 保留参照 oracle，才叫我们自己有信心。**
 
-现在有一半（`G` 方向 + 转录 check），缺的是 `U` 方向、负控、闭包和 oracle
-保全。把这四件事补上，就可以在 fork 上把 gisel 立为规则源。
+`G` 与 `U` 双向题面、负控、闭包和 frozen oracle 都已有证据；剩下的缺口是
+**全量回归（MIR/llc 层）与 CI 门禁**，以及第 7 节“换 inc 之后保留参照”的
+流程化。这两件补上，就可以在 fork 上把 gisel 立为规则源。

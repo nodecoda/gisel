@@ -1,0 +1,134 @@
+// Shape contract for the domain: type tuples that no `llc` input can ask.
+//
+// Every entry transcribes a check from the generic MIR verifier or, when the
+// verifier has no case for the opcode, states the opcode's own semantics.
+// `source` is mandatory (gisel/contract.py rejects a rule without one).
+//
+// The filter decides which *questions* exist, never how one is answered.
+// Adding a rule shrinks every target's domain, so a new rule needs a
+// denominator decision, not just a code change.
+{
+  "schema": "gisel-contract/1",
+  "rules": [
+    {
+      // "G_MERGE_VALUES cannot operate on vectors" -- the result is one
+      // scalar built from scalars.
+      "opcode": "G_MERGE_VALUES",
+      "checks": [{"all_slots": "not_vector"}],
+      "source": "MachineVerifier.cpp:1502-1510"
+    },
+    {
+      "opcode": "G_UNMERGE_VALUES",
+      "any_of": [
+        // Scalar form: every destination is a scalar.
+        {"checks": [{"all_slots": "not_vector"}]},
+        // Vector form: the converse of G_CONCAT_VECTORS -- one element type
+        // and one scalability across the source and all destinations.
+        {"checks": [{"all_slots": "vector"},
+                    {"relation": "same_element_all"}]}
+      ],
+      // LEGACY, not the verifier rule: this entry reproduces the filter that
+      // has been running since 9e59c9d, and that filter is narrower than
+      // MachineVerifier's check -- `v2s32 -> s32, s32` is dropped today even
+      // though it is real MIR (REPORT-coverage §9.5).  Widening it adds
+      // questions to every domain, so it needs a denominator decision.
+      "source": "legacy: current filter (over-narrow); MachineVerifier.cpp:1523-1555"
+    },
+    {
+      // "G_CONCAT_VECTOR requires vector source and destination operands" and
+      // the destination has one element per source element.
+      "opcode": "G_CONCAT_VECTORS",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "vector"},
+        {"slot": 1, "kind": "vector"},
+        {"relation": "dest_lanes_double", "slots": [0, 1]},
+        {"relation": "same_element", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:1602-1619"
+    },
+    {
+      // The comparison result is an integer; both sides agree on
+      // scalar-vs-vector and lane count.
+      "opcode": "G_ICMP",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer_scalar_or_vector"},
+        {"relation": "same_lane_count", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:1622-1631"
+    },
+    {
+      "opcode": "G_FCMP",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer_scalar_or_vector"},
+        {"relation": "same_lane_count", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:1622-1631"
+    },
+    {
+      // "G_SHUFFLE_VECTOR must have vector src", "must have vector dst",
+      // "cannot change element type".
+      "opcode": "G_SHUFFLE_VECTOR",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "vector"},
+        {"slot": 1, "kind": "vector"},
+        {"relation": "same_element", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:1945-1968"
+    },
+    {
+      // "Shifts and rotates require operands to be either all scalars or all
+      // vectors."  A one-slot query never reaches the check.
+      "opcode": "G_SHL",
+      "min_slots": 2,
+      "short_ok": true,
+      "checks": [{"relation": "same_shape", "slots": [0, 1]}],
+      "source": "MachineVerifier.cpp:2217-2226"
+    },
+    {
+      "opcode": "G_LSHR",
+      "min_slots": 2,
+      "short_ok": true,
+      "checks": [{"relation": "same_shape", "slots": [0, 1]}],
+      "source": "MachineVerifier.cpp:2217-2226"
+    },
+    {
+      "opcode": "G_ASHR",
+      "min_slots": 2,
+      "short_ok": true,
+      "checks": [{"relation": "same_shape", "slots": [0, 1]}],
+      "source": "MachineVerifier.cpp:2217-2226"
+    },
+    {
+      "opcode": "G_ROTR",
+      "min_slots": 2,
+      "short_ok": true,
+      "checks": [{"relation": "same_shape", "slots": [0, 1]}],
+      "source": "MachineVerifier.cpp:2217-2226"
+    },
+    {
+      "opcode": "G_ROTL",
+      "min_slots": 2,
+      "short_ok": true,
+      "checks": [{"relation": "same_shape", "slots": [0, 1]}],
+      "source": "MachineVerifier.cpp:2217-2226"
+    },
+    {
+      // semantics: the saturated conversion keeps the lane count.  The
+      // verifier has no case for these opcodes.
+      "opcode": "G_FPTOSI_SAT",
+      "min_slots": 2,
+      "checks": [{"relation": "same_lane_count", "slots": [0, 1]}],
+      "source": "semantics: saturated conversion preserves lanes"
+    },
+    {
+      "opcode": "G_FPTOUI_SAT",
+      "min_slots": 2,
+      "checks": [{"relation": "same_lane_count", "slots": [0, 1]}],
+      "source": "semantics: saturated conversion preserves lanes"
+    }
+  ]
+}

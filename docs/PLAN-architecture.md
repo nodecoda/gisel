@@ -92,11 +92,14 @@ D2/D4 若选 B 都属于收窄语法，按 `AGENTS.md` 必须你明确批准；�
 ## 6 验证门（每阶段结束都跑）
 
 ```sh
-# 1. 单元测试（当前 305 passed / 94 subtests；P2 起应只增不减）
+# 1. 单元测试（2026-11-11 快照：224 passed / 92 subtests；应只增不减）
 python3 -m pytest -q
 
 # 2. 语料与上游一致（9/9 matches，0 refused）
-python3 tools/import-cxx.py --all --pin tests/corpus/PIN.json \
+#    PIN 与转录器都在 upstream-source；gisel 的 tools/import-cxx.py 只是
+#    一个转发的 shim（会打一行 deprecation 警告）。
+python3 ../upstream-source/import/import-cxx.py --all \
+  --pin ../upstream-source/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
 
 # 3. 冻结产物不变
@@ -130,7 +133,8 @@ done
 | `15c4fc3` | 文档对齐：`check`/`core` 是 canonical 形；graph/riscv 报告按快照重写 |
 | `9e59c9d` | 形状过滤上移到 `analysis.type_shape_ok`，补 shift/rotate 条款；`graph` 对类元组做形状可行性判定并输出 `shape` |
 
-验证：`310 passed, 94 subtests passed`；`import-cxx --all --check` 9/9 matches。
+验证（当轮快照）：`310 passed, 94 subtests passed`；`import-cxx --all --check` 9/9 matches。
+（2026-11-11 现状：`224 passed, 92 subtests`；测试在 P2 后的多次治理中被合并/删除。）
 
 ## 8 剩余
 
