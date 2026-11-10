@@ -649,6 +649,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     skip = _skip_matcher(skip)
     states = {}
     class_tables = {}
+    universe = set()
     edges = collections.defaultdict(list)
     uncovered = []
     skipped = set()
@@ -706,16 +707,23 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                 axis_profile=axis_profile,
                 ordering_pairs=ordering_pairs)
             mem_values = mem_values if any(info.uses_mem for info in infos) else [None]
+            for axis in axes:
+                universe.update(axis)
             type_classes = [_make_classes(axes[i], i, atoms, rs["rules"], axes,
                                           mem_values if mem_values != [None] else [],
                                           evaluator, config)
                             for i in range(n)]
             if refine:
                 classes_before += sum(len(tc.members) for tc in type_classes)
+                # Refinement must judge "outside" against the same finite
+                # set the graph enumerates, not against the source's type
+                # declarations alone: sentinel values the axes carry are
+                # states too, so mutating into one is not a domain exit.
                 type_classes = _refine_classes(
                     type_classes, opcode, [items[0] for items in axes],
                     mem_values[0] if mem_values != [None] else None,
-                    evaluator, config, extended, declared)
+                    evaluator, config, extended,
+                    set(declared).union(*axes))
             mem_classes = (_make_mem_classes(mem_values, atoms, axes,
                                              evaluator, config)
                            if mem_values != [None] else None)
@@ -769,7 +777,11 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                      time.monotonic() - started),
                   file=sys.stderr, flush=True)
 
-    domain = Domain(frozenset(declared), class_tables)
+    # The finite domain is what the axes enumerate: declared types, the
+    # literals and cut points taken from the rules, and the stable sentinels.
+    # A sentinel that the axes carry is a state like any other; calling its
+    # successors "outside" was a bookkeeping bug, not a coverage gap.
+    domain = Domain(frozenset(set(declared) | universe), class_tables)
     for key, state in states.items():
         opcode = key[0]
         types, mem, imm = state["types"], state["mem"], state["imm"]

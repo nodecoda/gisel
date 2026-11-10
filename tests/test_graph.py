@@ -118,26 +118,41 @@ class GraphFixture(unittest.TestCase):
         report = self.build(CLOSED, check_closure=True)
         self.assertTrue(report.closure["ok"], report.closure)
 
-    def test_outside_is_counted_and_a_homogeneous_outside_class_closes(self):
-        # `widen(pow2)` sends every member of the non-pow2 class into an
-        # undeclared width.  The mutation is counted as `outside`, and the
-        # class itself is homogeneous: closure has nothing to reject.
+    def test_outside_is_counted(self):
+        # `widen(pow2)` sends `s3` to `s4`, a width no axis enumerates.
         report = self.build(OUTSIDE)
         self.assertGreater(report.public()["outside"], 0)
+
+    def test_a_class_that_straddles_the_enumerated_domain_is_not_closed(self):
+        # `s3` widens to `s4` (outside), while `s7`/`s24` in the same class
+        # widen to the enumerated `s8`/`s32`.  The class is not a function on
+        # the enumerated domain, and closure must say so.
         checked = self.build(OUTSIDE, check_closure=True)
-        self.assertTrue(checked.closure["ok"], checked.closure)
-        self.assertEqual(checked.closure["kinds"]["outside"], 0)
+        self.assertFalse(checked.closure["ok"], checked.closure)
+        self.assertEqual(checked.closure["kinds"]["outside"], 6)
+        members = {v["member"][0] for v in checked.closure["violations"]}
+        self.assertIn("s7", members)
+
+    def test_a_sentinel_the_axes_carry_is_not_outside(self):
+        # The axes include the stable sentinels, so a mutation into one is an
+        # ordinary edge.  Judging `outside` against the `.gisel` declarations
+        # alone used to drop those edges: Mips declares no float types, so
+        # every f16 -> f32 was reported as a domain exit even though f32 was
+        # a state the graph itself enumerated.
+        report = self.build(MEMBER_MIX, check_closure=True)
+        self.assertEqual(report.public()["outside"], 0)
+        self.assertTrue(report.closure["ok"], report.closure)
 
     def test_closure_audits_members_of_an_outside_class(self):
-        # The representative `s3` widens to the undeclared `s32`; `s33` is in
-        # the same class and widens to the declared `s64`.  The old audit
-        # looked at moves representatives only, so `s33` was never asked.
-        report = self.build(MEMBER_MIX, check_closure=True)
+        # The representative `s3` widens to the unenumerated `s4`; `s7` is in
+        # the same class and widens to the enumerated `s8`.  The old audit
+        # looked at moving representatives only, so `s7` was never asked.
+        report = self.build(OUTSIDE, check_closure=True)
         self.assertEqual(report.public()["cycles"], 0)
         members = {v["member"][0] for v in report.closure["violations"]}
-        self.assertIn("s33", members)
+        self.assertIn("s7", members)
         self.assertEqual(report.closure["kinds"],
-                         {"partition": 0, "outside": 2})
+                         {"partition": 0, "outside": 6})
 
     def test_implicit_guard_takes_part_in_the_class(self):
         # X86_UMIN spells the widen rule with a bare `true` predicate; only
@@ -147,13 +162,9 @@ class GraphFixture(unittest.TestCase):
         report = self.build(GUARDED, check_closure=True)
         public = report.public()
         self.assertEqual(public["cycles"], 0)
-        # The class that holds `s3` also holds `s33`/`s63`/`s65`, whose
-        # widen targets are undeclared widths.  That is a coverage gap
-        # (`outside`), not a rule partition error, and closure now says so
-        # instead of trusting the representative.
-        self.assertFalse(report.closure["ok"])
-        self.assertEqual(report.closure["kinds"]["partition"], 0)
-        self.assertEqual(report.closure["kinds"]["outside"], 3)
+        # `s33`/`s63`/`s65` widen into the enumerated `s64`/`s128`, so the
+        # class is a function on the axes; only the guard separation matters.
+        self.assertTrue(report.closure["ok"], report.closure)
         classes = [{cases.llt_text(member[0][0])
                     for member in graph._state_members(state)}
                    for state in report.states.values()]
@@ -170,7 +181,7 @@ class GraphFixture(unittest.TestCase):
         plain = self.build(REFINABLE, check_closure=True)
         self.assertFalse(plain.closure["ok"])
         self.assertEqual(plain.closure["kinds"]["partition"], 1)
-        self.assertEqual(plain.closure["kinds"]["outside"], 1)
+        self.assertEqual(plain.closure["kinds"]["outside"], 0)
         self.assertIsNone(plain.public().get("classes_before"))
 
         refined = self.build(REFINABLE, check_closure=True, refine=True)
