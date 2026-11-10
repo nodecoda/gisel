@@ -57,14 +57,19 @@ commit 都是 HEAD 的祖先。缺一个就 rc=1 并逐个点名，因为那种�
 ## 复现：一条命令，钉住计数
 
 导入器是**一次性转录工具**，不是通用 C++ 解析器：目标写死在 `TARGETS` 里
-（X86 / AArch64 / RISC-V / M68k），路径和规则数也在那里，认不出的语句带行号
-拒绝。重新生成并逐字节对照仓库里的语料：
+（X86 / AArch64 / RISCV / M68k / WebAssembly / PowerPC / ARM / Mips / SPIRV），
+路径和规则数也在那里，认不出的语句带行号拒绝。重新生成并逐字节对照仓库里的语料：
 
 ```sh
 GS_X86_SRC=.../X86LegalizerInfo.cpp \
 GS_AARCH64_SRC=.../AArch64LegalizerInfo.cpp \
 GS_RISCV_SRC=.../RISCVLegalizerInfo.cpp \
 GS_M68K_SRC=.../M68kLegalizerInfo.cpp \
+GS_WEBASSEMBLY_SRC=.../WebAssemblyLegalizerInfo.cpp \
+GS_POWERPC_SRC=.../PPCLegalizerInfo.cpp \
+GS_ARM_SRC=.../ARMLegalizerInfo.cpp \
+GS_MIPS_SRC=.../MipsLegalizerInfo.cpp \
+GS_SPIRV_SRC=.../SPIRVLegalizerInfo.cpp \
   python3 ../upstream-source/import/import-cxx.py --all --check \
     --pin ../upstream-source/pin/PIN.json
 ```
@@ -85,6 +90,11 @@ python3 ../upstream-source/import/import-cxx.py X86 .../X86LegalizerInfo.cpp \
 | AArch64 | `2b5377c3eedd` | 117 | 744 |
 | RISC-V | `ad529e1f1a9e` | 96 | 402 |
 | M68k | `f796bb977e0b` | 6 | 13 |
+| WebAssembly | `c6409b1d4eb1` | 29 | 109 |
+| PowerPC | `4ca6a62b6f43` | 15 | 25 |
+| ARM | `b86441eb03f4` | 52 | 96 |
+| Mips | `3660b66b709c` | 48 | 95 |
+| SPIRV | `e404ba675047` | 83 | 353 |
 
 换上游修订不是改参数，而是改工具：计数断言会立刻报 `DRIFT`。
 
