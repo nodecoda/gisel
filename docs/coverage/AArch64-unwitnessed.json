@@ -1,0 +1,2505 @@
+[
+ {
+  "ruleset": "A_G_IMPLICIT_DEF",
+  "rule": 4,
+  "line": 83,
+  "source": "narrow(slot(0), ty(A_s64))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 738,
+  "guard_true": 36,
+  "winners": [
+   {
+    "ruleset": 0,
+    "rule": 2,
+    "count": 27,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s127"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 0,
+    "rule": 0,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s128"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_IMPLICIT_DEF",
+  "rule": 6,
+  "line": 85,
+  "source": "widen(elem_of(slot(0)), min_vector_size(64))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 738,
+  "guard_true": 63,
+  "winners": [
+   {
+    "ruleset": 0,
+    "rule": 5,
+    "count": 36,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<3 x s16>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 0,
+    "rule": 1,
+    "count": 27,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<2 x s16>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_IMPLICIT_DEF",
+  "rule": 7,
+  "line": 86,
+  "source": "clamp_min(0, A_s8, num_elems(ty(A_v8s8)))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 45,
+  "guard_true": 45,
+  "winners": [
+   {
+    "ruleset": 0,
+    "rule": 5,
+    "count": 27,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<3 x s8>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 0,
+    "rule": 1,
+    "count": 18,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<2 x s8>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_IMPLICIT_DEF",
+  "rule": 9,
+  "line": 88,
+  "source": "clamp_min(0, A_s16, num_elems(ty(A_v4s16)))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 18,
+  "guard_true": 18,
+  "winners": [
+   {
+    "ruleset": 0,
+    "rule": 1,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<2 x s16>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 0,
+    "rule": 5,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<3 x s16>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_IMPLICIT_DEF",
+  "rule": 11,
+  "line": 90,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_IMPLICIT_DEF",
+  "rule": 15,
+  "line": 94,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 45,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_PHI",
+  "rule": 4,
+  "line": 101,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 27,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_PHI",
+  "rule": 11,
+  "line": 108,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_PHI",
+  "rule": 15,
+  "line": 112,
+  "source": "widen(slot(0), 8)",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 666,
+  "guard_true": 90,
+  "winners": [
+   {
+    "ruleset": 1,
+    "rule": 2,
+    "count": 81,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s15"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 1,
+    "rule": 5,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s1"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_EXTRACT",
+  "rule": 3,
+  "line": 128,
+  "source": "narrow(slot(1), ty(A_s128))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 7569,
+  "guard_true": 261,
+  "winners": [
+   {
+    "ruleset": 3,
+    "rule": 1,
+    "count": 261,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s16",
+      "s129"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_ADD",
+  "rule": 7,
+  "line": 143,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ADD",
+  "rule": 9,
+  "line": 145,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ADD",
+  "rule": 13,
+  "line": 149,
+  "source": "widen(elem_of(slot(0)), ty(A_s8)) when num_elems(slot(0)) <= 16",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 783,
+  "guard_true": 27,
+  "winners": [
+   {
+    "ruleset": 4,
+    "rule": 2,
+    "count": 18,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s3"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 4,
+    "rule": 3,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s1"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_ADD",
+  "rule": 14,
+  "line": 150,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 36,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MUL",
+  "rule": 6,
+  "line": 160,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MUL",
+  "rule": 8,
+  "line": 162,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MUL",
+  "rule": 12,
+  "line": 166,
+  "source": "widen(elem_of(slot(0)), ty(A_s8)) when num_elems(slot(0)) <= 16",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 612,
+  "guard_true": 27,
+  "winners": [
+   {
+    "ruleset": 5,
+    "rule": 1,
+    "count": 18,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s3"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 5,
+    "rule": 2,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s1"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_MUL",
+  "rule": 13,
+  "line": 167,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 36,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHL",
+  "rule": 12,
+  "line": 183,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHL",
+  "rule": 14,
+  "line": 185,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHL",
+  "rule": 18,
+  "line": 189,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 1044,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHL",
+  "rule": 19,
+  "line": 190,
+  "source": "widen(slot(1), same_as(0)) when sort_of(slot(0)) == vector",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 20736,
+  "guard_true": 7713,
+  "winners": [
+   {
+    "ruleset": 6,
+    "rule": 17,
+    "count": 2961,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<2 x i32>",
+      "<16 x i8>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 6,
+    "rule": 15,
+    "count": 2106,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<16 x i64>",
+      "<16 x i8>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 6,
+    "rule": 13,
+    "count": 1170,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<16 x i32>",
+      "<16 x i8>"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_PTR_ADD",
+  "rule": 3,
+  "line": 197,
+  "source": "clamp_min(0, A_p0, num_elems(ty(A_v2p0)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SREM",
+  "rule": 4,
+  "line": 216,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SREM",
+  "rule": 6,
+  "line": 218,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SMIN",
+  "rule": 7,
+  "line": 246,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ABS",
+  "rule": 9,
+  "line": 260,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ABS",
+  "rule": 11,
+  "line": 262,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_CTPOP",
+  "rule": 7,
+  "line": 303,
+  "source": "widen(slot(0), 8)",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 49284,
+  "guard_true": 9324,
+  "winners": [
+   {
+    "ruleset": 22,
+    "rule": 6,
+    "count": 4662,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "i33",
+      "i32"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 22,
+    "rule": 4,
+    "count": 3996,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "i31",
+      "i32"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 22,
+    "rule": 5,
+    "count": 666,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s129",
+      "i32"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_CTPOP",
+  "rule": 14,
+  "line": 310,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_CTPOP",
+  "rule": 16,
+  "line": 312,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_CTPOP",
+  "rule": 19,
+  "line": 315,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 3996,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_CTLZ",
+  "rule": 4,
+  "line": 322,
+  "source": "widen(slot(1), 8)",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 42849,
+  "guard_true": 7452,
+  "winners": [
+   {
+    "ruleset": 23,
+    "rule": 1,
+    "count": 6831,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "i32",
+      "i31"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 23,
+    "rule": 2,
+    "count": 621,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "i32",
+      "s1"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_CTLZ",
+  "rule": 9,
+  "line": 327,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BITREVERSE",
+  "rule": 9,
+  "line": 363,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BITREVERSE",
+  "rule": 11,
+  "line": 365,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BITREVERSE",
+  "rule": 13,
+  "line": 367,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 36,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BSWAP",
+  "rule": 6,
+  "line": 381,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BSWAP",
+  "rule": 8,
+  "line": 383,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_UADDSAT",
+  "rule": 6,
+  "line": 394,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_UADDSAT",
+  "rule": 9,
+  "line": 397,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 27,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FADD",
+  "rule": 3,
+  "line": 405,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 36,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FADD",
+  "rule": 7,
+  "line": 409,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FADD",
+  "rule": 9,
+  "line": 411,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FABS",
+  "rule": 2,
+  "line": 418,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 36,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FABS",
+  "rule": 6,
+  "line": 422,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FABS",
+  "rule": 8,
+  "line": 424,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SEXTLOAD",
+  "rule": 2,
+  "line": 464,
+  "source": "widen(slot(0), pow2)",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 1845,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SEXTLOAD",
+  "rule": 3,
+  "line": 465,
+  "source": "widen(slot(0), ty(A_s32))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 1845,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SEXTLOAD",
+  "rule": 4,
+  "line": 466,
+  "source": "narrow(slot(0), ty(A_s64))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 1845,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SEXTLOAD",
+  "rule": 5,
+  "line": 467,
+  "source": "unsupported not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ZEXTLOAD",
+  "rule": 1,
+  "line": 472,
+  "source": "widen(slot(0), pow2)",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 369,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ZEXTLOAD",
+  "rule": 2,
+  "line": 473,
+  "source": "widen(slot(0), ty(A_s32))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 369,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ZEXTLOAD",
+  "rule": 3,
+  "line": 474,
+  "source": "narrow(slot(0), ty(A_s64))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 369,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ZEXTLOAD",
+  "rule": 4,
+  "line": 475,
+  "source": "unsupported not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 5,
+  "line": 484,
+  "source": "widen(slot(0), pow2_min(8))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 2340,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 6,
+  "line": 485,
+  "source": "clamp_max(0, A_s8, 16)",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 7,
+  "line": 486,
+  "source": "clamp_max(0, A_s16, 8)",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 8,
+  "line": 487,
+  "source": "clamp_max(0, A_s32, 4)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 9,
+  "line": 488,
+  "source": "clamp_max(0, A_s64, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 10,
+  "line": 489,
+  "source": "clamp_max(0, A_p0, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 11,
+  "line": 490,
+  "source": "lower (not is_byte_sized(mem_ty(mem_slot(0))) or not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0)))))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 12,
+  "line": 491,
+  "source": "widen(slot(0), ty(A_s8))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 2340,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 13,
+  "line": 492,
+  "source": "narrow(slot(0), ty(A_s64))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 2340,
+  "guard_true": 45,
+  "winners": [
+   {
+    "ruleset": 42,
+    "rule": 1,
+    "count": 35,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s128",
+      "p0"
+     ],
+     "mem": [
+      "s128",
+      8,
+      "Unordered",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 42,
+    "rule": 2,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s128",
+      "p0"
+     ],
+     "mem": [
+      "s128",
+      8,
+      "NotAtomic",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 42,
+    "rule": 0,
+    "count": 1,
+    "example": {
+     "config": "rcpc3",
+     "types": [
+      "s128",
+      "p0"
+     ],
+     "mem": [
+      "s128",
+      8,
+      "Acquire",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 14,
+  "line": 493,
+  "source": "narrow(slot(0), replace(ty(A_i32))) when (sort_of(slot(0)) == scalar and slot(0) != mem_ty(mem_slot(0)) and size_of(slot(0)) > 32)",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 45,
+  "guard_true": 45,
+  "winners": [
+   {
+    "ruleset": 42,
+    "rule": 3,
+    "count": 45,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s64",
+      "p0"
+     ],
+     "mem": [
+      "s32",
+      8,
+      "NotAtomic",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 15,
+  "line": 494,
+  "source": "bitcast(slot(0), replace(int_of_size(size_of(slot(0))))) when in(slot(0), [A_v4s8])",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 16,
+  "line": 495,
+  "source": "custom ((sort_of(slot(0)) == pointer_vector and addr_space(slot(0)) == 0))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_LOAD",
+  "rule": 18,
+  "line": 497,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 45,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 5,
+  "line": 505,
+  "source": "widen(slot(0), ty(A_s8))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 2475,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 6,
+  "line": 506,
+  "source": "narrow(slot(0), ty(A_s64))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 2475,
+  "guard_true": 45,
+  "winners": [
+   {
+    "ruleset": 43,
+    "rule": 1,
+    "count": 35,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s128",
+      "p0"
+     ],
+     "mem": [
+      "s128",
+      8,
+      "Unordered",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 43,
+    "rule": 3,
+    "count": 9,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s128",
+      "p0"
+     ],
+     "mem": [
+      "s128",
+      8,
+      "NotAtomic",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 43,
+    "rule": 0,
+    "count": 1,
+    "example": {
+     "config": "rcpc3",
+     "types": [
+      "s128",
+      "p0"
+     ],
+     "mem": [
+      "s128",
+      8,
+      "Release",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 7,
+  "line": 507,
+  "source": "widen(elem_of(slot(0)), ty(A_s8))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 2475,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 8,
+  "line": 508,
+  "source": "lower (sort_of(slot(0)) == scalar and slot(0) != mem_ty(mem_slot(0)))",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 270,
+  "guard_true": 270,
+  "winners": [
+   {
+    "ruleset": 43,
+    "rule": 3,
+    "count": 252,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s16",
+      "p0"
+     ],
+     "mem": [
+      "s8",
+      8,
+      "NotAtomic",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 43,
+    "rule": 2,
+    "count": 18,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s16",
+      "p0"
+     ],
+     "mem": [
+      "s8",
+      8,
+      "Release",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 9,
+  "line": 509,
+  "source": "clamp_max(0, A_s8, 16)",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 10,
+  "line": 510,
+  "source": "clamp_max(0, A_s16, 8)",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 11,
+  "line": 511,
+  "source": "clamp_max(0, A_s32, 4)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 12,
+  "line": 512,
+  "source": "clamp_max(0, A_s64, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 13,
+  "line": 513,
+  "source": "clamp_max(0, A_p0, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 14,
+  "line": 514,
+  "source": "lower not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 16,
+  "line": 516,
+  "source": "custom ((sort_of(slot(0)) == pointer_vector and addr_space(slot(0)) == 0))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 18,
+  "line": 518,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 45,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_STORE",
+  "rule": 19,
+  "line": 519,
+  "source": "lower true",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 2475,
+  "guard_true": 2475,
+  "winners": [
+   {
+    "ruleset": 43,
+    "rule": 17,
+    "count": 1440,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<2 x s16>",
+      "s32"
+     ],
+     "mem": [
+      "s8",
+      8,
+      "NotAtomic",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 43,
+    "rule": 3,
+    "count": 765,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "s8",
+      "p0"
+     ],
+     "mem": [
+      "s8",
+      8,
+      "NotAtomic",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 43,
+    "rule": 4,
+    "count": 180,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "<vscale x 16 x s8>",
+      "p0"
+     ],
+     "mem": [
+      "nxv16s8",
+      8,
+      "NotAtomic",
+      "NotAtomic"
+     ],
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_INDEXED_LOAD",
+  "rule": 0,
+  "line": 526,
+  "source": "unsupported mem_ordering(mem_slot(0)) >= ordering_unordered",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INDEXED_LOAD",
+  "rule": 1,
+  "line": 527,
+  "source": "legal ((not ((not in(slot(0), A_PackedVectorAllTypesVec) and not in(slot(0), A_ScalarAndPtrTypesVec) and slot(0) != ty(A_s128))) and (not (slot(1) != ty(A_p0)) and true)))",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INDEXED_LOAD",
+  "rule": 2,
+  "line": 528,
+  "source": "unsupported true",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INDEXED_SEXTLOAD",
+  "rule": 0,
+  "line": 531,
+  "source": "unsupported mem_ordering(mem_slot(0)) >= ordering_unordered",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INDEXED_SEXTLOAD",
+  "rule": 1,
+  "line": 532,
+  "source": "legal (in(slot(0), [A_s16, A_s32, A_s64]) and (not (slot(1) != ty(A_p0)) and ((slot(0) == ty(A_s16) and mem_ty(mem_slot(0)) == ty(A_s8)) or (not (slot(0) == ty(A_s16)) and ((slot(0) == ty(A_s32) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16))) or (not (slot(0) == ty(A_s32)) and (slot(0) == ty(A_s64) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16) or mem_ty(mem_slot(0)) == ty(A_s32)))))))))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INDEXED_SEXTLOAD",
+  "rule": 2,
+  "line": 533,
+  "source": "unsupported true",
+  "reported": "shadowed",
+  "class": "satisfiable-outside-query-product",
+  "detail": "_satisfiable finds a point on the wider axis; the query product does not sample it",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 7,
+  "line": 552,
+  "source": "scalarize(slot(1)) when bits_of(slot(1)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 1080,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 9,
+  "line": 554,
+  "source": "widen(elem_of(slot(1)), ty(A_s32)) when slot(1) == ty(A_v2s16)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 10,
+  "line": 555,
+  "source": "widen(elem_of(slot(0)), ty(A_s64)) when sort_of(slot(1)) == pointer_vector",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 14,
+  "line": 559,
+  "source": "clamp_min(1, A_s16, num_elems(ty(A_v4s16)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 16,
+  "line": 561,
+  "source": "clamp_min(1, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 18,
+  "line": 563,
+  "source": "clamp_min(1, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 20,
+  "line": 565,
+  "source": "clamp_min(1, A_p0, num_elems(ty(A_v2p0)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ICMP",
+  "rule": 21,
+  "line": 566,
+  "source": "clamp_max(1, A_p0, num_elems(ty(A_v2p0)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FCMP",
+  "rule": 6,
+  "line": 576,
+  "source": "scalarize(slot(1)) when bits_of(slot(1)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 3348,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FCMP",
+  "rule": 10,
+  "line": 580,
+  "source": "clamp_min(1, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_ZEXT",
+  "rule": 11,
+  "line": 598,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 1350,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_TRUNC",
+  "rule": 5,
+  "line": 606,
+  "source": "widen(elem_of(slot(0)), ty(A_s8)) when sort_of(slot(0)) == vector",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 12789,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_TRUNC_SSAT_S",
+  "rule": 5,
+  "line": 618,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SEXT_INREG",
+  "rule": 6,
+  "line": 629,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPTRUNC",
+  "rule": 8,
+  "line": 643,
+  "source": "clamp_min(1, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPEXT",
+  "rule": 6,
+  "line": 654,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPTOSI",
+  "rule": 2,
+  "line": 661,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 3654,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPTOSI",
+  "rule": 3,
+  "line": 662,
+  "source": "scalarize(slot(1)) when bits_of(slot(1)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 2412,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPTOSI",
+  "rule": 13,
+  "line": 672,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPTOSI_SAT",
+  "rule": 2,
+  "line": 680,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 1395,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPTOSI_SAT",
+  "rule": 3,
+  "line": 681,
+  "source": "scalarize(slot(1)) when bits_of(slot(1)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 1395,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_FPTOSI_SAT",
+  "rule": 12,
+  "line": 690,
+  "source": "widen(elem_of(slot(0)), pow2)",
+  "reported": "shadowed",
+  "class": "dominated",
+  "detail": "an earlier rule answers every sampled point",
+  "pred_true": 13365,
+  "guard_true": 3627,
+  "winners": [
+   {
+    "ruleset": 58,
+    "rule": 7,
+    "count": 2574,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "i15",
+      "f16"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": 58,
+    "rule": 5,
+    "count": 900,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "i15",
+      "f128"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   },
+   {
+    "ruleset": "error",
+    "rule": "TypeError",
+    "count": 117,
+    "example": {
+     "config": "baseline",
+     "types": [
+      "i15",
+      "p0"
+     ],
+     "mem": null,
+     "imms": []
+    }
+   }
+  ]
+ },
+ {
+  "ruleset": "A_G_FPTOSI_SAT",
+  "rule": 15,
+  "line": 693,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SITOFP",
+  "rule": 3,
+  "line": 701,
+  "source": "scalarize(slot(1)) when bits_of(slot(1)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 3654,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SITOFP",
+  "rule": 4,
+  "line": 702,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 2412,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SITOFP",
+  "rule": 15,
+  "line": 713,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SELECT",
+  "rule": 6,
+  "line": 736,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 729,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BITCAST",
+  "rule": 4,
+  "line": 769,
+  "source": "custom (sort_of(slot(0)) == scalar and sort_of(slot(1)) == vector and bits_of(slot(1)) == 1)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BITCAST",
+  "rule": 12,
+  "line": 777,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MERGE_VALUES",
+  "rule": 6,
+  "line": 822,
+  "source": "narrow(slot(0), ty(A_s128))",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 3969,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_UNMERGE_VALUES",
+  "rule": 6,
+  "line": 832,
+  "source": "narrow(slot(1), ty(A_s128))",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 4041,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 1,
+  "line": 837,
+  "source": "unsupported (not (sort_of(slot(1)) == scalable_vector) and slot(0) != elem_of(slot(1)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 3,
+  "line": 839,
+  "source": "custom (slot(1) == ty(A_v8s8) or slot(1) == ty(A_v16s8) or slot(1) == ty(A_v2s16) or slot(1) == ty(A_v4s16) or slot(1) == ty(A_v8s16) or slot(1) == ty(A_v2s32) or slot(1) == ty(A_v4s32) or slot(1) == ty(A_v2s64) or slot(1) == ty(A_v2p0))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 4,
+  "line": 840,
+  "source": "widen(elem_of(slot(0)), ty(A_s64)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 5,
+  "line": 841,
+  "source": "widen(elem_of(slot(0)), ty(A_s32)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 4)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 6,
+  "line": 842,
+  "source": "widen(elem_of(slot(0)), ty(A_s16)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 8)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 7,
+  "line": 843,
+  "source": "widen(elem_of(slot(0)), ty(A_s8)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 16)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 9,
+  "line": 845,
+  "source": "more(slot(1), pow2)",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 177147,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 10,
+  "line": 846,
+  "source": "clamp_max(1, A_s64, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 11,
+  "line": 847,
+  "source": "clamp_max(1, A_s32, 4)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 12,
+  "line": 848,
+  "source": "clamp_max(1, A_s16, 8)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 13,
+  "line": 849,
+  "source": "clamp_max(1, A_s8, 16)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 14,
+  "line": 850,
+  "source": "clamp_max(1, A_p0, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_VECTOR_ELT",
+  "rule": 15,
+  "line": 851,
+  "source": "scalarize(slot(1)) when bits_of(slot(1)) > 64",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 2,
+  "line": 856,
+  "source": "more(slot(0), pow2)",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 177147,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 3,
+  "line": 857,
+  "source": "widen(elem_of(slot(0)), min_vector_size(64))",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 177147,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 4,
+  "line": 858,
+  "source": "clamp_min(0, A_s8, num_elems(ty(A_v8s8)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 6,
+  "line": 860,
+  "source": "clamp_min(0, A_s16, num_elems(ty(A_v4s16)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 8,
+  "line": 862,
+  "source": "clamp_min(0, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 10,
+  "line": 864,
+  "source": "clamp_max(0, A_s64, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 11,
+  "line": 865,
+  "source": "clamp_max(0, A_p0, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_INSERT_VECTOR_ELT",
+  "rule": 12,
+  "line": 866,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BUILD_VECTOR",
+  "rule": 3,
+  "line": 872,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHUFFLE_VECTOR",
+  "rule": 4,
+  "line": 890,
+  "source": "widen(slot(0), 8)",
+  "reported": "unexercised",
+  "class": "dead-guard",
+  "detail": "predicate holds, but the implicit action guard is false for every sampled point",
+  "pred_true": 4293,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHUFFLE_VECTOR",
+  "rule": 11,
+  "line": 897,
+  "source": "clamp_min(0, A_s64, num_elems(ty(A_v2s64)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHUFFLE_VECTOR",
+  "rule": 13,
+  "line": 899,
+  "source": "scalarize(slot(0)) when bits_of(slot(0)) > 64",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_SHUFFLE_VECTOR",
+  "rule": 14,
+  "line": 900,
+  "source": "bitcast(slot(0), replace(vec_of(num_elems(slot(0)), ty(A_i64)))) when sort_of(slot(0)) == pointer_vector",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_CONCAT_VECTORS",
+  "rule": 1,
+  "line": 904,
+  "source": "custom ((sort_of(slot(0)) == vector and not sort_of(slot(0)) == scalable_vector) and bits_of(slot(0)) < 8)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_EXTRACT_SUBVECTOR",
+  "rule": 9,
+  "line": 917,
+  "source": "clamp_min(1, A_s32, num_elems(ty(A_v2s32)))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_BZERO",
+  "rule": 0,
+  "line": 941,
+  "source": "unsupported A_hasMOPS",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MEMSET",
+  "rule": 0,
+  "line": 944,
+  "source": "legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MEMSET",
+  "rule": 1,
+  "line": 945,
+  "source": "custom (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MEMCPY",
+  "rule": 0,
+  "line": 949,
+  "source": "legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MEMCPY_INLINE",
+  "rule": 0,
+  "line": 953,
+  "source": "legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MEMSET_INLINE",
+  "rule": 0,
+  "line": 956,
+  "source": "legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_MEMSET_INLINE",
+  "rule": 1,
+  "line": 957,
+  "source": "custom (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_VECREDUCE_FMUL",
+  "rule": 1,
+  "line": 975,
+  "source": "clamp_max(1, A_s64, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_VECREDUCE_FMUL",
+  "rule": 2,
+  "line": 976,
+  "source": "clamp_max(1, A_s32, 4)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_VECREDUCE_FMUL",
+  "rule": 3,
+  "line": 977,
+  "source": "clamp_max(1, A_s16, 8)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_VECREDUCE_FMUL",
+  "rule": 5,
+  "line": 979,
+  "source": "clamp_max(1, A_s16, 4)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_VECREDUCE_MUL",
+  "rule": 1,
+  "line": 1009,
+  "source": "clamp_max(1, A_s16, 4)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ },
+ {
+  "ruleset": "A_G_VECREDUCE_SMIN",
+  "rule": 2,
+  "line": 1017,
+  "source": "clamp_max(1, A_s64, 2)",
+  "reported": "unexercised",
+  "class": "dead-predicate",
+  "detail": "predicate is false for every type in the domain",
+  "pred_true": 0,
+  "guard_true": 0,
+  "winners": []
+ }
+]

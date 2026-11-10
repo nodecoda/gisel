@@ -48,7 +48,7 @@ one_lane_vector` 抓个正着。
 | target | 规则 | 修复前 有见证 | 修复后 有见证 | shadowed | unexercised | 查询数 |
 |---|---:|---:|---:|---:|---:|---:|
 | X86 | 328 | 292 (89.0%) | **319 (97.3%)** | 4 | 5 | 3,217 |
-| AArch64 | 743 | 312 (42.0%) | **572 (77.0%)** | 35 | 136 | 12,952 |
+| AArch64 | 743 | 312 (42.0%) | **584 (78.6%)** | 35 | 124 | 12,595 |
 | RISC-V | 413 | 320 (77.5%) | **355 (85.9%)** | 12 | 46 | 6,301 |
 
 另外加了一次**定向搜索**：全局候选集没找到见证时，单独用该规则自己命名的类型
@@ -68,9 +68,9 @@ clamp_min(0, X_s64, 2)      # 触发条件是“s64 向量且 lane < 2”
 缺口，但也不该被算成“已验证”——现在被单列成 unexercised 并计入退出码。
 
 AArch64 剩下的 171 条集中在 `G_STORE` / `G_LOAD`（多槽 + mem 描述）、
-`G_ICMP`、`G_EXTRACT/INSERT_VECTOR_ELT`。共同点是 3 个槽位的组合空间被产品上限
-约束，或者需要一个特定 feature 与特定类型的**组合**。这是下一步，不是本轮的
-结论。
+`G_ICMP`、`G_EXTRACT/INSERT_VECTOR_ELT`。2026-11-10 已把这 171 条逐条定性，
+并把定向搜索的种子扩到 `on`/`to` 里的目标类型，见证数从 572 升到 584；
+剩下的 159 条按原因分成四类，见 §9。
 
 ## 5 门禁
 
@@ -93,8 +93,9 @@ does not cover every rule
 
 ## 6 没做到的
 
-- AArch64 的 135 条 unexercised 还没有逐条定性。要判“上游就是死的”需要把 LLT
-  的构造规则（单 lane 折叠、scalable 与固定向量的关系）编进判定，而不是靠搜索。
+- AArch64 的 159 条无见证已逐条定性（§9）：95 条谓词在声明域内永假，29 条动作
+  守卫永假，17 条被更早的规则盖住，18 条只在查询集没采样的 mem×类型组合里可满足。
+  第 18 条不是“上游就是死的”，是 `cases` 的 mem 交叉采样缺口，已明写。
 - 见证只保证“问到了这条规则”，不保证“问全了这条规则的每个类型字面量”。
   被删掉的 `-gen-legalizer-table-points` 给的是后者。要补回来，得在同一份语料上
   做“每条规则 × 每个字面量”的展开，作为 `cases` 的第二个出口。
@@ -279,3 +280,105 @@ pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`（sha256 `79f2376…`）。
 没有未归因的差异。查询行数从 3,282 变成 3,217，是形状过滤丢掉的 65 条非法
 元组，不是题目被跳过。`PIN.json` 的 `patches` 记录了我们叠在上游 pin 之上的 PR；
 等它们合入上游，把 `commit` 前移并删掉 `patches` 和 `X86_DEVIATIONS` 即可。
+
+## 9 AArch64 的 159 条无见证：逐条定性（2026-11-10）
+
+命令：
+
+```sh
+python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
+  --features tests/cases/features.json \
+  --axes tests/cases/aarch64-mem-orderings.axes.json \
+  --out /tmp/a64.jsonl --strict-coverage --json
+# 743 rules, 584 witnessed, 159 unwitnessed (124 unexercised, 35 shadowed)
+```
+
+机器可读的逐条清单在 `docs/coverage/AArch64-unwitnessed.json`（每条带源码行、
+分类、被谁盖住或为什么不可能）。汇总：
+
+| 分类 | 条数 | 判定 |
+|---|---:|---|
+| `dead-predicate` | 95 | 谓词在声明域里对任何类型都为假 |
+| `dead-guard` | 29 | 谓词能成立，但动作的隐式 shim 守卫永远为假 |
+| `dominated` | 17 | 谓词能成立，但每个采样点都被更早的规则先答掉 |
+| `satisfiable-outside-query-product` | 18 | 在更宽的轴里可满足，但当前查询集没采到那个 mem×类型组合 |
+
+### 9.1 这一轮多找到的 12 条：目标类型也是种子
+
+旧实现只用 `in(...)` 里的类型字面量做定向搜索的种子。`clamp_max(0, s32, 4)`
+这类规则的类型只出现在 `to` 里（`vecOf(numElems(ty(v4s32)), elemOf(slot(0)))`），
+`literals` 为空，搜索于是退到单个默认点 `s32`，永远触发不了。
+
+修法（`gisel/analysis.py:inspect_rule`）是另记一个 `targets` 字段：把 `on`/`to`
+里的 `ty(...)` 也作为该槽的种子，**但不并入 `literals`**——`literals` 决定主候选
+轴，并进去会改变基础查询集。定向搜索用 `literals | targets`，于是
+`clamp_max(s32, 4)` 的种子 `v4s32` 带来邻居 `v8s32`，这条规则第一次有了见证。
+
+效果：AArch64 572 → 584 条见证，`cases` 用时 3m17s（旧 3m34s，噪声内）。
+另外 3 个 target 的查询集不变。
+
+### 9.2 95 条 `dead-predicate`：LLT 造不出触发值
+
+最大的一类是 `clamp_min(0, s32, 2)`（G_ADD/G_MUL/… 共几十条）：
+
+```text
+predicate: sortOf(slot0)==vector && elemOf(slot0)==s32 && numElems(slot0) < 2
+```
+
+`numElems < 2` 要求固定单 lane 向量，而 LLT 把 `v1s32` 折叠成 `s32`；标量又
+不满足 `sortOf==vector`。这个谓词在 LLT 的值空间里**没有模型**。上游保留它
+是防御性的，但它不是我们的见证缺口。
+
+这一类还包括 `G_ICMP`/`G_EXTRACT_VECTOR_ELT` 里“元素类型 + lane 数”相互矛盾的
+组合，以及 `G_VECREDUCE_*` 的标量/向量交叉。
+
+### 9.3 29 条 `dead-guard`：动作的隐式守卫永假
+
+典型是 `scalarize(slot(0)) when bits_of(slot(0)) > 64`：
+`shim_guard_and_newtype` 对 `scalarize` 要求 `is_vector(t)`，而满足
+`bits_of > 64` 的标量早就被前面的 `widen/narrow` 处理掉；向量又先被
+`clamp_max` 收窄。谓词能成立，守卫永远不成立。
+
+`G_FPTOSI`/`G_SITOFP` 的 4 条也在这里：源类型和目标类型被前面的 legal 规则
+先吃掉，剩下的合法输入不满足动作守卫。
+
+### 9.4 17 条 `dominated`：被更早的规则盖住
+
+每条都附了“谁先答”的计数。例如：
+
+```text
+A_G_IMPLICIT_DEF#6  widen(elem_of(slot(0)), min_vector_size(64))
+  <2 x s16>  -> 规则 #1 legal 先答（27 次）
+  <4 x s16>  -> 规则 #5 more(pow2) 先答（36 次）
+```
+
+这些规则在 LLVM 的 first-match 语义下不可达；它们是上游规则表的冗余项，不是
+gisel 翻错。
+
+### 9.5 18 条 `satisfiable-outside-query-product`：查询集的采样缺口
+
+全部是 mem opcode（`G_LOAD` 5、`G_STORE` 4、`G_SEXTLOAD` 3、`G_ZEXTLOAD` 3、
+`G_INDEXED_LOAD` 2、`G_INDEXED_SEXTLOAD` 1）。`_queries` 对 mem 规则只做两件事：
+
+1. 用 `inMemDesc` 行自己的 `(t0, t1)` 配一个描述符；
+2. 再拿**前 4 个**类型元组和描述符交叉。
+
+`widen(slot(0), pow2_min(8))` 需要 `s31`（非 pow2），而 `s31` 不在前 4 个元组里，
+于是查询集里没有 `(s31, p0) + 描述符` 这一点。`_satisfiable` 用完整候选轴能证明
+它可满足，但 `cases` 没出这道题。
+
+这是**已知缺口**，不是不可达证明。修法是把 mem 交叉从“前 4 个元组”换成
+“每个 mem 行 × 每条突变规则的目标类型邻域”，代价是 AArch64 查询数会从 12.6k
+涨到约 20k；本轮不做，先把它钉在清单里。
+
+### 9.6 复现与门禁
+
+```sh
+# 逐条清单（本轮快照）
+python3 -m gisel cases ... --strict-coverage --json > stats.json
+python3 tools/coverage-report.py tests/corpus/AArch64LegalizerInfo.gisel \
+  stats.json docs/coverage/AArch64-unwitnessed.json
+```
+
+`--strict-coverage` 仍然是 rc=1：159 条没有见证。门禁的语义没变——“所有规则都被
+问过”还不成立；变的是每一条都有了原因，而不是一个笼统的 171。
