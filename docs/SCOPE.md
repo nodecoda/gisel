@@ -122,11 +122,11 @@ gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
 
 | 方向 | 题面来源 | 结论 | 证据 |
 |---|---|---|---|
-| G：gisel 的规则上游都有 | gisel `cases` | X86/AArch64/RISC-V `disagree=0`（G 侧证据到这三目标为止） | `ab/docs/EVIDENCE-WP2.md` |
+| G：gisel 的规则上游都有 | gisel `cases` | 九 target `disagree=0`（X86/AArch64/RISC-V + ARM/Mips/PPC/M68k/WebAssembly/SPIR-V） | `ab/docs/EVIDENCE-WP2.md` |
 | U：上游的规则 gisel 没漏 | upstream-source `oracle` | 九 target `disagree=0`（X86/AArch64/RISC-V + ARM/Mips/PPC/M68k/WebAssembly/SPIR-V），另抓到一处生成语义 bug（已修） | `ab/docs/EVIDENCE-U.md` |
 
-两条都成立是“gisel 可作为内部权威”的前提。U 方向已覆盖九个 target，G 方向
-（gisel 出题）目前仍是三个；AMDGPU 明确不接。
+两条都成立是“gisel 可作为内部权威”的前提，G 与 U 两个方向现在都覆盖九个
+target；AMDGPU 明确不接。
 
 迁移期间 `tools/` 仍在原处，行为不变。query/answer 格式的 canonical 规范仍是
 本仓库 `spec/cases-format.md`；两个新项目的 `CONTRACTS.md` 只能引用它，不能
