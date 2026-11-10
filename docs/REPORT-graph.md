@@ -166,13 +166,12 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 （imm 轴或 variadic 槽数未给定）。
 
 闭包：`count=2,864`（`partition 610` / `outside 2,254`），rc=1。
-`--refine` 只把类从 8,551 拆到 8,582（+31），closure 仍是
-`count=2,802`（`partition 594` / `outside 2,208`），rc=1。
+其中 2,208 条集中在 `G_CTLZ_ZERO_POISON` / `G_CTTZ_ZERO_POISON`：规则
+`widen(slot(1), same_as(0))` 是跨槽变异，旧 refine 只看“写回本槽”的变异，
+拆不开这个类。
 
-RISC-V 是唯一一个“refine 几乎不动”的大 target：它的违规集中在跨槽规则
-（`G_LOAD`/`G_STORE`/条件 `same_as`），而当前 refine 是逐轴、单槽的，拆不动。
-这说明**剩下的缺口是有限域，不是分区**：要过闭包，得让候选轴对变异封闭，
-而不是继续细化类。
+2026-11-10 把 refine 扩到跨槽目标后，`--refine` 得到 **`count=0`，rc=0**；
+classes 8,551 → 8,600（+49），states 556,432，edges 38,596，cycles 0。
 
 ## 5 AArch64 baseline：0 个环（去掉 MIR 不可达的形状之后）
 
@@ -265,12 +264,13 @@ cycles        147 ->         0
 | Mips | 5 | 22,968 | **0** | 0 | 0 | — | 0 |
 | PowerPC | 1 | 7,402 | **0** | 0 | 0 | — | 0 |
 | M68k | 1 | 1,232 | **0** | 0 | 0 | — | 0 |
-| WebAssembly | 4 | 26,818 | 302 | 168 | 134 | 143（1,945→2,008 类） | 1 |
+| WebAssembly | 4 | 26,818 | 302 | 168 | 134 | **0**（1,945→2,013 类） | 0 |
 | SPIR-V | 6 | — | 未覆盖 | — | — | — | — |
 
-WebAssembly 的残余：12 条显式 `i128`（轴里只有 `i8`/`i16`/`i32`/`i64`），
-其余是 `G_FCOPYSIGN` 等类里“代表点在域外、成员在域内”的跨域混合。refine 只能
-拆到 143，说明这里同样缺的是轴，不是分区。
+WebAssembly 的 302 条残余：12 条显式 `i128`（轴里只有 `i8`/`i16`/`i32`/`i64`），
+其余是 `G_FCOPYSIGN` 等类里“代表点在域外、成员在域内”的跨域混合。把 refine
+扩到跨槽目标后，**`--refine` 得到 `count=0`，rc=0**；classes 1,945 → 2,013
+（+68），states 27,096，edges 18,869。
 
 SPIR-V 的单个配置 `spirv64-kernel` 在 420 s 内没有跑完（图规模超过 AArch64），
 所以没有闭包数字。它不能拿别的 target 的数字代替。
@@ -307,21 +307,21 @@ RISC-V、AArch64 同样丢掉了大量真实边。
 四个小 target 的违例全部消失，说明那 157 条是记账错误，不是规则缺口。X86 /
 AArch64 在 `--refine` 下闭包成立。
 
-剩下的 `outside` 不是同一种东西，抽样（每个 target 的 JSON 最多保留 20 条样例）
-可以分开：
+剩下的 `outside` 不是同一种东西，抽样（每个 target 的 JSON 最多保留 20 条
+样例）可以分开：
 
 - X86 45：`s256`（41）和 `v128s8`（4），都是 mutation 的真实中间类型；
   `f8`（41）是伪查询，已由比较结果槽过滤修掉。
 - AArch64 2,493：样本是 `nxv1s8 -> nxv1s32`、`v7f16 -> v7f32`，以及
-  “代表点在域外、成员在域内”的混合类（`s7`、`bf16`）。`--refine` 能拆到 0。
-- RISC-V 2,254：样本集中在 `G_ADD[7]` / `G_AND[7]`，同一个类里 `s7`/`s24`/
-  `s31`/`s63` 被 widens 到 s32/s64，而代表点直接落到域外。`--refine` 只把
-  2,864 降到 2,802，拆不动跨槽规则——这是当前唯一没有闭合的大 target。
-- WebAssembly 134：12 条显式 `i128`，其余是 `G_FCOPYSIGN` 等类的跨域混合；
-  refine 到 143 仍未闭合。
+  “代表点在域外、成员在域内”的混合类（`s7`、`bf16`）。
+- RISC-V 2,254：2,208 条是 `G_CTLZ_ZERO_POISON` / `G_CTTZ_ZERO_POISON` 的
+  跨槽 `same_as(0)` 类；其余是 `G_ADD`/`G_AND` 等宽度类。
+- WebAssembly 134：12 条显式 `i128`，其余是 `G_FCOPYSIGN` 等类的跨域混合。
 
-所以“0 环”的可签字范围是：X86 / AArch64 在 `--refine` 下完整；RISC-V /
-WebAssembly 目前只能签“代表点商图 0 环”，不能签完整闭包。
+这些 `outside` 都不是规则错误；它们是有限轴没有枚举到的中间类型或跨槽目标。
+把 refine 扩到跨槽目标后，**X86 / AArch64 / RISC-V / WebAssembly 四个大
+target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 环”的
+可签字写法统一为：`--check-closure --refine`，并带上各报告的类数增量。
 
 ## 8 历史更正：6 个自环是假环
 

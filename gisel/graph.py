@@ -420,7 +420,7 @@ def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
     its own and the class count before/after is reported.
     """
 
-    def target_of(axis, value):
+    def target_of(axis, value, table):
         types = list(baseline)
         types[axis] = value
         try:
@@ -431,11 +431,22 @@ def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
             return None
         if rule is None or action in TERMINAL:
             return None
-        if type_idx != axis or new_type == value:
+        if type_idx != axis:
+            # A cross-slot mutation (`widen(slot(1), same_as(0))`) is decided
+            # by this axis but writes another one.  The old refinement only
+            # looked at same-slot writes, so RISC-V's poison-count classes
+            # stayed mixed: s3 and s8 both fired the rule, but widened slot 1
+            # to nxv1s3 and nxv1s8 respectively.  Split on the actual target
+            # of the other slot; using that slot's class would be coarser and
+            # needs the full table set.
+            if new_type == types[type_idx]:
+                return None
+            return ("slot", type_idx, _type_text(new_type))
+        if new_type == value:
             return None
         if new_type not in declared:
             return None       # outside: no successor class to split by
-        return new_type
+        return ("class", table.class_of.get(new_type))
 
     for _round in range(max_rounds):
         changed = False
@@ -444,11 +455,8 @@ def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
             seen = {}
             for cid, members in table.members.items():
                 for value in members:
-                    new_type = target_of(axis, value)
-                    if new_type is None:
-                        seen[value] = None
-                    else:
-                        seen[value] = table.class_of.get(new_type)
+                    target = target_of(axis, value, table)
+                    seen[value] = target
             by_class = collections.defaultdict(list)
             for value, target in seen.items():
                 by_class[table.class_of[value]].append(value)
@@ -468,8 +476,7 @@ def _refine_classes(type_classes, opcode, baseline, base_mem, evaluator,
                 for value in values:
                     buckets[seen[value]].append(value)
                 for key in sorted(buckets,
-                                  key=lambda x: (x is not None,
-                                                 x if x is not None else 0)):
+                                  key=lambda x: (x is not None, str(x))):
                     groups.append(buckets[key])
             refined.append(_rebuild_classes(table, groups))
         type_classes = refined

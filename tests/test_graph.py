@@ -100,6 +100,21 @@ ruleset G_ADD: G_ADD
 """
 
 
+CROSS_SLOT_REFINABLE = """\
+type S3 = LLT::scalar(3)
+type S8 = LLT::scalar(8)
+type S64 = LLT::scalar(64)
+type V2S1 = LLT::fixed_vector(2, 1)
+type V2S8 = LLT::fixed_vector(2, 8)
+
+ruleset G_CTLZ: G_CTLZ
+    narrow(slot(0), ty(S64))
+    widen(slot(1), same_as(0))
+    narrow(slot(1), same_as(0))
+    lower true
+"""
+
+
 class GraphFixture(unittest.TestCase):
     def build(self, text=FIXTURE, **kwargs):
         with tempfile.TemporaryDirectory() as directory:
@@ -192,6 +207,22 @@ class GraphFixture(unittest.TestCase):
         self.assertEqual(public["classes_before"], plain.classes)
         self.assertGreater(public["classes"], public["classes_before"])
         self.assertGreater(public["states"], plain.public()["states"])
+
+    def test_refine_splits_on_a_cross_slot_target(self):
+        # The rule writes slot 1 from slot 0 (`same_as(0)`), so slot 0's
+        # `s3` and `s8` share a class but send slot 1 to v2s3 (outside) and
+        # v2s8 (declared).  Refinement must follow the written slot; looking
+        # only at same-slot writes left RISC-V's poison-count classes mixed.
+        plain = self.build(CROSS_SLOT_REFINABLE, check_closure=True)
+        self.assertFalse(plain.closure["ok"], plain.closure)
+        self.assertGreater(plain.closure["kinds"]["outside"], 0)
+
+        refined = self.build(CROSS_SLOT_REFINABLE, check_closure=True,
+                             refine=True)
+        self.assertTrue(refined.closure["ok"], refined.closure)
+        self.assertEqual(refined.closure["kinds"],
+                         {"partition": 0, "outside": 0})
+        self.assertGreater(refined.public()["classes"], plain.classes)
 
     def test_mir_shape_filter_drops_a_mixed_shift_ring(self):
         # (v16s8, s32) round-trips through widen/narrow in the rule table, but
