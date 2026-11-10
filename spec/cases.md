@@ -135,7 +135,8 @@ python3 ../ab/diff.py official.answers.jsonl ours.answers.jsonl
 - **类型元组必须是一个问得出来的形状。** 候选是逐槽构造的，但多槽 opcode 的槽
   之间有约束（`G_CONCAT_VECTORS` 的目标必须有源的两倍 lane 且元素类型相同，
   `G_SHUFFLE_VECTOR` 的源必须是向量且不能改元素类型，……）。生成器在候选乘积
-  之后过一层 `cases.type_shape_ok()`，只保留能对应真实 MIR 指令的元组。
+  之后过一层 `cases.type_shape_ok()`，只保留能对应真实 MIR 指令的元组
+  （规则在 `gisel/data/contract-shapes.jsonc`，契约见 `spec/contract.md`）。
   约束来源分两类，实现里逐条注明：`MachineVerifier.cpp` 的检查，以及 verifier
   没查但 opcode 语义不允许的形状（标 `semantics`）。没有声明的 opcode 不猜，
   保持逐槽独立。被丢掉的候选数必须出现在输出的 `ill_formed` 统计里，不允许
