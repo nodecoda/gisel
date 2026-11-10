@@ -87,7 +87,7 @@ except 落成**更窄的谓词**（命名 `pred` 或内联 `and not ...`）。�
 
 ## 8 语义差分（三个 target）
 
-语义差分不是 gisel 的功能，而是工作台（`tools/ab/`）的事：把生成的 `.inc`
+语义差分不是 gisel 的功能，而是工作台（`ab/`）的事：把生成的 `.inc`
 编进 target，和原手写 C++ 构造函数各构建一份，喂同一份 `gisel cases` 生成的
 无答案查询，比较 `getAction()` 的答案流。结果见 `docs/REPORT-ab.md`。
 

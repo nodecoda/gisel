@@ -86,7 +86,7 @@ The wheel ships one surface; check it before tagging:
 
 - `gisel --help` lists exactly `gen check cases domain lint eval graph`
   (`tests/test_cli.py::Commands`), and every verb answers `--help`.
-- `gisel diff` is rejected: that command lives in `tools/ab/diff.py`.
+- `gisel diff` is rejected: that command lives in `ab/diff.py`.
 - The three exit codes mean the same thing everywhere (`spec/cli.md` §2):
   `0` yes, `1` no, `2` could not start.
 - `gisel/` imports no external-process or network module and no `tools/`

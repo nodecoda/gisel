@@ -1106,7 +1106,7 @@ def answer_queries(evaluator, cases_path, out_path):
 
     ``gisel cases`` emits questions; a compiled legalizer answers them.  This
     writes the evaluator's answers to the same questions in the same shape, so
-    ``tools/ab/diff.py`` can tell whether the generated C++ still agrees with the
+    ``ab/diff.py`` can tell whether the generated C++ still agrees with the
     model it was generated from.  A line the evaluator cannot answer is written
     as ``unanswerable`` so the output stays parallel to the input.
     """

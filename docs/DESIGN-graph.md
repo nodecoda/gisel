@@ -97,7 +97,7 @@
 
 ## Oracle 检查和退出码
 
-`--oracle FILE` 接受任意 runner 写出的答案 JSONL（与 `tools/ab/diff.py` 读的
+`--oracle FILE` 接受任意 runner 写出的答案 JSONL（与 `ab/diff.py` 读的
 格式相同），把每个 query 映射到图状态，比较图状态的即时 action/type index/new
 type。代表点与答案不一致、query 无法落入图域、或 opaque/outside 被错误当成
 普通状态都算失败。它不默认读取任何文件，避免把测试数据变成图的输入；仓库里

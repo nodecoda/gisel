@@ -21,7 +21,7 @@ upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
 
 `tests/artifacts/` 的九份产物已按新语料重生成。它们**是 gisel 自己的冻结
 输出**，用于抓漂移，不是“与上游逐字节一致”的 oracle；规则保真靠
-`tools/import-cxx.py --check` 和 `tools/ab/` 端到端对拍。
+`tools/import-cxx.py --check` 和 `ab/` 端到端对拍。
 
 ## 2 为什么删掉中间的 `.td`
 
@@ -159,11 +159,11 @@ subtarget 条件，是验证“新增一个 target 只差一个 `TARGETS` 条目
   `.gisel` 逐字节可复现；
 - 查询集 41 条（单 `default` 配置）；
 - 端到端 41/41 agree、0 disagree、0 unanswerable：
-  `tools/ab/run-m68k-end-to-end.sh TREE BUILD m68k.inc OUT`。
+  `ab/run-m68k-end-to-end.sh TREE BUILD m68k.inc OUT`。
 
 M68k 是 LLVM 的 experimental target，构建时要加
 `LLVM_EXPERIMENTAL_TARGETS_TO_BUILD=M68k`；`toolset/configure.sh` 已支持这个
-环境变量。它的 runner 用的是 `tools/ab/query_runner_common.h`，每目标文件约
+环境变量。它的 runner 用的是 `ab/query_runner_common.h`，每目标文件约
 30 行；其余 target 的接入按同一模板走。
 
 ## 10 WebAssembly 转正（2026-11-09）
@@ -175,7 +175,7 @@ M68k 一样走 `import-cxx`：
   **29 rulesets / 109 rules / 0 refused**，`.gisel` 逐字节可复现；
 - 查询集 886 条（`wasm32`/`wasm64` × `±sign-ext` 四个配置）；
 - 端到端 **886/886 agree、0 disagree、0 unanswerable**：
-  `tools/ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc OUT`。
+  `ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc OUT`。
 
 为了做到 0 拒绝，转录器补了三处（都是拼写归一，不是新增语义）：
 
@@ -213,7 +213,7 @@ PowerPC 的构造函数 91 行、15 个规则集 / 25 条规则，两处曾拒�
 **98/98 agree、0 disagree、1 unanswerable**：
 
 ```
-tools/ab/run-ppc-end-to-end.sh TREE BUILD ppc.inc OUT
+../ab/run-ppc-end-to-end.sh TREE BUILD ppc.inc OUT
 {"agree": 98, "disagree": 0, "unanswerable": 1}
 ```
 
@@ -275,10 +275,10 @@ ARM: 52 rulesets, 96 rules, 0 refused
 
 ```
 python3 -m gisel gen tests/corpus/ARMLegalizerInfo.gisel --emit=inc --out /tmp/arm.inc
-tools/ab/run-arm-end-to-end.sh TREE BUILD /tmp/arm.inc OUT
+../ab/run-arm-end-to-end.sh TREE BUILD /tmp/arm.inc OUT
 {"agree": 1614, "disagree": 0, "unanswerable": 0}
 
-python3 tools/ab/ab.py run --target arm --tree TREE --build BUILD \
+python3 ../ab/ab.py run --target arm --tree TREE --build BUILD \
   --queries OUT/queries.jsonl --out OUT2
 target=arm compare=full queries=1614 agree=1614 disagree=0 unanswerable=0 rc=0
 ```
@@ -338,7 +338,7 @@ MSA 要求 `+fp64`，否则 `createTargetMachine` 直接 abort。
 ### 13.1 结果
 
 ```
-tools/ab/run-mips-end-to-end.sh TREE BUILD /tmp/mips.inc OUT
+../ab/run-mips-end-to-end.sh TREE BUILD /tmp/mips.inc OUT
 {"agree": 1647, "disagree": 0, "ref_asserted": 9}
 ```
 
@@ -421,7 +421,7 @@ target 的代码逐字节不变。
 ### 14.2 对拍
 
 ```
-tools/ab/run-spirv-end-to-end.sh TREE BUILD /tmp/spirv.inc OUT
+../ab/run-spirv-end-to-end.sh TREE BUILD /tmp/spirv.inc OUT
 {"agree": 5136, "disagree": 0, "unanswerable": 4}
 ```
 

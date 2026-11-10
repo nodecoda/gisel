@@ -46,7 +46,7 @@ AArch64 12,952/12,952、RISC-V 6,299/6,299 全部 agree。等这些 PR 合入上
 即可——这正是它存在的意义。
 
 这条前提是机器检查的，不是注释：每个 `build-*-runner.sh` 编译前先跑
-`tools/ab/check-pin.sh TREE`，要求 HEAD 从 `commit` 下降、且 `patches` 里每个
+`ab/check-pin.sh TREE`，要求 HEAD 从 `commit` 下降、且 `patches` 里每个
 commit 都是 HEAD 的祖先。缺一个就 rc=1 并逐个点名，因为那种树上官方侧回答的是
 修前规则，偏离会以“我们翻错了”的样子出现在对拍里。反过来说，`git log` 里看到
 那两个 X86 修复**不**代表上游已合——它们只在 `explore/06-review-fixes` 上，
@@ -95,15 +95,15 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 
 | 语料 | 上游规则在哪 | 我们的提取路径 | 证据 | 能证明 |
 |---|---|---|---|---|
-| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | 转录 check + gisel 自基线 + 端到端 A/B | 生成器回归；规则保真靠 `tools/ab/` |
+| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | 转录 check + gisel 自基线 + 端到端 A/B | 生成器回归；规则保真靠 `ab/` |
 | AArch64 | `AArch64/GISel/AArch64LegalizerInfo.cpp` | 同上 | 同上 | 同上 |
 | RISC-V | `RISCV/GISel/RISCVLegalizerInfo.cpp` | 同上 | 同上 | 同上 |
-| M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-m68k-end-to-end.sh` |
-| PowerPC | `PowerPC/GISel/PPCLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 98 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-ppc-end-to-end.sh` |
-| WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 886 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-wasm-end-to-end.sh` |
-| ARM | `ARM/ARMLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,614 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-arm-end-to-end.sh` |
-| Mips | `Mips/MipsLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,656 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-mips-end-to-end.sh` |
-| SPIRV | `SPIRV/SPIRVLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 5,136 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-spirv-end-to-end.sh`（4 条两侧都断言，`--expect-unanswerable 4`） |
+| M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-m68k-end-to-end.sh` |
+| PowerPC | `PowerPC/GISel/PPCLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 98 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-ppc-end-to-end.sh` |
+| WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 886 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-wasm-end-to-end.sh` |
+| ARM | `ARM/ARMLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,614 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-arm-end-to-end.sh` |
+| Mips | `Mips/MipsLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,656 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-mips-end-to-end.sh` |
+| SPIRV | `SPIRV/SPIRVLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 5,136 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-spirv-end-to-end.sh`（4 条两侧都断言，`--expect-unanswerable 4`） |
 
 ## 证据分三层，别混
 
@@ -112,7 +112,7 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
    （`upstream-source/import/tests/test_import_cxx.py`）。
    有偏离的地方在工具里点名，不是暗改。
 2. **规则保真（行为门，工作台）**：`gisel cases` 生成无答案查询，
-   `tools/ab/` 把它同时喂给官方构建和 include 了我们 `.inc` 的构建，比较两侧
+   `ab/` 把它同时喂给官方构建和 include 了我们 `.inc` 的构建，比较两侧
    的答案流。这是端到端证据，不经过任何中间表。
 3. **生成器回归（自基线）**：`tests/artifacts/` 是 gisel 自己的冻结输出，用来
    抓语料/生成器漂移。它**不是**“与上游逐字节一致”的证据。

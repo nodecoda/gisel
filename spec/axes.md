@@ -92,7 +92,7 @@ imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内�
   ruleset** 乘上 ordering 点；不读 ordering 的 ruleset 行为不变。
 - 导出的查询 `mem` 变成 4 元组
   `[mty, align, ordering, failure_ordering]`；默认 `NotAtomic/NotAtomic`
-  仍写 2 元组，保持旧文件兼容。`tools/ab/diff.py`、`gisel eval` 和
+  仍写 2 元组，保持旧文件兼容。`ab/diff.py`、`gisel eval` 和
   `tools/ab` 的两个 C++ runner 都接受两种形状。
 - `graph` 在没有 `mems.orderings` 时把读 ordering 的 opcode 写入
   `uncovered`，不把状态算成 `opaque`；提供 axis 后 ordering 进入内存值的

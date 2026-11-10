@@ -7,7 +7,7 @@
 # The oracle used to be `llvm-tblgen -gen-legalizer*` output over a `.td` this
 # project no longer keeps.  That backend and its `.td` are retired, so the
 # baseline is now gisel's own output for the same three corpora; rule fidelity
-# is gated by tests/test_import_cxx.py and the end-to-end harness in tools/ab/.
+# is gated by tests/test_import_cxx.py and the end-to-end harness in ab/.
 #
 #   tools/refresh-oracle.sh        # writes tests/artifacts/, then review git diff
 set -euo pipefail

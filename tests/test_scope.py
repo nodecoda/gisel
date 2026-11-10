@@ -86,16 +86,18 @@ class NoExternalSideEffects(unittest.TestCase):
 
 
 class WorkbenchBoundary(unittest.TestCase):
-    """A/B comparison is done *with* gisel, not by gisel (docs/SCOPE.md §2)."""
+    """A/B comparison is done *with* gisel, not by gisel (docs/SCOPE.md §7)."""
 
     def test_the_package_does_not_compare_implementations(self):
         from gisel import answers
         self.assertFalse(hasattr(answers, "compare"),
-                         "the full-set comparison belongs to tools/ab/diff.py")
+                         "the full-set comparison belongs to the ab project")
 
-    def test_the_workbench_owns_the_comparison(self):
-        text = (ROOT / "tools" / "ab" / "diff.py").read_text()
-        self.assertIn("def compare(", text)
+    def test_no_comparison_is_left_in_this_checkout(self):
+        # The harness moved out.  A leftover copy would silently become a
+        # second implementation of the key/compare contract.
+        self.assertFalse((ROOT / "tools" / "ab" / "diff.py").exists())
+        self.assertFalse((PACKAGE / "diff.py").exists())
 
 
 class BundledData(unittest.TestCase):

@@ -131,7 +131,7 @@ memory size and alignment), and outside probes that fall through to
 `spec/cases.md` is the contract, `docs/REPORT-cases.md` the evidence.
 
 Proving that two legalizer implementations answer the same way is done *with*
-gisel, not by gisel: `tools/ab/` freezes an answerless query set, runs the
+gisel, not by gisel: `ab/` freezes an answerless query set, runs the
 official build and the build carrying the generated `.inc` on that same file,
 and compares the two answer streams.  That workbench has its own report,
 `docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
@@ -169,7 +169,7 @@ upstream-main feature; `docs/CORPORA.md` has the full chain.
 Migration and A/B tooling is **workbench**, not a gisel function
 (`docs/SCOPE.md`): `upstream-source/import/import-inventory.py` prices a target,
 `upstream-source/import/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
-any statement it cannot translate), and `tools/ab/` compares two
+any statement it cannot translate), and `ab/` compares two
 implementations.  `import-cxx` is a one-shot transcriber for the pinned
 constructors, not a general C++ parser: `--all --check` re-transcribes them
 and diffs the checked-in corpora, and a rule-count drift fails loudly.  The evidence lives in `docs/REPORT-riscv.md` and
@@ -184,7 +184,7 @@ legalizer `.td` and no `-gen-legalizer`; the rules live in hand-written
 The artifacts are therefore gisel's own frozen output — a drift baseline, not
 a byte oracle against a second implementation.  Rule fidelity is checked on
 two other layers: `upstream-source import --check` re-transcribes the pinned C++
-and must reproduce the checked-in `.gisel` byte for byte, and `tools/ab/`
+and must reproduce the checked-in `.gisel` byte for byte, and `ab/`
 builds the official legalizer and the one carrying our `.inc`, feeds both the
 same answerless query file, and compares the answer streams.
 `docs/CORPORA.md` has the chain and the reviewed deviations.
@@ -221,10 +221,10 @@ gisel eval --doc a.core.json --features tests/cases/features.json \
 
 `gisel cases` produces questions, not answers.  `--answers` writes what the
 evaluator says in the same JSONL shape a compiled runner writes, so
-`tools/ab/diff.py` can compare the two answer streams:
+`ab/diff.py` can compare the two answer streams:
 
 ```sh
-python3 tools/ab/diff.py runner.answers.jsonl a.answers.jsonl --json
+python3 ../ab/diff.py runner.answers.jsonl a.answers.jsonl --json
 ```
 
 When a runner has already answered the same question file, `gisel cases
@@ -240,7 +240,7 @@ gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / core_json.py              M2 / M4
 gisel/eval.py           standalone evaluator (answers any question file)
 gisel/cases.py          equivalence/boundary/outside case generation
-gisel/answers.py        answer-file reader (the A/B comparison is tools/ab/diff.py)
+gisel/answers.py        answer-file reader (the A/B comparison is ab/diff.py)
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/cli.md             the command surface, exit codes, guarantees (normative)
 spec/grammar.md         the .gisel grammar and AST, normative

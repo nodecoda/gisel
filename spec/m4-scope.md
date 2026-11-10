@@ -1,7 +1,7 @@
 # M4 scope: `--emit=core` + `gisel eval`
 
 > 2026-11-10: 文中引用的 9,632 点冻结答案表已删除，不再是门禁。当前的语义
-> 证据是 `tools/ab/` 端到端对拍。
+> 证据是 `ab/` 端到端对拍。
 
 Probe result (2026-11-06): the rule bodies are **already the same object**.  Take
 X86 rule 0, canonicalise our record names (`X86_s8` -> `s8`), drop the four

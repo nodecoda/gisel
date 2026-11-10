@@ -166,9 +166,9 @@ CoreCustom<(CoreAll (CoreNot HasAVX512), ..., (CoreLt (BitsOf (Slot 1)), ...))>
 复现命令：
 
 ```sh
-tools/ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc OUT STATE
-tools/ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc  OUT STATE
-tools/ab/run-x86-end-to-end.sh     TREE BUILD x86.inc OUT STATE
+../ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc OUT STATE
+../ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc  OUT STATE
+../ab/run-x86-end-to-end.sh     TREE BUILD x86.inc OUT STATE
 ```
 
 ### 8.1 这一轮修掉的四个问题
@@ -253,7 +253,7 @@ ill-formed=15582 (G_CONCAT_VECTORS 3435, G_FPTOSI_SAT 7951,
 `.td` 渲染链已经删干净（`-gen-legalizer`、`LegalizerInfo.td`、两个 target 的
 `.td`、64 个 TableGen 测试、`X86LegalizerTable`）。X86 的构建树文件恢复成
 pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`（sha256 `79f2376…`）。
-`tools/ab/run-x86-end-to-end.sh` 的做法：
+`ab/run-x86-end-to-end.sh` 的做法：
 
 1. restore → `ninja libLLVMX86CodeGen` → 这是**现网**，跑一遍查询；
 2. `swap-source-ctor.py apply --target x86`：只把构造体换成

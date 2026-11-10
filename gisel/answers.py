@@ -3,7 +3,7 @@
 An answer file pairs a query key with what a legalizer answered.  gisel reads
 these files for `cases --queries`/`--oracle`; it does **not** compare two
 implementations.  The full-set A/B comparison is a workbench concern and lives
-with its command in ``tools/ab/diff.py`` — see ``docs/SCOPE.md``.
+with its command in ``ab/diff.py`` — see ``docs/SCOPE.md``.
 """
 
 from __future__ import annotations

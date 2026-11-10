@@ -29,7 +29,7 @@ builder 链按文档顺序拼成一张表）；`--emit=inc` 保留源文件的 b
 这不是漂移，是契约。`lint` 的行号始终指向源文件。
 
 `cases` 与 `domain` 产出的是**问题**，不是答案文件；答案由外部 legalizer 或
-`eval` 给出，比较命令在工作台（`tools/ab/diff.py`）。
+`eval` 给出，比较命令在工作台（`ab/diff.py`）。
 
 `cases --ruleset NAME`（可重复）只生成指定 ruleset 的查询；`NAME` 可以是
 `.gisel` 里的 `ruleset` 名，也可以是它挂的 opcode。名字拼错是用法错误（退出码

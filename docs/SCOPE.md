@@ -34,8 +34,8 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 | `upstream-source`（`import/`） | 转录钉住的 legalizer C++ 构造函数 → `.gisel` | 目标端：产出 gisel 的输入；已迁出本仓库 |
 | `llvm-dev/tools/gisel_td.py` | `.gisel` → `.td`（给 llvm-tblgen 用） | 复用 `gisel/ast.py` 的 AST |
 | `tools/refresh-oracle.sh` | 用 `gisel gen` 刷新 `tests/artifacts/` | `gen --emit={inc,core,check}` |
-| `tools/ab/*` | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
-| `tools/ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.answers`；比较与退出码在本文件 |
+| `ab`（独立仓库） | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
+| `ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.jsonl`；比较与退出码在本文件 |
 
 这一层的共同特征：**输入或对照物来自 gisel 之外**（LLVM 源码、llvm-tblgen、
 编译产物、另一个实现的答案）。它们是 gisel 产物的**消费者**：gisel 出 `.inc`
@@ -70,7 +70,7 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 | 位置 | 越界形态 | 处置 |
 |---|---|---|
 | `docs/REPORT-cases.md` §6–§7 | 对拍结果住在用例生成报告里，读起来像 gisel 的能力 | 已整体搬到 `docs/REPORT-ab.md`，并在文首写明是工作台报告 |
-| `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令和比较逻辑都在 `tools/ab/diff.py`；`gisel/answers.py` 只留读取器，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
+| `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令和比较逻辑都在 `ab/diff.py`；`gisel/answers.py` 只留读取器，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
 | `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 已迁到 `upstream-source/import/`；gisel 只留一个 release 的转发 shim |
 | `cases --against <llvm dump>` | 看起来像运行时依赖 LLVM | 它读的是冻结在 `tests/` 的 oracle，不是运行时依赖 |
 | `eval --answers` | 为对拍加的出口 | 属于求值器本身（答案就是它的输出），归本体 |
@@ -116,7 +116,7 @@ gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
 |---|---|---|
 | WP0 | 边界与契约（本表 + 两个新仓库的 `SCOPE.md`/`CONTRACTS.md`） | 完成 |
 | WP1 | `tools/import-cxx.py`、importer 测试、`PIN.json` → upstream-source | 完成 |
-| WP2 | `tools/ab/*`、`tests/test_ab.py` → ab | 待做 |
+| WP2 | `ab/*`、`tests/test_ab.py` → ab | 完成 |
 
 迁移期间 `tools/` 仍在原处，行为不变。query/answer 格式的 canonical 规范仍是
 本仓库 `spec/cases-format.md`；两个新项目的 `CONTRACTS.md` 只能引用它，不能

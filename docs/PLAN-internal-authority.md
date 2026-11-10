@@ -138,7 +138,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 建议做成一个脚本（工作台，不是 gisel 功能）：
 
 ```sh
-tools/ab/inject-rule.py tests/corpus/X86LegalizerInfo.gisel \
+../ab/inject-rule.py tests/corpus/X86LegalizerInfo.gisel \
   --rule X86_ADD#1 --mutate action=Lower --expect-disagree
 ```
 

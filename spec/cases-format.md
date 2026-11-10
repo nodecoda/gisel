@@ -2,7 +2,7 @@
 
 状态：规范性。相关实现：`gisel/cases.py`（查询）、`gisel/domain.py`（题面）、
 `gisel/eval.py`（答案）、`gisel/answers.py`（读入）。上层对拍命令
-`tools/ab/diff.py` 属于工作台，不在 gisel 的产品面内。
+`ab/diff.py` 属于工作台，不在 gisel 的产品面内。
 
 ## 1 三种文件，一个 key
 
@@ -78,7 +78,7 @@ key 固定为：
 
 - 子集对拍（`gisel cases --against`）：只比较交集，报告
   `covered` / `agree` / `disagree` / `uncovered`；`uncovered` 不是通过。
-- 全量对拍（`tools/ab/diff.py`）：要求两侧 key 集合相等；一侧缺失即失败。
+- 全量对拍（`ab/diff.py`）：要求两侧 key 集合相等；一侧缺失即失败。
 - key 的相等是**解析后的结构相等**，不是文本相等；但 `p0:*` 与 `p0:64`
   不相等（通配不是具体宽度）。
 - 重复 key：答案相同 → 合并；答案不同 → 报错，不允许静默取第一条。

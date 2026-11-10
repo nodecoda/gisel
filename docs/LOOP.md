@@ -55,14 +55,14 @@ WebAssembly 886 / ARM 1,614 / Mips 1,656），
 ## 3 对拍
 
 ```sh
-tools/ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
-tools/ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc  OUT STATE
-tools/ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc   OUT STATE
-tools/ab/run-m68k-end-to-end.sh    TREE BUILD m68k.inc OUT
-tools/ab/run-ppc-end-to-end.sh     TREE BUILD ppc.inc  OUT
-tools/ab/run-wasm-end-to-end.sh    TREE BUILD wasm.inc OUT
-tools/ab/run-arm-end-to-end.sh     TREE BUILD arm.inc  OUT
-tools/ab/run-mips-end-to-end.sh    TREE BUILD mips.inc OUT
+../ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
+../ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc  OUT STATE
+../ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc   OUT STATE
+../ab/run-m68k-end-to-end.sh    TREE BUILD m68k.inc OUT
+../ab/run-ppc-end-to-end.sh     TREE BUILD ppc.inc  OUT
+../ab/run-wasm-end-to-end.sh    TREE BUILD wasm.inc OUT
+../ab/run-arm-end-to-end.sh     TREE BUILD arm.inc  OUT
+../ab/run-mips-end-to-end.sh    TREE BUILD mips.inc OUT
 ```
 
 官方一侧必须是**从 pin 的 C++ 构建出来的构造函数**；我们的一侧把

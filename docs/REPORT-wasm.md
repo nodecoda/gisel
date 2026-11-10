@@ -163,7 +163,7 @@ $ python3 tools/import-cxx.py WebAssembly --pin tests/corpus/PIN.json \
     --out tests/corpus/WebAssemblyLegalizerInfo.gisel
 tests/corpus/WebAssemblyLegalizerInfo.gisel: 29 rulesets, 109 rules, 0 refused
 
-$ tools/ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc /tmp/wasm-e2e
+$ ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc /tmp/wasm-e2e
 /tmp/wasm-e2e/runner.official: 942 queries, 0 unanswerable
 /tmp/wasm-e2e/runner.ours: 942 queries, 0 unanswerable
 {"agree": 942, "disagree": 0, "unanswerable": 0, ...}
