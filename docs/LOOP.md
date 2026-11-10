@@ -108,7 +108,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 
 2026-11-09 在 `fe98bba`（SPIRV 接入后）把上表 9 个 target 的端到端脚本全部重跑了一遍，
 结论不变：`m68k 35 / wasm 886 / ppc 94 / arm 1,614 / mips 1,656 / riscv 6,149 /
-aarch64 12,583 / x86 3,027 / spirv 5,136` 条查询，`disagree = 0`；
+aarch64 12,595 / x86 3,027 / spirv 5,136` 条查询，`disagree = 0`；
 `ppc` 的 1 条、`mips` 的 9 条（`ref_asserted`）、`spirv` 的 4 条（两侧都断言）与表里一致。
 
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
@@ -122,7 +122,7 @@ AArch64 的 117 条要拆成两层看：PR #238306 修好官方侧的 `mutationI
 那 108 条不是上游的锅，是**我们自己造的非法查询**：逐槽候选做笛卡尔积，
 造出了 `(v16s8, v2s32)`、`(v16s8, s32)`、`(v2i64, f16)` 这类真实 MIR 里不可能
 出现的类型组合，官方 legalizer 正确地拒绝了它们。加了 opcode 形状约束之后
-108 条归零，规则见证数不变（572）。详见 `docs/ALGORITHM-cases.md` 的
+108 条归零，规则见证数不变（584；2026-11-10 把定向搜索的种子扩到 `to` 里的目标类型后又多 12 条，见 `REPORT-coverage` §9）。详见 `docs/ALGORITHM-cases.md` 的
 「形状：槽不是独立轴」。
 
 查询行数因此从 13,199 / 3,282 变成 12,952 / 3,217；RISC-V 没有这类形状，

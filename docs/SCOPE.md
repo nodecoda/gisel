@@ -32,7 +32,6 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 | 工具 | 做什么 | 用 gisel 的哪个出口 |
 |---|---|---|
 | `upstream-source`（`import/`） | 转录钉住的 legalizer C++ 构造函数 → `.gisel` | 目标端：产出 gisel 的输入；已迁出本仓库 |
-| `llvm-dev/tools/gisel_td.py` | `.gisel` → `.td`（给 llvm-tblgen 用） | 复用 `gisel/ast.py` 的 AST |
 | `tools/refresh-oracle.sh` | 用 `gisel gen` 刷新 `tests/artifacts/` | `gen --emit={inc,core,check}` |
 | `ab`（独立仓库） | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
 | `ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.jsonl`；比较与退出码在本文件 |
@@ -49,7 +48,8 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 归属以 §7 为准。
 
 语料的来源同样按这条分：`tests/corpus/` 是**输入**，由工作台工具从上游手写的
-`*LegalizerInfo.cpp` 规则转出后冻结（X86/AArch64 中途经过本项目引入的 `.td`）；
+`*LegalizerInfo.cpp` 规则转出后冻结。历史上 X86/AArch64 曾中途经过本项目引入的
+`.td`（`llvm-dev/tools/gisel_td.py`，已删除）；现在只有 C++ → `.gisel` 一条路。
 每份语料的来源和它能证明什么见 `docs/CORPORA.md`。
 
 ## 3 判定规则

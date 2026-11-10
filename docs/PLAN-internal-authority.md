@@ -117,11 +117,11 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | 门 | 要求 | 当前状态 |
 |---|---|---|
 | 参照系 | 明确“对 pin+patches 权威”，deviation 点名 | 有 `PIN.json`；需在权威声明里写清 |
-| G 题面 | `domain + cases + 字面量展开`，不只 `cases` | X86 用 `domain` 100,508；AArch64 用 `cases` 10,029；未统一 |
-| 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 22 / AArch64 396 / RISC-V 82 条未命中（`REPORT-cases`） |
+| G 题面 | `domain + cases + 字面量展开`，不只 `cases` | X86 用 `domain` 95,172；AArch64 用 `cases` 12,595；未统一 |
+| 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 124 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
 | U 题面 | 上游运行期规则表 + 独立类型宇宙 | 缺 |
-| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | X86 `closure.count=321`，未通过（`REPORT-graph`） |
-| 不可答点 | 单列，不混入 agree | X86 1,152 / AArch64 179 条对称断言目前被算进 agree |
+| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | X86 `closure.count=318`，`--refine` 后 0；AArch64 2,671 → `--refine` 后 0（`REPORT-graph`） |
+| 不可答点 | 单列，不混入 agree | X86 1,414 条已单列并钉数；AArch64 已归零（`REPORT-cases` §8.2） |
 | 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 有；全量回归未成门禁 |
 | 可复现 | pin 更新自动重跑；产物 sha 固定 | 部分有（`tests/artifacts`） |
 
@@ -188,7 +188,7 @@ gisel 成为源之后，流程反过来：
 - 不涉及上游接纳、RFC、社区评审；那是另一个问题。
 - 动态 `legalize` 循环的全量等价还没有证据；当前只有一步 `getAction` 对拍，
   闭包未通过。
-- `U` 方向尚未实现；A6 字面量展开只是它的转录近似版。
+- `U` 方向已由 `upstream-source` 的 oracle 模块实现（九 target，证据在 `ab/EVIDENCE.json`）；A6 字面量展开仍是它的转录近似版。
 
 ## 11 一句话
 

@@ -526,7 +526,7 @@ gisel cases SOURCE --queries full-queries.jsonl --oracle answers.jsonl ...
 - `gisel graph`：用原子谓词向量显式建商类，再建商图找环。它和 cases 共用
   `inspect_ruleset` 的切点，是同一理论的两个消费者。
 
-X86、4 个 config 的 domain 实测是 100,508 条查询、113 个 opcode、24 个类型、
+X86、4 个 config 的 domain 实测是 95,172 条查询、113 个 opcode、24 个类型、
 23 个内存行；cases 只有 3,273 条，但覆盖了答案区域和边界。
 
 domain 先过一层**opcode 形状**约束，再谈值域：`G_MERGE_VALUES` 只能合并标量，
