@@ -31,6 +31,13 @@ builder 链按文档顺序拼成一张表）；`--emit=inc` 保留源文件的 b
 `cases` 与 `domain` 产出的是**问题**，不是答案文件；答案由外部 legalizer 或
 `eval` 给出，比较命令在工作台（`ab/diff.py`）。
 
+`domain --json` 打印的统计必须能复算分母：`raw_points`（截断前）、`truncated`、
+`points`（写盘行数）、`shape_dropped`/`shape_dropped_total`（被形状过滤丢掉的
+**类型元组**，不是查询）、`skipped_opcodes`（连槽表都不知道 arity 的 opcode，
+目前只有 `G_INTRINSIC*`）。形状过滤发生在 mem/imm 乘积之前，所以一个被丢掉的
+元组本来会变成 `len(mem_axis) × len(imm_tuples)` 条查询——单位必须写在字段名
+和文档里，否则分母不可复算。
+
 `cases --ruleset NAME`（可重复）只生成指定 ruleset 的查询；`NAME` 可以是
 `.gisel` 里的 `ruleset` 名，也可以是它挂的 opcode。名字拼错是用法错误（退出码
 2），不是“这个 ruleset 没有查询”。大 target 用这个参数分块跑，块之间按

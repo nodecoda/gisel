@@ -331,6 +331,13 @@ verifier 只比较 lane 总数，**不比较元素类型**，所以 `(v4s32, v2s
 verifier，然后让 legalizer 断言。concat 的定义是"把两个同元素类型的向量粘起来"，
 所以这条按语义过滤；但它是语义推断，不是抄 verifier。
 
+还有一类约束不在候选乘积里，而在槽表里：`opcode-slots.json` 的 `ptype` 标出
+**这个槽只能是指针**（`G_LOAD` 的地址、`G_ATOMICRMW_*` 的 `ptype1`）。这些槽不
+参与 24 类型枚举，只取当前配置的 `p0:{width}`——否则会造出"地址是 f128"这种
+点。2026-11-11 之前槽表只扫 `def` 自己的 body，`def G_ATOMICRMW_OR :
+G_ATOMICRMW_OP;` 这类定义拿不到 `ptype`，AArch64 domain 因此多出 211,680 条
+非法点。现在生成器会跟一层 class body，两个表由同一次解析产出。
+
 过滤点有两处，缺一不可：
 
 - `_queries()` 在乘积时丢，省掉后面的求值开销；

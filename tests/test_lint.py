@@ -75,15 +75,18 @@ class LintCorpus(unittest.TestCase):
         doc = json.loads(r.stdout)
         self.assertEqual(doc["errors"], [])
         self.assertEqual(doc["rules"], 741)
-        # Variadic opcodes are the only ones without a fixed arity.
-        self.assertTrue(doc["warnings"])
-        self.assertTrue(all("arity unknown" in w["message"]
-                            for w in doc["warnings"]))
+        # Nothing is unknown any more: the slot table follows the class body,
+        # and the arity view is generated from it.  Variadic opcodes
+        # (`G_INTRINSIC*`) are the only ones without a fixed arity, and the
+        # corpus does not use them.
+        self.assertEqual(doc["warnings"], [])
 
     def test_variadic_warning_is_per_ruleset_not_per_rule(self):
+        # X86 uses no variadic opcode, so an empty warning list is the strict
+        # form of "at most one warning per ruleset".
         r = run("lint", str(CORPUS / "X86LegalizerInfo.gisel"), "--json")
         doc = json.loads(r.stdout)
-        self.assertLessEqual(len(doc["warnings"]), 8)
+        self.assertEqual(doc["warnings"], [])
 
 
     def test_golden_diagnostics(self):

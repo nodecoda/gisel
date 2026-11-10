@@ -56,6 +56,167 @@
    "imm": 1,
    "ptype": []
   },
+  "G_ATOMICRMW_ADD": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_AND": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FADD": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FMAX": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FMAXIMUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FMAXIMUMNUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FMIN": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FMINIMUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FMINIMUMNUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_FSUB": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_MAX": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_MIN": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_NAND": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_OR": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_SUB": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_UDEC_WRAP": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_UINC_WRAP": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_UMAX": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_UMIN": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_USUB_COND": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_USUB_SAT": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_XCHG": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
+  "G_ATOMICRMW_XOR": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": [
+    1
+   ]
+  },
   "G_ATOMIC_CMPXCHG": {
    "arity": 2,
    "imm": 0,
@@ -84,7 +245,7 @@
    "ptype": []
   },
   "G_BR": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
@@ -195,7 +356,7 @@
    "ptype": []
   },
   "G_DEBUGTRAP": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
@@ -292,7 +453,7 @@
    "ptype": []
   },
   "G_FENCE": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
@@ -664,7 +825,7 @@
    "ptype": []
   },
   "G_INVOKE_REGION_START": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
@@ -805,12 +966,12 @@
    "ptype": []
   },
   "G_RESET_FPENV": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
   "G_RESET_FPMODE": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
@@ -1073,7 +1234,7 @@
    "ptype": []
   },
   "G_TRAP": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
@@ -1128,7 +1289,7 @@
    "ptype": []
   },
   "G_UBSANTRAP": {
-   "arity": null,
+   "arity": 0,
    "imm": 0,
    "ptype": []
   },
@@ -1232,6 +1393,66 @@
    "imm": 0,
    "ptype": []
   },
+  "G_VECREDUCE_ADD": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_AND": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FADD": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FMAX": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FMAXIMUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FMAXIMUMNUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FMIN": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FMINIMUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FMINIMUMNUM": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_FMUL": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_MUL": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_OR": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
   "G_VECREDUCE_SEQ_FADD": {
    "arity": 3,
    "imm": 0,
@@ -1239,6 +1460,31 @@
   },
   "G_VECREDUCE_SEQ_FMUL": {
    "arity": 3,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_SMAX": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_SMIN": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_UMAX": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_UMIN": {
+   "arity": 2,
+   "imm": 0,
+   "ptype": []
+  },
+  "G_VECREDUCE_XOR": {
+   "arity": 2,
    "imm": 0,
    "ptype": []
   },
@@ -1277,5 +1523,5 @@
  },
  "schema": 1,
  "source": "llvm/include/llvm/Target/GenericOpcodes.td",
- "source_commit": "57587b095ee7cfcb4ba3a1493ea0788f2d178ed9"
+ "source_commit": "700e551714ccb7357a191fd41837ff1b4784abf2"
 }

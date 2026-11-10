@@ -1,9 +1,17 @@
 #!/usr/bin/env python3
 """Freeze the GenericOpcodes.td slot table (arity + pointer slots).
 
-DEVELOPMENT ONLY.  The domain enumerator reads the committed JSON so that
-`gisel domain` works without an LLVM source tree, exactly like
-`gisel/data/generic_opcodes.json` does for lint.
+DEVELOPMENT ONLY.  Writes two files from one parse:
+
+- ``gisel/data/opcode-slots.json``: arity, pointer slots, generic immediates;
+- ``gisel/data/generic_opcodes.json``: the arity-only view ``lint`` reads.
+
+They used to be produced by different code, which left them disagreeing on 55
+opcodes: the slot table did not follow ``def G_X : SomeClass;`` into the class
+body, so all 40 ``G_ATOMICRMW_*`` / ``G_VECREDUCE_*`` had no arity, and the
+arity view had no entry for the five opcodes whose slots the table did know
+(``G_PHI``, ``G_BUILD_VECTOR``, ``G_MERGE_VALUES``, ``G_UNMERGE_VALUES``,
+``G_CONCAT_VECTORS``) -- exactly the five ``lint`` reported as "arity unknown".
 
     python3 tools/gen-opcode-slots.py \
         /home/ubuntu/llvm/trees/explore/llvm/include/llvm/Target/GenericOpcodes.td
@@ -16,8 +24,14 @@ import subprocess
 import sys
 
 DEF_RE = re.compile(
-    r"^def\s+(G_[A-Z0-9_]+)\s*:\s*GenericInstruction\s*"
-    r"(\{(?:[^{}]|\{[^{}]*\})*\}|;)", re.M)
+    r"^def\s+(G_[A-Z0-9_]+)\s*:\s*([A-Za-z_][A-Za-z0-9_]*)"
+    r"(?:<[^>]*>)?\s*(\{(?:[^{}]|\{[^{}]*\})*\}|;)", re.M)
+# `def G_ATOMICRMW_OR : G_ATOMICRMW_OP;` carries no operand list of its own.
+# The slot indices live in the class body, so follow one level of inheritance.
+CLASS_RE = re.compile(
+    r"^class\s+([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*:\s*"
+    r"([A-Za-z_][A-Za-z0-9_]*)\s*(?:<[^>]*>)?\s*\{([^{}]*)\}", re.M)
+CLASS_PARENT = {}
 TYPE_RE = re.compile(r"(?<![A-Za-z0-9_])type(\d+)\b")
 PTYPE_RE = re.compile(r"(?<![A-Za-z0-9_])ptype(\d+)\b")
 # Only `untyped_imm_N` is a *generic immediate* operand; a bare `$imm` is an
@@ -26,18 +40,64 @@ PTYPE_RE = re.compile(r"(?<![A-Za-z0-9_])ptype(\d+)\b")
 IMM_RE = re.compile(r"(?<![A-Za-z0-9_])untyped_imm_(\d+)\b")
 
 
+def _slots_of(body):
+    slots = sorted(set(int(x) for x in TYPE_RE.findall(body))
+                   | set(int(x) for x in PTYPE_RE.findall(body)))
+    return slots, len(set(int(x) for x in IMM_RE.findall(body)))
+
+
+def arity_of(body):
+    """Type-slot count.
+
+    A typed prefix wins even when the tail is variadic: ``G_BUILD_VECTOR``
+    has ``type0``/``type1`` plus ``variable_ops`` and still has two type
+    slots.  Only an instruction with no typed operand at all is "unknown"
+    (``G_INTRINSIC``) or "none" (``G_BR``, ``G_TRAP``).
+    """
+    slots, _ = _slots_of(body)
+    if slots:
+        return max(slots) + 1
+    return None if "variable_ops" in body else 0
+
+
 def parse(path):
     text = io.open(path, encoding="utf-8", newline="").read()
+    classes = {}
+    for m in CLASS_RE.finditer(text):
+        classes[m.group(1)] = m.group(3)
+        CLASS_PARENT[m.group(1)] = m.group(2)
+
+    def class_body(name, depth=0):
+        """Follow `class A : B { ... }` chains; a one-level lookup missed
+        `G_ATOMICRMW_FP_OP : G_ATOMICRMW_OP`, which only overrides a flag."""
+        if depth > 8 or name not in classes:
+            return None
+        body = classes[name]
+        if _slots_of(body)[0]:
+            return body
+        parent = CLASS_PARENT.get(name)
+        inherited = class_body(parent, depth + 1) if parent else None
+        return (body + "\n" + inherited) if inherited else body
+
     out = {}
     for m in DEF_RE.finditer(text):
-        body = m.group(2)
-        slots = sorted(set(int(x) for x in TYPE_RE.findall(body))
-                       | set(int(x) for x in PTYPE_RE.findall(body)))
-        imms = [int(x) for x in IMM_RE.findall(body)]
-        out[m.group(1)] = {
-            "arity": (max(slots) + 1) if slots else None,
+        name, base, body = m.group(1), m.group(2), m.group(3)
+        if body == ";":
+            inherited = class_body(base)
+            if inherited is not None:
+                body = inherited
+            elif base == "ConstrainedInstruction":
+                # Resolved below from the base opcode.
+                body = ""
+            else:
+                # An unknown base: say "unknown", do not invent 0.
+                out[name] = {"arity": None, "ptype": [], "imm": 0}
+                continue
+        slots, imms = _slots_of(body)
+        out[name] = {
+            "arity": arity_of(body),
             "ptype": sorted(set(int(x) for x in PTYPE_RE.findall(body))),
-            "imm": len(set(imms)),
+            "imm": imms,
         }
     # `def G_STRICT_FADD : ConstrainedInstruction<G_FADD>;` has no operand list
     # of its own: it is the base opcode plus FP-environment operands LLVM adds
@@ -86,6 +146,22 @@ def main(argv):
         json.dump(doc, f, indent=1, sort_keys=True)
         f.write("\n")
     print("%s: %d opcodes" % (dst, len(opcodes)))
+
+    # The arity-only view lint reads.  Derived here so the two files cannot
+    # drift: there is one parse and one arity definition.
+    generic = {
+        "schema": 1,
+        "source": doc["source"],
+        "generated_from": "opcode-slots.json",
+        "note": "arity only; null = variadic/unknown; generated by "
+                "tools/gen-opcode-slots.py",
+        "opcodes": {name: info["arity"] for name, info in opcodes.items()},
+    }
+    generic_dst = os.path.join(os.path.dirname(dst), "generic_opcodes.json")
+    with open(generic_dst, "w") as f:
+        json.dump(generic, f, indent=1, sort_keys=True)
+        f.write("\n")
+    print("%s: %d opcodes (derived)" % (generic_dst, len(generic["opcodes"])))
 
 
 if __name__ == "__main__":

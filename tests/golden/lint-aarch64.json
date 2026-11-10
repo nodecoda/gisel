@@ -1,37 +1,6 @@
 {
  "source": "tests/corpus/AArch64LegalizerInfo.gisel",
  "errors": [],
- "warnings": [
-  {
-   "file": "tests/corpus/AArch64LegalizerInfo.gisel",
-   "line": 97,
-   "ruleset": "A_G_PHI",
-   "message": "arity unknown for G_PHI; slot bounds not checked"
-  },
-  {
-   "file": "tests/corpus/AArch64LegalizerInfo.gisel",
-   "line": 816,
-   "ruleset": "A_G_MERGE_VALUES",
-   "message": "arity unknown for G_MERGE_VALUES; slot bounds not checked"
-  },
-  {
-   "file": "tests/corpus/AArch64LegalizerInfo.gisel",
-   "line": 826,
-   "ruleset": "A_G_UNMERGE_VALUES",
-   "message": "arity unknown for G_UNMERGE_VALUES; slot bounds not checked"
-  },
-  {
-   "file": "tests/corpus/AArch64LegalizerInfo.gisel",
-   "line": 869,
-   "ruleset": "A_G_BUILD_VECTOR",
-   "message": "arity unknown for G_BUILD_VECTOR; slot bounds not checked"
-  },
-  {
-   "file": "tests/corpus/AArch64LegalizerInfo.gisel",
-   "line": 903,
-   "ruleset": "A_G_CONCAT_VECTORS",
-   "message": "arity unknown for G_CONCAT_VECTORS; slot bounds not checked"
-  }
- ],
+ "warnings": [],
  "rules": 741
 }

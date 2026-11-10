@@ -56,6 +56,32 @@ class X86Domain(unittest.TestCase):
     def test_enumeration_is_deterministic(self):
         self.assertEqual(self.rows(), self.rows())
 
+    def test_diagnostics_count_every_dropped_tuple(self):
+        """The denominator must be recomputable from the run's own output.
+
+        `shape_dropped` counts type tuples, not queries: the drop happens
+        before the mem/imm product, so one dropped tuple would have become
+        several queries.
+        """
+        stats = {}
+        rows = list(domain.enumerate_domain(
+            X86, self.features, configs=["none"], stats=stats))
+        self.assertEqual(stats["shape_dropped_total"],
+                         sum(stats["shape_dropped"].values()))
+        self.assertGreater(stats["shape_dropped_total"], 0)
+        self.assertEqual(stats["shape_dropped"].get("G_SHL"), 256)
+        self.assertEqual(stats["skipped_opcodes"],
+                         ["G_INTRINSIC", "G_INTRINSIC_W_SIDE_EFFECTS"])
+        self.assertEqual(len(rows), 22835)
+
+    def test_diagnostics_are_present_even_when_empty(self):
+        stats = {}
+        list(domain.enumerate_domain(X86, self.features, configs=["none"],
+                                     stats=stats))
+        self.assertIn("skipped_opcodes", stats)
+        self.assertIn("shape_dropped", stats)
+        self.assertIn("shape_dropped_total", stats)
+
 
 MERGE = """\
 type s32 = LLT::scalar(32)

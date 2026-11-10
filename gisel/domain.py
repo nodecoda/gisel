@@ -154,8 +154,23 @@ def effective_axes(source, pointer_width=64, axes=None):
 
 
 def enumerate_domain(source, features, configs=None, pointer_width=64,
-                     slots=None, axes=None):
-    """Yield answerless queries for every (config, opcode, types, mem)."""
+                     slots=None, axes=None, stats=None):
+    """Yield answerless queries for every (config, opcode, types, mem).
+
+    ``stats`` (optional dict) is filled when the generator is exhausted with
+    the two ways the domain is narrowed before a query exists:
+
+    - ``skipped_opcodes``: opcodes whose arity is unknown to both the slot
+      table and the arity manifest, so no slot axis can be built;
+    - ``shape_dropped`` / ``shape_dropped_total``: type tuples rejected by
+      ``type_shape_ok`` (not real MIR), counted per opcode.
+
+    Both are counted in **type tuples**, not queries: the drop happens before
+    the mem/imm product, so a dropped tuple would otherwise have become
+    ``len(mem_axis) * len(imm_tuples)`` queries.  Saying which unit is being
+    counted is the point -- a denominator nobody can recompute is not a
+    denominator.
+    """
     types, mems, doc = effective_axes(source, pointer_width, axes)
     slots = slots if slots is not None else load_opcode_slots()
     manifest = dsl.load_arity_manifest()
@@ -233,6 +248,10 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
             % (sum(shape_dropped.values()),
                ", ".join("%s %d" % kv
                          for kv in sorted(shape_dropped.items()))))
+    if stats is not None:
+        stats["skipped_opcodes"] = sorted(set(skipped))
+        stats["shape_dropped"] = dict(sorted(shape_dropped.items()))
+        stats["shape_dropped_total"] = sum(shape_dropped.values())
 
 
 def main(argv=None):
@@ -279,11 +298,15 @@ def main(argv=None):
         return 2
 
     slots = load_opcode_slots(args.slots)
+    diagnostics = {}
     rows = list(enumerate_domain(args.source, features, configs,
-                                 args.pointer_width, slots, axes))
-    if max_points and len(rows) > max_points:
+                                 args.pointer_width, slots, axes,
+                                 diagnostics))
+    raw_points = len(rows)
+    truncated = bool(max_points and raw_points > max_points)
+    if truncated:
         sys.stderr.write("domain: profile max_points truncates %d -> %d\n"
-                         % (len(rows), max_points))
+                         % (raw_points, max_points))
         rows = rows[:max_points]
     rows.sort(key=lambda q: (q["config"], q["name"], tuple(q["types"]),
                              json.dumps(q["mem"])))
@@ -301,13 +324,18 @@ def main(argv=None):
         "per_config": {c: sum(1 for r in rows if r["config"] == c)
                        for c in configs},
         "per_opcode": len({r["name"] for r in rows}),
+        "raw_points": raw_points,
+        "truncated": truncated,
     }
+    stats.update(diagnostics)
     if args.json:
         print(json.dumps(stats, indent=1, sort_keys=True))
     else:
-        print("%s: points=%d configs=%s types=%d mems=%d opcodes=%d"
+        print("%s: points=%d configs=%s types=%d mems=%d opcodes=%d "
+              "shape_dropped=%d skipped=%d"
               % (args.out, stats["points"], ",".join(configs),
-                 stats["types"], stats["mems"], stats["per_opcode"]))
+                 stats["types"], stats["mems"], stats["per_opcode"],
+                 stats["shape_dropped_total"], len(stats["skipped_opcodes"])))
     return 0 if rows else 2
 
 

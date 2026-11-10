@@ -156,8 +156,16 @@ class ExitCodes(unittest.TestCase):
             r = run("cases", str(src), "--out", str(cases), "--json")
             self.assertEqual(r.returncode, 0, r.stderr)
             self.assertTrue(cases.read_text().strip())
-            self.assertEqual(
-                run("domain", str(src), "--out", f"{d}/d.jsonl").returncode, 0)
+            r = run("domain", str(src), "--out", f"{d}/d.jsonl", "--json")
+            self.assertEqual(r.returncode, 0, r.stderr)
+            stats = json.loads(r.stdout)
+            # The flags report how the denominator was narrowed, so a reader
+            # can recompute it instead of trusting "points".
+            for key in ("raw_points", "truncated", "shape_dropped",
+                        "shape_dropped_total", "skipped_opcodes"):
+                self.assertIn(key, stats)
+            self.assertEqual(stats["raw_points"], stats["points"])
+            self.assertFalse(stats["truncated"])
 
 
 class Determinism(unittest.TestCase):
