@@ -133,8 +133,11 @@ memory size and alignment), and outside probes that fall through to
 Proving that two legalizer implementations answer the same way is done *with*
 gisel, not by gisel: `ab/` freezes an answerless query set, runs the
 official build and the build carrying the generated `.inc` on that same file,
-and compares the two answer streams.  That workbench has its own report,
-`docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
+and compares the two answer streams.  Both directions are closed for X86,
+AArch64 and RISC-V: `ab/docs/EVIDENCE-WP2.md` asks gisel's own questions
+(no rule is missing upstream), `ab/docs/EVIDENCE-U.md` asks the oracle's
+questions (no upstream rule is missing in gisel).  That workbench has its own
+report, `docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
 
 What it does not do: it does not generate the `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than

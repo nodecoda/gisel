@@ -118,6 +118,16 @@ gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
 | WP1 | `tools/import-cxx.py`、importer 测试、`PIN.json` → upstream-source | 完成 |
 | WP2 | `ab/*`、`tests/test_ab.py` → ab | 完成 |
 
+双向证据（2026-11-10，三个 target）：
+
+| 方向 | 题面来源 | 结论 | 证据 |
+|---|---|---|---|
+| G：gisel 的规则上游都有 | gisel `cases` | X86/AArch64/RISC-V `disagree=0` | `ab/docs/EVIDENCE-WP2.md` |
+| U：上游的规则 gisel 没漏 | upstream-source `oracle` | 同上，另抓到一处生成语义 bug（已修） | `ab/docs/EVIDENCE-U.md` |
+
+两条都成立是“gisel 可作为内部权威”的前提。当前只覆盖这三个 target；
+其余 6 个是 U 方向计划里的 U5 未完成项，AMDGPU 明确不接。
+
 迁移期间 `tools/` 仍在原处，行为不变。query/answer 格式的 canonical 规范仍是
 本仓库 `spec/cases-format.md`；两个新项目的 `CONTRACTS.md` 只能引用它，不能
 单方面扩展字段。
