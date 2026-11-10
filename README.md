@@ -142,7 +142,7 @@ guessing, and none of the eight corpora is an independent hand-written second
 statement -- they were extracted from LLVM's hand-written C++ constructors
 with our own tooling as a preparation for self-proof.  All of them go straight
 from the hand-written `.cpp` constructor to `.gisel`
-(`tools/import-cxx.py`); the `.td` this project once added in between is no
+(`upstream-source/import/import-cxx.py`); the `.td` this project once added in between is no
 longer used.  `docs/CORPORA.md` says, per corpus, which upstream file it was
 extracted from, which reviewed deviations it carries, and what its frozen
 artifacts can and cannot prove (all three are self-baselines; rule fidelity
@@ -167,13 +167,15 @@ comes from import-cxx --check and the end-to-end A/B).
 upstream-main feature; `docs/CORPORA.md` has the full chain.
 
 Migration and A/B tooling is **workbench**, not a gisel function
-(`docs/SCOPE.md`): `tools/import-inventory.py` prices a target,
-`tools/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
+(`docs/SCOPE.md`): `upstream-source/import/import-inventory.py` prices a target,
+`upstream-source/import/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
 any statement it cannot translate), and `tools/ab/` compares two
 implementations.  `import-cxx` is a one-shot transcriber for the pinned
 constructors, not a general C++ parser: `--all --check` re-transcribes them
 and diffs the checked-in corpora, and a rule-count drift fails loudly.  The evidence lives in `docs/REPORT-riscv.md` and
-`docs/REPORT-ab.md`.
+`docs/REPORT-ab.md`.  The transcriber moved to the sibling `upstream-source`
+checkout in November 2026; `tools/import-cxx.py` is a one-release forwarding
+shim, not an implementation.
 
 `tests/artifacts/` holds the nine frozen C++/JSON artifacts and their
 `SHA256`: three each for X86, AArch64 and RISC-V.  Upstream LLVM main has no
@@ -181,7 +183,7 @@ legalizer `.td` and no `-gen-legalizer`; the rules live in hand-written
 `*LegalizerInfo.cpp` constructors, and the corpora are transcribed from those.
 The artifacts are therefore gisel's own frozen output — a drift baseline, not
 a byte oracle against a second implementation.  Rule fidelity is checked on
-two other layers: `tools/import-cxx.py --check` re-transcribes the pinned C++
+two other layers: `upstream-source import --check` re-transcribes the pinned C++
 and must reproduce the checked-in `.gisel` byte for byte, and `tools/ab/`
 builds the official legalizer and the one carrying our `.inc`, feeds both the
 same answerless query file, and compares the answer streams.

@@ -2,7 +2,7 @@
 
 The artifacts are gisel's own output (a drift baseline), not a second
 implementation's: the ``-gen-legalizer`` backend and the ``.td`` it read are
-retired.  Rule fidelity is gated by ``tools/import-cxx.py --check`` and the
+retired.  Rule fidelity is gated by ``upstream-source/import/import-cxx.py --check`` and the
 end-to-end A/B harness; the frozen artifacts below are gisel's own drift
 baseline, not a second implementation.  ``docs/CORPORA.md`` has the chain.
 """

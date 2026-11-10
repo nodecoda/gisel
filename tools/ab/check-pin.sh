@@ -6,7 +6,7 @@ set -euo pipefail
 # The official side of the A/B harness is not bare upstream: it is the pin
 # commit plus the unmerged PRs listed in PIN.json `patches`.  The corpus
 # deliberately encodes the post-patch behaviour (see the deviations in
-# tools/import-cxx.py), so a tree that lacks one of those commits makes the
+# upstream-source/import/import-cxx.py), so a tree that lacks one of those commits makes the
 # official runner answer with pre-patch rules and every covered query shows up
 # as a disagreement that looks like a translation error.
 #
@@ -15,7 +15,7 @@ set -euo pipefail
 # HEAD.  A tree with no git metadata (a tarball build) is left alone.
 TREE=${1:?usage: check-pin.sh TREE [PIN]}
 ROOT=$(cd "$(dirname "$0")/../.." && pwd)
-PIN=${2:-$ROOT/tests/corpus/PIN.json}
+PIN=${2:-${GS_PIN:-$ROOT/../upstream-source/pin/PIN.json}}
 
 if ! git -C "$TREE" rev-parse --git-dir >/dev/null 2>&1; then
   echo "pin check: $TREE has no git metadata, skipping" >&2

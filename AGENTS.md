@@ -56,7 +56,8 @@
 
 ```bash
 python3 -m pytest -q
-python3 tools/import-cxx.py --all --pin tests/corpus/PIN.json \
+python3 ../upstream-source/import/import-cxx.py --all \
+  --pin ../upstream-source/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check   # 必须 9/9
 ```
 

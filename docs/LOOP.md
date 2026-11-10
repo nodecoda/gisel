@@ -4,7 +4,7 @@
 每一步的入口、产物，以及哪一步有证书。
 
 ```text
-1 钉版本 / 提取   PIN.json ──import-cxx──> tests/corpus/*.gisel
+1 钉版本 / 提取   upstream-source/pin/PIN.json ──import──> tests/corpus/*.gisel
 2 出题            .gisel ──gisel cases──> queries.jsonl（无答案）
 3 对拍            官方程序 + 我们的 inc，同一份 queries ──> official/ours.answers.jsonl, diff.json
 4 归因            diff 的 owner ──> 改 gisel / 记录上游 issue / 记报告
@@ -23,7 +23,8 @@
 证书命令（读 `git show <commit>:<path>`，不读工作区）：
 
 ```sh
-python3 tools/import-cxx.py --all --pin tests/corpus/PIN.json \
+python3 ../upstream-source/import/import-cxx.py --all \
+  --pin ../upstream-source/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
 # 六个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
 ```
@@ -83,7 +84,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 
 | 归因 | 动作 |
 |---|---|
-| 我们的翻译 / emitter / 求值 | 改 `tools/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
+| 我们的翻译 / emitter / 求值 | 改 `upstream-source/import/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
 | 查询生成（题目本身不合法） | 改 `gisel/cases.py`，重算查询数并更新 pin |
 | 上游 | 落 `/home/ubuntu/admin/upstream-issues/`，不在构建树里“顺手修掉”当作结论 |
 | 未定性 | 在 `docs/REPORT-*.md` 里写“未覆盖”，不许并进 agree |

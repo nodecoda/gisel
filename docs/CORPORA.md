@@ -18,11 +18,11 @@
 
 ```text
 上游 X86/AArch64/RISCVLegalizerInfo.cpp（手写 builder 链）
-  -> tools/import-cxx.py -> .gisel
+  -> upstream-source/import/import-cxx.py -> .gisel
   -> gisel gen --emit={inc,check,core}
 ```
 
-`tools/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
+`upstream-source/import/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
 构造函数用到的那一小撮写法，认不出来就带行号拒绝（rc=1），绝不静默丢规则。
 **AArch64 的 pin 指向 `trees/explore` 上打过一个小补丁的源文件**：原文在谓词里
 对非向量 / scalable 类型调 `LLT::getNumElements()` 和 `getSizeInBits()`，断言构建
@@ -65,14 +65,15 @@ GS_X86_SRC=.../X86LegalizerInfo.cpp \
 GS_AARCH64_SRC=.../AArch64LegalizerInfo.cpp \
 GS_RISCV_SRC=.../RISCVLegalizerInfo.cpp \
 GS_M68K_SRC=.../M68kLegalizerInfo.cpp \
-  python3 tools/import-cxx.py --all --check
+  python3 ../upstream-source/import/import-cxx.py --all --check \
+    --pin ../upstream-source/pin/PIN.json
 ```
 
 `--check` 只比对、不写盘；任一目标计数漂移或文本不同都返回 1。生成的 `.gisel`
 头部记录源文件的 sha256，所以“这份语料来自哪份 cpp”不靠记忆。只跑一个目标：
 
 ```sh
-python3 tools/import-cxx.py X86 .../X86LegalizerInfo.cpp \
+python3 ../upstream-source/import/import-cxx.py X86 .../X86LegalizerInfo.cpp \
     --out tests/corpus/X86LegalizerInfo.gisel
 ```
 
@@ -94,20 +95,21 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 
 | 语料 | 上游规则在哪 | 我们的提取路径 | 证据 | 能证明 |
 |---|---|---|---|---|
-| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | 转录 check + gisel 自基线 + 端到端 A/B | 生成器回归；规则保真靠 `tools/ab/` |
+| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | 转录 check + gisel 自基线 + 端到端 A/B | 生成器回归；规则保真靠 `tools/ab/` |
 | AArch64 | `AArch64/GISel/AArch64LegalizerInfo.cpp` | 同上 | 同上 | 同上 |
 | RISC-V | `RISCV/GISel/RISCVLegalizerInfo.cpp` | 同上 | 同上 | 同上 |
-| M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-m68k-end-to-end.sh` |
-| PowerPC | `PowerPC/GISel/PPCLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 98 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-ppc-end-to-end.sh` |
-| WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → `tools/import-cxx.py` → `.gisel` | gisel 自己的输出 + 886 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-wasm-end-to-end.sh` |
+| M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-m68k-end-to-end.sh` |
+| PowerPC | `PowerPC/GISel/PPCLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 98 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-ppc-end-to-end.sh` |
+| WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 886 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-wasm-end-to-end.sh` |
 | ARM | `ARM/ARMLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,614 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-arm-end-to-end.sh` |
 | Mips | `Mips/MipsLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,656 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-mips-end-to-end.sh` |
 | SPIRV | `SPIRV/SPIRVLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 5,136 条端到端对拍 | 生成器回归；规则保真靠 `tools/ab/run-spirv-end-to-end.sh`（4 条两侧都断言，`--expect-unanswerable 4`） |
 
 ## 证据分三层，别混
 
-1. **转录保真（语料层）**：`tools/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
-   并且重新导入能逐字节复现仓库里的 `.gisel`（`tests/test_import_cxx.py`）。
+1. **转录保真（语料层）**：`upstream-source/import/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
+   并且重新导入能逐字节复现 gisel 仓库里的 `.gisel`
+   （`upstream-source/import/tests/test_import_cxx.py`）。
    有偏离的地方在工具里点名，不是暗改。
 2. **规则保真（行为门，工作台）**：`gisel cases` 生成无答案查询，
    `tools/ab/` 把它同时喂给官方构建和 include 了我们 `.inc` 的构建，比较两侧
@@ -122,8 +124,9 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 ## 撤掉的工具
 
 `.td` bootstrap reader 和 `--emit=td` 都已删除，原因与保留项见
-`docs/REPORT-no-td.md`。`tools/import-cxx.py` 留在工作台（`docs/SCOPE.md` §2），
-只负责把目标端 C++ 转成 `.gisel`；它不是 gisel 的运行时依赖。
+`docs/REPORT-no-td.md`。`import-cxx.py` 已迁到独立仓库 `upstream-source/import/`（`docs/SCOPE.md` §7），
+只负责把目标端 C++ 转成 `.gisel`；它不是 gisel 的运行时依赖。gisel 里只留一个
+release 的转发 shim。
 
 `tools/refresh-oracle.sh` 直接调 `gisel gen --emit={inc,core,check}` 刷新
 `tests/artifacts/`。它不再碰 `llvm-tblgen -gen-legalizer*`，因为那套后端和它读的
