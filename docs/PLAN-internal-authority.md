@@ -121,7 +121,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 130 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
 | U 题面 | 上游运行期规则表 + 独立类型宇宙 | 缺 |
 | 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 四个大 target 在 `--refine` 后全 0：X86 277→0、AArch64 2,671→0、RISC-V 2,864→0、Wasm 302→0（`REPORT-graph`） |
-| 不可答点 | 单列，不混入 agree | X86 1,418 条已单列并钉数；AArch64 已归零（`REPORT-cases` §8.2） |
+| 不可答点 | 单列、计数并钉数 | X86 648 条（2026-11-11：删掉按 slot 0 查表的短路后实测；旧 1,418 里 528 条其实可答）；AArch64 domain 39,056/配置；`cases` 侧已归零（`REPORT-cases` §8.2） |
 | 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 有；全量回归未成门禁 |
 | 可复现 | pin 更新自动重跑；产物 sha 固定 | 部分有（`tests/artifacts`） |
 
