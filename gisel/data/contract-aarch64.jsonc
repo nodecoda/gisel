@@ -1,0 +1,134 @@
+// Reconciliation contract for AArch64: what the verifier rejects, and which
+// of those rejections the legalizer turns into an abort.
+//
+// This file is *not* the domain filter (that is contract-shapes.jsonc).  It is
+// the input of `tools/reconcile-contract.py`, which joins it with a domain run
+// and reports:
+//
+//   predicted_verifier  every query the verifier would reject
+//   predicted_crash     the subset marked `"sound": true`
+//   observed            every query the runner could not answer
+//
+// `sound` means measured, not assumed: on the AArch64 domain, failing that
+// check always aborted (zero false positives), so it predicts `unanswerable`.
+// Checks without it are verifier-backed but the legalizer still answers most
+// of those tuples (`Unsupported`), so they do not predict anything.
+//
+// The index-width check of G_EXTRACT/INSERT_VECTOR_ELT is deliberately not
+// encoded: its value is the target's `getVectorIdxWidth`, which lives in the
+// DataLayout, not in this table.
+{
+  "schema": "gisel-contract/1",
+  "target": "aarch64",
+  "rules": [
+    {
+      "opcode": "G_EXTRACT_VECTOR_ELT",
+      "min_slots": 3,
+      "checks": [
+        {"slot": 0, "kind": "scalar_or_pointer"},
+        {"slot": 1, "kind": "vector", "sound": true}
+      ],
+      "source": "MachineVerifier.cpp:2017-2030"
+    },
+    {
+      "opcode": "G_INSERT_VECTOR_ELT",
+      "min_slots": 3,
+      "checks": [
+        {"slot": 0, "kind": "vector"},
+        {"relation": "same_type", "slots": [0, 1]},
+        {"slot": 2, "kind": "scalar_or_pointer"}
+      ],
+      "source": "MachineVerifier.cpp:2040-2060"
+    },
+    {
+      // The verifier also requires one source operand per lane; arity is 2 in
+      // the domain, so this checks the kind and the element type only.
+      "opcode": "G_BUILD_VECTOR",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "vector"},
+        {"slot": 1, "kind": "scalar"},
+        {"relation": "same_element", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:1562-1580"
+    },
+    {
+      "opcode": "G_FPTOSI",
+      "min_slots": 2,
+      "checks": [{"relation": "same_lane_count", "slots": [0, 1]}],
+      "source": "semantics: element-wise conversion keeps lanes"
+    },
+    {
+      "opcode": "G_FPTOUI",
+      "min_slots": 2,
+      "checks": [{"relation": "same_lane_count", "slots": [0, 1]}],
+      "source": "semantics: element-wise conversion keeps lanes"
+    },
+    {
+      "opcode": "G_CTPOP",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer"},
+        {"slot": 1, "kind": "integer"}
+      ],
+      "source": "semantics: population count takes integers (no verifier case)"
+    },
+    {
+      "opcode": "G_CTLZ",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer"},
+        {"slot": 1, "kind": "integer"}
+      ],
+      "source": "semantics: leading-zero count takes integers"
+    },
+    {
+      "opcode": "G_CTTZ",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer"},
+        {"slot": 1, "kind": "integer"}
+      ],
+      "source": "semantics: trailing-zero count takes integers"
+    },
+    {
+      "opcode": "G_CTLS",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer"},
+        {"slot": 1, "kind": "integer"}
+      ],
+      "source": "semantics: leading-sign-bit count takes integers"
+    },
+    {
+      "opcode": "G_SHL",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer"},
+        {"slot": 1, "kind": "integer"},
+        {"relation": "same_shape", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:2217-2226 + integer semantics"
+    },
+    {
+      "opcode": "G_ASHR",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer"},
+        {"slot": 1, "kind": "integer"},
+        {"relation": "same_shape", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:2217-2226 + integer semantics"
+    },
+    {
+      "opcode": "G_LSHR",
+      "min_slots": 2,
+      "checks": [
+        {"slot": 0, "kind": "integer"},
+        {"slot": 1, "kind": "integer"},
+        {"relation": "same_shape", "slots": [0, 1]}
+      ],
+      "source": "MachineVerifier.cpp:2217-2226 + integer semantics"
+    }
+  ]
+}

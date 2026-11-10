@@ -64,14 +64,20 @@ def _same_lane_count(a, b):
 
 
 def _same_element(a, b):
+    # Total function: `evaluate` may run a relation whose slot-kind check
+    # already failed.  A non-vector has no element, so the relation fails.
+    if not (E.is_vector(a) and E.is_vector(b)):
+        return False
     return E.llt_eq(a[3], b[3])
 
 
 _RELATIONS = {
+    "same_type": E.llt_eq,
     "same_lane_count": _same_lane_count,
     "same_element": _same_element,
     "same_shape": lambda a, b: E.is_vector(a) == E.is_vector(b),
-    "dest_lanes_double": lambda dst, src: dst[1] == src[1] * 2,
+    "dest_lanes_double": lambda dst, src: (
+        E.is_vector(dst) and E.is_vector(src) and dst[1] == src[1] * 2),
 }
 
 
@@ -112,35 +118,31 @@ def _strip_jsonc(text):
     return "".join(out)
 
 
+def _check_ok(check, types):
+    if "slot" in check:
+        if check["slot"] >= len(types):
+            return False
+        return _KINDS[check["kind"]](types[check["slot"]])
+    if "all_slots" in check:
+        kind = _KINDS[check["all_slots"]]
+        return all(kind(t) for t in types)
+    if check.get("relation") == "same_element_all":
+        first = types[0][3] if E.is_vector(types[0]) else types[0]
+        if not all(E.llt_eq(t[3] if E.is_vector(t) else t, first)
+                   for t in types):
+            return False
+        return all(E.is_vector(t) and t[2] == types[0][2] for t in types)
+    slots = check.get("slots", [])
+    if any(s >= len(types) for s in slots):
+        return False
+    fn = _RELATIONS[check["relation"]]
+    return all(fn(types[a], types[b]) for a, b in zip(slots, slots[1:]))
+
+
 def _branch_ok(branch, types):
     if "min_slots" in branch and len(types) < branch["min_slots"]:
         return False
-    for check in branch.get("checks", []):
-        if "slot" in check:
-            if check["slot"] >= len(types):
-                return False
-            if not _KINDS[check["kind"]](types[check["slot"]]):
-                return False
-        elif "all_slots" in check:
-            kind = _KINDS[check["all_slots"]]
-            if not all(kind(t) for t in types):
-                return False
-        elif check.get("relation") == "same_element_all":
-            first = types[0][3] if E.is_vector(types[0]) else types[0]
-            if not all(E.llt_eq(t[3] if E.is_vector(t) else t, first)
-                       for t in types):
-                return False
-            if not all(E.is_vector(t) and t[2] == types[0][2] for t in types):
-                return False
-        else:
-            slots = check.get("slots", [])
-            if any(s >= len(types) for s in slots):
-                return False
-            fn = _RELATIONS[check["relation"]]
-            if not all(fn(types[a], types[b])
-                       for a, b in zip(slots, slots[1:])):
-                return False
-    return True
+    return all(_check_ok(check, types) for check in branch.get("checks", []))
 
 
 def validate(document, path="<contract>"):
@@ -187,10 +189,28 @@ def table(path=None):
 
 def check(opcode, types, path=None):
     """True when the tuple is a question the verifier could pass to us."""
+    return evaluate(opcode, types, path)["in_contract"]
+
+
+def evaluate(opcode, types, path=None):
+    """The decision plus the failed checks, for reconciliation reports.
+
+    A check may carry `"sound": true`.  That is the reconciliation contract:
+    failing it is not only out of contract, it makes the legalizer abort.  The
+    distinction matters -- most verifier-invalid tuples are still answered
+    (`Unsupported`), so only the sound subset predicts `unanswerable`.
+    """
     rule = table(path).get(opcode)
     if rule is None:
-        return True
+        return {"in_contract": True, "failed": [], "branch": None}
     if rule.get("short_ok") and len(types) < rule.get("min_slots", 0):
-        return True
+        return {"in_contract": True, "failed": [], "branch": None}
     branches = rule.get("any_of") or [rule]
-    return any(_branch_ok(branch, types) for branch in branches)
+    best = None
+    for branch in branches:
+        failed = [c for c in branch.get("checks", []) if not _check_ok(c, types)]
+        if not failed:
+            return {"in_contract": True, "failed": [], "branch": None}
+        if best is None or len(failed) < len(best):
+            best = failed
+    return {"in_contract": False, "failed": best, "branch": rule}

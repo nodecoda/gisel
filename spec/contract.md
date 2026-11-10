@@ -62,6 +62,39 @@ AArch64 baseline（2026-11-11，`ab/docs/EVIDENCE-domain.md`）：
 题面少 38,416 条、`unanswerable` 从 39,056 降到 640。这会改变所有已冻结的
 分母，所以本轮**只测量、不改表**：先让数字可解释，再决定要不要收窄域。
 
+### 3.1 对账是可复算的
+
+`tools/reconcile-contract.py` 把三件事分开打印（契约表是
+`gisel/data/contract-aarch64.jsonc`，`"sound": true` 标出实测零误伤的检查）：
+
+```sh
+python3 tools/reconcile-contract.py \
+  /tmp/ab-domain/a64-domain-r5/baseline/queries.jsonl \
+  /tmp/ab-domain/a64-domain-r5/baseline/ours.answers.jsonl
+```
+
+```text
+queries               936960
+answered              897904
+observed unanswerable  39056
+predicted (verifier)  227875
+predicted (crash)      38416
+crash - observed           0
+observed - crash         640
+verifier - observed   188819
+    residual G_CTPOP 138 / G_CTLZ 94 / G_CTLS 94 / G_CTTZ 62
+             G_SHL 54 / G_ASHR 54 / G_LSHR 54 / G_FPTOSI 42 / G_FPTOUI 42
+             G_BUILD_VECTOR 6
+```
+
+三行结论：
+
+- `predicted_crash ⊆ observed`（差 0）——这条可以当门禁；
+- `observed - crash = 640`——就是 §3 表里除 `:511` 以外的全部；
+- `verifier - observed = 188,819`——verifier 契约比“不可答”宽两个数量级。
+  所以 **C8 不能写成“契约外 ⊆ 不可答”**：那要求 18.9 万条本该被答的题都崩，
+  与事实相反。
+
 剩下的 640 条才是契约层面的真问题：verifier 不拒绝这些形状（或不检查这些
 opcode），规则却在上游断言。它们是下一轮 upstream issue 的候选，不是 gisel
 的翻译错误——两侧字节一致。

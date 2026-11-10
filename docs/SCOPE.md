@@ -35,6 +35,7 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 | `tools/refresh-oracle.sh` | 用 `gisel gen` 刷新 `tests/artifacts/` | `gen --emit={inc,core,check}` |
 | `ab`（独立仓库） | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
 | `ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.jsonl`；比较与退出码在本文件 |
+| `tools/reconcile-contract.py` | 把“契约外”与“不可答”对账：预测 crash 子集、观测不可答、两个差集 | `domain` 的查询 + 一侧答案 + `data/contract-aarch64.jsonc` |
 
 这一层的共同特征：**输入或对照物来自 gisel 之外**（LLVM 源码、llvm-tblgen、
 编译产物、另一个实现的答案）。它们是 gisel 产物的**消费者**：gisel 出 `.inc`
