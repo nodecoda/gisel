@@ -400,7 +400,29 @@ def _same_lane_count(a, b):
         not E.is_vector(a) or a[1] == b[1])
 
 
+def _integer_scalar_or_vector(t):
+    """True for the result of a comparison: integer scalar or integer vector."""
+    return (not E.is_vector(t) and t[0] == "scalar") or (
+        E.is_vector(t) and t[3][0] == "scalar")
+
+
 def type_shape_ok(opcode, types):
+    if opcode in ("G_ICMP", "G_FCMP"):
+        # type0 is the comparison result: an integer (or integer vector).
+        # A float there is not a question the legalizer can be asked; without
+        # this check `narrow(slot(0), s8)` turns f16 into f8 and the graph
+        # reports a bogus domain exit.  MachineVerifier.cpp:1622 additionally
+        # requires both sides to agree on scalar-vs-vector and lane count.
+        if len(types) < 2:
+            return False
+        # The operand slot is deliberately not kind-checked: X86's table
+        # constrains it by size only (`legalFor({s8, s32})` touches type 0,
+        # `clampScalar(1, s32, ...)` preserves the kind), so `s32` there is a
+        # question the table really answers.  The result slot, by contrast,
+        # is always an integer; a float there is not valid MIR.
+        if not _integer_scalar_or_vector(types[0]):
+            return False
+        return _same_lane_count(types[0], types[1])
     if opcode == "G_MERGE_VALUES":
         # MachineVerifier.cpp: G_MERGE_VALUES takes scalars only.
         return all(not E.is_vector(t) for t in types)

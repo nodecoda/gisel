@@ -58,15 +58,15 @@ python3 -m gisel graph /tmp/gisel-graph-report/fixture.gisel \
 ```sh
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --json > /tmp/graph-x86.json
-# rc=0, 65.8 s
+# rc=0, 61.1 s
 ```
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| C0 | 66,888 | 26,630 | 26,630 | 30,634 | 6,856 | 1,016 | 1,752 | 10,343 | 3,985 | 0 |
-| C1 | 66,877 | 24,943 | 24,943 | 31,349 | 7,777 | 1,020 | 1,788 | 10,343 | 3,974 | 0 |
-| C2 | 66,809 | 24,543 | 24,543 | 31,214 | 8,240 | 1,020 | 1,792 | 10,343 | 4,021 | 0 |
-| C3 | 66,888 | 26,416 | 26,416 | 30,629 | 7,157 | 1,016 | 1,670 | 10,343 | 3,985 | 0 |
+| C0 | 65,286 | 25,902 | 25,902 | 29,974 | 6,856 | 1,016 | 1,538 | 11,945 | 3,985 | 0 |
+| C1 | 65,275 | 24,282 | 24,282 | 30,660 | 7,657 | 1,020 | 1,656 | 11,945 | 3,974 | 0 |
+| C2 | 65,207 | 23,882 | 23,882 | 30,525 | 8,120 | 1,020 | 1,660 | 11,945 | 4,021 | 0 |
+| C3 | 65,286 | 25,707 | 25,707 | 29,988 | 7,037 | 1,016 | 1,538 | 11,945 | 3,985 | 0 |
 
 `uncovered` 始终是两个 variadic opcode：`G_INTRINSIC`、`G_INTRINSIC_W_SIDE_EFFECTS`
 （bundled opcode manifest 没有固定槽数）。
@@ -74,10 +74,10 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 `shape` 是 shift/rotate 的形状约束丢掉的类元组数（见 §5）；它不含在 `states`
 里，也不假装成 `outside`。
 
-与上一版的差别全部来自有限域的定义，不是规则或分区变了：轴里本来就有的哨兵
-（`s32`/`s64`/`s128`/`f16`/`f32`/`f64`…）现在算域内，于是原先记成 `outside`
-的代表点变成 `moves`。states 不变，C1 的 edges 从 23,874 涨到 24,943，
-outside 从 2,857 降到 1,788，正好一一对应。
+与 2026-11-10 早些时候的快照相比，C1 的 states 从 66,877 降到 65,275、
+edges 从 24,943 降到 24,282、outside 从 1,788 降到 1,656：差异来自比较类
+`G_ICMP`/`G_FCMP` 的结果槽过滤（type0 必须是整数），而不是规则或分区变了。
+`shape` 从 10,343 升到 11,945，因为被过滤掉的比较结果类元组不再建状态。
 
 ## 3 X86 C1 的闭包审计
 
@@ -90,11 +90,11 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 
 | 指标 | 值 |
 |---|---:|
-| states | 66,877 |
+| states | 65,275 |
 | closure.ok | false |
-| closure.count | 318 |
+| closure.count | 277 |
 | kinds.partition | 232 |
-| kinds.outside | 86 |
+| kinds.outside | 45 |
 | cycles（代表点商图） | 0 |
 
 加上 `--refine` 后闭包成立：
@@ -103,18 +103,32 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --config C1 \
   --check-closure --refine --json > /tmp/graph-x86-c1-refine.json
-# rc=0, 20.4 s
-# states 67,360; classes 3,974 -> 4,017 (+43, 1.1%); cycles 0
+# rc=0, 20.2 s
+# states 65,717; classes 3,974 -> 4,017 (+43, 1.1%); cycles 0
 # closure {ok: true, count: 0}
 ```
 
-318 的构成：
+277 的构成：
 
-- `partition`：同一类里的成员落到多个目标类（集中在 `G_ANYEXT` 等按宽度走不同
-  `changeTo` 的规则）；
-- `outside`：同一类里既有成员在域内、又有成员被推到**枚举域外**。剩下的 86 条
-  是真正的覆盖债：X86 上目标集中在 `s256`（41）、`f8`（41）、`v128s8`（4）——
-  这些宽度/形状没有任何候选轴枚举到。
+- `partition` 232：同一类里的成员落到多个目标类（集中在 `G_ANYEXT` 等按宽度走
+  不同 `changeTo` 的规则）。
+- `outside` 45：同一类里既有成员在域内、又有成员被推到**枚举域外**。2026-11-10
+  逐条看完全部 45 条，只剩两类真实中间类型：
+  - `s256`（41）：`G_ANYEXT` 的 `widenScalarToNextPow2(0, 8)` 作用在轴里的
+    `s129`（`s128` 的 +1 邻居）上，上游确实先得到 `s256`，再由下一条
+    `clampScalar(0, s8, sMaxScalar)` 收回 `s128`；
+  - `v128s8`（4）：`G_CONSTANT_FOLD_BARRIER` 的 `moreElementsToNextPow2(0)`
+    把轴里的 `v65s8` 推到 `v128s8`，再由 `clampNumElements` 收回 `v64s8`。
+
+  这两类不是规则错误，也不是图算错：它们是 mutation 的真实中间类型。把
+  `s256` / `v128s8` 补进轴只会把 `outside` 改记成 `partition`（同一个类仍然
+  落到多个目标类），所以让闭包成立的手段是 `--refine`，不是补一个类型字面量。
+
+另一类曾被记成 outside 的 41 条 `f8` 是**伪查询**，已修：`G_FCMP` 的 type0 是
+比较结果，只能是整数；旧轴把 `f16` 放进 slot 0，于是 `clampScalar(0, s8, s8)`
+把它窄成 `f8`。`analysis.type_shape_ok` 现在拒绝浮点结果（`G_ICMP` 同样拒绝
+指针/浮点结果），所以 X86 的 outside 从 86 降到 45，states 从 66,877 降到
+65,275，edges 从 24,943 降到 24,282。
 
 `--check-closure` 的语义在 2026-11-10 改过（见 `spec/graph.md` §负控和闭包）：
 它现在审计**每个非 opaque 状态的全部成员**，不再只审计有出边的代表点；域外
@@ -146,7 +160,7 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| rv64gc | 566,006 | 41,915 | 41,915 | 432,723 | 58,995 | 29,175 | 3,198 | 19,646 | 8,551 | 0 |
+| rv64gc | 555,339 | 38,165 | 38,165 | 425,878 | 58,984 | 29,114 | 3,198 | 30,313 | 8,551 | 0 |
 
 `uncovered = ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']`
 （imm 轴或 variadic 槽数未给定）。
@@ -166,19 +180,19 @@ RISC-V 是唯一一个“refine 几乎不动”的大 target：它的违规集�
 python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json --config baseline --json \
   > /tmp/graph-a64.json
-# rc=0, 455.0 s, 1.4 GB RSS
+# rc=0, 455.4 s, 1.4 GB RSS
 ```
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| baseline | 1,152,444 | 199,410 | 199,410 | 452,941 | 275,101 | 211,204 | 13,788 | 44,115 | 15,773 | **0** |
+| baseline | 1,141,649 | 197,779 | 197,779 | 451,816 | 274,504 | 204,751 | 12,799 | 54,910 | 15,773 | **0** |
 
 `uncovered = ['G_SEXTLOAD', 'G_LOAD', 'G_STORE', 'G_INDEXED_LOAD',
 'G_INDEXED_SEXTLOAD', 'G_INDEXED_ZEXTLOAD', 'G_INTRINSIC',
 'G_INTRINSIC_W_SIDE_EFFECTS']`（memory/imm 轴或 variadic 槽数未给定）。
 
 闭包（不带 refine）：`count=2,671`（`partition 178` / `outside 2,493`），rc=1。
-带 refine：**`count=0`，rc=0**；states 1,152,444 → 1,153,067，classes
+带 refine：**`count=0`，rc=0**；states 1,141,649 → 1,142,272，classes
 15,773 → 15,916（+143, 0.9%），cycles 0。所以 AArch64 的 0 环在 `--refine`
 下是完整结论。
 
@@ -242,15 +256,16 @@ cycles        147 ->         0
 
 ## 6 其它 target 的闭包（2026-11-10 补测）
 
-同一套命令，`--check-closure`，多配置 target 跑全部配置：
+同一套命令，`--check-closure`，多配置 target 跑全部配置。ARM / Mips 的
+`states` 是单配置值（各配置的状态数相同），不是 7 个配置之和：
 
 | target | configs | states | closure.count | partition | outside | refine 后 | rc |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| ARM | 7 | 15,629 | **0** | 0 | 0 | — | 0 |
-| Mips | 5 | 23,972 | **0** | 0 | 0 | — | 0 |
-| PowerPC | 1 | 7,911 | **0** | 0 | 0 | — | 0 |
+| ARM | 7 | 14,721 | **0** | 0 | 0 | — | 0 |
+| Mips | 5 | 22,968 | **0** | 0 | 0 | — | 0 |
+| PowerPC | 1 | 7,402 | **0** | 0 | 0 | — | 0 |
 | M68k | 1 | 1,232 | **0** | 0 | 0 | — | 0 |
-| WebAssembly | 4 | 27,588 | 302 | 168 | 134 | 143（1,945→2,008 类） | 1 |
+| WebAssembly | 4 | 26,818 | 302 | 168 | 134 | 143（1,945→2,008 类） | 1 |
 | SPIR-V | 6 | — | 未覆盖 | — | — | — | — |
 
 WebAssembly 的残余：12 条显式 `i128`（轴里只有 `i8`/`i16`/`i32`/`i64`），
@@ -280,9 +295,9 @@ RISC-V、AArch64 同样丢掉了大量真实边。
 
 | target | closure（修前） | closure（修后） | edges |
 |---|---:|---:|---|
-| X86 C1 | 321 (P228/O93) | 318 (P232/O86) | 23,874 → 24,943 |
-| AArch64 baseline | 2,629 (P178/O2,451) | 2,671 (P178/O2,493) | 189,983 → 199,410 |
-| RISC-V rv64gc | 4,139 (P378/O3,761) | 2,864 (P610/O2,254) | 37,841 → 41,915 |
+| X86 C1 | 321 (P228/O93) | 277 (P232/O45) | 23,874 → 24,282 |
+| AArch64 baseline | 2,629 (P178/O2,451) | 2,671 (P178/O2,493) | 189,983 → 197,779 |
+| RISC-V rv64gc | 4,139 (P378/O3,761) | 2,864 (P610/O2,254) | 37,841 → 38,165 |
 | ARM | 67 (O67) | **0** | — |
 | Mips | 67 (O67) | **0** | — |
 | PowerPC | 11 (O11) | **0** | — |

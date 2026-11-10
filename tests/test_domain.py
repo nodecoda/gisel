@@ -27,7 +27,7 @@ class X86Domain(unittest.TestCase):
         # that -gen-legalizer also emits; minus the points whose type tuple
         # cannot be a real MIR instruction (see `cases.type_shape_ok`).  The
         # shift family alone drops 768: 256 each for G_SHL/G_LSHR/G_ASHR.
-        self.assertEqual(len(rows), 23793)
+        self.assertEqual(len(rows), 22835)
         types, mems, _ = domain.domain_axes(X86)
         self.assertEqual(len(types), 24)
         self.assertEqual(len(mems), 23)
@@ -47,7 +47,7 @@ class X86Domain(unittest.TestCase):
 
     def test_pointer_width_is_a_configuration_axis(self):
         rows = self.rows(pointer_width=32)
-        self.assertEqual(len(rows), 23793)
+        self.assertEqual(len(rows), 22835)
         values = {t for r in rows for t in r["types"]}
         self.assertIn("p0:32", values)
         self.assertIn("v2p0:32", values)

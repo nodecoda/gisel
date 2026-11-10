@@ -267,6 +267,22 @@ class VerifierShapes(unittest.TestCase):
         self.assertTrue(cases.type_shape_ok("G_FPTOSI_SAT", ok))
         self.assertFalse(cases.type_shape_ok("G_FPTOSI_SAT", short))
 
+    def test_comparison_result_is_integer(self):
+        # type0 of G_ICMP/G_FCMP is the comparison result.  A float there is
+        # not valid MIR; X86 G_FCMP previously accepted f16 in slot 0, then
+        # `clampScalar(0, s8, s8)` turned it into f8 and the graph counted a
+        # bogus `outside`.  The operand slot stays unconstrained by kind:
+        # X86's table compares it by size only.
+        ints = [E.parse_case_llt("s8"), E.parse_case_llt("s32")]
+        floats = [E.parse_case_llt("f16"), E.parse_case_llt("f16")]
+        mixed = [E.parse_case_llt("v4s32"), E.parse_case_llt("v4f32")]
+        bad_lanes = [E.parse_case_llt("v4s32"), E.parse_case_llt("v2f32")]
+        self.assertTrue(cases.type_shape_ok("G_ICMP", ints))
+        self.assertFalse(cases.type_shape_ok("G_ICMP", floats))
+        self.assertTrue(cases.type_shape_ok("G_FCMP", mixed))
+        self.assertFalse(cases.type_shape_ok("G_FCMP", bad_lanes))
+        self.assertFalse(cases.type_shape_ok("G_FCMP", floats))
+
     def test_shifts_and_rotates_keep_one_shape_category(self):
         # MachineVerifier.cpp: "Shifts and rotates require operands to be
         # either all scalars or all vectors".  A mixed pair never reaches the

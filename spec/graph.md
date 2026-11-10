@@ -92,6 +92,11 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
   （`MachineVerifier.cpp`："Shifts and rotates require operands to be either
   all scalars or all vectors"）。一个 `(v16i8, s32)` 的 shift 查询没有
   任何 MIR 能表达，官方侧在 legalizer 之前就会拒绝，所以它不是状态。
+  `G_ICMP`/`G_FCMP` 的 type0 是**比较结果**，必须是整数标量或整数向量，
+  且与操作数同为标量或同为向量、lane 数相同（`MachineVerifier.cpp:1622`）；
+  浮点或指针结果不是合法查询。操作数槽不做 kind 检查：X86 的表只按宽度
+  约束它（`legalFor({s8, s32})` 只覆盖 type0，`clampScalar(1, ...)` 保留
+  kind），所以整数 `s32` 操作数是表真的会回答的问题。
 - 其余结果在同一 opcode 内重新分类并建一条边；mutation 不得改变 opcode。
 
 边标签包含 action、type index 和 `(ruleset_index, rule_index)`。DFS 使用三色
@@ -147,6 +152,11 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 “后继是状态函数”这件事没有反例，`closure.ok` 仍为真，域外本身只记在
 `outcomes.outside` 里。两类性质不同——`partition` 说明分区不够细，`outside`
 说明覆盖面不够广。该选项本身不改变类划分。
+
+`outside` 也包含 mutation 的**真实中间类型**：例如 `G_ANYEXT` 把 `s129` 推到
+`s256`、`G_CONSTANT_FOLD_BARRIER` 把 `v65s8` 推到 `v128s8`，上游随后会用下一条
+`clamp` 规则把它们收回。它们不是规则错误；把目标类型补进轴只会把 `outside`
+改记成 `partition`（同一个类仍落到多个目标类），所以闭包仍要靠 `--refine`。
 
 “退出有限域”的判定只有一个入口（`graph.Domain.successor`）：新类型必须同时
 （a）在**本次图枚举的有限域**里、（b）在当前 opcode 的类表里有类。两个条件
