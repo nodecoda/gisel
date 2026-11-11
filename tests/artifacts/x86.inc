@@ -256,8 +256,8 @@
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
-      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
+      .minScalarSameAs(0, 1)
+      .maxScalarSameAs(0, 1);
   if (X_HasLZCNT) {
     getActionDefinitionsBuilder(G_CTLZ)
         .legalFor({{X_s16, X_s16}, {X_s32, X_s32}})
@@ -267,16 +267,16 @@
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
-      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
+      .minScalarSameAs(0, 1)
+      .maxScalarSameAs(0, 1);
   getActionDefinitionsBuilder(G_CTTZ_ZERO_POISON)
       .legalFor({{X_s16, X_s16}, {X_s32, X_s32}})
       .legalFor(X_Is64Bit, {{X_s64, X_s64}})
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
-      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
+      .minScalarSameAs(0, 1)
+      .maxScalarSameAs(0, 1);
   if (X_HasBMI) {
     getActionDefinitionsBuilder(G_CTTZ)
         .legalFor({{X_s16, X_s16}, {X_s32, X_s32}})
@@ -286,8 +286,8 @@
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, X_s16)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, X_sMaxScalar)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
-      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
+      .minScalarSameAs(0, 1)
+      .maxScalarSameAs(0, 1);
   getActionDefinitionsBuilder(G_BR)
       .alwaysLegal();
   getActionDefinitionsBuilder(G_BRCOND)

@@ -58,7 +58,7 @@ Decl     := Feature(name, cxx) | NamedType(name, LLT, source)
           | TypeSet(name, value)
           | TypeList(name, value)
 RuleSet  := (name, opcodes: str+, rules: Rule*, comments, coverage, line)
-Rule     := { op, action, type_idx, on?, to?, predicate, line }
+Rule     := { op, action, type_idx, on?, to?, predicate, guarded, line }
 LLT      := Scalar(bits) | Integer(bits) | Float(bits) | BFloat16
           | Pointer(addrspace, bits|*) | Vector(lanes, scalable, elem)
 ```
@@ -188,7 +188,17 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 ## 6 正常形（schema 0.4）
 
 `--emit=core` 输出的 JSON 是契约：`schema/version/config/escapes/domain/rulesets`，
-每条规则 `{predicate, op, on, to, action, type_idx?, origin}`。
+每条规则 `{predicate, op, on, to, action, type_idx?, guarded, origin}`。
+
+`guarded` 记录源文件里这条规则**写了 `when`**，与 `predicate` 是否是字面
+`true` 无关：`widen(slot(1), same_as(0)) when true` 的 `predicate` 是
+`true` 而 `guarded` 是 `true`。它只影响 `.inc` 里 `same_as` 的拼写——
+上游 `minScalarEltSameAsIf(always, ...)` 会 `markAllIdxsAsCovered()`，
+`minScalarSameAs(...)` 只记两个下标，目标的 `legalizer-info-validation.mir`
+钉住这个差别。例外的例外：`when` 恰好是整组规则共用的 feature gate 时，
+`.inc` 把它提升成外层 `if (gate) { ... }`（`llvm_inc.py:_gate_plan`），
+块内的规则已经没有逐条 guard，此时按无 guard 拼写（RISC-V
+`G_CTLZ`/`G_CTPOP`）——上游在那个分支里写的就是 `scalarSameSizeAs`。
 `domain.imms` 是谓词里出现过的 `imm(i)` 的**下标**集合（升序去重），
 和 `domain.types` 并列；LLVM 侧的同名字段目前恒为 `[]`（`LegalizerInfoEmitter.cpp:4933`）。三处重拼
 （记录名→LLT、指针通配符、`select` 类型）见 `gisel/backend/core_json.py:1-15`

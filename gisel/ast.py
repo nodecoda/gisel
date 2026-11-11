@@ -190,6 +190,7 @@ class Rule:
     to: dict | None
     predicate: dict
     line: int
+    guarded: bool = False
 
     # Backends still read a few keys positionally; keep that spelling local
     # to the renderers instead of reintroducing a dict model in the AST.
@@ -694,7 +695,8 @@ def parse_program(text: str) -> Program:
                 on=_convert_node(r.get("on"), resolve_name),
                 to=_convert_node(r.get("to"), resolve_name),
                 predicate=_convert_node(r["predicate"], resolve_name),
-                line=r.get("_line", ln)))
+                line=r.get("_line", ln),
+                guarded=r.get("guarded", False)))
         rulesets.append(RuleSet(name, opcodes, rules, comments, coverage, ln))
 
     return Program(decls, rulesets, features, preds, named_types,
@@ -975,4 +977,5 @@ def _rule_key(rule: Rule):
         return x
     return {"op": rule.op, "action": rule.action, "type_idx": rule.type_idx,
             "on": freeze(rule.on), "to": freeze(rule.to),
+            "guarded": rule.guarded,
             "predicate": freeze(rule.predicate), "_line": rule.line}

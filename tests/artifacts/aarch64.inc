@@ -169,10 +169,10 @@
       .clampMinNumElements(0, A_s64, (A_v2s64).getNumElements())
       .clampMaxNumElements(0, A_s64, (A_v2s64).getNumElements())
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 0)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
+      .minScalarSameAs(1, 0)
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0)
-      .coreMinScalarSameAs([=](const LegalityQuery &Query) { return Query.Types[0].isVector(); }, 1, 0)
-      .coreMaxScalarSameAs([=](const LegalityQuery &Query) { return Query.Types[0].isVector(); }, 1, 0);
+      .minScalarEltSameAsIf([=](const LegalityQuery &Query) { return Query.Types[0].isVector(); }, 1, 0)
+      .maxScalarEltSameAsIf([=](const LegalityQuery &Query) { return Query.Types[0].isVector(); }, 1, 0);
   getActionDefinitionsBuilder(G_PTR_ADD)
       .legalFor({{A_p0, A_i64}, {A_v2p0, A_v2i64}})
       .coreMinScalarOrElt([](const LegalityQuery &) { return true; }, 1, A_s64)
@@ -272,8 +272,8 @@
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, A_s128)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreWidenScalarOrEltToNextPow2OrMinSize([](const LegalityQuery &) { return true; }, 0, 8)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
+      .minScalarEltSameAsIf([=](const LegalityQuery &Query) { return true; }, 1, 0)
+      .maxScalarEltSameAsIf([=](const LegalityQuery &Query) { return true; }, 1, 0)
       .clampMinNumElements(0, A_s8, (A_v8s8).getNumElements())
       .clampMaxNumElements(0, A_s8, (A_v16s8).getNumElements())
       .clampMinNumElements(0, A_s16, (A_v4s16).getNumElements())
@@ -298,8 +298,8 @@
       .clampMaxNumElements(0, A_s32, (A_v4s32).getNumElements())
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 0)
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 32); }, 0)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
-      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1);
+      .minScalarSameAs(0, 1)
+      .maxScalarSameAs(0, 1);
   getActionDefinitionsBuilder(G_INSERT_SUBVECTOR)
       .lower();
   getActionDefinitionsBuilder(G_CTLZ_ZERO_POISON)
@@ -309,8 +309,8 @@
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 32)
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, A_s32)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, A_s64)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
-      .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 0, 1)
+      .minScalarSameAs(0, 1)
+      .maxScalarSameAs(0, 1)
       .legalFor(A_HasCSSC, {A_s32, A_s64})
       .customFor(!A_HasCSSC, {A_s32, A_s64});
   getActionDefinitionsBuilder(G_CTTZ_ZERO_POISON)
@@ -500,7 +500,7 @@
       .coreMinScalar([](const LegalityQuery &) { return true; }, 0, A_s32)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, A_s32)
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[1]).getScalarSizeInBits() > 64); }, 1)
-      .coreMinScalarSameAs([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[1].isPointerVector())) && (((Query.Types[0]).getElementType() != (Query.Types[1]).getElementType())); }, 0, 1)
+      .minScalarEltSameAsIf([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[1].isPointerVector())) && (((Query.Types[0]).getElementType() != (Query.Types[1]).getElementType())); }, 0, 1)
       .coreMinScalarOrElt([=](const LegalityQuery &Query) { return (Query.Types[1] == A_v2s16); }, 1, A_s32)
       .coreMinScalarOrElt([=](const LegalityQuery &Query) { return Query.Types[1].isPointerVector(); }, 0, A_s64)
       .coreMoreElementsToNextPow2([](const LegalityQuery &) { return true; }, 1)
@@ -523,7 +523,7 @@
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, A_s32)
       .coreWidenTo([=](const LegalityQuery &Query) { return ((!(A_HasFP16)) && (((Query.Types[1]).getScalarType()).isFloat16())) || (((Query.Types[1]).getScalarType()).isBFloat16()); }, 1, [=](const LegalityQuery &Query) { return std::make_pair(1, (Query.Types[1]).changeElementType(A_f32)); })
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[1]).getScalarSizeInBits() > 64); }, 1)
-      .coreMinScalarSameAs([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[1].isPointerVector())) && (((Query.Types[0]).getElementType() != (Query.Types[1]).getElementType())); }, 0, 1)
+      .minScalarEltSameAsIf([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (!(Query.Types[1].isPointerVector())) && (((Query.Types[0]).getElementType() != (Query.Types[1]).getElementType())); }, 0, 1)
       .clampMinNumElements(1, A_s16, (A_v4s16).getNumElements())
       .clampMaxNumElements(1, A_s16, (A_v8s16).getNumElements())
       .clampMinNumElements(1, A_s32, (A_v2s32).getNumElements())
@@ -670,7 +670,7 @@
       .coreMinScalar([](const LegalityQuery &) { return true; }, 1, A_s32)
       .coreMaxScalar([](const LegalityQuery &) { return true; }, 1, A_s32)
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0)
-      .coreMinScalarSameAs([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (Query.Types[1].isVector()); }, 1, 0)
+      .minScalarEltSameAsIf([=](const LegalityQuery &Query) { return (Query.Types[0].isVector()) && (Query.Types[1].isVector()); }, 1, 0)
       .coreLowerIf([=](const LegalityQuery &Query) { return Query.Types[0].isVector(); });
   getActionDefinitionsBuilder(G_FRAME_INDEX)
       .legalFor({A_p0});
@@ -798,7 +798,7 @@
       .coreMinScalarOrElt([](const LegalityQuery &) { return true; }, 0, A_s8)
       .coreWidenVectorEltsToVectorMinSize([](const LegalityQuery &) { return true; }, 0, 64)
       .coreWidenScalarOrEltToNextPow2([](const LegalityQuery &) { return true; }, 0)
-      .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+      .minScalarSameAs(1, 0);
   getActionDefinitionsBuilder(G_BUILD_VECTOR_TRUNC)
       .lower();
   getActionDefinitionsBuilder(G_SPLAT_VECTOR)

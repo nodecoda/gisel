@@ -200,14 +200,14 @@
       getActionDefinitionsBuilder(G_CTLZ_ZERO_POISON)
           .coreMinScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
           .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-          .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-          .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+          .minScalarSameAs(1, 0)
+          .maxScalarSameAs(1, 0);
     } else {
       if (!R_hasVendorXTHeadBb) {
         getActionDefinitionsBuilder(G_CTLZ_ZERO_POISON)
             .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-            .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-            .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+            .minScalarSameAs(1, 0)
+            .maxScalarSameAs(1, 0);
       }
     }
   }
@@ -216,8 +216,8 @@
   if (!R_hasStdExtZbb) {
     getActionDefinitionsBuilder(G_CTTZ_ZERO_POISON)
         .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-        .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-        .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+        .minScalarSameAs(1, 0)
+        .maxScalarSameAs(1, 0);
   }
   getActionDefinitionsBuilder(G_CTTZ_ZERO_POISON)
       .lower();
@@ -228,8 +228,8 @@
         .coreMinScalar([](const LegalityQuery &) { return true; }, 0, R_s32)
         .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
         .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
-        .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-        .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+        .minScalarSameAs(1, 0)
+        .maxScalarSameAs(1, 0);
   }
   if (!R_hasStdExtZbb) {
     if (R_hasVendorXTHeadBb) {
@@ -237,14 +237,14 @@
           .legalFor({{R_sXLen, R_sXLen}})
           .coreMinScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
           .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-          .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-          .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+          .minScalarSameAs(1, 0)
+          .maxScalarSameAs(1, 0);
     } else {
       if (!R_hasVendorXTHeadBb) {
         getActionDefinitionsBuilder(G_CTLZ)
             .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-            .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-            .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
+            .minScalarSameAs(1, 0)
+            .maxScalarSameAs(1, 0)
             .lower();
       }
     }
@@ -252,8 +252,8 @@
   if (!R_hasStdExtZbb) {
     getActionDefinitionsBuilder(G_CTTZ)
         .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-        .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-        .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
+        .minScalarSameAs(1, 0)
+        .maxScalarSameAs(1, 0)
         .lower();
   }
   if (R_hasStdExtP) {
@@ -263,14 +263,14 @@
         .coreMinScalar([](const LegalityQuery &) { return true; }, 0, R_s32)
         .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
         .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0)
-        .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-        .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+        .minScalarSameAs(1, 0)
+        .maxScalarSameAs(1, 0);
   } else {
     if (!R_hasStdExtP) {
       getActionDefinitionsBuilder(G_CTLS)
           .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-          .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-          .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
+          .minScalarSameAs(1, 0)
+          .maxScalarSameAs(1, 0)
           .lower();
     }
   }
@@ -279,16 +279,16 @@
         .legalFor({{R_sXLen, R_sXLen}})
         .coreMinScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
         .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-        .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-        .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0);
+        .minScalarSameAs(1, 0)
+        .maxScalarSameAs(1, 0);
   } else {
     if (!R_hasStdExtZbb) {
       getActionDefinitionsBuilder(G_CTPOP)
           .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 8)
           .coreMinScalar([](const LegalityQuery &) { return true; }, 0, R_s8)
           .coreMaxScalar([](const LegalityQuery &) { return true; }, 0, R_sXLen)
-          .coreMinScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
-          .coreMaxScalarSameAs([](const LegalityQuery &) { return true; }, 1, 0)
+          .minScalarSameAs(1, 0)
+          .maxScalarSameAs(1, 0)
           .lower();
     }
   }

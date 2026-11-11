@@ -510,10 +510,12 @@ def compile_stmt(st):
                   "bitcast": "Bitcast"}[op]
         return {"action": action, "type_idx": type_idx_of(st["on"]), "op": op,
                 "on": st["on"], "to": st["to"],
+                "guarded": pred is not None,
                 "predicate": pred if pred is not None else leaf("true", [])}
     if op == "scalarize":
         return {"action": "FewerElements", "type_idx": type_idx_of(st["on"]),
                 "op": "scalarize", "on": st["on"],
+                "guarded": pred is not None,
                 "predicate": pred if pred is not None else leaf("true", [])}
     if op == "align_lanes":
         # `clampMaxNumElementsStrict` in C++ is `alignNumElementsTo` followed by
@@ -540,6 +542,7 @@ def compile_stmt(st):
             fixed.append(st["pred"])
         return {"action": "MoreElements", "type_idx": int(idx), "op": "more",
                 "on": slot(idx), "to": to,
+                "guarded": st.get("pred") is not None,
                 "predicate": _node("all", args=fixed)}
     if op in ("clamp_min", "clamp_max"):
         idx, elt, lanes = st["idx"], st["elt"], st["lanes"]
@@ -561,7 +564,8 @@ def compile_stmt(st):
             fixed.append(st["pred"])
         guard = _node("all", args=fixed)
         return {"action": action, "type_idx": int(idx), "op": opname,
-                "on": slot(idx), "to": to, "predicate": guard}
+                "on": slot(idx), "to": to,
+                "guarded": st.get("pred") is not None, "predicate": guard}
     raise ValueError(f"unknown stmt {op!r}")
 
 # ---- static checks (J1 sort / J2b compare / J3a action / J3b slot bound) --

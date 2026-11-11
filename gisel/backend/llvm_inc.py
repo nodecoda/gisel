@@ -806,10 +806,15 @@ class IncEmitter:
     # ---- one rule (emitCoreRule, :3689) ----------------------------------
 
     def rule(self, r, drop=()):
+        consumed = False
         if drop:
             pred = r["predicate"]
             for gate in drop:
                 pred = self._drop_gate(pred, gate)
+            # A gate hoisted into the enclosing `if (...) {}` is gone from the
+            # emitted rule, so a `when` that consisted of exactly that gate no
+            # longer guards anything at this point.
+            consumed = pred != r["predicate"]
             r = _Stripped(r, pred)
         shim = shim_for(r)
         if shim is None:
@@ -844,6 +849,42 @@ class IncEmitter:
                     "ElementCount::getFixed(%s)))"
                     % (pred, r["type_idx"], self._payload(r, shim)),
                     ("types", {r["type_idx"]}))
+        if shim.method in ("coreMinScalarSameAs", "coreMaxScalarSameAs"):
+            # `same_as` has two upstream spellings.  The guarded form goes
+            # through `*EltSameAsIf` (which calls `widenScalarIf` /
+            # `narrowScalarIf` and marks every index covered); the unguarded
+            # form goes through `*ScalarSameAs` and records only the two
+            # indices it names.  The target's `legalizer-info-validation.mir`
+            # pins the difference, so spell the upstream call, not the shim.
+            payload = self._payload(r, shim)
+            widen = shim.method == "coreMinScalarSameAs"
+            # `guarded` is the spelled `when ...` clause, even when the
+            # predicate is the literal `true`: upstream's
+            # `minScalarEltSameAsIf(always, ...)` and `minScalarSameAs(...)`
+            # differ only in the coverage bit, and the target's validation
+            # MIR pins that difference.  The exception is a guard that was
+            # hoisted into an enclosing `if (gate) {}`: upstream wrote the
+            # plain builder inside that branch (RISC-V G_CTLZ/CTPOP), so the
+            # residual rule must use the unguarded spelling too.
+            guarded = r.get("guarded", not unguarded)
+            if guarded and consumed and unguarded:
+                guarded = False
+            if not guarded:
+                method = "minScalarSameAs" if widen else "maxScalarSameAs"
+                covered = {r["type_idx"]}
+                try:
+                    covered.add(int(payload))
+                except ValueError:
+                    pass
+                return ("      .%s(%d, %s)"
+                        % (method, r["type_idx"], payload),
+                        ("types", covered))
+            method = ("minScalarEltSameAsIf" if widen
+                      else "maxScalarEltSameAsIf")
+            pred = ("[=](const LegalityQuery &Query) { return %s; }"
+                    % self.boolean(guard))
+            return ("      .%s(%s, %d, %s)"
+                    % (method, pred, r["type_idx"], payload), ("all",))
         if unguarded and shim.unguarded:
             cov = ("all",) if shim.method in ALL_COVERING_SHIMS else (
                 "types", {r["type_idx"]})
