@@ -48,16 +48,21 @@ AArch64 12,559/12,559、RISC-V 6,086/6,086 全部 agree（题面为 2026-11-11
 即可——这正是它存在的意义。
 
 这条前提是机器检查的，不是注释：每个 `build-*-runner.sh` 编译前先跑
-`ab/check-pin.sh TREE`，要求 HEAD 从 `commit` 下降、且 `patches` 里每个
-commit 都是 HEAD 的祖先。注意它只查祖先关系，不查内容等价：树上若还有**不在
-`patches` 里的目标源码改动**（例如 AArch64 的 `numElements()` 断言硬化），
-官方侧就不是干净的 `pin + patches`，U 的断言分布会变；见
-`admin/upstream-issues/2026-11-11-18` 的修正节。缺一个就 rc=1 并逐个点名，因为那种树上官方侧回答的是
-修前规则，偏离会以“我们翻错了”的样子出现在对拍里。反过来说，`git log` 里看到
-那两个 X86 修复**不**代表上游已合——它们只在 `explore/06-review-fixes` 上，
-`origin/main` 没有。真的合入后，动 `PIN.json` 的 `commit` 和 `patches`，
-`check-pin.sh` 与偏离断言会一起逼你把两边都改对。树没有 git 元数据（tarball）
-时跳过检查；确知树是 rebase 过的镜像可用 `GIT_DSL_SKIP_PIN_CHECK=1`。
+`ab/check-pin.sh TREE`，它**按内容**比对 `PIN.json` 的 `official_base.files`——
+12 个能改答案的文件的 sha256。官方侧冻结在 `trees/explore` @ `700e551714cc` /
+`builds/explore`，与 pin 的三条偏离（AArch64 `numElements()` 硬化、
+`memSizeInBytesNotPow2` 的可伸缩读取、`core*` builder）逐条登记在
+`official_base.deviations` 里；详见 `ab/docs/OFFICIAL-BASE.md`。
+
+2026-11-11 之前这里只查祖先关系，于是 fork 上未声明的改动（AArch64 的
+`numElements()` 断言硬化）混进了官方侧而检查仍报 ok：祖先检查只能证明“pin 和
+patch 都在”，不能证明“没有别的改动”。现在内容不一致就 rc=1 并打印是哪个提交
+改的。换基线 = 重跑全部证据，成本写在 `ab/docs/OFFICIAL-BASE.md`。
+
+`git log` 里看到那两个 X86 修复**不**代表上游已合——它们只在
+`explore/06-review-fixes` 上，`origin/main` 没有。真的合入后，动 `PIN.json` 的
+`commit` 和 `patches`，偏离断言和内容检查会一起逼你把两边都改对。确知树是
+rebase 过的镜像可用 `GIT_DSL_SKIP_PIN_CHECK=1`。
 
 ## 复现：一条命令，钉住计数
 
