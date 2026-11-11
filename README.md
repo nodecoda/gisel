@@ -2,6 +2,8 @@
 
 设计论证：[文章链接](https://zhuanlan.zhihu.com/p/2102431370098298974)
 
+[简体中文](README.zh.md)
+
 [![ci](https://github.com/nodecoda/gisel/actions/workflows/ci.yml/badge.svg)](https://github.com/nodecoda/gisel/actions/workflows/ci.yml)
 
 A free-form language for GlobalISel legalizer rules, and the toolchain that
