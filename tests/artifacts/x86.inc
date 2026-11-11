@@ -9,6 +9,7 @@
   bool X_HasAVX = Subtarget.hasAVX();
   bool X_HasAVX2 = Subtarget.hasAVX2();
   bool X_HasAVX512 = Subtarget.hasAVX512();
+  bool X_HasBITALG = Subtarget.hasBITALG();
   bool X_HasBMI = Subtarget.hasBMI();
   bool X_HasBWI = Subtarget.hasAVX512() && Subtarget.hasBWI();
   bool X_HasCMOV = Subtarget.canUseCMOV();
@@ -249,8 +250,11 @@
   }
   if (X_HasVPOPCNTDQ) {
     getActionDefinitionsBuilder(G_CTPOP)
-        .legalFor({{X_v16s32, X_v16s32}, {X_v8s64, X_v8s64}})
-        .legalFor(X_HasVLX, {{X_v4s32, X_v4s32}, {X_v8s32, X_v8s32}, {X_v2s64, X_v2s64}, {X_v4s64, X_v4s64}});
+        .legalFor({{X_v4s32, X_v4s32}, {X_v8s32, X_v8s32}, {X_v16s32, X_v16s32}, {X_v2s64, X_v2s64}, {X_v4s64, X_v4s64}, {X_v8s64, X_v8s64}});
+  }
+  if (X_HasBITALG) {
+    getActionDefinitionsBuilder(G_CTPOP)
+        .legalFor({{X_v16s8, X_v16s8}, {X_v32s8, X_v32s8}, {X_v64s8, X_v64s8}, {X_v8s16, X_v8s16}, {X_v16s16, X_v16s16}, {X_v32s16, X_v32s16}});
   }
   getActionDefinitionsBuilder(G_CTPOP)
       .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 1, 16)

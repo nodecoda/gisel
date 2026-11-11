@@ -13,6 +13,7 @@ include "llvm/Target/Target.td"
 feature X_HasAVX = Subtarget.hasAVX()
 feature X_HasAVX2 = Subtarget.hasAVX2()
 feature X_HasAVX512 = Subtarget.hasAVX512()
+feature X_HasBITALG = Subtarget.hasBITALG()
 feature X_HasBMI = Subtarget.hasBMI()
 feature X_HasBWI = Subtarget.hasAVX512() && Subtarget.hasBWI()
 feature X_HasCMOV = Subtarget.canUseCMOV()
@@ -249,8 +250,8 @@ ruleset X_G_BSWAP: G_BSWAP
 ruleset X_G_CTPOP: G_CTPOP
     legal (X_HasPOPCNT and in_pairs(slot(0), slot(1), [[X_s16, X_s16], [X_s32, X_s32]]))
     legal ((X_HasPOPCNT and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s64, X_s64]]))
-    legal (X_HasVPOPCNTDQ and in_pairs(slot(0), slot(1), [[X_v16s32, X_v16s32], [X_v8s64, X_v8s64]]))
-    legal ((X_HasVPOPCNTDQ and X_HasVLX) and in_pairs(slot(0), slot(1), [[X_v4s32, X_v4s32], [X_v8s32, X_v8s32], [X_v2s64, X_v2s64], [X_v4s64, X_v4s64]]))
+    legal (X_HasVPOPCNTDQ and in_pairs(slot(0), slot(1), [[X_v4s32, X_v4s32], [X_v8s32, X_v8s32], [X_v16s32, X_v16s32], [X_v2s64, X_v2s64], [X_v4s64, X_v4s64], [X_v8s64, X_v8s64]]))
+    legal (X_HasBITALG and in_pairs(slot(0), slot(1), [[X_v16s8, X_v16s8], [X_v32s8, X_v32s8], [X_v64s8, X_v64s8], [X_v8s16, X_v8s16], [X_v16s16, X_v16s16], [X_v32s16, X_v32s16]]))
     widen(slot(1), pow2_min(16))
     widen(slot(1), ty(X_s16))
     narrow(slot(1), ty(X_sMaxScalar))
