@@ -818,7 +818,7 @@
       .clampMinNumElements(0, A_s64, (A_v2s64).getNumElements())
       .clampMaxNumElements(0, A_s64, (A_v2s64).getNumElements())
       .coreScalarizeIf([=](const LegalityQuery &Query) { return ((Query.Types[0]).getScalarSizeInBits() > 64); }, 0)
-      .coreBitcastToType([=](const LegalityQuery &Query) { return Query.Types[0].isPointerVector(); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, LLT::fixed_vector(((Query.Types[0]).isVector() ? (Query.Types[0]).getElementCount().getKnownMinValue() : 0), A_i64)); });
+      .coreBitcastToType([=](const LegalityQuery &Query) { return Query.Types[0].isPointerVector(); }, 0, [=](const LegalityQuery &Query) { return std::make_pair(0, (Query.Types[0]).changeElementType(A_i64)); });
   getActionDefinitionsBuilder(G_CONCAT_VECTORS)
       .legalFor({{A_v16s8, A_v8s8}, {A_v8s16, A_v4s16}, {A_v4s32, A_v2s32}})
       .coreCustomIf([=](const LegalityQuery &Query) { return ((Query.Types[0].isVector()) && (!(Query.Types[0].isScalableVector()))) && (((Query.Types[0]).getScalarSizeInBits() < 8)); })

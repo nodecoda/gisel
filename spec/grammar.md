@@ -132,6 +132,14 @@ sort 都是 `(Int, Int) -> Int`。它们只表达上游 helper 里的整数算�
 不能当 `widen` 的目标）。它没有 arity 可检查：冻结 opcode 表只描述类型槽，
 所以 `imm(9)` 不会被 J3b 拦下。
 
+类型构造子别混用：`vec_of(n, T)` 永远生成 `LLT::fixed_vector`，`n` 是精确 lane
+数。要保留源类型的 lane 数（**包括 scalable 标志**）必须写
+`elt_type_to(<type>, T)`，它生成 `changeElementType`，与上游
+`LLT::vector(X.getElementCount(), T)` 逐字等价。`vec_of(num_elems(X), T)` 会把
+`nxv2p0` 变成 `v2s64`（位宽减半），AArch64 `G_SHUFFLE_VECTOR` 的指针向量
+bitcast 曾经因此让 `mutationIsSane` 断言；导入器现在把
+`LLT::vector(X.getElementCount(), T)` 一律导成 `elt_type_to`。
+
 ## 5 谓词
 
 ```

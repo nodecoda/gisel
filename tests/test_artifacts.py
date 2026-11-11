@@ -621,5 +621,36 @@ class SizeObservers(unittest.TestCase):
         self.assertIn("getSizeInBytes().getKnownMinValue()", aarch64)
 
 
+class ScalableVectorElementType(unittest.TestCase):
+    """`LLT::vector(X.getElementCount(), T)` keeps X's scalable flag.
+
+    It is exactly `X.changeElementType(T)`.  Spelling it as
+    `vec_of(num_elems(X), T)` renders `LLT::fixed_vector`, so a scalable lane
+    count silently becomes fixed (nxv2p0 -> v2s64, half the bit width) and
+    `LegalizerInfo::mutationIsSane` asserts at runtime.  AArch64's
+    G_SHUFFLE_VECTOR bitcast of pointer vectors is the regression.
+    """
+
+    def test_evaluator_keeps_scalable_lanes(self):
+        from gisel import cases
+        from gisel import eval as E
+
+        doc = cases.document(TESTS / "corpus" / "AArch64LegalizerInfo.gisel")
+        ev = E.Evaluator(doc, cases.derive_features(doc))
+        t = E.parse_core_llt("nxv2p0:64")
+        self.assertEqual(
+            E.evaluate(ev, "none", "G_SHUFFLE_VECTOR", [t, t], []),
+            ("Bitcast", 0, ("vector", 2, True, ("integer", 64))))
+
+    def test_inc_spells_change_element_type(self):
+        text = (TESTS / "artifacts" / "aarch64.inc").read_text()
+        pointer_bitcasts = [line for line in text.splitlines()
+                            if "coreBitcastToType" in line
+                            and "isPointerVector()" in line]
+        self.assertEqual(len(pointer_bitcasts), 1, pointer_bitcasts)
+        self.assertIn("changeElementType(", pointer_bitcasts[0])
+        self.assertNotIn("fixed_vector(", pointer_bitcasts[0])
+
+
 if __name__ == "__main__":
     unittest.main()
