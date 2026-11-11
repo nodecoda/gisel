@@ -40,8 +40,9 @@ X86 的两条偏离写在工具里（`X86_DEVIATIONS`），每条都会断言上
 
 这两条偏离**只相对于 pin**。`PIN.json` 的 `patches` 记录了仓库叠加的 5 个未合
 PR（#238306、#238277、#235976、#237650、#239136），工作台构建的官方侧就是
-`pin + patches`。所以偏离后的语料和官方侧行为一致：X86 端到端 3,211/3,211、
-AArch64 12,952/12,952、RISC-V 6,299/6,299 全部 agree。等这些 PR 合入上游，
+`pin + patches`。所以偏离后的语料和官方侧行为一致：X86 端到端 3,019/3,019、
+AArch64 12,559/12,559、RISC-V 6,086/6,086 全部 agree（题面为 2026-11-11
+计数，答案证据在 `ab/EVIDENCE.json`）。等这些 PR 合入上游，
 把 `commit` 前移，偏离函数会按设计**报错**（它断言旧文本还在），那时删掉它们
 即可——这正是它存在的意义。
 
@@ -87,7 +88,7 @@ python3 ../upstream-source/import/import-cxx.py X86 .../X86LegalizerInfo.cpp \
 | 目标 | 源 sha256（前 12 位） | rulesets | rules |
 |---|---|---:|---:|
 | X86 | `79f2376096c3` | 63 | 328 |
-| AArch64 | `2b5377c3eedd` | 117 | 744 |
+| AArch64 | `2b5377c3eedd` | 117 | 741 |
 | RISC-V | `ad529e1f1a9e` | 96 | 402 |
 | M68k | `f796bb977e0b` | 6 | 13 |
 | WebAssembly | `c6409b1d4eb1` | 29 | 109 |
@@ -95,6 +96,11 @@ python3 ../upstream-source/import/import-cxx.py X86 .../X86LegalizerInfo.cpp \
 | ARM | `b86441eb03f4` | 52 | 96 |
 | Mips | `3660b66b709c` | 48 | 95 |
 | SPIRV | `e404ba675047` | 83 | 353 |
+
+表里的 `rules` 是 `gisel lint`/`ast.parse_program` 解析到的规则数。AArch64 的
+importer `TARGETS` 断言 744 条 builder call，其中 3 条（`replace(...)` /
+`clamp_max(...)`）只改类型集合、不生成独立规则，所以入库语料解析为 741 条；
+`import-cxx --check` 比较的是生成文本的字节，不是这个计数。
 
 换上游修订不是改参数，而是改工具：计数断言会立刻报 `DRIFT`。
 

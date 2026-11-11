@@ -13,7 +13,7 @@
 ## 1 钉版本，提取规则
 
 **入库的语料来自一个 commit，不是某人的工作区。** 见
-`tests/corpus/PIN.json`：
+`../upstream-source/pin/PIN.json`：
 
 ```json
 {"commit": "9bfc850b9940…",
@@ -26,14 +26,14 @@
 python3 ../upstream-source/import/import-cxx.py --all \
   --pin ../upstream-source/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
-# 六个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
+# 九个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
 ```
 
 为什么必须用 commit：A/B 的官方一侧要打本地补丁（例如 AArch64 的
 `getNumElements()`，见 `2026-11-09-13`），工作区里的文件已经不是 pin 的内容。
 提取只认 pin，补丁就污染不了语料。
 
-产物：`tests/corpus/{X86,AArch64,RISCV,M68k,PowerPC,WebAssembly,ARM}LegalizerInfo.gisel`。规则数和拒绝数
+产物：`tests/corpus/{X86,AArch64,RISCV,M68k,PowerPC,WebAssembly,ARM,Mips,SPIRV}LegalizerInfo.gisel`。规则数和拒绝数
 写进工具的 `TARGETS`，漂移就 rc=1。
 
 ## 2 出题
@@ -117,7 +117,7 @@ aarch64 12,595 / x86 3,027 / spirv 5,136` 条查询，`disagree = 0`；
 `G/x86`、`G/aarch64`、`G/riscv`，由 `ab/verify-evidence.sh` 校验。
 
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
-`patches`（`PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
+`patches`（`../upstream-source/pin/PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
 `Unsupported`，差异归零。
 
 AArch64 的 117 条要拆成两层看：PR #238306 修好官方侧的 `mutationIsSane` 后
@@ -132,3 +132,7 @@ AArch64 的 117 条要拆成两层看：PR #238306 修好官方侧的 `mutationI
 
 查询行数因此从 13,199 / 3,282 变成 12,952 / 3,217；RISC-V 没有这类形状，
 6,301 不变。
+
+2026-11-11 在 `dad5a61` 复测三份主语料的题面：`x86 3,019 / aarch64 12,559 /
+riscv 6,086` 条，计数与上表一致；`disagree = 0` 的答案证据仍以
+`ab/EVIDENCE.json`（2026-11-10 的 `G/*`）为准，本轮没有重跑两个 runner。

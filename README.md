@@ -18,7 +18,7 @@ The loop those tools implement (pin → cases → A/B → attribution) is in
 
 ```sh
 # from a checkout: the corpus and frozen artifacts ship with the repo,
-# not with the wheel (the wheel carries the opcode table lint needs).
+# not with the wheel (the wheel carries the opcode and shape tables lint needs).
 python3 -m pip install .        # or: python3 -m gisel (no install)
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
@@ -116,7 +116,7 @@ declarations, rule sets and rules.  Types are structured (`Scalar(32)`,
 a rule set is `(name, opcodes, rules)`.  Record names such as `X86_s32`,
 `LegalizeFeature<...>` and `LegalizeRuleSet<...>` are not part of the model:
 the C++ renderer computes declaration names at its exit through `NameTable`,
-and `core`/`check`/`table` never see them.  `ast.canonicalize_rulesets` is the
+and `core`/`check` never see them.  `ast.canonicalize_rulesets` is the
 one AST transform before emission; it exists to keep the emitted C++ and the
 frozen core JSON at one table per opcode, not because the language forbids it.
 `docs/REPORT-ast.md` records the AST migration; `docs/REPORT-no-td.md` records
@@ -141,7 +141,7 @@ report, `docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
 
 What it does not do: it does not generate the `.td` (that backend was
 removed), `import-cxx` refuses any statement it cannot translate rather than
-guessing, and none of the eight corpora is an independent hand-written second
+guessing, and none of the nine corpora is an independent hand-written second
 statement -- they were extracted from LLVM's hand-written C++ constructors
 with our own tooling as a preparation for self-proof.  All of them go straight
 from the hand-written `.cpp` constructor to `.gisel`
@@ -159,10 +159,10 @@ comes from import-cxx --check and the end-to-end A/B).
 | M2 | `--emit=check` | self-baseline counters (was: the `-gen-legalizer-check` JSON) | done |
 | M3 | ~~`--emit=table`~~ | removed 2026-11-09: the table direction is gone, `inc` is the product | dropped |
 | M4 | `--emit=core`, `eval` | core JSON (modulo `origin`); evaluator answers any question file | done |
-| v0.2 | `lint` | 57 node kinds, 0 errors on both corpora | done |
+| v0.2 | `lint` | 57 node kinds, 0 errors on all nine corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 | v0.4 | RISCV corpus (workbench import) | 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
-| v0.5 | `cases` | equivalence/boundary/outside; X86 3,277 cases, AArch64 9,705 cases | done |
+| v0.5 | `cases` | equivalence/boundary/outside; X86 3,019 cases, AArch64 12,559 cases | done |
 | v0.6 | more A/B targets | M68k 35, WebAssembly 886, PowerPC 94, ARM 1,614, Mips 1,656, SPIRV 5,136 queries; `disagree = 0` on each | done |
 
 `-gen-legalizer*` in the M1–M3 rows is this project's TableGen backend
@@ -193,8 +193,9 @@ same answerless query file, and compares the answer streams.
 `docs/CORPORA.md` has the chain and the reviewed deviations.
 
 ```sh
-python3 -m unittest discover -q -s tests      # 312 tests (+94 subtests)
-(cd tests/artifacts && sha256sum -c SHA256)   # 12/12
+python3 -m pytest -q                          # 243 passed, 92 subtests
+python3 -m unittest discover -q -s tests      # Ran 243 tests
+(cd tests/artifacts && sha256sum -c SHA256)   # 9/9
 ```
 
 `gisel lint` runs the J1/J2b/J3a/J3b checks over the normal form and prints
@@ -244,23 +245,37 @@ gisel/backend/check_json.py / core_json.py              M2 / M4
 gisel/eval.py           standalone evaluator (answers any question file)
 gisel/cases.py          equivalence/boundary/outside case generation
 gisel/answers.py        answer-file reader (the A/B comparison is ab/diff.py)
+gisel/contract.py       shape contract: which type tuples are questions
+gisel/domain.py         opcode-slot cartesian enumeration (the other question set)
+gisel/graph.py          quotient graph over (opcode, type classes, mem, imm)
+gisel/data/opcode-slots.json   283-opcode arity/slot snapshot
+gisel/data/contract-shapes.jsonc / contract-aarch64.jsonc  shape tables
 spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/cli.md             the command surface, exit codes, guarantees (normative)
 spec/grammar.md         the .gisel grammar and AST, normative
+spec/axes.md            the axis/profile format and its compatibility pin
 spec/cases.md           what a generated case means, and the subset contract
-spec/contract.md         shape contract: which tuples are questions at all
 spec/cases-format.md    the three JSONL projections and their shared key
+spec/contract.md        shape contract: which tuples are questions at all
+spec/escape-points.md   feature vs opaque: the two host escape points
 spec/graph.md           the quotient-graph state, successor and outcomes
+spec/semantics.md       what a rule means (and what the evaluator does)
+docs/CORPORA.md         per-corpus source, deviations, and evidence layers
+docs/LOOP.md            pin -> questions -> A/B -> attribution
 docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
 docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
+docs/REPORT-cxx-corpus.md  C++ -> .gisel transcription (workbench tool)
 docs/ALGORITHM-cases.md  case generation as a bounded quotient (article source)
 docs/REPORT-cases.md    case generation: evidence, rejected options
+docs/REPORT-coverage.md coverage evidence for the case set
+docs/REPORT-graph.md    quotient-graph evidence and the cycle history
+docs/DESIGN-graph.md    graph design record
 docs/REQUIREMENTS-ab.md  workbench: the differential-testing requirement
 docs/REPORT-ab.md       workbench: end-to-end A/B (not a gisel feature)
 docs/PLAN-architecture.md  the Phase 1-2 cleanup plan (decisions, PR order)
 docs/PLAN-internal-authority.md  fork 内部权威：双向题面、负控、oracle 保全
+docs/PROPOSAL-host-escape.md  rejected host-escape proposal (AMDGPU)
 docs/SCOPE.md           what gisel is, what only uses it
-spec/semantics.md       what a rule means (and what the evaluator does)
 ```
 
 Ported emitter logic keeps the LLVM license header and names its source commit

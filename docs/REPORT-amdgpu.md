@@ -36,7 +36,7 @@ git -C <llvm> grep -n "LegalizerInfo::[A-Za-z0-9_]*LegalizerInfo(" \
 | target | 行数 | 语料 | 说明 |
 |---|---:|---|---|
 | AMDGPU | 8,931 | **未收** | 本文 |
-| AArch64 | 2,902 | 117 rulesets / 744 rules | 端到端 agree |
+| AArch64 | 2,902 | 117 rulesets / 744 builder calls → `gisel lint` 741 rules | 端到端 agree |
 | RISCV | 1,917 | 96 / 402 | 端到端 agree |
 | SPIRV | 1,431 | 83 / 353 | 端到端 agree，4 条上游断言 |
 | X86 | 1,059 | 63 / 328 | 端到端 agree，2 条 deviation |

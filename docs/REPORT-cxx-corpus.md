@@ -2,12 +2,14 @@
 
 状态：完成。三份主语料（X86 / AArch64 / RISC-V）现在都从上游手写
 `*LegalizerInfo.cpp` 构造函数直接转录成 `.gisel`；中间那层 `.td` 不再参与。
+后续已扩展到九份语料（ARM / Mips / PowerPC / M68k / WebAssembly / SPIR-V），
+当前清单和计数以 `docs/CORPORA.md` 为准。
 
 ## 1 结论
 
 ```text
 upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
-  -> tools/import-cxx.py      （一次性转录，0 拒绝）
+  -> upstream-source/import/import-cxx.py  （一次性转录，0 拒绝）
   -> tests/corpus/*.gisel
   -> gisel gen --emit={inc,check,core}
 ```
@@ -15,13 +17,16 @@ upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
 | 目标 | 源 sha256（前 12 位） | rulesets | rules | 拒绝 |
 |---|---|---:|---:|---:|
 | X86 | `79f2376096c3` | 63 | 328 | 0 |
-| AArch64 | `2b5377c3eedd` | 117 | 744 | 0 |
+| AArch64 | `2b5377c3eedd` | 117 | 741 | 0 |
 | RISC-V | `ad529e1f1a9e` | 96 | 402 | 0 |
 | M68k | `f796bb977e0b` | 6 | 13 | 0 |
 
 `tests/artifacts/` 的九份产物已按新语料重生成。它们**是 gisel 自己的冻结
 输出**，用于抓漂移，不是“与上游逐字节一致”的 oracle；规则保真靠
-`tools/import-cxx.py --check` 和 `ab/` 端到端对拍。
+`upstream-source/import/import-cxx.py --check` 和 `ab/` 端到端对拍。
+
+AArch64 的 importer `TARGETS` 断言 744 条 builder call；3 条只改类型集合、
+不生成独立规则，所以 `gisel lint` 解析到 741 条。
 
 ## 2 为什么删掉中间的 `.td`
 
@@ -36,8 +41,8 @@ A/B 还要多一轮“`.td` vs C++”的对拍。
 
 ## 3 为什么是专用工具，不是通用 C++ 导入器
 
-`tools/import-cxx.py` 只认这三个构造函数用到的那一小撮写法。目标表
-`TARGETS` 写死了三个目标、源相对路径、前缀和规则数；`--all --check`
+`upstream-source/import/import-cxx.py` 只认这些构造函数用到的那一小撮写法。目标表
+`TARGETS` 写死了目标、源相对路径、前缀和规则数；`--all --check`
 重新转录并和仓库里的 `.gisel` 逐字节对照。规则数变了就报 `DRIFT` 并返回 1，
 不会悄悄换一份语料。
 
@@ -403,7 +408,7 @@ target 的代码逐字节不变。
 
 ### 14.1 语料
 
-`tools/import-cxx.py SPIRV`：83 rulesets / 353 rules / 0 refused。0 拒绝的关键是
+`upstream-source/import/import-cxx.py SPIRV`：83 rulesets / 353 rules / 0 refused。0 拒绝的关键是
 在 importer 里补了 SPIRV 用到的写法：
 
 - `auto &X = cond ? A : B` 类型集别名（`Types.set_alias`）；

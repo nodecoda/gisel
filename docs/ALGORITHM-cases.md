@@ -610,13 +610,15 @@ python3 -m gisel cases tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --out /tmp/x86-cases.jsonl --json
 
 python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
-  --features tests/cases/features.json --out /tmp/a64-cases.jsonl --json
+  --features tests/cases/features.json \
+  --axes tests/cases/aarch64-mem-orderings.axes.json \
+  --out /tmp/a64-cases.jsonl --json
 
 python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel \
   --features tests/cases/riscv-features.json --out /tmp/rv-cases.jsonl --json
 ```
 
-当前语料实测（2026-11-10，逐项见 `docs/REPORT-cases.md`）：
+当前语料实测（2026-11-11，逐项见 `docs/REPORT-cases.md`）：
 
 | target | configs | cases | equivalence | boundary | outside | rules | witnessed | shadowed | unexercised | 时间 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|

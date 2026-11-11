@@ -27,4 +27,4 @@ version = {attr = "gisel.__version__"}
 include = ["gisel*"]
 
 [tool.setuptools.package-data]
-gisel = ["data/*.json"]
+gisel = ["data/*.json", "data/*.jsonc"]

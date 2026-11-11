@@ -153,23 +153,24 @@ imm 类由“只读 imm 的谓词”的取值向量划分；同时读类型/内�
 
 - 无 `--axes`：三个命令的输出与引入前逐字节一致。当前回归 SHA：
   - X86 四配置 `graph --features tests/cases/x86-features.json --json`
-    → `38f2114e9fb688202a598dde023302b0b94e558109025477c5ef41ae275a7840`
+    → `9c7fe814afae1085afd6f3620390e7560212de22b1b6b208a24813b7421555b3`
   - RISC-V `graph --features tests/cases/riscv-features.json --config rv64gc --json`
-    → `ffa98abd0599fd7f33d27972c2123faf0de6ee9ffe88452baf470ddd90d52969`
-  - 与引入 `--axes` 时相比，这两个 SHA 变过一次，是刻意的：候选轴不再发明
-    LLVM 构造不出来的类型——固定 1 车道向量归一成元素类型（`v1s8` → `s8`），
-    float 位宽只取 16/32/64/80/128（不再有 `f31`/`f33`）。X86 C0 因此从
-    73,867 state / 26,767 edge 降到 73,407 / 26,686，0 环结论不变。
+    → `3b6f02ce06a2cbf69f69ca5749bf252748537bbd7d535328857cb1ecdca56025`
+  - 这两个 SHA 会随有限域/形状契约的修复而变；当前值绑定 `dad5a61`。
+    候选轴不再发明 LLVM 构造不出来的类型——固定 1 车道向量归一成元素类型
+    （`v1s8` → `s8`），float 位宽只取 16/32/64/80/128（不再有 `f31`/`f33`）。
+    X86 C0 因此从 73,867 state / 26,767 edge 降到 65,286 / 25,902（当前有限域
+    与形状过滤后），0 环结论不变。
 - 空 profile（`{"version": 1}`）与无 profile 逐字节一致（见
   `tests/test_axes.py`）。
 - `gen`/`check`/`lint`/`eval` 不接受 `--axes`；传入即 argparse rc=2。
 
 ## 5. 未覆盖
 
-- 内存 ordering 的 AArch64 graph 全量数字尚未重跑；cases 侧四个配置合计：
-  无轴 313 witnessed / 28 shadowed / 402 unexercised，只列四种原子序
-  317 / 29 / 397，再加上 `NotAtomic` 是 319 / 28 / 396（`AArch64_SEXTLOAD#1`
-  和 `#3` 就是被漏掉的那两条普通 load 规则）。
+- 内存 ordering 的 AArch64 graph 全量数字尚未重跑；cases 侧 2026-11-11
+  在 `dad5a61` 复测：无轴 569 witnessed / 38 shadowed / 136 unexercised，
+  带 `tests/cases/aarch64-mem-orderings.axes.json`（含 `NotAtomic`）是
+  575 / 38 / 130，cases 12,559。
 - `cases` 的按配置指针宽度：仍输出 `p0:*`。
 - `graph` 在 derive 模式下用 `cases._candidates` 生成切点，该函数仍按 64 位解析
   规则字面量指针；`bind.pointer_width` 只作用于声明类型和 explicit 模式。

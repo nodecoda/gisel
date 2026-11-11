@@ -45,8 +45,8 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 物理边界：`pyproject.toml` 只打包 `gisel*`，`tools/` 和 `docs/` 不随 wheel
 发布。工作台脚本是仓库内的开发工具，不是产品面。
 
-这些工作台工具正在按 §7 的三分法迁出；迁移期间路径不变、行为不变，
-归属以 §7 为准。
+这些工作台工具已按 §7 的三分法迁出；gisel 仓库只保留 importer 的转发 shim、
+刷新冻结产物的脚本和覆盖率/契约这类读 gisel 输出的辅助工具。
 
 语料的来源同样按这条分：`tests/corpus/` 是**输入**，由工作台工具从上游手写的
 `*LegalizerInfo.cpp` 规则转出后冻结。历史上 X86/AArch64 曾中途经过本项目引入的
@@ -129,6 +129,6 @@ gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
 两条都成立是“gisel 可作为内部权威”的前提，G 与 U 两个方向现在都覆盖九个
 target；AMDGPU 明确不接。
 
-迁移期间 `tools/` 仍在原处，行为不变。query/answer 格式的 canonical 规范仍是
+迁移已完成；`tools/` 只剩 gisel 侧脚本与 importer 转发 shim。query/answer 格式的 canonical 规范仍是
 本仓库 `spec/cases-format.md`；两个新项目的 `CONTRACTS.md` 只能引用它，不能
 单方面扩展字段。

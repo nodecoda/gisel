@@ -40,7 +40,8 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 
 ## 3 证据
 
-生成与对拍（本机，2026-11-08 重测）：
+生成与对拍（本机；X86 / AArch64 / RISC-V 于 2026-11-11 复测，
+M68k / WebAssembly 仍是 2026-11-08 快照）：
 
 | target | configs | cases | eq | boundary | outside | rules | witnessed | shadowed | unexercised | time |
 |---|---|---|---|---|---|---|---|---|---|---|
@@ -50,7 +51,8 @@ gisel cases SOURCE --out FILE [--features FILE] [--config NAME ...]
 | M68k | 派生 2 | 84 | 28 | 36 | 20 | 13 | 11 | 2 | 0 | 0.6 s |
 | WebAssembly | 派生 2 | 978 | 426 | 376 | 176 | 109 | 98 | 8 | 3 | 0.6 s |
 
-（2026-11-08 切 cpp 语料后重测；`docs/ALGORITHM-cases.md` 有同一份数字。
+（2026-11-08 切 cpp 语料后重测，2026-11-11 复测三份主语料；
+`docs/ALGORITHM-cases.md` 有同一份数字。
 cases 比 2026-11-07 少，因为候选轴不再发明 LLVM 构造不出来的类型：固定 1 车道
 向量归一成元素类型，float 位宽只取 16/32/64/80/128。见 `spec/axes.md` §4。）
 
@@ -104,7 +106,8 @@ cases 比 2026-11-07 少，因为候选轴不再发明 LLVM 构造不出来的�
 
 `mems.orderings` 现在会为读 `mem_ordering` 的 ruleset 乘上
 `(ordering, failure_ordering)` 采样点，导出的查询 `mem` 为 4 元组。AArch64
-（`--features tests/cases/features.json`）的对照（2026-11-08 重测）：
+（`--features tests/cases/features.json`）的历史对照（2026-11-08；当前带
+ordering 轴的基线是 12,559 / 575 / 38 / 130，见 §3）：
 
 ```sh
 python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \

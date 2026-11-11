@@ -15,7 +15,8 @@
 2. 再以上游规则区域出题对拍 gisel，证明**上游有的没漏**。
 
 两者合起来是**双向行为等价**，不是“gisel 永远正确”。要把内部权威立住，
-还差四件事：U 方向题面、负控、闭包/多步、参照 oracle 保全。
+当初列出的四件事——U 方向题面、负控、闭包/多步、参照 oracle 保全——现在
+都已有证据（§5、§8）；剩下的缺口是全量回归（MIR/llc）与 CI 门禁。
 
 ## 1 内部权威的准确定义
 
@@ -29,8 +30,8 @@
 - **规则表**：只换规则，不换 loop、custom action、memdesc。
 
 在这个定义下，X86 的两条 deviation 不是“问题”，它们就是 fork baseline 的
-一部分；但必须在 `PIN.json` / `docs/CORPORA.md` 里点名，否则“权威”会滑成
-“gisel 干什么都算对”。
+一部分；但必须在 `../upstream-source/pin/PIN.json` / `docs/CORPORA.md` 里点名，
+否则“权威”会滑成“gisel 干什么都算对”。
 
 ## 2 两阶段证明结构
 
@@ -112,11 +113,11 @@ forall q in U: Ans_g(q) = Ans_u(q)
 
 ## 5 内部权威的五道门
 
-数字是 2026-11-10 快照，会随 axes/feature/规则更新；门禁以命令结果为准。
+数字是 2026-11-11 快照，会随 axes/feature/规则更新；门禁以命令结果为准。
 
 | 门 | 要求 | 当前状态 |
 |---|---|---|
-| 参照系 | 明确“对 pin+patches 权威”，deviation 点名 | 有 `PIN.json`；需在权威声明里写清 |
+| 参照系 | 明确“对 pin+patches 权威”，deviation 点名 | `../upstream-source/pin/PIN.json` 记录 commit + patches；deviation 在 `docs/CORPORA.md` 点名 |
 | G 题面 | `domain + cases + 字面量展开`，不只 `cases` | 三个 target 都用 `domain`：X86 91,340（4 配置）；AArch64 8,432,640（9 配置）；RISC-V 2,029,976（8 配置）。`cases` 仍在，作规则感知的压缩补充 |
 | 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 130 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
 | U 题面 | 上游运行期规则表 + 独立类型宇宙 | 有：`upstream-source` 的 oracle 模块，9 个 target；证据见 `ab/EVIDENCE.json` 的 9 条 `U/*` |
@@ -127,7 +128,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 
 ## 6 负控：证明对拍有牙齿
 
-这是现在完全缺、但最关键的一环：
+这是最关键的一环；2026-11-11 已在 `ab` 落地（9×`G-neg/*` + 9×`U-neg/*`）：
 
 > 故意把一条 `legal` 改成 `lower`、把谓词放宽/收窄、删一条规则，重生成 `inc`，
 > 重编 ours runner，跑同一份题面——必须报分歧。
@@ -135,7 +136,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 如果注入错误后仍然 0 分歧，说明题面在那个区域是盲的，之前的“0 分歧”不可信。
 这和 `graph --inject-edge` 是同一个思路：先证明检测器能检测到已知错误。
 
-建议做成一个脚本（工作台，不是 gisel 功能）：
+机制已经在工作台（不是 gisel 功能）：
 
 ```sh
 ../ab/inject-rule.py tests/corpus/X86LegalizerInfo.gisel \
@@ -164,7 +165,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | L1 | `G` 题面对拍 | 有 |
 | L2 | 负控注入能被抓 | 有：9×`G-neg/*` + 9×`U-neg/*`（`ab/EVIDENCE.json`），注入动作翻转/谓词放宽后必须报分歧 |
 | L3 | `U` 题面对拍 | 有：9×`U/*`（`ab/EVIDENCE.json`） |
-| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（`graph --check-closure`）、frozen oracle 有（`ab/freeze-*.sh`）；全量回归（MIR/llc）与 CI（ab/upstream-source）缺 |
+| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（`graph --check-closure --refine`，四个大 target `closure.count=0`）、frozen oracle 有（`ab/freeze-*.sh`）；全量回归（MIR/llc）与 CI（ab/upstream-source）缺 |
 
 “内部权威”应该是 L4 的 target 才授予。X86、AArch64、RISC-V 分别授，不要用
 一个总开关。
@@ -187,7 +188,7 @@ gisel 成为源之后，流程反过来：
 - 本文不证明 gisel 对所有 LLVM 输入正确；只对声明域、配置表和 fork baseline。
 - 不涉及上游接纳、RFC、社区评审；那是另一个问题。
 - 动态 `legalize` 循环的全量等价还没有证据；当前只有一步 `getAction` 对拍，
-  闭包未通过。
+  静态闭包在 `--refine` 下通过，但未证明动态 `legalize` 的每一步都等价。
 - `U` 方向已由 `upstream-source` 的 oracle 模块实现（九 target，证据在 `ab/EVIDENCE.json`）；A6 字面量展开仍是它的转录近似版。
 
 ## 11 一句话

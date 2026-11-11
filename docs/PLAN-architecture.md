@@ -56,8 +56,9 @@ D1/D3/D5/D6 按推荐执行；D2/D4 保持现状，不修改 `.gisel` 语法。
    记录**代表点**，不展开成员，所以同类里的另一个成员（例如 `s33 → s64`）
    从未被审计。实测夹具：`S3/S33/S64 + widen(slot(0), pow2_min(32))` 只报
    `member=["s3"]`。
-6. **`REPORT-graph.md` 的数字和实现已经分叉**：文档写 72,956 / 26,085 / 6 cycles，
-   当前快照是 73,915 / 26,767 / 0；那 6 个“自然环”是 guard 未进类签名时的
+6. **`REPORT-graph.md` 的数字和实现曾经分叉**：文档写 72,956 / 26,085 / 6 cycles，
+   2026-11-10 的快照是 73,915 / 26,767 / 0，2026-11-11 在 `dad5a61` 重跑
+   X86 C1 是 65,275 / 24,282 / 0；那 6 个“自然环”是 guard 未进类签名时的
    商类假阳性（`G_SMAX`/`G_SMIN`/`G_UMAX`/`G_INTRINSIC_*` 自环）。
 
 ## 4 决策点（需要拍板）
@@ -92,7 +93,7 @@ D2/D4 若选 B 都属于收窄语法，按 `AGENTS.md` 必须你明确批准；�
 ## 6 验证门（每阶段结束都跑）
 
 ```sh
-# 1. 单元测试（2026-11-11 快照：224 passed / 92 subtests；应只增不减）
+# 1. 单元测试（2026-11-11 快照：243 passed / 92 subtests；应只增不减）
 python3 -m pytest -q
 
 # 2. 语料与上游一致（9/9 matches，0 refused）
@@ -134,7 +135,7 @@ done
 | `9e59c9d` | 形状过滤上移到 `analysis.type_shape_ok`，补 shift/rotate 条款；`graph` 对类元组做形状可行性判定并输出 `shape` |
 
 验证（当轮快照）：`310 passed, 94 subtests passed`；`import-cxx --all --check` 9/9 matches。
-（2026-11-11 现状：`224 passed, 92 subtests`；测试在 P2 后的多次治理中被合并/删除。）
+（2026-11-11 现状：`243 passed, 92 subtests`；测试在 P2 后的多次治理中被合并/删除。）
 
 ## 8 剩余
 

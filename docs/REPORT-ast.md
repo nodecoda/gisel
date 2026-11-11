@@ -1,5 +1,9 @@
 # AST 迁移报告：让 `.td` 成为第 5 个渲染器
 
+> 历史快照：本文记录 2026-11-06 的迁移，文中的测试数、`8/8`、`332/743` 条
+> 规则都是当轮数字。当前值见 `README.md`（2026-11-11：243 tests / 92 subtests、
+> 九份 artifact `9/9`、X86 328 / AArch64 741 条）。
+
 状态：完成。基线 `35ad508`，本次改动不碰 `tests/corpus/*.gisel` 与
 `tests/artifacts/*`。唯一新增的模型是 `gisel/ast.py` 的 `Program`。
 

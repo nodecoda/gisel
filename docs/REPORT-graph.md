@@ -5,9 +5,9 @@
 本报告的每个数字都绑定这棵树：
 
 ```text
-commit   799968c   (2026-11-10, the finite-domain fix)
+commit   dad5a61   (2026-11-11, the shape-contract reconciliation)
 version  gisel 0.3.0
-targets  X86 / AArch64 / RISC-V corpus at tests/corpus/PIN.json
+targets  X86 / AArch64 / RISC-V corpus at ../upstream-source/pin/PIN.json
 ```
 
 换一棵树重跑，states/edges/opaque/outside 会变。2026-11-10 之前用旧
@@ -67,6 +67,9 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 | C1 | 65,275 | 24,282 | 24,282 | 30,660 | 7,657 | 1,020 | 1,656 | 11,945 | 3,974 | 0 |
 | C2 | 65,207 | 23,882 | 23,882 | 30,525 | 8,120 | 1,020 | 1,660 | 11,945 | 4,021 | 0 |
 | C3 | 65,286 | 25,707 | 25,707 | 29,988 | 7,037 | 1,016 | 1,538 | 11,945 | 3,985 | 0 |
+
+2026-11-11 在 `dad5a61` 复测，四配置数字与上表一致；JSON 的 SHA-256 是
+`9c7fe814afae1085afd6f3620390e7560212de22b1b6b208a24813b7421555b3`。
 
 `uncovered` 始终是两个 variadic opcode：`G_INTRINSIC`、`G_INTRINSIC_W_SIDE_EFFECTS`
 （bundled opcode manifest 没有固定槽数）。
@@ -155,12 +158,12 @@ RISC-V 的 `mem_desc` 里，memory type 是一个配置相关的 `select`
 python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
   --features tests/cases/riscv-features.json --config rv64gc --json \
   > /tmp/graph-riscv.json
-# rc=0, 172.1 s, 638 MB RSS
+# rc=0（2026-11-11 在 dad5a61 重跑；未单独计时）
 ```
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| rv64gc | 555,339 | 38,165 | 38,165 | 425,878 | 58,984 | 29,114 | 3,198 | 30,313 | 8,551 | 0 |
+| rv64gc | 521,899 | 28,925 | 28,925 | 413,778 | 46,884 | 29,114 | 3,198 | 30,313 | 8,001 | 0 |
 
 `uncovered = ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']`
 （imm 轴或 variadic 槽数未给定）。
@@ -170,8 +173,10 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 `widen(slot(1), same_as(0))` 是跨槽变异，旧 refine 只看“写回本槽”的变异，
 拆不开这个类。
 
-2026-11-10 把 refine 扩到跨槽目标后，`--refine` 得到 **`count=0`，rc=0**；
-classes 8,551 → 8,600（+49），states 556,432，edges 38,596，cycles 0。
+2026-11-11 在 `dad5a61` 重跑：`--check-closure` 仍是 `count=2,864`
+（`partition 610` / `outside 2,254`），rc=1；把 refine 扩到跨槽目标后，
+`--refine` 得到 **`count=0`，rc=0**，classes 8,001 → 8,050（+49），
+states 522,992，edges 29,356，cycles 0。
 
 ## 5 AArch64 baseline：0 个环（去掉 MIR 不可达的形状之后）
 
@@ -179,21 +184,21 @@ classes 8,551 → 8,600（+49），states 556,432，edges 38,596，cycles 0。
 python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json --config baseline --json \
   > /tmp/graph-a64.json
-# rc=0, 455.4 s, 1.4 GB RSS
+# rc=0（2026-11-11 在 dad5a61 重跑；未单独计时）
 ```
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| baseline | 1,141,649 | 197,779 | 197,779 | 451,816 | 274,504 | 204,751 | 12,799 | 54,910 | 15,773 | **0** |
+| baseline | 1,104,645 | 188,035 | 188,035 | 424,556 | 274,504 | 204,751 | 12,799 | 54,910 | 15,193 | **0** |
 
 `uncovered = ['G_SEXTLOAD', 'G_LOAD', 'G_STORE', 'G_INDEXED_LOAD',
 'G_INDEXED_SEXTLOAD', 'G_INDEXED_ZEXTLOAD', 'G_INTRINSIC',
 'G_INTRINSIC_W_SIDE_EFFECTS']`（memory/imm 轴或 variadic 槽数未给定）。
 
 闭包（不带 refine）：`count=2,671`（`partition 178` / `outside 2,493`），rc=1。
-带 refine：**`count=0`，rc=0**；states 1,141,649 → 1,142,272，classes
-15,773 → 15,916（+143, 0.9%），cycles 0。所以 AArch64 的 0 环在 `--refine`
-下是完整结论。
+带 refine：**`count=0`，rc=0**；states 1,104,645 → 1,105,268，classes
+15,193 → 15,336（+143, 0.9%），edges 188,580，cycles 0。所以 AArch64 的
+0 环在 `--refine` 下是完整结论。
 
 ### 上一版报的 147 个环是什么
 
@@ -291,7 +296,7 @@ RISC-V、AArch64 同样丢掉了大量真实边。
 稳定哨兵；`--axes` explicit 模式仍是 profile 的值集）。`Domain.successor` 的
 两个条件不变，只是 (a) 从“`.gisel` 声明过”改成“本次图枚举过”。
 
-效果：
+效果（2026-11-10 快照；当前主表数字已按 `dad5a61` 更新，见 §2/§4/§5）：
 
 | target | closure（修前） | closure（修后） | edges |
 |---|---:|---:|---|

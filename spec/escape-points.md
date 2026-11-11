@@ -173,7 +173,7 @@ python3 -c 'import json; print(len(json.load(open("/tmp/x.core.json"))["escapes"
 
 | 语料 | 规则 | feature 声明 | `opaque` 出现 |
 |---|---:|---:|---:|
-| AArch64 | 744 | 10 | 0 |
+| AArch64 | 741 | 10 | 0 |
 | ARM | 96 | 10 | 0 |
 | M68k | 13 | 0 | 0 |
 | Mips | 95 | 3 | 0 |
