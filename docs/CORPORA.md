@@ -38,9 +38,10 @@ X86 的两条偏离写在工具里（`X86_DEVIATIONS`），每条都会断言上
 | `G_BUILD_VECTOR` 去掉最小 lane clamp | 加 lane 会把 build vector 变成更大的 build vector，缩回来又是同一个查询，legalizer 会死循环（上游 issue #236649，修复 PR #238277；实测见 `2026-11-09-14`）；只留最大 clamp，窄 build vector 走 Unsupported |
 | `G_CTPOP` 增加 VPOPCNTDQ 的向量 legal | 上游还没有这条规则（PR #235976），语料先带上向量 legalization，端到端 A/B 里这些点是 Legal |
 
-这两条偏离**只相对于 pin**。`PIN.json` 的 `patches` 记录了仓库叠加的 5 个未合
-PR（#238306、#238277、#235976、#237650、#239136），工作台构建的官方侧就是
-`pin + patches`。所以偏离后的语料和官方侧行为一致：X86 端到端 3,019/3,019、
+这两条偏离**只相对于 pin**。`PIN.json` 的 `patches` 记录了仓库叠加的 6 个
+PR（#237753、#238306、#238277、#235976、#237650、#239136）；其中 #237753 和
+#238306 已在 2026-11 合入上游，但 pin 仍停在它们之前，所以照样要带。工作台
+构建的官方侧应当是 `pin + patches`。所以偏离后的语料和官方侧行为一致：X86 端到端 3,019/3,019、
 AArch64 12,559/12,559、RISC-V 6,086/6,086 全部 agree（题面为 2026-11-11
 计数，答案证据在 `ab/EVIDENCE.json`）。等这些 PR 合入上游，
 把 `commit` 前移，偏离函数会按设计**报错**（它断言旧文本还在），那时删掉它们
@@ -48,7 +49,10 @@ AArch64 12,559/12,559、RISC-V 6,086/6,086 全部 agree（题面为 2026-11-11
 
 这条前提是机器检查的，不是注释：每个 `build-*-runner.sh` 编译前先跑
 `ab/check-pin.sh TREE`，要求 HEAD 从 `commit` 下降、且 `patches` 里每个
-commit 都是 HEAD 的祖先。缺一个就 rc=1 并逐个点名，因为那种树上官方侧回答的是
+commit 都是 HEAD 的祖先。注意它只查祖先关系，不查内容等价：树上若还有**不在
+`patches` 里的目标源码改动**（例如 AArch64 的 `numElements()` 断言硬化），
+官方侧就不是干净的 `pin + patches`，U 的断言分布会变；见
+`admin/upstream-issues/2026-11-11-18` 的修正节。缺一个就 rc=1 并逐个点名，因为那种树上官方侧回答的是
 修前规则，偏离会以“我们翻错了”的样子出现在对拍里。反过来说，`git log` 里看到
 那两个 X86 修复**不**代表上游已合——它们只在 `explore/06-review-fixes` 上，
 `origin/main` 没有。真的合入后，动 `PIN.json` 的 `commit` 和 `patches`，
