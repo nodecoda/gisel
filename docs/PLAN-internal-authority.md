@@ -165,7 +165,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | L1 | `G` 题面对拍 | 有 |
 | L2 | 负控注入能被抓 | 有：9×`G-neg/*` + 9×`U-neg/*`（`ab/EVIDENCE.json`），注入动作翻转/谓词放宽后必须报分歧 |
 | L3 | `U` 题面对拍 | 有：9×`U/*`（`ab/EVIDENCE.json`） |
-| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（审计默认开启；`--refine` 后四个大 target `count=0`）；frozen oracle 有；全量回归 3/9（x86/aarch64/riscv）；CI：ab 绿、gisel 绿（2026-11-12 修复）、upstream-source 无。缺“改语料后的 frozen 回放”流程与其余六个 target 的 MIR |
+| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（审计默认开启；`--refine` 后四个大 target `count=0`）；frozen oracle 有；全量回归 3/9（x86/aarch64/riscv）；CI：ab 绿、gisel 绿（2026-11-12 修复）、upstream-source 绿（`ada7db3`，import-tests + pin `--check`）。缺“改语料后的 frozen 回放”流程与其余六个 target 的 MIR |
 
 “内部权威”应该是 L4 的 target 才授予。X86、AArch64、RISC-V 分别授，不要用
 一个总开关。
@@ -198,5 +198,5 @@ gisel 成为源之后，流程反过来：
 
 `G` 与 `U` 双向题面、负控、闭包和 frozen oracle 都已有证据；L3（全量
 `check-llvm`）已于 2026-11-12 进 `ab/EVIDENCE.json`，ab 与 gisel 的 CI 都是绿的。
-剩下的缺口是：其余六个 target 的 MIR/llc 层、upstream-source 的 CI、以及第 7 节
-“改语料之后对 frozen oracle 回放”的流程化。逐条列在 `ab/docs/GAPS.md`。
+剩下的缺口是：其余六个 target 的 MIR/llc 层，以及第 7 节“改语料之后对 frozen
+oracle 回放”的流程化。逐条列在 `ab/docs/GAPS.md`（O1、O3）。
