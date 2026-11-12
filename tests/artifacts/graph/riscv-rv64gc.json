@@ -1,0 +1,243 @@
+{
+ "reports": [
+  {
+   "classes": 8001,
+   "closure": {
+    "checked": true,
+    "count": 2864,
+    "kinds": {
+     "outside": 2254,
+     "partition": 610
+    },
+    "ok": false,
+    "violations": [
+     {
+      "kind": "outside",
+      "member": [
+       "s7"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s24"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s33"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s63"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[7]"
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ADD[7]",
+      "targets": [
+       "G_ADD[13]",
+       "G_ADD[5]",
+       "G_ADD[8]"
+      ]
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s7"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s24"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s33"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s63"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[7]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[7]"
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_AND[7]",
+      "targets": [
+       "G_AND[12]",
+       "G_AND[5]"
+      ]
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s7"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[4]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s24"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[4]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s33"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[4]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s63"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[4]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[4]"
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_CONSTANT[4]",
+      "targets": [
+       "G_CONSTANT[2]",
+       "G_CONSTANT[5]",
+       "G_CONSTANT[6]"
+      ]
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s7"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT_FOLD_BARRIER[9]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s24"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT_FOLD_BARRIER[9]"
+     }
+    ]
+   },
+   "config": "rv64gc",
+   "cycle_samples": [],
+   "cycles": 0,
+   "edges": 28925,
+   "injected_edge": null,
+   "opaque": 29114,
+   "outcomes": {
+    "moves": 28925,
+    "no-rule": 413778,
+    "opaque": 29114,
+    "outside": 3198,
+    "stuck": 0,
+    "terminal": 46884
+   },
+   "outside": 3198,
+   "shape": 30313,
+   "states": 521899,
+   "terminal": {
+    "Custom": 96,
+    "Legal": 590,
+    "Libcall": 531,
+    "Lower": 44987,
+    "Unsupported": 680
+   },
+   "uncovered": [
+    "G_SEXT_INREG",
+    "G_INTRINSIC",
+    "G_INTRINSIC_W_SIDE_EFFECTS"
+   ]
+  }
+ ]
+}

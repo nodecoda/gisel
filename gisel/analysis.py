@@ -406,3 +406,153 @@ def type_shape_ok(opcode, types):
     not on the answer: it never decides what a legal query means.
     """
     return contract.check(opcode, types)
+
+
+# ---------------------------------------------------------------------------
+# Value candidates (moved from cases.py; graph is the other caller)
+# ---------------------------------------------------------------------------
+
+# Values that exercise each LLT kind even when a rule set names none of them.
+# Ordered so a rule with no literals still gets an ordinary scalar witness
+# before the exotic shapes; the list is a fallback, not a preference.
+_SENTINELS = (
+    "s32", "s64", "s8", "s16", "s128", "s1", "s3", "s7", "s24", "s31",
+    "s33", "s63", "s65", "v4s32", "v2s64", "v16s8", "nxv1s8", "v3s32",
+    "nxv4s32", "p0:64", "p0:32", "p0:128", "p0:*", "f16", "f32", "f64",
+    "bf16",
+)
+_SENTINEL_LLTS = tuple(E.parse_case_llt(s) for s in _SENTINELS)
+
+
+_KIND_ORDER = L.KIND_ORDER
+
+
+def _candidate_key(t):
+    """Prefer the ordinary spelling of a rule's own predicate.
+
+    A `bits_of(slot) == 64` rule is satisfied by both `s64` and `p0:64`; the
+    scalar is the natural witness, and using the pointer here would make the
+    boundary pass mutate the pointer width.  Pointers stay available after
+    scalars, so `typeIs(slot, p0)` rules still get a pointer witness.
+    """
+    return (_KIND_ORDER.get(t[0], 9), L.spell(t))
+
+
+def candidates(infos, nslots, cap, domain, scalable_ok=True):
+    """Per-slot candidates: literals, domain types, neighbours, sentinels."""
+    per = []
+    for i in range(nslots):
+        lit = set()
+        for info in infos:
+            lit |= info.literals.get(i, set())
+        if not lit and not any(i in info.slots for info in infos):
+            per.append([E.parse_case_llt("s32")])
+            continue
+        # A mutation rule only fires on a type its legal rules do *not* name,
+        # so the neighbours of the literals are the candidates that reach it.
+        # They must survive the cap: truncating to `max(cap, len(lit))` used to
+        # drop every neighbour whenever a slot had `cap` or more literals,
+        # which left the rules behind them permanently unwitnessed.  Domain
+        # types go last so the product guard below trims them first.
+        neigh = {x for t in lit for x in L.neighbours(t)}
+        ordered = sorted(lit, key=_candidate_key)
+        ordered += [t for t in sorted(neigh, key=_candidate_key)
+                    if t not in ordered]
+        ordered += [t for t in _SENTINEL_LLTS if t not in ordered]
+        if cap > 0:
+            keep = max(cap, len(ordered))
+            ordered += [t for t in sorted(domain, key=_candidate_key)
+                        if t not in ordered][:max(0, keep - len(ordered))]
+        else:
+            ordered += [t for t in sorted(domain, key=_candidate_key)
+                        if t not in ordered]
+        if not scalable_ok:
+            ordered = [x for x in ordered
+                       if not (x[0] == "vector" and x[2])] or ordered[:1]
+        per.append(ordered)
+    # Keep the cartesian product bounded without dropping any literal.
+    while product_size(per) > 20000:
+        widest = max(range(len(per)), key=lambda i: len(per[i]))
+        if len(per[widest]) <= 1:
+            break
+        per[widest] = per[widest][:-1]
+    return per
+
+
+def product_size(per):
+    n = 1
+    for values in per:
+        n *= len(values)
+    return n
+
+
+def mem_candidates(infos, expand=None):
+    """Memory descriptor rows, with selected memory types made hashable."""
+    expand = expand or type_value_spellings
+    entries = []
+    for info in infos:
+        entries.extend(info.mem_entries)
+    out = []
+    seen = set()
+    for t0, t1, mty, align in entries:
+        for a in expand(t0):
+            for b in expand(t1):
+                for c in expand(mty):
+                    key = (a, b, c, align)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    out.append(key)
+    if out:
+        return out
+    return _observed_mem_entries(infos)
+
+
+def _observed_mem_entries(infos, max_slot_types=4):
+    """Descriptors for rules that read the memory type without naming one.
+
+    `size_of(mem_ty(mem_slot(0))) == 32` says what the memory type must be
+    wide; `align_of(mem_slot(0))` says how aligned.  Without a descriptor row
+    there is no memory axis at all, and every rule that reads one is silently
+    unwitnessed (Mips' G_LOAD was).  Synthesise one row per observed size at
+    two alignments -- the minimum and the size itself, which are the two sides
+    of `size <= align` -- crossed with the rules' own slot-type literals.
+    """
+    sizes, aligns = set(), set()
+    for info in infos:
+        for kind, value in info.mem_obs:
+            (sizes if kind == "size" else aligns).add(value)
+    if not sizes:
+        return []
+    slot0, slot1 = [], []
+    for info in infos:
+        for text in sorted(L.spell(t) for t in info.literals.get(0, ())):
+            if text not in slot0:
+                slot0.append(text)
+        for text in sorted(L.spell(t) for t in info.literals.get(1, ())):
+            if text not in slot1:
+                slot1.append(text)
+    if not slot0 or not slot1:
+        return []
+    rows = []
+    seen = set()
+    for bits in sorted(sizes):
+        if bits < 8 or bits % 8:
+            continue
+        mty = "s%d" % bits
+        for align in sorted({8, bits}):
+            for t0 in slot0[:max_slot_types]:
+                for t1 in slot1[:max_slot_types]:
+                    key = (t0, t1, mty, align)
+                    if key in seen:
+                        continue
+                    seen.add(key)
+                    rows.append(key)
+    return rows
+
+
+# Back-compat for cases.py and its tests; graph imports the public names.
+_candidates = candidates
+_mem_candidates = mem_candidates
+_product_size = product_size
+

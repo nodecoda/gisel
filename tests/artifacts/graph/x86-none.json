@@ -1,0 +1,225 @@
+{
+ "reports": [
+  {
+   "classes": 4031,
+   "closure": {
+    "checked": true,
+    "count": 272,
+    "kinds": {
+     "outside": 45,
+     "partition": 227
+    },
+    "ok": false,
+    "violations": [
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,0]",
+      "targets": [
+       "G_ANYEXT[0,0]",
+       "G_ANYEXT[6,0]",
+       "G_ANYEXT[7,0]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,12]",
+      "targets": [
+       "G_ANYEXT[0,12]",
+       "G_ANYEXT[6,12]",
+       "G_ANYEXT[7,12]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,16]",
+      "targets": [
+       "G_ANYEXT[0,16]",
+       "G_ANYEXT[6,16]",
+       "G_ANYEXT[7,16]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,1]",
+      "targets": [
+       "G_ANYEXT[0,1]",
+       "G_ANYEXT[6,1]",
+       "G_ANYEXT[7,1]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,22]",
+      "targets": [
+       "G_ANYEXT[0,22]",
+       "G_ANYEXT[6,22]",
+       "G_ANYEXT[7,22]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,24]",
+      "targets": [
+       "G_ANYEXT[0,24]",
+       "G_ANYEXT[6,24]",
+       "G_ANYEXT[7,24]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,25]",
+      "targets": [
+       "G_ANYEXT[0,25]",
+       "G_ANYEXT[6,25]",
+       "G_ANYEXT[7,25]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,26]",
+      "targets": [
+       "G_ANYEXT[0,26]",
+       "G_ANYEXT[6,26]",
+       "G_ANYEXT[7,26]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,27]",
+      "targets": [
+       "G_ANYEXT[0,27]",
+       "G_ANYEXT[6,27]",
+       "G_ANYEXT[7,27]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,28]",
+      "targets": [
+       "G_ANYEXT[0,28]",
+       "G_ANYEXT[6,28]",
+       "G_ANYEXT[7,28]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,29]",
+      "targets": [
+       "G_ANYEXT[0,29]",
+       "G_ANYEXT[6,29]",
+       "G_ANYEXT[7,29]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,2]",
+      "targets": [
+       "G_ANYEXT[0,2]",
+       "G_ANYEXT[6,2]",
+       "G_ANYEXT[7,2]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,30]",
+      "targets": [
+       "G_ANYEXT[0,30]",
+       "G_ANYEXT[6,30]",
+       "G_ANYEXT[7,30]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,31]",
+      "targets": [
+       "G_ANYEXT[0,31]",
+       "G_ANYEXT[6,31]",
+       "G_ANYEXT[7,31]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,32]",
+      "targets": [
+       "G_ANYEXT[0,32]",
+       "G_ANYEXT[6,32]",
+       "G_ANYEXT[7,32]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,33]",
+      "targets": [
+       "G_ANYEXT[0,33]",
+       "G_ANYEXT[6,33]",
+       "G_ANYEXT[7,33]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,34]",
+      "targets": [
+       "G_ANYEXT[0,34]",
+       "G_ANYEXT[6,34]",
+       "G_ANYEXT[7,34]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,35]",
+      "targets": [
+       "G_ANYEXT[0,35]",
+       "G_ANYEXT[6,35]",
+       "G_ANYEXT[7,35]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,36]",
+      "targets": [
+       "G_ANYEXT[0,36]",
+       "G_ANYEXT[6,36]",
+       "G_ANYEXT[7,36]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ANYEXT[1,37]",
+      "targets": [
+       "G_ANYEXT[0,37]",
+       "G_ANYEXT[6,37]",
+       "G_ANYEXT[7,37]"
+      ]
+     }
+    ]
+   },
+   "config": "none",
+   "cycle_samples": [],
+   "cycles": 0,
+   "edges": 27935,
+   "injected_edge": null,
+   "opaque": 1177,
+   "outcomes": {
+    "moves": 27935,
+    "no-rule": 30504,
+    "opaque": 1177,
+    "outside": 2195,
+    "stuck": 0,
+    "terminal": 6856
+   },
+   "outside": 2195,
+   "shape": 11945,
+   "states": 68667,
+   "terminal": {
+    "Custom": 3483,
+    "Legal": 836,
+    "Libcall": 2522,
+    "Lower": 15
+   },
+   "uncovered": [
+    "G_INTRINSIC",
+    "G_INTRINSIC_W_SIDE_EFFECTS"
+   ]
+  }
+ ]
+}

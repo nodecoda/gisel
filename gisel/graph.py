@@ -18,7 +18,6 @@ from pathlib import Path
 
 from . import analysis as AN
 from . import axes as axesmod
-from . import cases as C
 from . import domain as D
 from . import dsl
 from . import eval as E
@@ -207,7 +206,7 @@ def _mem_type_spellings(node, evaluator, config):
 def _memory_values(infos, domain_mems, pointer_width, extended, extra_mems=(),
                    expand=None, axis_profile=None,
                    ordering_pairs=(("NotAtomic", "NotAtomic"),)):
-    rows = list(C._mem_candidates(infos, expand=expand))
+    rows = list(AN.mem_candidates(infos, expand=expand))
     if axis_profile is not None:
         rows = axis_profile.apply_mems(rows)
     if not rows:
@@ -246,7 +245,7 @@ def _candidate_axes(infos, arity, ptypes, domain_types, extra_types, extended,
     # that cases.py derives from the rules.  These are the finite observation
     # domain, and are also what lets the graph address the existing oracle's
     # boundary queries.  A mutation outside this set is reported as outside.
-    base = (C._candidates(infos, arity, 64, list(domain_types))
+    base = (AN.candidates(infos, arity, 64, list(domain_types))
             if include_derived else [[] for _ in range(arity)])
     axes = []
     for index in range(arity):
