@@ -1,0 +1,20 @@
+name: nightly
+
+on:
+  schedule:
+    - cron: "0 18 * * *"
+  workflow_dispatch:
+
+jobs:
+  expensive-graphs:
+    # AArch64 baseline is 1.1M states and ~8 minutes on its own; the four
+    # X86 configs are cheap next to it.  The manifest pins the bytes.
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: expensive graph configurations
+        run: bash tools/check-nightly-graphs.sh

@@ -181,7 +181,7 @@ RISC-V 的 `mem_desc` 里，memory type 是一个配置相关的 `select`
 python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
   --features tests/cases/riscv-features.json --config rv64gc --json \
   > /tmp/graph-riscv.json
-# rc=0（2026-11-11 在 dad5a61 重跑；未单独计时）
+# rc=0（2026-11-11 在 dad5a61 重跑；2026-11-13 带 --refine 进夜间档）
 ```
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
@@ -207,7 +207,7 @@ states 522,992，edges 29,356，cycles 0。
 python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
   --features tests/cases/features.json --config baseline --json \
   > /tmp/graph-a64.json
-# rc=0（2026-11-11 在 dad5a61 重跑；未单独计时）
+# rc=0（2026-11-11 在 dad5a61 重跑；2026-11-13 带 --refine 进夜间档）
 ```
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
@@ -381,5 +381,9 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
   `uncovered`，不是 0 环证据的一部分。
 - `--refine` 已扩到跨槽目标（按被写入槽的具体目标类型拆），所以 RISC-V/
   WebAssembly 也能到 `closure.count=0`。它仍是 opt-in，因为会改变“原子”定义。
-- 只有 x86/none 与 riscv/rv64gc 进了 golden；AArch64 baseline 与其余 X86
-  配置仍靠本报告的数字，不在 CI 门禁内。
+- PR 门禁只收 x86/none、x86/none-refine、riscv/rv64gc、riscv/rv64gc-refine
+  四个 golden（`tools/check-graph-golden.sh`，并行后约 3m27s）。
+- AArch64 baseline 与 X86 的 C0–C3 在 `tools/check-nightly-graphs.sh` 里按
+  sha256 锁定，每夜跑一次（`nightly.yml`）；不进 PR 门，因为单是 AArch64
+  就要约 8 分钟、1.15M states。2026-11-13 首次录制：5 个配置并行 8m44s，
+  全部 `cycles=0` 且 `closure.count=0`。
