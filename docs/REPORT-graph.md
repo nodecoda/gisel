@@ -17,12 +17,15 @@ targets  X86 / AArch64 / RISC-V corpus at ../upstream-source/pin/PIN.json
 ```sh
 python3 -m gisel graph SOURCE --emit=core \
   [--features FEATURES] [--config CONFIG] [--json] \
-  [--inject-edge] [--check-closure] [--oracle ORACLE] [--progress]
+  [--inject-edge] [--check-closure | --no-check-closure] \
+  [--oracle ORACLE] [--progress]
 ```
 
 图直接从 `.gisel` 生成 schema 0.4 core 文档再交给 evaluator；不读原型的
 `x86.tables.json`，不生成 MIR，不调用 `llc`/TableGen/LLVM。规范见
-`spec/graph.md`，设计记录见 `docs/DESIGN-graph.md`。
+`spec/graph.md`，设计记录见 `docs/DESIGN-graph.md`。2026-11-12 起闭包审计
+**默认开启**（`--no-check-closure` 关闭），所以下文中未写 `--refine` 的
+`rc=1` 都是默认行为，而不是额外选项造成的。
 
 ## 1 无环和注入边负控
 
@@ -58,18 +61,19 @@ python3 -m gisel graph /tmp/gisel-graph-report/fixture.gisel \
 ```sh
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --json > /tmp/graph-x86.json
-# rc=0, 61.1 s
+# rc=1（闭包审计默认开启，四个配置都没闭包）, 89.4 s
 ```
 
-| config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
-|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| C0 | 65,286 | 25,902 | 25,902 | 29,974 | 6,856 | 1,016 | 1,538 | 11,945 | 3,985 | 0 |
-| C1 | 65,275 | 24,282 | 24,282 | 30,660 | 7,657 | 1,020 | 1,656 | 11,945 | 3,974 | 0 |
-| C2 | 65,207 | 23,882 | 23,882 | 30,525 | 8,120 | 1,020 | 1,660 | 11,945 | 4,021 | 0 |
-| C3 | 65,286 | 25,707 | 25,707 | 29,988 | 7,037 | 1,016 | 1,538 | 11,945 | 3,985 | 0 |
+| config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles | closure |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
+| C0 | 68,667 | 27,935 | 27,935 | 30,504 | 6,856 | 1,177 | 2,195 | 11,945 | 4,031 | 0 | 272 |
+| C1 | 68,656 | 26,285 | 26,285 | 31,190 | 7,657 | 1,181 | 2,343 | 11,945 | 4,020 | 0 | 277 |
+| C2 | 68,588 | 25,885 | 25,885 | 31,055 | 8,120 | 1,181 | 2,347 | 11,945 | 4,067 | 0 | 265 |
+| C3 | 68,667 | 27,740 | 27,740 | 30,518 | 7,037 | 1,177 | 2,195 | 11,945 | 4,031 | 0 | 272 |
 
-2026-11-11 在 `dad5a61` 复测，四配置数字与上表一致；JSON 的 SHA-256 是
-`9c7fe814afae1085afd6f3620390e7560212de22b1b6b208a24813b7421555b3`。
+2026-11-12 在 `028f581` 复测（图实现无改动，`de8dbbf` 对齐 X86 CTPOP 与
+`08bfd1c`/`e226856` 的向量 lane 处理抬高了 states/edges）；JSON 的 SHA-256 是
+`37385728c13f9fbe85d1ba5156b0806cd32423972eaf4691590881dde1c8da13`。
 
 `uncovered` 始终是两个 variadic opcode：`G_INTRINSIC`、`G_INTRINSIC_W_SIDE_EFFECTS`
 （bundled opcode manifest 没有固定槽数）。
@@ -87,13 +91,13 @@ edges 从 24,943 降到 24,282、outside 从 1,788 降到 1,656：差异来自�
 ```sh
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --config C1 \
-  --check-closure --json > /tmp/graph-x86-c1-closure.json
-# rc=1, 20.5 s
+  --json > /tmp/graph-x86-c1-closure.json
+# rc=1, 20.5 s（闭包审计默认开启；--no-check-closure 才会回到 0）
 ```
 
 | 指标 | 值 |
 |---|---:|
-| states | 65,275 |
+| states | 68,656 |
 | closure.ok | false |
 | closure.count | 277 |
 | kinds.partition | 232 |
@@ -106,8 +110,8 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   --features tests/cases/x86-features.json --config C1 \
   --check-closure --refine --json > /tmp/graph-x86-c1-refine.json
-# rc=0, 20.2 s
-# states 65,717; classes 3,974 -> 4,017 (+43, 1.1%); cycles 0
+# rc=0, 23.0 s
+# states 69,098; classes 4,020 -> 4,063 (+43, 1.1%); cycles 0
 # closure {ok: true, count: 0}
 ```
 
@@ -131,7 +135,7 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 比较结果，只能是整数；旧轴把 `f16` 放进 slot 0，于是 `clampScalar(0, s8, s8)`
 把它窄成 `f8`。`analysis.type_shape_ok` 现在拒绝浮点结果（`G_ICMP` 同样拒绝
 指针/浮点结果），所以 X86 的 outside 从 86 降到 45，states 从 66,877 降到
-65,275，edges 从 24,943 降到 24,282。
+65,275，edges 从 24,943 降到 24,282（当时快照；现为 §2 的 68,656 / 26,285）。
 
 `--check-closure` 的语义在 2026-11-10 改过（见 `spec/graph.md` §负控和闭包）：
 它现在审计**每个非 opaque 状态的全部成员**，不再只审计有出边的代表点；域外
@@ -140,7 +144,9 @@ multiple target classes”不可直接比较——旧数字按状态计，新数
 
 **`cycles=0` 的前提**：不带 `--refine` 时只在代表点商图上成立；带 `--refine`
 时闭包成立，0 环是完整结论。`--refine` 改变第 2 篇的“原子”定义，所以默认
-关闭，由调用者显式选择。
+关闭，由调用者显式选择。闭包审计本身自 2026-11-12 起默认开启：未 refine 的
+四个大 target 默认 `rc=1`，读者要么带 `--refine` 拿完整结论，要么显式写
+`--no-check-closure` 承担“0 环只是条件结论”。
 
 ## 3b X86 C1 的 oracle 对齐（已删除）
 
@@ -260,7 +266,8 @@ cycles        147 ->         0
 
 ## 6 其它 target 的闭包（2026-11-10 补测）
 
-同一套命令，`--check-closure`，多配置 target 跑全部配置。ARM / Mips 的
+同一套命令（闭包审计默认开启；下表 `rc` 指 `--refine` 之后的退出码，未 refine
+时只对 `closure.count=0` 的 target 为 0），多配置 target 跑全部配置。ARM / Mips 的
 `states` 是单配置值（各配置的状态数相同），不是 7 个配置之和：
 
 | target | configs | states | closure.count | partition | outside | refine 后 | rc |
@@ -326,7 +333,8 @@ AArch64 在 `--refine` 下闭包成立。
 这些 `outside` 都不是规则错误；它们是有限轴没有枚举到的中间类型或跨槽目标。
 把 refine 扩到跨槽目标后，**X86 / AArch64 / RISC-V / WebAssembly 四个大
 target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 环”的
-可签字写法统一为：`--check-closure --refine`，并带上各报告的类数增量。
+可签字写法统一为：`--refine`（闭包默认开启，也可显式写 `--check-closure
+--refine`），并带上各报告的类数增量。
 
 ## 8 历史更正：6 个自环是假环
 

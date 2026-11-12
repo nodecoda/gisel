@@ -100,12 +100,13 @@ gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none
 gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
   --inject-edge                 # 负控：必须报出一个 2-环
 gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
-  --check-closure               # 后继必须是状态的函数
+  --no-check-closure            # 跳过审计（cycles=0 因此失去前提）
 ```
 
-`spec/graph.md` 是契约，`docs/REPORT-graph.md` 是证据。`--check-closure`
-失败时，图是有洞的：这时 `cycles=0` 只是“在被检查的那个划分上没找到环”，
-不是对整个定义域的证明。
+`spec/graph.md` 是契约，`docs/REPORT-graph.md` 是证据。闭包审计**默认开启**：
+只要有类成员落到枚举域外或落到不同的后继类，命令就返回 1，这时 `cycles=0`
+只是“在被检查的那个划分上没找到环”，不是对整个定义域的证明。`--refine`
+会拆开违规的类；X86 C1 用 `--refine` 后 rc=0（`docs/REPORT-graph.md` §3）。
 
 ## 架构
 

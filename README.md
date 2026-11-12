@@ -103,12 +103,15 @@ gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none
 gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
   --inject-edge                 # negative control: must report a 2-cycle
 gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
-  --check-closure               # the successor must be a function of the state
+  --no-check-closure            # skip the audit (cycles=0 loses its premise)
 ```
 
-`spec/graph.md` is the contract, `docs/REPORT-graph.md` the evidence.  When
-`--check-closure` fails, the graph has holes: `cycles=0` is then a statement
-about the partition that was checked, not a proof about the whole domain.
+`spec/graph.md` is the contract, `docs/REPORT-graph.md` the evidence.  The
+closure audit is **on by default**: if a class member lands outside the
+enumerated domain or in a different successor class, the command exits 1 and
+`cycles=0` is a statement about the partition that was checked, not a proof
+about the whole domain.  `--refine` splits the offending classes; for X86 C1
+that raises rc to 0 (`docs/REPORT-graph.md` §3).
 
 ## Architecture
 

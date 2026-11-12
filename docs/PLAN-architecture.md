@@ -85,7 +85,7 @@ D2/D4 若选 B 都属于收窄语法，按 `AGENTS.md` 必须你明确批准；�
 | P3 | 抽 `gisel/nodes.py`：节点 kind 表、`walk_nodes`、`(op, observation, target)` 形状表；`host_escapes`/`undeclared_features`/lint 共用 | 删掉三份重复遍历 | 中 |
 | P4 | CLI 单次解析：`prepare(emit)` 返回 `(program, doc)`，check/core 的 canonical 策略显式化；`lint` 与 `gen` 共用同一张 shim 表 | `lint`/`gen` 对 `narrow(slot(0), 32)` 结论一致 | 中 |
 | P5 | 有界商单点：`Domain.contains()`、候选预算单点、closure 逐成员审计；`graph` 改迭代 DFS | graph 输出新增字段，数字重跑 | 中高 |
-| P6 | 收尾：`--check-closure` 失败是否默认 rc=1 的产品口径（D6 决定后）；spec/REPORT 全量对齐 | `spec/graph.md`、`REPORT-graph.md` | 低 |
+| P6 | ~~收尾：`--check-closure` 失败是否默认 rc=1 的产品口径~~ **2026-11-12 定：默认开启，`--no-check-closure` 显式退出；失败 rc=1**；spec/REPORT 全量对齐 | `spec/graph.md`、`REPORT-graph.md` | 低（已完成） |
 
 每个阶段独立可回滚：P2/P3 不改行为，P4/P5 各带自己的测试，产物只在
 `tools/refresh-oracle.sh` 里刷新。

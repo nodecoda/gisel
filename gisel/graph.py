@@ -1096,7 +1096,11 @@ def main(argv=None):
     parser.add_argument("--axes", help="axis profile JSON (analysis only)")
     parser.add_argument("--oracle", help="check matching points in an oracle JSONL")
     parser.add_argument("--inject-edge", action="store_true")
-    parser.add_argument("--check-closure", action="store_true")
+    parser.add_argument("--check-closure", action=argparse.BooleanOptionalAction,
+                        default=True,
+                        help="audit that every class member lands in one "
+                             "successor class; use --no-check-closure to "
+                             "skip")
     parser.add_argument("--refine", action="store_true",
                         help="split classes until a class has one "
                              "successor class (opt-in; changes the atom)")
@@ -1192,9 +1196,13 @@ def main(argv=None):
                       % (kinds.get("partition", 0), kinds.get("outside", 0)))
             for violation in closure["violations"][:3]:
                 print("  closure: %s" % _violation_text(violation))
+            if not closure["ok"] and not args.refine:
+                print("  closure: successor is not a function of the state "
+                      "above; cycles=0 is conditional.  Use --refine to split "
+                      "the partition, or --no-check-closure to skip the audit.")
         else:
-            print("closure     : not checked (cycles=0 is conditional on the "
-                  "class partition being closed)")
+            print("closure     : not checked (--no-check-closure; cycles=0 is "
+                  "conditional on the class partition being closed)")
         if args.oracle:
             print("oracle      : %s" % output["oracle"])
         for cycle in output["cycle_samples"]:

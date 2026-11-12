@@ -37,6 +37,13 @@ ruleset G_ADD: G_ADD
     widen(slot(0), ty(S32))
 """
 
+UNCLOSED_FIXTURE = """\
+type S3 = LLT::scalar(3)
+
+ruleset G_ADD: G_ADD
+    widen(slot(0), pow2)
+"""
+
 SLOT_OUT_OF_RANGE = """\
 type S32 = LLT::scalar(32)
 
@@ -148,6 +155,21 @@ class ExitCodes(unittest.TestCase):
             self.assertEqual(
                 run("graph", str(src), "--config", "none",
                     "--inject-edge").returncode, 1)
+
+    def test_graph_closure_is_audited_by_default(self):
+        # D6: the closure audit is on unless the reader opts out, so `cycles=0`
+        # cannot be read as an unconditional proof.
+        with tempfile.TemporaryDirectory() as d:
+            src = write(d, "u.gisel", UNCLOSED_FIXTURE)
+            r = run("graph", str(src), "--config", "none")
+            self.assertEqual(r.returncode, 1, r.stdout)
+            self.assertIn("closure     : FAILED", r.stdout)
+            r = run("graph", str(src), "--config", "none", "--no-check-closure")
+            self.assertEqual(r.returncode, 0, r.stdout)
+            self.assertIn("not checked", r.stdout)
+            r = run("graph", str(src), "--config", "none", "--json")
+            payload = json.loads(r.stdout)
+            self.assertTrue(payload["reports"][0]["closure"]["checked"])
 
     def test_cases_and_domain_are_zero(self):
         with tempfile.TemporaryDirectory() as d:

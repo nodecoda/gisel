@@ -71,7 +71,8 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 `lower`。这是补全 evaluator 实际读取的谓词，不是为凑数而细化分区。
 
 类 id 只在当前 ruleset/轴内有意义，按向量稳定排序。默认绝不自动细化这个
-分区；`--check-closure` 发现不封闭时报告反例并失败。
+分区；`--check-closure`（**默认开启**）发现不封闭时报告反例并失败。
+`--no-check-closure` 跳过审计，此时 `cycles=0` 只是该划分上的条件结论。
 
 ## 后继和出口
 
@@ -123,7 +124,7 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 | `classes` | int | 参与建图的类总数 |
 | `classes_before` | int | 只有 `--refine` 时出现：细化前的类总数 |
 | `uncovered` | array | 没有建图的 opcode |
-| `closure` | object | `{checked, ok, count, kinds, violations}`；`checked=false` 时 `cycles` 有前提 |
+| `closure` | object | `{checked, ok, count, kinds, violations}`；默认 `checked=true`，`--no-check-closure` 时为 `false`，此时 `cycles` 有前提 |
 | `injected_edge` | array / null | `--inject-edge` 实际注入的边 |
 | `skipped` | array | 只有 `profiles.graph.skip` 跳过 opcode 时出现 |
 | `oracle` | object | 只有传 `--oracle` 时出现 |
@@ -135,8 +136,8 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 `--inject-edge` 取排序后的第一条真实边 `k -> m`，加入 `m -> k`。没有真实边
 时命令返回 2，因为负控无法构造；有边时 DFS 应至少报告一个 2-环并返回 1。
 
-`--check-closure` 对每个非 `opaque` 状态枚举该状态的全部成员（不只是有出边的
-代表点）。每个成员必须与代表点得到同一种出口，并落在同一个目标状态类；出口
+`--check-closure` 默认开启（`--no-check-closure` 关闭）；对每个非 `opaque`
+状态枚举该状态的全部成员（不只是有出边的代表点）。每个成员必须与代表点得到同一种出口，并落在同一个目标状态类；出口
 不同、规则不同、stuck 或多个目标类，都会打印成员和原因并返回 1。审计扫描全部
 状态，输出最多保留 20 条样例，`count` 记录真实违规总数；不会因为样例满额而
 提前停止。文本输出把每个样例压成单行（`state`、`member`、`mutation`、
@@ -152,6 +153,9 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 “后继是状态函数”这件事没有反例，`closure.ok` 仍为真，域外本身只记在
 `outcomes.outside` 里。两类性质不同——`partition` 说明分区不够细，`outside`
 说明覆盖面不够广。该选项本身不改变类划分。
+
+审计失败时命令返回 1，并在文本输出里提示两条出路：`--refine` 拆分类，或
+`--no-check-closure` 明确放弃这个前提。
 
 `outside` 也包含 mutation 的**真实中间类型**：例如 `G_ANYEXT` 把 `s129` 推到
 `s256`、`G_CONSTANT_FOLD_BARRIER` 把 `v65s8` 推到 `v128s8`，上游随后会用下一条
@@ -190,7 +194,7 @@ Mips 不声明任何 float 类型，于是每个 `f16 -> f32` 都被误记成域
 
 答案差异和 evaluator 错误同样返回 1。oracle 只用于检查，不是图的输入规则。
 
-- `0`：没有环，且闭包/oracle 检查（若请求）通过；
+- `0`：没有环，且闭包（默认执行）与 oracle（若请求）通过；
 - `1`：发现环、注入边成环、闭包失败或 oracle 不一致；
 - `2`：参数、解析、配置、有限域或负控构造错误。
 

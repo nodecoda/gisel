@@ -121,7 +121,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | G 题面 | `domain + cases + 字面量展开`，不只 `cases` | 三个 target 都用 `domain`：X86 91,340（4 配置）；AArch64 8,432,640（9 配置）；RISC-V 2,029,976（8 配置）。`cases` 仍在，作规则感知的压缩补充 |
 | 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 130 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
 | U 题面 | 上游运行期规则表 + 独立类型宇宙 | 有：`upstream-source` 的 oracle 模块，9 个 target；证据见 `ab/EVIDENCE.json` 的 9 条 `U/*` |
-| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 四个大 target 在 `--refine` 后全 0：X86 277→0、AArch64 2,671→0、RISC-V 2,864→0、Wasm 302→0（`REPORT-graph`） |
+| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | `graph` 的闭包审计 2026-11-12 起默认开启；四个大 target 未 refine 时 rc=1，`--refine` 后全 0：X86 277→0、AArch64 2,671→0、RISC-V 2,864→0、Wasm 302→0（`REPORT-graph`） |
 | 不可答点 | 单列、计数并钉数 | X86 648 条（2026-11-11：删掉按 slot 0 查表的短路后实测；旧 1,418 里 528 条其实可答）；AArch64 domain 39,056/配置；`cases` 侧已归零（`REPORT-cases` §8.2） |
 | 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 9 个 target；MIR L1/L2 三个、L3（全量 `check-llvm`，逐条）三个，证据在 `ab/EVIDENCE.json` 的 `MIR-*`；其余六个没有 MIR |
 | 可复现 | pin 更新自动重跑；产物 sha 固定 | `tests/artifacts` + `ab/oracle/`（`verify-evidence.sh` 59/59）；pin 漂移检测没有（只跟 pin） |
@@ -165,7 +165,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | L1 | `G` 题面对拍 | 有 |
 | L2 | 负控注入能被抓 | 有：9×`G-neg/*` + 9×`U-neg/*`（`ab/EVIDENCE.json`），注入动作翻转/谓词放宽后必须报分歧 |
 | L3 | `U` 题面对拍 | 有：9×`U/*`（`ab/EVIDENCE.json`） |
-| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（`--refine` 后四个大 target `count=0`，默认不成立）；frozen oracle 有；全量回归 3/9（x86/aarch64/riscv）；CI：ab 绿、gisel 绿（2026-11-12 修复）、upstream-source 无。缺“改语料后的 frozen 回放”流程与其余六个 target 的 MIR |
+| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（审计默认开启；`--refine` 后四个大 target `count=0`）；frozen oracle 有；全量回归 3/9（x86/aarch64/riscv）；CI：ab 绿、gisel 绿（2026-11-12 修复）、upstream-source 无。缺“改语料后的 frozen 回放”流程与其余六个 target 的 MIR |
 
 “内部权威”应该是 L4 的 target 才授予。X86、AArch64、RISC-V 分别授，不要用
 一个总开关。
