@@ -917,24 +917,102 @@ def load_features(path):
         return Features(json.load(f))
 
 
+def _query_type(value, field):
+    if not isinstance(value, str) or not value:
+        raise EvalError("bad_llt", "%s must be a non-empty LLT string" % field)
+    return parse_case_llt(value)
+
+
+def parse_query_row(row, *, require=True):
+    """Validate and normalise one JSONL query row.
+
+    The five key fields are ``config``, ``name``, ``types``, ``mem`` and
+    ``imms``.  Missing ``mem``/``imms`` mean null/empty; the fields that are
+    present are always checked.  ``require=False`` keeps the historical
+    tolerance of ``answers.key`` for a partial row, but never accepts a
+    malformed type, mem or immediate.
+    """
+    if not isinstance(row, dict):
+        raise EvalError("bad_query", "row must be a JSON object")
+    config = row.get("config")
+    name = row.get("name")
+    if require:
+        if not isinstance(config, str) or not config:
+            raise EvalError("bad_query", "config must be a non-empty string")
+        if not isinstance(name, str) or not name:
+            raise EvalError("bad_query", "name must be a non-empty string")
+    raw_types = row.get("types", [])
+    if not isinstance(raw_types, (list, tuple)):
+        raise EvalError("bad_query", "types must be an array")
+    types = tuple(_query_type(value, "types[]") for value in raw_types)
+
+    raw_mem = row.get("mem")
+    mem = None
+    if raw_mem is not None:
+        if not isinstance(raw_mem, (list, tuple)) or len(raw_mem) not in (2, 4):
+            raise EvalError("bad_mem", "mem must be null or a 2/4-element array")
+        align = raw_mem[1]
+        if not isinstance(align, int) or isinstance(align, bool):
+            raise EvalError("bad_mem", "mem[1] must be an integer")
+        if len(raw_mem) == 4:
+            ordering, failure = raw_mem[2], raw_mem[3]
+            if not isinstance(ordering, str) or not isinstance(failure, str):
+                raise EvalError("bad_mem", "mem[2]/mem[3] must be strings")
+        else:
+            ordering = failure = "NotAtomic"
+        mem = (_query_type(raw_mem[0], "mem[0]"), align, ordering, failure)
+
+    raw_imms = row.get("imms")
+    if raw_imms is None:
+        raw_imms = []
+    if not isinstance(raw_imms, (list, tuple)):
+        raise EvalError("bad_imms", "imms must be an array")
+    imms = []
+    for value in raw_imms:
+        if not isinstance(value, int) or isinstance(value, bool):
+            raise EvalError("bad_imms", "imms must contain integers")
+        imms.append(value)
+
+    return {"config": config, "name": name, "types": types,
+            "mem": mem, "imms": tuple(imms)}
+
+
+def parse_answer_row(row):
+    """Validate and normalise one JSONL answer row."""
+    if not isinstance(row, dict):
+        raise EvalError("bad_answer", "row must be a JSON object")
+    status = row.get("status")
+    if status == "unanswerable":
+        return ("unanswerable", row.get("reason", ""))
+    if status not in (None, "answered"):
+        raise EvalError("bad_answer", "unknown status %r" % (status,))
+    action = row.get("action")
+    if not isinstance(action, str) or not action:
+        raise EvalError("bad_answer", "action must be a non-empty string")
+    type_idx = row.get("type_idx", 0)
+    if not isinstance(type_idx, int) or isinstance(type_idx, bool):
+        raise EvalError("bad_answer", "type_idx must be an integer")
+    new = row.get("new_type")
+    return ("answered", action, type_idx,
+            parse_case_llt(new) if isinstance(new, str) else ("invalid",))
+
+
 def prepare_query(evaluator, q):
-    """Parse one query line the way the target's ``LLT::print`` spells it.
+    """Parse one JSONL query row and collapse it for this configuration.
 
     Returns ``(types, mems, imms, collapse)``.  ``collapse`` is the inverse of
     the extended-kind view, so a caller that compares against an answer file
     normalises its expected type the same way.
     """
-    ext = evaluator.extended(q["config"])
+    parsed = parse_query_row(q)
+    ext = evaluator.extended(parsed["config"])
     collapse = (lambda t: t) if ext else collapse_extended
-    types = [collapse(parse_case_llt(s)) for s in q["types"]]
+    types = [collapse(t) for t in parsed["types"]]
     mems = []
-    if q["mem"] is not None:
-        m = q["mem"]
-        ordering, failure = ((m[2], m[3]) if len(m) >= 4
-                             else ("NotAtomic", "NotAtomic"))
-        mems.append(MemDesc(collapse(parse_case_llt(m[0])), m[1],
-                            ordering, failure))
-    return types, mems, q.get("imms") or [], collapse
+    if parsed["mem"] is not None:
+        mty, align, ordering, failure = parsed["mem"]
+        mems.append(MemDesc(collapse(mty), align, ordering, failure))
+    return types, mems, list(parsed["imms"]), collapse
 
 
 def answer_queries(evaluator, cases_path, out_path):
