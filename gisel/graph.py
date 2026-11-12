@@ -42,7 +42,10 @@ _REPRESENTATIVE_RANK = {text: i
 
 
 class GraphError(ValueError):
-    pass
+    def __init__(self, message, *, kind=None, detail=None):
+        super().__init__(message)
+        self.kind = kind
+        self.detail = detail or {}
 
 
 def _json_key(value):
@@ -581,7 +584,7 @@ def _state_key(opcode, type_classes, mem_class, imm_class=None):
 def build(source, config, features, *, pointer_width=64, slots=None,
           inject_edge=False, check_closure=False, extra_types=(),
           extra_mems=(), arity_overrides=None, progress=False,
-          axis_profile=None, refine=False):
+          axis_profile=None, refine=False, max_states=None):
     """Build one configuration's graph and return a :class:`Report`."""
     doc = AN.document(source)
     evaluator = E.Evaluator(doc, features)
@@ -720,6 +723,14 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                             "outcome": None, "action": None, "type_idx": 0,
                             "rule": None,
                         }
+                        if max_states is not None and len(states) > max_states:
+                            raise GraphError(
+                                "state_limit: %s reaches %d states (limit %d)"
+                                % (opcode, len(states), max_states),
+                                kind="state_limit",
+                                detail={"states": len(states),
+                                        "limit": max_states,
+                                        "opcode": opcode})
 
         if progress:
             print("[%d/%d] %s: %d state(s), %.1fs"
@@ -1036,6 +1047,9 @@ def main(argv=None):
     parser.add_argument("--refine", action="store_true",
                         help="split classes until a class has one "
                              "successor class (opt-in; changes the atom)")
+    parser.add_argument("--max-states", type=int, default=None,
+                        help="stop with rc=2 after N states (deterministic "
+                             "scale guard; default: no limit)")
     parser.add_argument("--progress", action="store_true",
                         help="print per-ruleset progress on stderr")
     parser.add_argument("--json", action="store_true")
@@ -1079,12 +1093,24 @@ def main(argv=None):
                            extra_mems=oracle_mems,
                            arity_overrides=oracle_arities,
                            progress=args.progress or sys.stderr.isatty(),
-                           axis_profile=axis_profile)
+                           axis_profile=axis_profile,
+                           max_states=args.max_states)
             if args.oracle:
                 evaluator = E.Evaluator(doc, features)
                 report.oracle = oracle_check(report, args.oracle, evaluator,
                                              evaluator.extended(config))
             reports.append(report)
+    except GraphError as exc:
+        if args.json:
+            payload = {"error": exc.kind or "graph_error",
+                       "message": str(exc)}
+            if exc.kind == "state_limit":
+                payload["outcome"] = "unsupported_scale"
+            payload.update(exc.detail)
+            print(json.dumps(payload, sort_keys=True))
+        else:
+            print("gisel graph: %s" % exc, file=sys.stderr)
+        return 2
     except (OSError, ValueError, KeyError, json.JSONDecodeError,
             GraphError, axesmod.AxisError) as exc:
         print("gisel graph: %s" % exc, file=sys.stderr)

@@ -208,7 +208,14 @@ rc=0 的 refine 口径改成 rc=1。
 
 - `0`：没有环，且闭包（默认执行）与 oracle（若请求）通过；
 - `1`：发现环、注入边成环、闭包失败或 oracle 不一致；
-- `2`：参数、解析、配置、有限域或负控构造错误。
+- `2`：参数、解析、配置、有限域、负控构造错误，或超过 `--max-states`。
+
+`--max-states N` 是确定性的规模护栏：插入第 N+1 个状态时停止，不建边、不跑
+闭包。默认不设上限。`--json` 下输出
+`{"error": "state_limit", "outcome": "unsupported_scale", "states": N+1,
+"limit": N, "opcode": "..."}` 并返回 2；文本模式把同一信息写到 stderr。
+它存在的理由是把“跑不完”从外部 timeout 变成可复现的覆盖结论：SPIR-V 的
+`spirv64-kernel` 在 `G_FLDEXP` 处达到 200,001 个状态，15 s 内以 rc=2 结束。
 
 实现必须保持以下语义：指针变宽/变窄后是整数，不构造 8 位指针；clamp lane
 使用精确值；条件位宽和 lane 上界按当前配置求值；谓词保持三值；`sizeIs`

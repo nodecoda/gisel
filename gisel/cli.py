@@ -239,6 +239,7 @@ def main(argv=None):
                     default=True,
                     help="audit class closure")
     gr.add_argument("--refine", action="store_true")
+    gr.add_argument("--max-states", type=int, default=None)
     gr.add_argument("--progress", action="store_true")
     gr.add_argument("--json", action="store_true")
 

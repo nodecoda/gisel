@@ -271,6 +271,27 @@ class GraphFixture(unittest.TestCase):
         self.assertGreater(report.public()["opaque"], 0)
 
 
+    def test_state_limit_is_deterministic(self):
+        with self.assertRaises(graph.GraphError) as caught:
+            self.build(FIXTURE, max_states=1)
+        self.assertEqual(caught.exception.kind, "state_limit")
+        self.assertEqual(caught.exception.detail["limit"], 1)
+        self.assertGreater(caught.exception.detail["states"], 1)
+
+    def test_state_limit_cli_says_unsupported_scale(self):
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_source(directory, FIXTURE)
+            r = subprocess.run(
+                [sys.executable, "-m", "gisel", "graph", str(source),
+                 "--max-states", "1", "--json"],
+                capture_output=True, text=True)
+        self.assertEqual(r.returncode, 2, r.stdout + r.stderr)
+        payload = json.loads(r.stdout)
+        self.assertEqual(payload["error"], "state_limit")
+        self.assertEqual(payload["outcome"], "unsupported_scale")
+        self.assertEqual(payload["limit"], 1)
+
+
 class OracleAlignment(unittest.TestCase):
     def test_all_points_in_a_small_oracle_are_checked(self):
         with tempfile.TemporaryDirectory() as directory:

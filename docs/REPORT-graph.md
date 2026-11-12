@@ -294,15 +294,17 @@ cycles        147 ->         0
 | PowerPC | 1 | 7,402 | **0** | 0 | 0 | — | 0 |
 | M68k | 1 | 1,232 | **0** | 0 | 0 | — | 0 |
 | WebAssembly | 4 | 26,818 | 302 | 168 | 134 | **0**（1,945→2,013 类） | 0 |
-| SPIR-V | 6 | — | 未覆盖 | — | — | — | — |
+| SPIR-V | 6 | >200,000（limit） | 未覆盖（`state_limit`） | — | — | — | 2 |
 
 WebAssembly 的 302 条残余：12 条显式 `i128`（轴里只有 `i8`/`i16`/`i32`/`i64`），
 其余是 `G_FCOPYSIGN` 等类里“代表点在域外、成员在域内”的跨域混合。把 refine
 扩到跨槽目标后，**`--refine` 得到 `count=0`，rc=0**；classes 1,945 → 2,013
 （+68），states 27,096，edges 18,869。
 
-SPIR-V 的单个配置 `spirv64-kernel` 在 420 s 内没有跑完（图规模超过 AArch64），
-所以没有闭包数字。它不能拿别的 target 的数字代替。
+SPIR-V 的单个配置 `spirv64-kernel` 在 200,000 states 上限处停住：
+`G_FLDEXP` 达到 200,001 个状态，`--max-states 200000` 在 15 s 内返回
+`state_limit` / `unsupported_scale` / rc=2。它没有闭包数字，也不能拿别的
+target 的数字代替。
 
 ## 7 2026-11-10 的更正：`outside` 曾经用错有限域
 
@@ -376,7 +378,8 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
 - AArch64 只跑了 `baseline`；另外四个配置的图和闭包没有跑。单配置约 8 分钟、
   1.15M states 是当前的成本上限。
 - RISC-V 的 imm 轴、ordering 轴没有跑；闭包在 `rv64gc` 上跑过，`--refine` 后通过（§4）。
-- SPIR-V 单配置 420 s 超时，没有图和闭包数字。
+- SPIR-V 单配置在 200,000 states 上限处停住（`G_FLDEXP`，15 s，rc=2）；
+  没有图和闭包数字。`--max-states` 把“跑不完”变成可复现的 `unsupported_scale`。
 - `G_INTRINSIC*` 等 variadic opcode 的槽数没有进 manifest，因此被报成
   `uncovered`，不是 0 环证据的一部分。
 - `--refine` 已扩到跨槽目标（按被写入槽的具体目标类型拆），所以 RISC-V/
@@ -389,4 +392,5 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
   AArch64 就要约 8 分钟、1.15M states。2026-11-13 录制：10 个配置并行
   8m44s，全部 `cycles=0` 且 `closure.count=0`。
 - SPIR-V 只进 cases 门禁，不进 graph 夜间档：`spirv64-kernel --refine`
-  15 分钟未完成，钉进去只会得到一个慢超时，不是覆盖。
+  在 200,000 states 上限处停住（`G_FLDEXP`，15 s，rc=2）。钉进去只会得到
+  一个确定性的 `unsupported_scale`，不是覆盖；它仍需要单独的剪枝工作。
