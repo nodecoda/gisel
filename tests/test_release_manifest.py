@@ -31,6 +31,39 @@ class ReleaseManifest(unittest.TestCase):
         self.assertEqual(proc.returncode, 2, proc.stdout + proc.stderr)
         self.assertIn("not a git checkout", proc.stderr)
 
+    def test_checkout_refs_only_reads_the_gisel_checkout(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wf = root / ".github" / "workflows" / "ci.yml"
+            wf.parent.mkdir(parents=True)
+            wf.write_text(
+                "    steps:\n"
+                "      - uses: actions/checkout@v7\n"
+                "        with:\n"
+                "          repository: someone/else\n"
+                "          ref: ignored\n"
+                "      - uses: actions/checkout@v7\n"
+                "        with:\n"
+                "          repository: nodecoda/gisel\n"
+                "          path: gisel\n"
+                "          ref: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n")
+            refs = module().checkout_refs(root)
+        self.assertEqual([ref for _, ref in refs], ["a" * 40])
+
+    def test_stale_refs_fail_the_cohort(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            wf = root / ".github" / "workflows" / "ci.yml"
+            wf.parent.mkdir(parents=True)
+            wf.write_text(
+                "      - uses: actions/checkout@v7\n"
+                "        with:\n"
+                "          repository: nodecoda/gisel\n"
+                "          ref: %s\n" % ("b" * 40))
+            stale = module().stale_refs((("ab", root),), "c" * 40)
+        self.assertEqual(len(stale), 1)
+        self.assertIn("checks out " + "b" * 12, stale[0])
+
     def test_manifest_file_reads_every_case_target(self):
         rows = module().manifest_file(
             ROOT / "tests" / "artifacts" / "cases" / "SHA256")
