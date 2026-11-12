@@ -23,6 +23,7 @@ import json
 from pathlib import Path
 
 from .. import ast as A
+from ..actions import ACTIONS
 
 LICENSE_HEADER = """\
 /*===- TableGen'erated file -------------------------------------*- C++ -*-===*\\
@@ -136,19 +137,10 @@ FOR_OVERLOADS = {
 # Shims whose implementation calls `markAllIdxsAsCovered()`; a rule spelled
 # with one of these covers every type and imm index, whatever its predicate
 # says.  The rest record coverage through `typeIdx(i)`.
-ALL_COVERING_SHIMS = {
-    "coreLegalIf", "coreCustomIf", "coreLowerIf", "coreUnsupportedIf",
-    "coreLibcallIf",
-}
+ALL_COVERING_SHIMS = {a.covering_shim for a in ACTIONS if a.covering_shim}
 
-# terminal action -> its declarative `xxxFor` spelling.
-FOR_ACTION = {
-    "legal": "legalFor",
-    "custom": "customFor",
-    "lower": "lowerFor",
-    "libcall": "libcallFor",
-    "unsupported": "unsupportedFor",
-}
+# terminal action op -> its declarative `xxxFor` spelling.
+FOR_ACTION = {a.op: a.for_spelling for a in ACTIONS if a.for_spelling}
 
 # coreObservationForm(): only the forms the corpora use, plus the identity.
 ONSERVATION_FORM = {"elemOf": "elem", "scalarOf": "scalar"}

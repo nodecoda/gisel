@@ -69,7 +69,9 @@ from .llt import (
     align_to,
 )
 
-NO_MUTATION_ACTIONS = {"Legal", "Lower", "Libcall", "Custom", "Unsupported"}
+from .actions import TERMINAL_ACTIONS
+
+NO_MUTATION_ACTIONS = TERMINAL_ACTIONS
 SCALARIZE_ACTION = "FewerElements"  # scalarize projects to FewerElements
 
 

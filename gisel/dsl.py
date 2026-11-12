@@ -27,6 +27,8 @@ import json
 import os
 import re
 
+from .actions import BY_OP, MUTATION_OPS, TERMINAL_OPS
+
 # ---- normal-form node builders (schema 0.4) -------------------------------
 
 def _node(kind, **extra):
@@ -499,15 +501,12 @@ def type_idx_of(on):
 def compile_stmt(st):
     op = st["op"]
     pred = st.get("pred")
-    if op in ("legal", "lower", "custom", "unsupported", "libcall"):
-        action = {"legal": "Legal", "lower": "Lower", "custom": "Custom",
-                  "unsupported": "Unsupported", "libcall": "Libcall"}[op]
+    if op in TERMINAL_OPS:
+        action = BY_OP[op].name
         return {"action": action, "type_idx": 0, "op": op,
                 "predicate": pred if pred is not None else leaf("true", [])}
-    if op in ("widen", "narrow", "more", "fewer", "bitcast"):
-        action = {"widen": "WidenScalar", "narrow": "NarrowScalar",
-                  "more": "MoreElements", "fewer": "FewerElements",
-                  "bitcast": "Bitcast"}[op]
+    if op in MUTATION_OPS:
+        action = BY_OP[op].name
         return {"action": action, "type_idx": type_idx_of(st["on"]), "op": op,
                 "on": st["on"], "to": st["to"],
                 "guarded": pred is not None,
@@ -574,10 +573,6 @@ COMPARE_SORTS = {"Int", "Kind", "Ordering", "Type"}
 KIND_ORDERING = {"orderingUnordered", "orderingMonotonic", "orderingAcquire",
                  "orderingRelease", "orderingAcquireRelease",
                  "orderingSequentiallyConsistent"}
-# admissible target sorts per lattice operator (action table, J3a)
-TARGET_SORTS = {"widen": {"Type", "Int"}, "narrow": {"Type", "Int"},
-                "more": {"Int", "Type"}, "fewer": {"Int", "Type"},
-                "bitcast": {"Type"}}
 
 def _check_name(name, names, errs):
     """A type leaf must name a declared record.  None disables the check."""
@@ -773,13 +768,13 @@ def _tc(node, arity, errs, names=None):
 
 def check_rule(rule, arity, errs, names=None):
     op = rule["op"]
-    if op in ("legal", "lower", "custom", "unsupported", "libcall"):
+    if op in TERMINAL_OPS:
         if _tc(rule["predicate"], arity, errs, names) != "Bool":
             errs.append(f"{op}: guard must be Bool")
-    elif op in TARGET_SORTS:
+    elif op in MUTATION_OPS:
         _tc(rule["on"], arity, errs, names)
         ts = _tc(rule["to"], arity, errs, names)
-        if ts not in TARGET_SORTS[op]:
+        if ts not in BY_OP[op].target_sorts:
             errs.append(f"{op}: target sort {ts} not in action table")
         _tc(rule["predicate"], arity, errs, names)
     elif op == "scalarize":

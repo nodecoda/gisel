@@ -24,7 +24,9 @@ from . import eval as E
 from . import llt as L
 
 
-TERMINAL = {"Legal", "Lower", "Libcall", "Custom", "Unsupported"}
+from .actions import TERMINAL_ACTIONS
+
+TERMINAL = TERMINAL_ACTIONS
 # Wider than `cases`' 16 on purpose: the graph must address boundary and
 # outside points that the case generator deliberately trims.
 GRAPH_CANDIDATE_CAP = 64
