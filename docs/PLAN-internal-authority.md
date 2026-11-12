@@ -123,8 +123,8 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | U 题面 | 上游运行期规则表 + 独立类型宇宙 | 有：`upstream-source` 的 oracle 模块，9 个 target；证据见 `ab/EVIDENCE.json` 的 9 条 `U/*` |
 | 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | `graph` 的闭包审计 2026-11-12 起默认开启；四个大 target 未 refine 时 rc=1，`--refine` 后全 0：X86 277→0、AArch64 2,671→0、RISC-V 2,864→0、Wasm 302→0（`REPORT-graph`） |
 | 不可答点 | 单列、计数并钉数 | X86 648 条（2026-11-11：删掉按 slot 0 查表的短路后实测；旧 1,418 里 528 条其实可答）；AArch64 domain 39,056/配置；`cases` 侧已归零（`REPORT-cases` §8.2） |
-| 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 9 个 target；MIR L1 六个（x86/aarch64/riscv/arm/mips，PPC 只有一条且无 generic 指令）、L2 六个（x86/aarch64/riscv/ppc/arm/mips）、L3 三个，证据在 `ab/EVIDENCE.json` 的 `MIR-*`；m68k/wasm/spirv 没有 MIR |
-| 可复现 | pin 更新自动重跑；产物 sha 固定 | `tests/artifacts` + `ab/oracle/`（`verify-evidence.sh` 70/70）；改语料后用 `replay-frozen.py` 对冻结答案回放（九 target 全一致）；pin 漂移检测没有（只跟 pin） |
+| 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 9 个 target；MIR L1 六个（x86/aarch64/riscv/arm/mips，PPC 只有一条且无 generic 指令）、L2 八个（x86/aarch64/riscv/ppc/arm/mips/m68k/wasm）、L3 三个，证据在 `ab/EVIDENCE.json` 的 `MIR-*`；SPIR-V 没有 MIR |
+| 可复现 | pin 更新自动重跑；产物 sha 固定 | `tests/artifacts` + `ab/oracle/`（`verify-evidence.sh` 74/74）；改语料后用 `replay-frozen.py` 对冻结答案回放（九 target 全一致）；pin 漂移检测没有（只跟 pin） |
 
 ## 6 负控：证明对拍有牙齿
 
@@ -170,7 +170,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | L1 | `G` 题面对拍 | 有 |
 | L2 | 负控注入能被抓 | 有：9×`G-neg/*` + 9×`U-neg/*`（`ab/EVIDENCE.json`），注入动作翻转/谓词放宽后必须报分歧 |
 | L3 | `U` 题面对拍 | 有：9×`U/*`（`ab/EVIDENCE.json`） |
-| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（审计默认开启；`--refine` 后四个大 target `count=0`）；frozen oracle 有，且 `replay-frozen.py` 九 target × G/U 十八个方向逐条一致（`ab/docs/REPLAY-FROZEN.md`）；全量回归 3/9（x86/aarch64/riscv），另有 3 个 L1；CI：ab 绿、gisel 绿（2026-11-12 修复）、upstream-source 绿（`ada7db3`，import-tests + pin `--check`）。缺 m68k/wasm/spirv 的 MIR |
+| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | 闭包有（审计默认开启；`--refine` 后四个大 target `count=0`）；frozen oracle 有，且 `replay-frozen.py` 九 target × G/U 十八个方向逐条一致（`ab/docs/REPLAY-FROZEN.md`）；全量回归 3/9（x86/aarch64/riscv），另有 3 个 L1；CI：ab 绿、gisel 绿（2026-11-12 修复）、upstream-source 绿（`ada7db3`，import-tests + pin `--check`）。缺 SPIR-V 的 MIR |
 
 “内部权威”应该是 L4 的 target 才授予。X86、AArch64、RISC-V 分别授，不要用
 一个总开关。
@@ -203,5 +203,5 @@ gisel 成为源之后，流程反过来：
 
 `G` 与 `U` 双向题面、负控、闭包和 frozen oracle 都已有证据；L3（全量
 `check-llvm`）已于 2026-11-12 进 `ab/EVIDENCE.json`，ab 与 gisel 的 CI 都是绿的。
-剩下的缺口是：m68k/wasm/spirv 的 MIR。逐条列在
+剩下的缺口是：SPIR-V 的 MIR。逐条列在
 `ab/docs/GAPS.md`（O1）。
