@@ -175,6 +175,12 @@ forall q in U: Ans_g(q) = Ans_u(q)
 “内部权威”应该是 L4 的 target 才授予。X86、AArch64、RISC-V 分别授，不要用
 一个总开关。
 
+采用（2026-11-12）：三个 L4 target 都已有 fork 采用分支
+`explore/{x86,aarch64,riscv}-adopt`（`nodecoda/llvm-project`）。每个分支的构建库
+sha 与 MIR-L3 “swapped” 记录逐位相同，80,596 条 lit 逐条一致，冻结 `G`/`U` 回放
+disagree 全 0；细节与回滚规则见 `ab/docs/ADOPT.md`。采用是 L4 之后的动作：它把
+证据落到 fork 里，不改变 L4 的定义，也不覆盖 §10 的边界。
+
 ## 9 权威之后的变更流程
 
 gisel 成为源之后，流程反过来：
