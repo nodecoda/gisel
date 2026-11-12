@@ -302,7 +302,7 @@ ruleset Spv_G_UREM: G_UREM G_SREM G_SDIV G_UDIV G_FREM
     custom (Spv_isShader and in(slot(0), Spv_allShaderVectors))
     custom (not Spv_isShader and in(slot(0), Spv_allVectors))
     custom (Spv_hasLongVector and sort_of(slot(0)) == vector)
-    scalarize(slot(0)) when not is_pow2(num_elems(slot(0)))
+    scalarize(slot(0)) when (is_fixed_vector(slot(0)) and not is_pow2(num_elems(slot(0))))
     fewer(slot(0), 4) when (((Spv_isShader and is_fixed_vector(slot(0)) and num_elems(slot(0)) > 4) or (not Spv_isShader and is_fixed_vector(slot(0)) and num_elems(slot(0)) > 16)) and Spv_isShader)
     fewer(slot(0), 16) when (((Spv_isShader and is_fixed_vector(slot(0)) and num_elems(slot(0)) > 4) or (not Spv_isShader and is_fixed_vector(slot(0)) and num_elems(slot(0)) > 16)) and not Spv_isShader)
     custom true
