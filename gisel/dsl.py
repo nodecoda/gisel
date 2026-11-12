@@ -788,11 +788,16 @@ def check_rule(rule, arity, errs, names=None):
         errs.append(f"unknown op {op!r}")
 
 def load_arity_manifest():
-    """The bundled opcode table: lint works without an LLVM source tree."""
+    """The bundled opcode table, projected to arity for lint.
+
+    `opcode-slots.json` is the only snapshot; there is no second arity file to
+    drift from it.
+    """
     path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                        "data", "generic_opcodes.json")
+                        "data", "opcode-slots.json")
     with open(path) as f:
-        return json.load(f)["opcodes"]
+        return {name: info["arity"]
+                for name, info in json.load(f)["opcodes"].items()}
 
 
 def check_rules(compiled, opcodes, manifest, errs):

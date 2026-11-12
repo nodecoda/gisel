@@ -25,10 +25,17 @@ from . import llt as L
 
 
 TERMINAL = {"Legal", "Lower", "Libcall", "Custom", "Unsupported"}
+# Wider than `cases`' 16 on purpose: the graph must address boundary and
+# outside points that the case generator deliberately trims.
+GRAPH_CANDIDATE_CAP = 64
 _CLOSURE_SAMPLE_LIMIT = 20
-_SENTINEL_TEXT = ("s3", "s7", "s24", "s33", "s63", "s65",
-                  "v3s8", "v5s8", "v3s32", "v5s32")
-_SENTINEL_RANK = {text: i for i, text in enumerate(_SENTINEL_TEXT)}
+# Representative choice inside a class, not the candidate sentinel list:
+# prefer the odd/lane-3 shapes so a class is addressed by its most specific
+# member.  The candidate list itself lives in `analysis`.
+_REPRESENTATIVE_TEXT = ("s3", "s7", "s24", "s33", "s63", "s65",
+                        "v3s8", "v5s8", "v3s32", "v5s32")
+_REPRESENTATIVE_RANK = {text: i
+                        for i, text in enumerate(_REPRESENTATIVE_TEXT)}
 
 
 class GraphError(ValueError):
@@ -45,7 +52,8 @@ def _type_text(t):
 
 
 def _representative_key(t):
-    return (_SENTINEL_RANK.get(_type_text(t), len(_SENTINEL_RANK)),
+    return (_REPRESENTATIVE_RANK.get(_type_text(t),
+                                     len(_REPRESENTATIVE_RANK)),
             _type_text(t))
 
 
@@ -75,78 +83,6 @@ def _node_text(node):
     return "%s[%s%s]" % (opcode, ",".join(map(str, classes)), suffix)
 
 
-def _walk_atoms(node, out):
-    if not isinstance(node, dict):
-        return
-    kind = node.get("kind")
-    if kind in ("all", "any", "not", "nary"):
-        for value in node.get("args", []):
-            _walk_atoms(value, out)
-        if "arg" in node:
-            _walk_atoms(node["arg"], out)
-        return
-    out.append(node)
-
-
-def _atoms(ruleset):
-    out, seen = [], set()
-    for rule in ruleset["rules"]:
-        found = []
-        _walk_atoms(rule.get("predicate"), found)
-        for atom in found:
-            key = _json_key(atom)
-            if key not in seen:
-                seen.add(key)
-                out.append(atom)
-    return out
-
-
-def _dependencies(node):
-    slots, mem, imms, ordering = set(), False, set(), False
-
-    def walk(value):
-        nonlocal mem, ordering
-        if isinstance(value, dict):
-            if value.get("kind") == "slot":
-                slots.add(value["index"])
-            elif value.get("kind") == "memSlot":
-                mem = True
-            elif value.get("kind") == "imm":
-                imms.add(value["index"])
-            elif value.get("kind") in ("memOrdering", "memFailureOrdering"):
-                ordering = True
-            for child in value.values():
-                walk(child)
-        elif isinstance(value, (list, tuple)):
-            for child in value:
-                walk(child)
-
-    walk(node)
-    return slots, mem, imms, ordering
-
-
-def _mutation_slots(node):
-    """Slots a mutation expression reads, including ``same_as(k)`` indices."""
-    slots = set()
-
-    def walk(value):
-        if isinstance(value, dict):
-            kind = value.get("kind")
-            if kind == "slot":
-                slots.add(value["index"])
-            elif kind == "sameAs":
-                args = value.get("args", ())
-                if args and args[0].get("kind") == "int":
-                    slots.add(int(args[0]["value"]))
-            for child in value.values():
-                walk(child)
-        elif isinstance(value, (list, tuple)):
-            for child in value:
-                walk(child)
-
-    walk(node)
-    return slots
-
 
 def _collapse(t, extended):
     return t if extended else E.collapse_extended(t)
@@ -168,14 +104,20 @@ def _mem_desc(mem, extended):
                       ordering, failure)]
 
 
-def _opcode_shape(opcode, slots, manifest):
-    info = slots.get(opcode, {})
-    arity = info.get("arity")
-    if arity is None:
-        arity = manifest.get(opcode)
-    if arity is None:
+def _opcode_shape(opcode, slots):
+    """Arity and pointer slots from the one bundled table.
+
+    An entry with no `ptype` is a broken snapshot, not "no pointer slots": the
+    generator always writes both keys, so treating a missing key as empty would
+    hide a data bug.
+    """
+    info = slots.get(opcode)
+    if info is None:
         return None, set()
-    return arity, set(info.get("ptype", ()))
+    if "arity" not in info or "ptype" not in info:
+        raise GraphError(
+            "opcode %s: opcode-slots.json entry lacks arity/ptype" % opcode)
+    return info["arity"], set(info["ptype"])
 
 
 def _declared_types(source, pointer_width, extended):
@@ -245,7 +187,8 @@ def _candidate_axes(infos, arity, ptypes, domain_types, extra_types, extended,
     # that cases.py derives from the rules.  These are the finite observation
     # domain, and are also what lets the graph address the existing oracle's
     # boundary queries.  A mutation outside this set is reported as outside.
-    base = (AN.candidates(infos, arity, 64, list(domain_types))
+    base = (AN.candidates(infos, arity, GRAPH_CANDIDATE_CAP,
+                                 list(domain_types))
             if include_derived else [[] for _ in range(arity)])
     axes = []
     for index in range(arity):
@@ -292,7 +235,7 @@ def _make_classes(values, axis, atoms, rules, axes, mem_values,
         types[axis] = value
         signature = []
         for atom in atoms:
-            slots, has_mem, has_imm, has_ordering = _dependencies(atom)
+            slots, has_mem, has_imm, has_ordering = AN.dependencies(atom)
             if (slots - {axis}) or has_mem or has_ordering:
                 # A relation involving another slot cannot be represented by
                 # a unary class without losing information.  Preserve the
@@ -313,9 +256,9 @@ def _make_classes(values, axis, atoms, rules, axes, mem_values,
         for rule in rules:
             if rule.get("on") is None:
                 continue
-            slots, has_mem, has_imm, has_ordering = _dependencies(
+            slots, has_mem, has_imm, has_ordering = AN.dependencies(
                 rule.get("predicate"))
-            to_slots = _mutation_slots(rule.get("to"))
+            to_slots = AN.mutation_slots(rule.get("to"))
             if ((slots - {axis}) or has_mem or has_imm or has_ordering
                     or (to_slots - {axis})):
                 signature.append(["raw-guard", _type_text(value)])
@@ -344,7 +287,7 @@ def _make_mem_classes(mem_values, atoms, axes, evaluator, config):
     for value in mem_values:
         signature = []
         for atom in atoms:
-            slots, has_mem, has_imm, _has_ordering = _dependencies(atom)
+            slots, has_mem, has_imm, _has_ordering = AN.dependencies(atom)
             if slots or not has_mem or has_imm:
                 signature.append(["raw", value])
             else:
@@ -371,7 +314,7 @@ def _make_imm_classes(values, atoms, evaluator, config):
     for value in values:
         signature = []
         for atom in atoms:
-            slots, has_mem, has_imm, _has_ordering = _dependencies(atom)
+            slots, has_mem, has_imm, _has_ordering = AN.dependencies(atom)
             if not has_imm:
                 continue
             if slots or has_mem:
@@ -640,7 +583,6 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     doc = AN.document(source)
     evaluator = E.Evaluator(doc, features)
     slots = slots or D.load_opcode_slots()
-    arity_manifest = dsl.load_arity_manifest()
     extended = evaluator.extended(config)
     declared = _declared_types(source, pointer_width, extended)
     domain_mems = D.domain_axes(source, pointer_width)[1]
@@ -666,7 +608,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
 
     for rs_idx, rs in enumerate(doc["rulesets"]):
         nslots, infos = AN.inspect_ruleset(rs)
-        atoms = _atoms(rs)
+        atoms = AN.atoms(rs)
         imm_axis = AN.imm_candidates(infos, axis_profile)
         imm_tuples = AN.imm_tuples(imm_axis) if imm_axis else [()]
         imm_spec = axis_profile.imms() if axis_profile is not None else {}
@@ -684,7 +626,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
             if skip(opcode):
                 skipped.add(opcode)
                 continue
-            arity, ptypes = _opcode_shape(opcode, slots, arity_manifest)
+            arity, ptypes = _opcode_shape(opcode, slots)
             if arity_overrides and opcode in arity_overrides:
                 arity = arity_overrides[opcode]
             if arity is None:
@@ -798,7 +740,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
         atoms = []
         seen = set()
         for rs in rses:
-            for atom in _atoms(rs):
+            for atom in AN.atoms(rs):
                 k = _json_key(atom)
                 if k not in seen:
                     seen.add(k); atoms.append(atom)

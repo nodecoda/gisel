@@ -57,8 +57,9 @@ core   AST -> schema-0.4 JSON -> eval
    `tools/import-cxx.py` 仍会写出这两行，因为 `tests/test_import_cxx.py`
    要求重新导入的语料与仓库内语料逐字节一致；导入器是开发工具。
 3. **冻结数据/开发脚本**  
-   `gisel/data/generic_opcodes.json` 的数值是冻结的 opcode arity 表；`source`
-   字段已改为不含 `.td` 路径的描述。`tools/refresh-oracle.sh` 仍是开发期
+   `gisel/data/opcode-slots.json` 是冻结的 opcode arity/pointer 表；原先的
+   `generic_opcodes.json` 已合并进来，避免两份 arity 漂移。`source` 字段已是
+   不含 `.td` 路径的描述。`tools/refresh-oracle.sh` 仍是开发期
    oracle 刷新脚本，会调用 `llvm-tblgen` 生成 `.inc`/JSON；`gisel` 本身和 CI
    不调用它。`gisel/vocab.py` 的 50/64/64 是 `--emit=check` 的冻结计数器。
 

@@ -56,6 +56,10 @@ type_value_spellings = analysis.type_value_spellings
 RuleInfo = analysis.RuleInfo
 
 KINDS = ("equivalence", "boundary", "outside")
+# The generator trims the cartesian product; `graph` deliberately uses a wider
+# cap.  Two policies, two names -- do not make them equal without re-recording
+# every frozen artifact.
+DEFAULT_MAX_SLOT_VALUES = 16
 
 
 
@@ -315,7 +319,8 @@ def _queries(per, default, mem_entries, uses_mem, imm_tuples=(()),
     return out, dropped
 
 
-def generate(doc, features, *, configs=None, max_slot_values=16,
+def generate(doc, features, *, configs=None,
+             max_slot_values=DEFAULT_MAX_SLOT_VALUES,
              max_outside=2, max_boundary_per_rule=24,
              max_witnesses_per_rule=4, axes=None,
              only_rulesets=None) -> Generation:

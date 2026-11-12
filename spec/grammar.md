@@ -228,7 +228,7 @@ LLVM 的前提下检查每条规则：
 `{source, errors[], warnings[], rules}`。退出码：0 无 error，1 有 error，
 2 源/IO/解析错误。
 
-arity 来自随包分发的 `gisel/data/generic_opcodes.json`（283 条的冻结 opcode
+arity 来自随包分发的 `gisel/data/opcode-slots.json`（283 条的冻结 opcode
 表）。10 条变参指令（`G_PHI`、`G_INTRINSIC*`
 等）没有固定 arity：
 lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默通过。

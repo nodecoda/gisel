@@ -44,18 +44,17 @@ python -m venv /tmp/rel && /tmp/rel/bin/pip install -q build twine
 /tmp/rel/bin/twine check dist/*
 ```
 
-`twine check` must print PASSED for both files.  The wheel carries the two
-bundled tables (`gisel/data/generic_opcodes.json` for `lint`,
-`gisel/data/opcode-slots.json` for `domain`/`graph`) and nothing else from the
-repository:
+`twine check` must print PASSED for both files.  The wheel carries the one
+bundled opcode table (`gisel/data/opcode-slots.json`, read by `lint`,
+`domain` and `graph`) and nothing else from the repository:
 
 ```sh
 python - <<'PY'
 import zipfile, glob
 z = zipfile.ZipFile(glob.glob('dist/*.whl')[0])
 names = z.namelist()
-assert any(n.endswith('data/generic_opcodes.json') for n in names), names
 assert any(n.endswith('data/opcode-slots.json') for n in names), names
+assert not any(n.endswith('data/generic_opcodes.json') for n in names), names
 leaked = [n for n in names if n.startswith(('tools/', 'tests/', 'docs/'))]
 assert not leaked, leaked
 assert any(n.endswith('licenses/LICENSE') for n in names), names

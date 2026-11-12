@@ -12,9 +12,9 @@ legalizer 变异是否可能形成环。它只使用 `gisel.eval` 的 LLT、谓�
 提供时，使用 `cases.derive_features` 生成的 `none/all/only-N` 配置。重复的
 `--config NAME` 将配置域限制为指定行。
 
-opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`，缺失时
-回退到 generic opcode manifest。没有固定 arity 的 opcode 不建图，写入
-`uncovered`；规则读取 `imm(i)` 但 `--axes` 没有提供该下标时同样写入
+opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`；没有条目
+的 opcode 不建图，写入 `uncovered`，条目缺 `arity`/`ptype` 则报错而不是当成
+空集。没有固定 arity 的 opcode 不建图，写入 `uncovered`；规则读取 `imm(i)` 但 `--axes` 没有提供该下标时同样写入
 `uncovered`。它们不能被假装成零槽状态或 opaque。
 
 每个 ruleset 的类型候选来自 `cases.inspect_ruleset` 和 `cases._candidates`：

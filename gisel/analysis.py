@@ -241,6 +241,56 @@ def inspect_rule(rule):
     return info
 
 
+def walk_atoms(node, out):
+    """Predicate atoms, descending only through boolean combinators.
+
+    A `select` guard is one atom: its arms are not separate unary observations
+    of a slot.  This is the class-partition definition in `spec/graph.md` and
+    is deliberately narrower than `ast.walk_nodes`.
+    """
+    if not isinstance(node, dict):
+        return
+    if node.get("kind") in ("all", "any", "not", "nary"):
+        for value in node.get("args", []):
+            walk_atoms(value, out)
+        if "arg" in node:
+            walk_atoms(node["arg"], out)
+        return
+    out.append(node)
+
+
+def atoms(ruleset):
+    """Every distinct predicate atom in a ruleset, in first-seen order."""
+    out, seen = [], set()
+    for rule in ruleset["rules"]:
+        found = []
+        walk_atoms(rule.get("predicate"), found)
+        for atom in found:
+            key = json.dumps(atom, sort_keys=True, separators=(",", ":"),
+                             default=str)
+            if key not in seen:
+                seen.add(key)
+                out.append(atom)
+    return out
+
+
+def dependencies(node):
+    """(slots, has_mem, imms, has_ordering) read by one predicate or mutation."""
+    info = RuleInfo()
+    _walk_info(node, info)
+    return info.slots, info.uses_mem, info.imms, info.uses_ordering
+
+
+def mutation_slots(node):
+    """Slots a mutation expression reads, including ``same_as(k)`` indices."""
+    slots = set()
+    for n in A.walk_nodes(node):
+        slot = _slot_of(n)
+        if slot is not None:
+            slots.add(slot)
+    return slots
+
+
 def inspect_ruleset(rs):
     nslots = 1
     for rule in rs["rules"]:

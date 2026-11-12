@@ -281,13 +281,25 @@ class KindCoverage(unittest.TestCase):
                 dsl._tc(node, 10 ** 9, [])
 
 
+def _readable_file(path):
+    """`exists()` raises when a parent directory is unreadable.
+
+    CI runs as a user that cannot stat `/home/ubuntu`; an exception here is a
+    module-level import error, not a skip.  Any OSError means "not available".
+    """
+    try:
+        return path.is_file()
+    except OSError:
+        return False
+
+
 class ImportInventory(unittest.TestCase):
     """The census in docs/REPORT-riscv.md is the tool's output, not by hand."""
 
     SRC = Path("/home/ubuntu/llvm/trees/explore/llvm/lib/Target/RISCV/GISel/"
                "RISCVLegalizerInfo.cpp")
 
-    @unittest.skipUnless(SRC.exists(), "needs the explore tree")
+    @unittest.skipUnless(_readable_file(SRC), "needs the explore tree")
     def test_riscv_census_is_stable(self):
         r = subprocess.run([sys.executable, str(ROOT / "tools" /
                                                 "import-inventory.py"),
