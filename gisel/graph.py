@@ -21,6 +21,7 @@ from . import axes as axesmod
 from . import domain as D
 from . import dsl
 from . import eval as E
+from . import jsonl as jsonl_codec
 from . import llt as L
 
 
@@ -947,53 +948,50 @@ def _state_members(state):
 def oracle_check(report, oracle_path, evaluator, extended):
     result = {"total": 0, "matched": 0, "agree": 0, "disagree": 0,
               "uncovered": 0, "unaskable": 0, "errors": 0, "first": None}
-    with open(oracle_path) as stream:
-        for line in stream:
-            if not line.strip():
-                continue
-            query = json.loads(line)
-            if query.get("config") != report.config:
-                continue
-            result["total"] += 1
-            types = tuple(_parse_type(x, extended) for x in query["types"])
-            mem = None
-            if query.get("mem") is not None:
-                m = query["mem"]
-                mem = ((m[0], int(m[1]))
-                       + ((m[2], m[3]) if len(m) >= 4
-                          else ("NotAtomic", "NotAtomic")))
-            imms = tuple(query.get("imms") or ())
-            tables = (report.class_tables or {}).get(query["name"])
-            key = (_class_key(tables, query["name"], types, mem, imms)
-                   if tables else None)
-            if key is None or key not in report.states:
-                # A dump point whose shape no MIR can hold is not a graph
-                # gap: `shape` already dropped it on purpose.  Keep the two
-                # buckets apart so `uncovered` still means "reachable point
-                # the graph failed to build".
-                if not AN.type_shape_ok(query["name"], types):
-                    result["unaskable"] += 1
-                else:
-                    result["uncovered"] += 1
-                continue
-            result["matched"] += 1
-            try:
-                action, type_idx, new_type = E.evaluate(
-                    evaluator, report.config, query["name"], list(types),
-                    _mem_desc(mem, extended), imms)
-                want = query.get("new_type", "LLT_invalid")
-                got = "LLT_invalid" if new_type == ("invalid",) else _type_text(new_type)
-                if (action, type_idx, got) == (query.get("action"),
-                                               query.get("type_idx", 0), want):
-                    result["agree"] += 1
-                else:
-                    result["disagree"] += 1
-                    if result["first"] is None:
-                        result["first"] = {"query": query, "got": [action, type_idx, got]}
-            except Exception as exc:
-                result["errors"] += 1
+    collapse = (lambda t: t) if extended else E.collapse_extended
+    rows, _errors = jsonl_codec.read_rows(oracle_path, strict=True)
+    for row in rows:
+        query = row.raw
+        config, name, row_types, row_mem, row_imms = row.key
+        if config != report.config:
+            continue
+        result["total"] += 1
+        types = tuple(collapse(value) for value in row_types)
+        mem = (None if row_mem is None
+               else (collapse(row_mem[0]),) + tuple(row_mem[1:]))
+        imms = tuple(row_imms)
+        tables = (report.class_tables or {}).get(name)
+        key = (_class_key(tables, name, types, mem, imms)
+               if tables else None)
+        if key is None or key not in report.states:
+            # A dump point whose shape no MIR can hold is not a graph
+            # gap: `shape` already dropped it on purpose.  Keep the two
+            # buckets apart so `uncovered` still means "reachable point
+            # the graph failed to build".
+            if not AN.type_shape_ok(name, types):
+                result["unaskable"] += 1
+            else:
+                result["uncovered"] += 1
+            continue
+        result["matched"] += 1
+        mems = ([] if mem is None
+                else [E.MemDesc(mem[0], mem[1], mem[2], mem[3])])
+        try:
+            action, type_idx, new_type = E.evaluate(
+                evaluator, report.config, name, list(types), mems, imms)
+            want = query.get("new_type", "LLT_invalid")
+            got = "LLT_invalid" if new_type == ("invalid",) else _type_text(new_type)
+            if (action, type_idx, got) == (query.get("action"),
+                                           query.get("type_idx", 0), want):
+                result["agree"] += 1
+            else:
+                result["disagree"] += 1
                 if result["first"] is None:
-                    result["first"] = {"query": query, "error": str(exc)}
+                    result["first"] = {"query": query, "got": [action, type_idx, got]}
+        except Exception as exc:
+            result["errors"] += 1
+            if result["first"] is None:
+                result["first"] = {"query": query, "error": str(exc)}
     return result
 
 
@@ -1001,22 +999,20 @@ def _oracle_inputs(path, configs, extended):
     """Read optional oracle points only to make their states addressable."""
     types, mems, arities = set(), set(), {}
     wanted = set(configs)
-    with open(path) as stream:
-        for line in stream:
-            if not line.strip():
-                continue
-            query = json.loads(line)
-            if query.get("config") not in wanted:
-                continue
-            arities[query["name"]] = max(arities.get(query["name"], 0),
-                                          len(query.get("types", ())))
-            for text in query.get("types", ()):
-                types.add(_parse_type(text, extended))
-            if query.get("mem") is not None:
-                m = query["mem"]
-                mems.add((m[0], int(m[1]))
-                         + ((m[2], m[3]) if len(m) >= 4
-                            else ("NotAtomic", "NotAtomic")))
+    rows, _errors = jsonl_codec.read_rows(path, strict=True)
+    for row in rows:
+        config, name, row_types, _mem, _imms = row.key
+        if config not in wanted:
+            continue
+        arities[name] = max(arities.get(name, 0), len(row_types))
+        for value in row_types:
+            types.add(value if extended else E.collapse_extended(value))
+        query = row.raw
+        if query.get("mem") is not None:
+            m = query["mem"]
+            mems.add((m[0], int(m[1]))
+                     + ((m[2], m[3]) if len(m) >= 4
+                        else ("NotAtomic", "NotAtomic")))
     return (sorted(types, key=_type_text), sorted(mems), arities)
 
 

@@ -42,6 +42,7 @@ from . import axes as axesmod
 from . import answers as answer_file
 from . import analysis
 from . import eval as E
+from . import jsonl as jsonl_codec
 from . import llt as L
 from . import output
 
@@ -662,7 +663,11 @@ def generate_from_queries(doc, features, queries_path, oracle_path,
              "equivalence": 0, "boundary": 0, "outside": 0,
              "oracle_missing": missing, "oracle_errors": oracle_errors,
              "evaluator_errors": evaluator_errors,
-             "oracle_unanswerable": unanswerable, "unwitnessed": []}
+             "oracle_unanswerable": unanswerable, "unwitnessed": [],
+             # This path fixes the population from the query file; it does
+             # not drop ill-formed shapes.  The keys exist so the shared CLI
+             # stats printer does not KeyError after a successful run.
+             "ill_formed": 0, "ill_formed_opcodes": {}}
 
     def emit(case):
         # The differ works on queries an oracle already answered; filtering
@@ -870,15 +875,10 @@ def _oracle_key(q):
 
 
 def index_oracle(path):
-    index = {}
-    with open(path) as f:
-        for line in f:
-            line = line.strip()
-            if not line:
-                continue
-            q = json.loads(line)
-            index.setdefault(_oracle_key(q), q)
-    return index
+    # One reader for every answer file: a bad line is a `file:line` error and
+    # a conflicting duplicate is not silently resolved to the first row.
+    rows, _errors = jsonl_codec.read_rows(path, strict=True)
+    return {row.key: row.raw for row in rows}
 
 
 def differ(generation, doc, features, oracle_path):

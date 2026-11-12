@@ -389,6 +389,22 @@ class FullRunCompression(unittest.TestCase):
         self.assertEqual(gen.stats["evaluator_errors"], 0)
         self.assertTrue(any(c.kind == "equivalence" for c in gen.cases))
 
+    def test_cli_prints_stats_after_a_query_oracle_run(self):
+        with tempfile.TemporaryDirectory() as d:
+            source = write(d, FIXTURE)
+            queries = Path(d) / "queries.jsonl"
+            oracle = Path(d) / "answers.jsonl"
+            out = Path(d) / "cases.jsonl"
+            q = {"config": "none", "name": "G_ADD", "types": ["s32"],
+                 "mem": None, "imms": []}
+            queries.write_text(json.dumps(q) + "\n")
+            oracle.write_text(json.dumps(dict(
+                q, action="Legal", type_idx=0, new_type="LLT_invalid")) + "\n")
+            rc = cases.main([str(source), "--queries", str(queries),
+                             "--oracle", str(oracle), "--out", str(out)])
+            self.assertEqual(rc, 0)
+            self.assertTrue(out.read_text().strip())
+
 
 if __name__ == "__main__":
     unittest.main()
