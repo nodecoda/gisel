@@ -18,3 +18,5 @@ jobs:
           python-version: "3.11"
       - name: expensive graph configurations
         run: bash tools/check-nightly-graphs.sh
+      - name: the two slow case files are byte-identical
+        run: bash tools/check-cases-golden.sh aarch64 riscv
