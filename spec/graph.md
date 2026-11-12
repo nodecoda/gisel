@@ -182,6 +182,18 @@ Mips 不声明任何 float 类型，于是每个 `f16 -> f32` 都被误记成域
 发生；输出同时打印细化前后的类数（`classes_before` → `classes`）。具体数字
 以 `docs/REPORT-graph.md` 里绑定了 commit 的快照为准。
 
+### Goldens 和签字口径
+
+`tests/artifacts/graph/` 冻结四条命令的输出：x86/none 与 riscv/rv64gc 各一份
+默认分区、一份 `--refine`。默认两份 `rc=1`，记录 `closure.count>0` 的覆盖缺口；
+refine 两份 `rc=0`、`closure.count=0`、`cycles=0`。`tools/check-graph-golden.sh`
+同时比较字节、rc 和 `closure.count == sum(closure.kinds)`；rc=2 一律失败。
+
+因此“0 环”的签字写法只有一种：`--refine`、`closure.count=0`、`outside`
+单独报告。默认分区的 `cycles=0` 只是代表点商图上的条件结论。语义改动与
+golden 重录必须分两笔提交；重录不能把 rc=1 的默认口径改成 rc=0，也不能把
+rc=0 的 refine 口径改成 rc=1。
+
 ## Oracle 和退出码
 
 `--oracle FILE` 对同配置的每个 JSONL 点先定位图状态，再用同一个 evaluator 比较

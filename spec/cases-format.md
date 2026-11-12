@@ -124,3 +124,16 @@ imms 是整数数组（缺省 []）
 
 不满足即报错并带文件名/行号；不要跳过坏行继续，否则 join 会把“没读进来”
 伪装成“没差异”。
+
+## 7 读边界（codec）
+
+`gisel.jsonl` 是唯一的公共读面。文件边界和行边界分开：
+
+- 文件边界：`read_rows(path, strict=True)` 返回 `(rows, errors)`；strict 下
+  坏行或冲突重复键立即抛 `JsonlError`，消息带 `file:line`，不返回半条。
+  `strict=False` 只给诊断用，调用方必须在 `errors` 非空时失败。
+- 行边界：`parse_query` / `parse_answer` 校验五个 key 字段、`mem` 形状、
+  整数立即数和答案三元组；`eval.prepare_query` 只走行边界，不新增 IO。
+- 重复 key 按第 4 节：同答案合并，异答案报错。
+- `answer`/`key`/`load`/`llt_text` 保留兼容导出；`llt_text` 标 deprecated，
+  等 oracle 有本地实现后再删。

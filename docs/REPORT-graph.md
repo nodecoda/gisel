@@ -5,14 +5,19 @@
 本报告的每个数字都绑定这棵树：
 
 ```text
-commit   dad5a61   (2026-11-11, the shape-contract reconciliation)
+commit   dd031e4   (2026-11-13, the four graph goldens)
+         a56dd66   (2026-11-13, the jsonl/session refactor; graph output unchanged)
 version  gisel 0.3.0
 targets  X86 / AArch64 / RISC-V corpus at ../upstream-source/pin/PIN.json
+goldens  tests/artifacts/graph/{x86-none,riscv-rv64gc}{,-refine}.json
+gate     tools/check-graph-golden.sh   (bytes + rc + closure.count)
 ```
 
 换一棵树重跑，states/edges/opaque/outside 会变。2026-11-10 之前用旧
-有限域算出的数字保留在 §6 的更正里。每节的命令都可以原样重放，
-`--json` 的输出是对整份 stdout 取 SHA-256。命令都在仓库根目录执行。
+有限域算出的数字保留在 §6 的更正里。每节的命令都可以原样重放；
+x86/none 与 riscv/rv64gc 的 `--json` 输出已经逐字节冻结在
+`tests/artifacts/graph/`，`tools/check-graph-golden.sh` 重跑四条命令并同时
+比较 rc、`closure.count` 与字节。命令都在仓库根目录执行。
 
 ```sh
 python3 -m gisel graph SOURCE --emit=core \
@@ -26,6 +31,18 @@ python3 -m gisel graph SOURCE --emit=core \
 `spec/graph.md`，设计记录见 `docs/DESIGN-graph.md`。2026-11-12 起闭包审计
 **默认开启**（`--no-check-closure` 关闭），所以下文中未写 `--refine` 的
 `rc=1` 都是默认行为，而不是额外选项造成的。
+
+### 两套口径
+
+| 口径 | 命令 | rc | closure | 用途 |
+|---|---|---:|---:|---|
+| 默认 | 不带 `--refine` | 1 | 272 / 2,864 | 记录“代表点商图上 0 环，但分区不是同余”的覆盖缺口 |
+| 签字 | `--refine` | 0 | 0 | `cycles=0` 且后继是状态上的函数 |
+
+`--refine` 不把所有变异都拉回域内：`outside` 仍然计数（x86 2,240；
+riscv 3,622），它们没有出边，是汇点，所以不产生环。默认口径的 `rc=1`
+是记录值，不是失败；签字口径的 `rc=0` 也不是“没有覆盖缺口”，只是
+“缺口不再是闭包反例”。
 
 ## 1 无环和注入边负控
 
@@ -364,3 +381,5 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
   `uncovered`，不是 0 环证据的一部分。
 - `--refine` 已扩到跨槽目标（按被写入槽的具体目标类型拆），所以 RISC-V/
   WebAssembly 也能到 `closure.count=0`。它仍是 opt-in，因为会改变“原子”定义。
+- 只有 x86/none 与 riscv/rv64gc 进了 golden；AArch64 baseline 与其余 X86
+  配置仍靠本报告的数字，不在 CI 门禁内。
