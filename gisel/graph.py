@@ -1016,13 +1016,6 @@ def _oracle_inputs(path, configs, extended):
     return (sorted(types, key=_type_text), sorted(mems), arities)
 
 
-def _features(doc, path, configs):
-    table = AN.derive_features(doc, path, configs)
-    if not table.table:
-        raise GraphError("no configurations selected")
-    return table
-
-
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="gisel graph",
                                      description="find cycles in the legalizer quotient graph")
@@ -1048,16 +1041,13 @@ def main(argv=None):
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     try:
-        doc = AN.document(args.source)
         axis_profile = axesmod.load(args.axes) if args.axes else None
-        features_path = args.features or (axis_profile.configs_path
-                                          if axis_profile else None)
-        features = _features(doc, features_path, args.configs)
+        doc, features, axis_profile = AN.session(
+            args.source, features=args.features, configs=args.configs,
+            axes=axis_profile)
+        if not features.table:
+            raise GraphError("no configurations selected")
         if axis_profile is not None:
-            full = (_features(doc, features_path, None)
-                    if args.configs else features)
-            axis_profile.bind(args.source, doc, full)
-            axis_profile.apply_features(features)
             state = axis_profile.profile("graph").get("state")
             if state is not None and set(state) != {"types", "mem"}:
                 raise axesmod.AxisError(

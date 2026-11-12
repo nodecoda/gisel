@@ -421,11 +421,31 @@ def derive_features(doc, path=None, configs=None):
         row[expr] = True
         rows["only-%d" % i] = row
     for row in rows.values():
-        row.setdefault("LLT::getUseExtended()", True)
+        row.setdefault("LLT::getUseExtended()", E.DEFAULT_EXTENDED)
     table = E.Features(rows)
     if configs:
         table = E.Features({c: rows[c] for c in configs if c in rows})
     return table
+
+
+def session(source, *, features=None, configs=None, axes=None):
+    """Bootstrap the analysis verbs from one source.
+
+    Returns ``(doc, features, axes)``.  ``features`` is a truth-table path (or
+    None to derive one); ``axes`` is an already-loaded profile (or None).
+    Each verb keeps its own numeric/slot options: those are not part of the
+    shared bootstrap.
+    """
+    doc = document(source)
+    features_path = features or (axes.configs_path if axes else None)
+    table = derive_features(doc, features_path, configs)
+    if axes is not None:
+        # Validate bindings against the whole table; --config only limits
+        # which rows the analysis visits, not which rows may be named.
+        full = derive_features(doc, features_path) if configs else table
+        axes.bind(source, doc, full)
+        axes.apply_features(table)
+    return doc, table, axes
 
 
 # Shapes the generic MIR verifier rejects before the legalizer can run.  A

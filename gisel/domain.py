@@ -259,16 +259,12 @@ def main(argv=None):
     ap.add_argument("--json", action="store_true")
     args = ap.parse_args(argv)
 
-    doc = AN.document(args.source)
     try:
         axes = axesmod.load(args.axes) if args.axes else None
-        features_path = args.features or (axes.configs_path if axes else None)
-        features = AN.derive_features(doc, features_path, args.configs)
+        _doc, features, axes = AN.session(
+            args.source, features=args.features, configs=args.configs,
+            axes=axes)
         if axes is not None:
-            full = (AN.derive_features(doc, features_path)
-                    if args.configs else features)
-            axes.bind(args.source, doc, full)
-            axes.apply_features(features)
             domain_profile = axes.profile("domain")
             if domain_profile.get("full", True) is False:
                 raise axesmod.AxisError(

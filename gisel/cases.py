@@ -50,6 +50,7 @@ from . import output
 # the rule projection, it only consumes them.
 document = analysis.document
 derive_features = analysis.derive_features
+session = analysis.session
 inspect_rule = analysis.inspect_rule
 inspect_ruleset = analysis.inspect_ruleset
 imm_candidates = analysis.imm_candidates
@@ -945,19 +946,11 @@ def main(argv=None):
                          "split a large target into chunks")
     args = ap.parse_args(argv)
 
-    doc = document(args.source)
-
     try:
         axes = axesmod.load(args.axes) if args.axes else None
-        features_path = args.features or (axes.configs_path if axes else None)
-        features = derive_features(doc, features_path, args.configs)
-        if axes is not None:
-            # Validate bindings against the whole table; --config only limits
-            # which rows the analysis visits, not which rows may be named.
-            full = (derive_features(doc, features_path)
-                    if args.configs else features)
-            axes.bind(args.source, doc, full)
-            axes.apply_features(features)
+        doc, features, axes = session(
+            args.source, features=args.features, configs=args.configs,
+            axes=axes)
         cases_profile = axes.profile("cases") if axes is not None else {}
         max_slot_values = int(cases_profile.get("max_slot_values", 16))
         boundaries = bool(cases_profile.get("boundaries", True))

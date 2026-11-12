@@ -48,6 +48,32 @@ class FeaturesInEveryField(unittest.TestCase):
         self.assertIn("only-0", table.table)
 
 
+class SessionBootstrap(unittest.TestCase):
+    SOURCE = (
+        "feature F = Subtarget.hasAVX()\n"
+        "type S32 = LLT::scalar(32)\n"
+        "type S16 = LLT::scalar(16)\n"
+        "ruleset T_G_ADD: G_ADD\n"
+        "    legal in(slot(0), select_type(F, S32, S16))\n")
+
+    def test_one_call_returns_the_document_and_the_derived_table(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text(self.SOURCE)
+            doc, features, axes = analysis.session(src)
+        self.assertEqual(doc["version"], "0.4")
+        self.assertEqual(sorted(features.table), ["all", "none", "only-0"])
+        self.assertIsNone(axes)
+        self.assertTrue(features.table["all"]["LLT::getUseExtended()"])
+
+    def test_config_filter_is_applied_to_the_derived_table(self):
+        with tempfile.TemporaryDirectory() as d:
+            src = Path(d) / "T.gisel"
+            src.write_text(self.SOURCE)
+            _doc, features, _axes = analysis.session(src, configs=["none"])
+        self.assertEqual(sorted(features.table), ["none"])
+
+
 class SlotsInEveryField(unittest.TestCase):
     def test_a_slot_in_a_select_guard_counts_toward_the_arity(self):
         doc = document(

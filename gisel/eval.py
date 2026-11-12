@@ -75,6 +75,9 @@ NO_MUTATION_ACTIONS = TERMINAL_ACTIONS
 SCALARIZE_ACTION = "FewerElements"  # scalarize projects to FewerElements
 
 
+DEFAULT_EXTENDED = True
+
+
 class EvalError(Exception):
     def __init__(self, code, detail):
         Exception.__init__(self, "%s: %s" % (code, detail))
@@ -340,7 +343,7 @@ class Evaluator:
         row = self.features.table.get(config)
         if row is None:
             raise EvalError("unknown_config", "no feature row for %r" % (config,))
-        return row.get("LLT::getUseExtended()", True)
+        return row.get("LLT::getUseExtended()", DEFAULT_EXTENDED)
 
     # -- value nodes -------------------------------------------------------
     def value(self, node, types, mems, config, imms=()):
