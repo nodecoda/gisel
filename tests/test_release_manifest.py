@@ -68,7 +68,9 @@ class ReleaseManifest(unittest.TestCase):
         rows = module().manifest_file(
             ROOT / "tests" / "artifacts" / "cases" / "SHA256")
         self.assertEqual(set(rows), {
-            "x86.cases.jsonl", "aarch64.cases.jsonl", "riscv.cases.jsonl"})
+            "x86.cases.jsonl", "aarch64.cases.jsonl", "riscv.cases.jsonl",
+            "arm.cases.jsonl", "mips.cases.jsonl", "ppc.cases.jsonl",
+            "m68k.cases.jsonl", "wasm.cases.jsonl", "spirv.cases.jsonl"})
         self.assertTrue(all(len(sha) == 64 for sha in rows.values()))
 
 
