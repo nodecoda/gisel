@@ -121,3 +121,36 @@ python -m venv /tmp/after && /tmp/after/bin/pip install "gisel==$version"
 Known boundary: the wheel ships the opcode tables but **not** `tests/`; the
 corpus and frozen artifacts are repository-only.  Examples in the README
 assume a checkout.
+
+## 4 三仓 cohort
+
+`cases` 和 `graph` 的证据横跨三个仓；发布时三者必须是同一组 commit，否则
+`RELEASE.json` 里记的东西无法从 tag 复现。
+
+| 仓 | 放什么 |
+|---|---|
+| `gisel` | corpus、cases / graph goldens、`inc`/`core` 产物 |
+| `upstream-source` | importer、`PIN.json`、`import-report.json` |
+| `ab` | 对拍工作台、冻结证据 |
+
+发版前在三个干净的工作区各跑一次（`gisel` 根目录）：
+
+```sh
+python3 -m unittest discover -q -s tests
+bash tools/check-nine-corpora.sh
+bash tools/check-graph-golden.sh          # 约 3m30s（并行）
+bash tools/check-cases-golden.sh          # 约 6 分钟（三个 target 并行）
+bash tools/check-nightly-graphs.sh        # 约 9 分钟（五个贵配置并行）
+python3 tools/check-claims.py
+(cd ../upstream-source && python3 import/import-cxx.py --all \
+   --pin pin/PIN.json --git-repo /tmp/llvm --check)
+(cd ../ab && VERIFY_FROZEN=1 ./verify-evidence.sh)
+tools/release-manifest.py                 # 写 ../ab/RELEASE.json
+```
+
+`tools/release-manifest.py` 拒绝脏工作区：先提交，再生成清单。清单只记录
+commit、sha 和门禁命令，不替代它们。
+
+最后三仓打同一个 tag。**注意**：`publish.yml` 在 `v*` tag 上会发布到 PyPI，
+所以打 tag 是外发动作，需要人工确认版本号（`gisel/__init__.py`）与发布历史
+一致后再执行。
