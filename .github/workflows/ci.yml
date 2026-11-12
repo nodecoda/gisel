@@ -25,6 +25,8 @@ jobs:
           done
       - name: unit tests
         run: python3 -m unittest discover -v -s tests
+      - name: nine corpora are byte-identical
+        run: bash tools/check-nine-corpora.sh
       - name: every backend without llvm-tblgen
         run: |
           set -eu
