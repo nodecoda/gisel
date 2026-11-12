@@ -18,7 +18,7 @@ from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 COUNTS = json.loads(
-    (ROOT / "tests/artifacts/graph/closure-counts.json").read_text())["counts"]
+    (ROOT / "tests/artifacts/closure-counts.json").read_text())["counts"]
 
 
 def run(name, args, expected, slow=False):
