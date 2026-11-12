@@ -1,0 +1,261 @@
+{
+  "schema": 1,
+  "targets": {
+    "AArch64": {
+      "corpus_name": "AArch64LegalizerInfo.gisel",
+      "corpus_sha256": "704183bad381b8973628a45ff3bf74589e0bf057533b80f528367e577b035fac",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 744,
+        "rulesets": 117,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/AArch64/GISel/AArch64LegalizerInfo.cpp",
+      "pinned": {
+        "rules": 744,
+        "rulesets": 117
+      },
+      "refused": [],
+      "rules": 744,
+      "rulesets": 117,
+      "skipped": [],
+      "source_sha256": "2b5377c3eedddf82f17758e7cab763d99ce362e4c5422bb8e24bc4b7c8945d55",
+      "target": "AArch64"
+    },
+    "ARM": {
+      "corpus_name": "ARMLegalizerInfo.gisel",
+      "corpus_sha256": "b8b68a01f9058d00ed5ff0db570847c61847237562a64c4d496ecf4528448844",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 96,
+        "rulesets": 52,
+        "skipped": 2
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/ARM/ARMLegalizerInfo.cpp",
+      "pinned": {
+        "rules": 96,
+        "rulesets": 52
+      },
+      "refused": [],
+      "rules": 96,
+      "rulesets": 52,
+      "skipped": [
+        {
+          "line": 153,
+          "why": "setFCmpLibcallsAEABI()"
+        },
+        {
+          "line": 153,
+          "why": "setFCmpLibcallsGNU()"
+        }
+      ],
+      "source_sha256": "b86441eb03f4e50291053f61da8a94c542224767d705933d54b2fd3761a59b02",
+      "target": "ARM"
+    },
+    "M68k": {
+      "corpus_name": "M68kLegalizerInfo.gisel",
+      "corpus_sha256": "c9cd4a22344b2da99d3ca62a7ddee9cd09d328098c8f99b8e1a0af713007780c",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 13,
+        "rulesets": 6,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/M68k/GISel/M68kLegalizerInfo.cpp",
+      "pinned": {
+        "rules": 13,
+        "rulesets": 6
+      },
+      "refused": [],
+      "rules": 13,
+      "rulesets": 6,
+      "skipped": [],
+      "source_sha256": "f796bb977e0b77f56374c10243acb24e3818df7d9637eed2fc0df4c6e0295c36",
+      "target": "M68k"
+    },
+    "Mips": {
+      "corpus_name": "MipsLegalizerInfo.gisel",
+      "corpus_sha256": "974922a6920f6a46a9628c0093322e7b4c2825b40891779e73983706e9c30e15",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 95,
+        "rulesets": 48,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/Mips/MipsLegalizerInfo.cpp",
+      "pinned": {
+        "rules": 95,
+        "rulesets": 48
+      },
+      "refused": [],
+      "rules": 95,
+      "rulesets": 48,
+      "skipped": [],
+      "source_sha256": "3660b66b709c5eec9431e54010d1da9e241a460aa528ff213b444ebc0e96b525",
+      "target": "Mips"
+    },
+    "PowerPC": {
+      "corpus_name": "PowerPCLegalizerInfo.gisel",
+      "corpus_sha256": "c2416f67366bc4e1711e5ab9ec2969a36ea5b5da242262c2779ecbf4256ec9fb",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 25,
+        "rulesets": 15,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/PowerPC/GISel/PPCLegalizerInfo.cpp",
+      "pinned": {
+        "rules": 25,
+        "rulesets": 15
+      },
+      "refused": [],
+      "rules": 25,
+      "rulesets": 15,
+      "skipped": [],
+      "source_sha256": "4ca6a62b6f435c6e3e8ce1d576458a111026bdcbd35d978c22160f840cc3aa2a",
+      "target": "PowerPC"
+    },
+    "RISCV": {
+      "corpus_name": "RISCVLegalizerInfo.gisel",
+      "corpus_sha256": "3293f26167ee694b688297852dea3abe3305179b9e1baf1bb2d050991d12dd33",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 402,
+        "rulesets": 96,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/RISCV/GISel/RISCVLegalizerInfo.cpp",
+      "pinned": {
+        "rules": 402,
+        "rulesets": 96
+      },
+      "refused": [],
+      "rules": 402,
+      "rulesets": 96,
+      "skipped": [],
+      "source_sha256": "ad529e1f1a9e62fa8bbd3a7d68f2b46f41f3cf8f1e74556c709bffbd43b9e889",
+      "target": "RISCV"
+    },
+    "SPIRV": {
+      "corpus_name": "SPIRVLegalizerInfo.gisel",
+      "corpus_sha256": "1585c281cb9d769dc23ed4afce233d1035279760c8852cf5079557935e8371a3",
+      "counts": {
+        "ignored": 3,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 353,
+        "rulesets": 83,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [
+        {
+          "line": 52,
+          "why": "this->ST = &ST"
+        },
+        {
+          "line": 53,
+          "why": "GR = ST.getSPIRVGlobalRegistry()"
+        },
+        {
+          "line": 218,
+          "why": "LLVM_DEBUG(dbgs() << \"MaxVectorSize: \" << MaxVectorSize << \"\\n\")"
+        }
+      ],
+      "opaque": [],
+      "opcode_source": "lib/Target/SPIRV/SPIRVLegalizerInfo.cpp",
+      "pinned": {
+        "rules": 353,
+        "rulesets": 83
+      },
+      "refused": [],
+      "rules": 353,
+      "rulesets": 83,
+      "skipped": [],
+      "source_sha256": "e404ba675047cbc8eb48bf87bbc2a67d4d7c926d2ce5ad4f59e3fe0a33361208",
+      "target": "SPIRV"
+    },
+    "WebAssembly": {
+      "corpus_name": "WebAssemblyLegalizerInfo.gisel",
+      "corpus_sha256": "e4e7e81c996a3046704217d59ab30ea7afedafa9d14976ffe5b98fe66708de0a",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 109,
+        "rulesets": 29,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp",
+      "pinned": {
+        "rules": 109,
+        "rulesets": 29
+      },
+      "refused": [],
+      "rules": 109,
+      "rulesets": 29,
+      "skipped": [],
+      "source_sha256": "c6409b1d4eb1b44a7e8d0b9fbb4332497e4cb6d7f2c74ba42482ccb392a5edd8",
+      "target": "WebAssembly"
+    },
+    "X86": {
+      "corpus_name": "X86LegalizerInfo.gisel",
+      "corpus_sha256": "934a935659e7aff3b0d8cec3a33b013846a12683d776cb4d7156507ef2b78f70",
+      "counts": {
+        "ignored": 0,
+        "opaque": 0,
+        "refused": 0,
+        "rules": 328,
+        "rulesets": 63,
+        "skipped": 0
+      },
+      "drift": false,
+      "ignored": [],
+      "opaque": [],
+      "opcode_source": "lib/Target/X86/GISel/X86LegalizerInfo.cpp",
+      "pinned": {
+        "rules": 328,
+        "rulesets": 63
+      },
+      "refused": [],
+      "rules": 328,
+      "rulesets": 63,
+      "skipped": [],
+      "source_sha256": "79f2376096c3271910840a42c6270932011078df9fff343bfd96c226523336cd",
+      "target": "X86"
+    }
+  }
+}

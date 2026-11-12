@@ -24,6 +24,12 @@
 
 `upstream-source/import/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
 构造函数用到的那一小撮写法，认不出来就带行号拒绝（rc=1），绝不静默丢规则。
+
+`--all` 还会在语料目录写 `tests/corpus/import-report.json`：9 个 target 的源文件
+sha、`.gisel` sha、rulesets/rules 计数、全量 refused/skipped/ignored/opaque。
+生成文件头注释只保留前 40 条 refusal，report **不截断**；`import-cxx --all --check`
+同时比 `.gisel` 与 report，`ab/tests/test_import_report.py` 再把 report 的
+`corpus_sha256` 钉回随仓发布的语料。
 **AArch64 的 pin 指向 `trees/explore` 上打过一个小补丁的源文件**：原文在谓词里
 对非向量 / scalable 类型调 `LLT::getNumElements()` 和 `getSizeInBits()`，断言构建
 在合法查询上直接 abort（见 `2026-11-09-13`）。补丁只把这两类观察改成显式语义
