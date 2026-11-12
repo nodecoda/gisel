@@ -7,6 +7,7 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    timeout-minutes: 20
     strategy:
       fail-fast: false
       matrix:
@@ -96,3 +97,32 @@ jobs:
           assert meta["License-Expression"] == "Apache-2.0 WITH LLVM-exception", meta
           print("%d files, no workbench paths" % len(files))
           PY
+
+  golden:
+    # The graph goldens take ~4 minutes and the case files another ~1; they
+    # are pinned to one interpreter because the gate compares bytes.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.11"
+      - name: four graph configurations are byte-identical
+        run: bash tools/check-graph-golden.sh
+      - name: x86 case denominator is byte-identical
+        run: bash tools/check-cases-golden.sh x86
+      - name: an injected edge must produce a cycle
+        run: |
+          set -eu
+          rc=0
+          python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
+            --emit=core --config none --inject-edge --json > /tmp/neg.json || rc=$?
+          test "$rc" -eq 1
+          python3 - <<'PY'
+          import json
+          reports = json.load(open("/tmp/neg.json"))["reports"]
+          assert any(report["cycles"] for report in reports), reports
+          print("inject-edge: %d cycle(s)" % sum(r["cycles"] for r in reports))
+          PY
+

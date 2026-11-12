@@ -44,11 +44,26 @@ CASES=(
   "riscv-rv64gc-refine|0|tests/corpus/RISCVLegalizerInfo.gisel --emit=core --features tests/cases/riscv-features.json --config rv64gc --refine"
 )
 
+# The four runs are independent and dominated by two ~200 s RISC-V cases.
+# Launch them together and check them in order; the recorded rc files keep
+# the failure report deterministic.  Peak RSS is bounded by the two RISC-V
+# runs (~1.5 GB each) plus one X86 run, well under a 7 GB runner.
+pids=()
+for entry in "${CASES[@]}"; do
+  IFS='|' read -r name _ args <<< "$entry"
+  (
+    rc=0
+    # shellcheck disable=SC2086
+    python3 -m gisel graph $args --json > "$OUT/$name.json" 2> "$OUT/$name.err" || rc=$?
+    echo "$rc" > "$OUT/$name.rc"
+  ) &
+  pids+=("$!")
+done
+for pid in "${pids[@]}"; do wait "$pid" || true; done
+
 for entry in "${CASES[@]}"; do
   IFS='|' read -r name want_rc args <<< "$entry"
-  rc=0
-  # shellcheck disable=SC2086
-  python3 -m gisel graph $args --json > "$OUT/$name.json" 2> "$OUT/$name.err" || rc=$?
+  rc=$(cat "$OUT/$name.rc")
   if [[ $rc -ne $want_rc ]]; then
     echo "graph $name: rc=$rc, expected $want_rc" >&2
     cat "$OUT/$name.err" >&2

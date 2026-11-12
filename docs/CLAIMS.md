@@ -19,7 +19,7 @@
 | X86 `--refine` 后后继是状态上的函数 | `python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none --refine --json` | rc=0；cycles=0；closure.count=0 | `golden` |
 | RISC-V `rv64gc --refine` 后 0 环且闭包成立 | `python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel --emit=core --features tests/cases/riscv-features.json --config rv64gc --refine --json` | rc=0；cycles=0；closure.count=0 | `golden` |
 | 负控：注入一条回边必须报 2 环 | `python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none --inject-edge --json` | rc=1；cycles>=1 | `golden` |
-| X86 题面是 3,014 条 | `python3 -m gisel cases tests/corpus/X86LegalizerInfo.gisel --features tests/cases/x86-features.json --out /tmp/x86.jsonl` | `cases=3014` | `golden`（W4.7 起） |
+| X86 题面是 3,014 条 | `python3 -m gisel cases tests/corpus/X86LegalizerInfo.gisel --features tests/cases/x86-features.json --out /tmp/x86.jsonl` | `cases=3014` | `golden` |
 | AArch64 题面是 12,559 条 | `python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel --features tests/cases/features.json --axes tests/cases/aarch64-mem-orderings.axes.json --out /tmp/a64.jsonl` | `cases=12559` | local（约 4 分钟） |
 | RISC-V 题面是 6,086 条 | `python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel --features tests/cases/riscv-features.json --out /tmp/rv.jsonl` | `cases=6086` | local（约 2 分钟） |
 | X86 domain 是 91,340 条 | `python3 -m gisel domain tests/corpus/X86LegalizerInfo.gisel --features tests/cases/x86-features.json --out /tmp/x86-domain.jsonl` | `points=91340` | local（约 2 秒） |
