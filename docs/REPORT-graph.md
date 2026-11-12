@@ -5,18 +5,18 @@
 本报告的每个数字都绑定这棵树：
 
 ```text
-commit   dd031e4   (2026-11-13, the four graph goldens)
-         a56dd66   (2026-11-13, the jsonl/session refactor; graph output unchanged)
+commit   5ec0c0d   (2026-11-13; the wasm32 golden was added after this commit,
+                    and the other four goldens are byte-identical)
 version  gisel 0.3.0
 targets  X86 / AArch64 / RISC-V corpus at ../upstream-source/pin/PIN.json
-goldens  tests/artifacts/graph/{x86-none,riscv-rv64gc}{,-refine}.json
+goldens  tests/artifacts/graph/{x86-none,riscv-rv64gc,wasm-wasm32}{,-refine}.json
 gate     tools/check-graph-golden.sh   (bytes + rc + closure.count)
 ```
 
 换一棵树重跑，states/edges/opaque/outside 会变。2026-11-10 之前用旧
 有限域算出的数字保留在 §6 的更正里。每节的命令都可以原样重放；
-x86/none 与 riscv/rv64gc 的 `--json` 输出已经逐字节冻结在
-`tests/artifacts/graph/`，`tools/check-graph-golden.sh` 重跑四条命令并同时
+x86/none、riscv/rv64gc 与 wasm32 的 `--json` 输出已经逐字节冻结在
+`tests/artifacts/graph/`，`tools/check-graph-golden.sh` 重跑五条命令并同时
 比较 rc、`closure.count` 与字节。命令都在仓库根目录执行。
 
 ```sh

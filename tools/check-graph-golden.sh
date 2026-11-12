@@ -3,7 +3,7 @@ set -euo pipefail
 
 # tools/check-graph-golden.sh [--record] [--out DIR]
 #
-# Regenerate the four graph goldens and compare bytes with the checked-in
+# Regenerate the five graph goldens and compare bytes with the checked-in
 # copies.  Two families are recorded on purpose:
 #
 #   * the default partition (no --refine) finds no cycle but leaves closure
@@ -40,6 +40,7 @@ cd "$ROOT"
 CASES=(
   "x86-none|1|tests/corpus/X86LegalizerInfo.gisel --emit=core --config none"
   "riscv-rv64gc|1|tests/corpus/RISCVLegalizerInfo.gisel --emit=core --features tests/cases/riscv-features.json --config rv64gc"
+  "wasm-wasm32|1|tests/corpus/WebAssemblyLegalizerInfo.gisel --emit=core --features tests/cases/wasm-features.json --config wasm32"
   "x86-none-refine|0|tests/corpus/X86LegalizerInfo.gisel --emit=core --config none --refine"
   "riscv-rv64gc-refine|0|tests/corpus/RISCVLegalizerInfo.gisel --emit=core --features tests/cases/riscv-features.json --config rv64gc --refine"
 )
@@ -105,7 +106,7 @@ done
 
 if [[ $RECORD -eq 1 ]]; then
   ( cd "$ROOT/tests/artifacts/graph" && sha256sum ./*.json | sed 's#\./##' > SHA256 )
-  echo "graph goldens: recorded (2 default, 2 refined)"
+  echo "graph goldens: recorded (3 default, 2 refined)"
 else
-  echo "graph goldens: 4 configurations byte-identical (2 default, 2 refined)"
+  echo "graph goldens: 5 configurations byte-identical (3 default, 2 refined)"
 fi

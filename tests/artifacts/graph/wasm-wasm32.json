@@ -1,0 +1,235 @@
+{
+ "reports": [
+  {
+   "classes": 1945,
+   "closure": {
+    "checked": true,
+    "count": 302,
+    "kinds": {
+     "outside": 134,
+     "partition": 168
+    },
+    "ok": false,
+    "violations": [
+     {
+      "reason": "multiple target classes",
+      "state": "G_ADD[2]",
+      "targets": [
+       "G_ADD[0]",
+       "G_ADD[6]"
+      ]
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "i65"
+      ],
+      "mutation": "i128",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
+      "state": "G_ADD[4]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s7"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s24"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "i31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_ADD[5]"
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_ADD[5]",
+      "targets": [
+       "G_ADD[2]",
+       "G_ADD[6]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_AND[2]",
+      "targets": [
+       "G_AND[0]",
+       "G_AND[6]"
+      ]
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "i65"
+      ],
+      "mutation": "i128",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
+      "state": "G_AND[4]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s7"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s24"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "i31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_AND[5]"
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_AND[5]",
+      "targets": [
+       "G_AND[2]",
+       "G_AND[6]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_CONSTANT[2]",
+      "targets": [
+       "G_CONSTANT[0]",
+       "G_CONSTANT[6]"
+      ]
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "i65"
+      ],
+      "mutation": "i128",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
+      "state": "G_CONSTANT[4]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s7"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s24"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "i31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[5]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s31"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "outside",
+      "state": "G_CONSTANT[5]"
+     }
+    ]
+   },
+   "config": "wasm32",
+   "cycle_samples": [],
+   "cycles": 0,
+   "edges": 18683,
+   "injected_edge": null,
+   "opaque": 715,
+   "outcomes": {
+    "moves": 18683,
+    "no-rule": 5559,
+    "opaque": 715,
+    "outside": 1074,
+    "stuck": 0,
+    "terminal": 787
+   },
+   "outside": 1074,
+   "shape": 2510,
+   "states": 26818,
+   "terminal": {
+    "Legal": 613,
+    "Lower": 174
+   },
+   "uncovered": [
+    "G_SEXT_INREG"
+   ]
+  }
+ ]
+}

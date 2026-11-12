@@ -1,6 +1,6 @@
 # `gisel graph --json` goldens
 
-These are the outputs of `gisel graph --json` on two configurations, in two
+These are the outputs of `gisel graph --json` on three configurations, in two
 partitions. They exist so a change to the value set, the class partition, the
 successor computation, or the closure audit is a byte diff, not an opinion.
 
@@ -8,6 +8,7 @@ successor computation, or the closure audit is a byte diff, not an opinion.
 |---|---|---|---|
 | `x86-none.json` | `gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none --json` | 1 | 272 = 45 outside + 227 partition |
 | `riscv-rv64gc.json` | `gisel graph tests/corpus/RISCVLegalizerInfo.gisel --emit=core --features tests/cases/riscv-features.json --config rv64gc --json` | 1 | 2,864 = 2,254 outside + 610 partition |
+| `wasm-wasm32.json` | `gisel graph tests/corpus/WebAssemblyLegalizerInfo.gisel --emit=core --features tests/cases/wasm-features.json --config wasm32 --json` | 1 | 302 = 134 outside + 168 partition |
 | `x86-none-refine.json` | same as the first, plus `--refine` | 0 | 0 |
 | `riscv-rv64gc-refine.json` | same as the second, plus `--refine` | 0 | 0 |
 
@@ -31,7 +32,7 @@ dropped.
 
 ## Regenerating
 
-`tools/check-graph-golden.sh --record` rewrites all four files and `SHA256`;
+`tools/check-graph-golden.sh --record` rewrites all five files and `SHA256`;
 `tools/check-graph-golden.sh` reruns the commands and compares bytes. The
 script also asserts the exit code per family and `closure.count ==
 sum(closure.kinds)`, so neither "record a red run as green" nor "record a green

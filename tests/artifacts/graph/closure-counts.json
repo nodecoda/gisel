@@ -1,0 +1,8 @@
+{
+  "schema": 1,
+  "note": "Non-refined closure counts that the byte goldens do not cover.  AArch64 is opt-in (GS_SLOW=1) because the unrefined run takes ~5 minutes; wasm32 runs in the normal suite.",
+  "counts": {
+    "aarch64-baseline": 2671,
+    "wasm32": 302
+  }
+}
