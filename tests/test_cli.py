@@ -80,7 +80,7 @@ class Version(unittest.TestCase):
     def test_packaging_reads_the_package_version(self):
         project = project_table()
         self.assertIn("version", project["dynamic"])
-        self.assertIsNone(project["version"],
+        self.assertIsNone(project.get("version"),
                           "pyproject must not hardcode the version")
 
 

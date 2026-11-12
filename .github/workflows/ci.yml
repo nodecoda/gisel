@@ -18,9 +18,11 @@ jobs:
           python-version: ${{ matrix.python }}
       - name: static checks
         run: |
-          python3 -m gisel.cli lint tests/corpus/X86LegalizerInfo.gisel
-          python3 -m gisel.cli lint tests/corpus/AArch64LegalizerInfo.gisel
-          python3 -m gisel.cli lint tests/corpus/RISCVLegalizerInfo.gisel
+          # Every corpus ships, so every corpus is linted.  Three of nine was
+          # how the shipped corpora drifted apart unnoticed.
+          for corpus in tests/corpus/*.gisel; do
+            python3 -m gisel.cli lint "$corpus"
+          done
       - name: unit tests
         run: python3 -m unittest discover -v -s tests
       - name: every backend without llvm-tblgen
@@ -31,14 +33,14 @@ jobs:
           chmod +x "$shim/llvm-tblgen"
           export PATH="$shim:$PATH"
           out=$(mktemp -d)
-          for target in X86 AArch64 RISCV; do
+          for corpus in tests/corpus/*.gisel; do
+            target=$(basename "$corpus" LegalizerInfo.gisel)
             for emit in inc check core; do
-              python3 -m gisel.cli gen "tests/corpus/${target}LegalizerInfo.gisel" \
+              python3 -m gisel.cli gen "$corpus" \
                 --emit="$emit" --out "$out/$target.$emit"
+              test -s "$out/$target.$emit"
             done
           done
-          test -s "$out/AArch64.core" -a -s "$out/X86.core" \
-            -a -s "$out/RISCV.core"
       - name: clean install, outside the checkout
         run: |
           set -eu
