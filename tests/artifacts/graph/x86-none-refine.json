@@ -1,0 +1,45 @@
+{
+ "reports": [
+  {
+   "classes": 4077,
+   "classes_before": 4031,
+   "closure": {
+    "checked": true,
+    "count": 0,
+    "kinds": {
+     "outside": 0,
+     "partition": 0
+    },
+    "ok": true,
+    "violations": []
+   },
+   "config": "none",
+   "cycle_samples": [],
+   "cycles": 0,
+   "edges": 28367,
+   "injected_edge": null,
+   "opaque": 1187,
+   "outcomes": {
+    "moves": 28367,
+    "no-rule": 30504,
+    "opaque": 1187,
+    "outside": 2240,
+    "stuck": 0,
+    "terminal": 6856
+   },
+   "outside": 2240,
+   "shape": 12024,
+   "states": 69154,
+   "terminal": {
+    "Custom": 3483,
+    "Legal": 836,
+    "Libcall": 2522,
+    "Lower": 15
+   },
+   "uncovered": [
+    "G_INTRINSIC",
+    "G_INTRINSIC_W_SIDE_EFFECTS"
+   ]
+  }
+ ]
+}

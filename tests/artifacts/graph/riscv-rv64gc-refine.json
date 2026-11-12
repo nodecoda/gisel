@@ -1,0 +1,47 @@
+{
+ "reports": [
+  {
+   "classes": 8050,
+   "classes_before": 8001,
+   "closure": {
+    "checked": true,
+    "count": 0,
+    "kinds": {
+     "outside": 0,
+     "partition": 0
+    },
+    "ok": true,
+    "violations": []
+   },
+   "config": "rv64gc",
+   "cycle_samples": [],
+   "cycles": 0,
+   "edges": 29356,
+   "injected_edge": null,
+   "opaque": 29260,
+   "outcomes": {
+    "moves": 29356,
+    "no-rule": 413778,
+    "opaque": 29260,
+    "outside": 3622,
+    "stuck": 0,
+    "terminal": 46976
+   },
+   "outside": 3622,
+   "shape": 30313,
+   "states": 522992,
+   "terminal": {
+    "Custom": 96,
+    "Legal": 590,
+    "Libcall": 531,
+    "Lower": 45079,
+    "Unsupported": 680
+   },
+   "uncovered": [
+    "G_SEXT_INREG",
+    "G_INTRINSIC",
+    "G_INTRINSIC_W_SIDE_EFFECTS"
+   ]
+  }
+ ]
+}
