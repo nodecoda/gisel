@@ -23,6 +23,8 @@ jobs:
           for corpus in tests/corpus/*.gisel; do
             python3 -m gisel.cli lint "$corpus"
           done
+      - name: claims point at real files
+        run: python3 tools/check-claims.py
       - name: unit tests
         run: python3 -m unittest discover -v -s tests
       - name: nine corpora are byte-identical

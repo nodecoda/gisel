@@ -534,7 +534,7 @@ gisel cases SOURCE --queries full-queries.jsonl --oracle answers.jsonl ...
   `inspect_ruleset` 的切点，是同一理论的两个消费者。
 
 X86、4 个 config 的 domain 实测是 91,340 条查询、113 个 opcode、24 个类型、
-23 个内存行；cases 只有 3,019 条，但覆盖了答案区域和边界。
+23 个内存行；cases 只有 3,014 条，但覆盖了答案区域和边界。
 
 domain 先过一层**opcode 形状**约束，再谈值域：`G_MERGE_VALUES` 只能合并标量，
 `G_UNMERGE_VALUES` 的向量形式要求各槽元素类型和 scalability 一致
@@ -622,9 +622,9 @@ python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel \
 
 | target | configs | cases | equivalence | boundary | outside | rules | witnessed | shadowed | unexercised | 时间 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| X86 | 4 | 3,019 | 1,109 | 1,522 | 388 | 328 | 318 | 5 | 5 | 1.8 s |
-| AArch64 | 9 | 12,559 | 5,191 | 6,290 | 1,078 | 743 | 575 | 38 | 130 | 3m17s |
-| RISC-V | 8 | 6,086 | 2,242 | 2,996 | 848 | 413 | 355 | 12 | 46 | 2m11s |
+| X86 | 4 | 3,014 | 1,108 | 1,518 | 388 | 328 | 317 | 5 | 6 | 5.9 s |
+| AArch64 | 9 | 12,559 | 5,191 | 6,290 | 1,078 | 743 | 575 | 38 | 130 | 4m15s |
+| RISC-V | 8 | 6,086 | 2,242 | 2,996 | 848 | 413 | 355 | 12 | 46 | 2m15s |
 
 早期基于冻结 dump 的交集对拍（`x86_ref_dump.jsonl` 等）已于 2026-11-10
 删除；那些数字只属于历史快照，不再作为证据。现在的 G 侧证据是

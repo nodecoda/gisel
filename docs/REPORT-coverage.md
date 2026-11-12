@@ -47,7 +47,7 @@ one_lane_vector` 抓个正着。
 
 | target | 规则 | 修复前 有见证 | 修复后 有见证 | shadowed | unexercised | 查询数 |
 |---|---:|---:|---:|---:|---:|---:|
-| X86 | 328 | 292 (89.0%) | **318 (97.0%)** | 5 | 5 | 3,019 |
+| X86 | 328 | 292 (89.0%) | **317 (96.6%)** | 5 | 6 | 3,014 |
 | AArch64 | 743（canonical） | 312 (42.0%) | **575 (77.4%)** | 38 | 130 | 12,559 |
 | RISC-V | 413（canonical） | 320 (77.5%) | **355 (85.9%)** | 12 | 46 | 6,086 |
 
@@ -55,9 +55,13 @@ one_lane_vector` 抓个正着。
 及其邻居枚举一遍。它只多找到 1 条（AArch64）——说明剩下的不是“搜得不够”，而是
 真的被更早的规则盖住了。
 
-## 4 剩下的 9 / 171 / 58 条是什么
+## 4 剩下的规则是什么
 
-X86 的 5 条 unexercised 有 4 条是 `clamp_min(0, X_s64, 2)` 这类：
+2026-11-13 复核：X86 是 11 条（5 shadowed + 6 unexercised；多出的
+`X_G_CTPOP#3` 是 `de8dbbf` 对齐 PR #235976 后不再被 C2 的向量查询见证）。
+AArch64 / RISC-V 仍是 168 / 58 条。
+
+X86 的 6 条 unexercised 有 4 条是 `clamp_min(0, X_s64, 2)` 这类：
 
 ```text
 clamp_min(0, X_s64, 2)      # 触发条件是“s64 向量且 lane < 2”
@@ -82,10 +86,19 @@ gisel cases tests/corpus/X86LegalizerInfo.gisel \
 有任何规则既没有见证、又不是被证明可满足却遮蔽时，退出码 1，并打印前 20 条：
 
 ```text
-cases: 9 rule(s) have no witness (5 unexercised, 4 shadowed); the query set
+cases: 11 rule(s) have no witness (6 unexercised, 5 shadowed); the query set
 does not cover every rule
   X_G_IMPLICIT_DEF#16: unexercised
-  ...
+  X_G_IMPLICIT_DEF#18: unexercised
+  X_G_IMPLICIT_DEF#19: unexercised
+  X_G_ADD#9: unexercised
+  X_G_AND#11: unexercised
+  X_G_CTPOP#3: unexercised
+  X_G_LOAD#8: shadowed
+  X_G_LOAD#9: shadowed
+  X_G_STORE#7: shadowed
+  X_G_STORE#8: shadowed
+  X_G_FCMP#7: shadowed
 ```
 
 配 `../upstream-source/import/import-cxx.py --all --pin ../upstream-source/pin/PIN.json --git-repo <llvm> --check` 一起用，就是这条链的

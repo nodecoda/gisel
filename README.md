@@ -167,7 +167,7 @@ comes from import-cxx --check and the end-to-end A/B).
 | v0.2 | `lint` | 57 node kinds, 0 errors on all nine corpora | done |
 | v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
 | v0.4 | RISCV corpus (workbench import) | 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
-| v0.5 | `cases` | equivalence/boundary/outside; X86 3,019 cases, AArch64 12,559 cases | done |
+| v0.5 | `cases` | equivalence/boundary/outside; X86 3,014 cases, AArch64 12,559 cases | done |
 | v0.6 | more A/B targets | M68k 35, WebAssembly 886, PowerPC 94, ARM 1,614, Mips 1,656, SPIRV 5,136 queries; `disagree = 0` on each | done |
 
 `-gen-legalizer*` in the M1–M3 rows is this project's TableGen backend
@@ -198,8 +198,8 @@ same answerless query file, and compares the answer streams.
 `docs/CORPORA.md` has the chain and the reviewed deviations.
 
 ```sh
-python3 -m pytest -q                          # 243 passed, 92 subtests
-python3 -m unittest discover -q -s tests      # Ran 243 tests
+python3 -m pytest -q                          # 282 passed, 383 subtests
+python3 -m unittest discover -q -s tests      # Ran 282 tests
 (cd tests/artifacts && sha256sum -c SHA256)   # 9/9
 ```
 
