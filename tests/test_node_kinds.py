@@ -37,6 +37,16 @@ class RegistryCoversEveryCoreKind(unittest.TestCase):
         missing = sorted(kind for kind in kinds if nodes.spec(kind) is None)
         self.assertEqual(missing, [], "unregistered core kinds: %s" % missing)
 
+    def test_mutation_targets_are_registered_even_when_no_corpus_uses_them(self):
+        # `multipleOf` is a mutation target the importer can emit, but no
+        # checked-in corpus uses it yet.  The frozen-core walk above cannot
+        # see it; this list is the guard against a vocabulary that only
+        # covers today's corpora.
+        for kind in ("ty", "sameAs", "replace", "set", "sortOf",
+                     "pow2Min", "multipleOf"):
+            with self.subTest(kind=kind):
+                self.assertIsNotNone(nodes.spec(kind), kind)
+
     def test_the_registry_separates_values_from_booleans(self):
         self.assertTrue(nodes.known({"kind": "eq"}, "bool"))
         self.assertFalse(nodes.known({"kind": "eq"}, "value"))

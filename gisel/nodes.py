@@ -32,6 +32,7 @@ VALUE_KINDS = {
     "numElems", "bitsOf", "sizeOf", "sizeInBytesOf", "alignOf", "addrSpace",
     "memTy", "memOrdering", "memFailureOrdering", "ty", "sameAs", "select",
     "mul", "add", "sub", "urem", "udiv", "pow2Ceil", "pow2AtLeast",
+    "pow2Min", "multipleOf",
     "alignTo", "intOfSize", "vecOf", "scalarOrVecOf", "eltTypeTo",
     "eltSizeTo", "divLanes", "replace", "set", "sortOf",
 }
