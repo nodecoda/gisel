@@ -564,6 +564,7 @@ def compile_stmt(st):
         guard = _node("all", args=fixed)
         return {"action": action, "type_idx": int(idx), "op": opname,
                 "on": slot(idx), "to": to,
+                "source_op": op,
                 "guarded": st.get("pred") is not None, "predicate": guard}
     raise ValueError(f"unknown stmt {op!r}")
 

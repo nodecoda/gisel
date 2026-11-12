@@ -37,6 +37,7 @@ import json
 import re
 import sys
 
+from . import nodes
 from .llt import (
     is_scalar,
     is_integer,
@@ -347,6 +348,8 @@ class Evaluator:
 
     # -- value nodes -------------------------------------------------------
     def value(self, node, types, mems, config, imms=()):
+        if not nodes.known(node, "value"):
+            raise EvalError("unknown_value", "value node %r" % (node.get("kind"),))
         k = node["kind"]
         a = node.get("args", [])
         if k == "int":
@@ -462,6 +465,8 @@ class Evaluator:
 
     # -- boolean nodes -----------------------------------------------------
     def bool_value(self, node, types, mems, config, imms=()):
+        if not nodes.known(node, "bool"):
+            raise EvalError("unknown_bool", "bool node %r" % (node.get("kind"),))
         k = node["kind"]
         a = node.get("args", [])
         if k == "leaf":

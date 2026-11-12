@@ -191,6 +191,10 @@ class Rule:
     predicate: dict
     line: int
     guarded: bool = False
+    # The constructor the source spelled when normalisation desugared it
+    # (clamp_min / clamp_max).  Renderers read it instead of guessing from the
+    # normal form; core JSON deliberately does not emit it.
+    source_op: str | None = None
 
     # Backends still read a few keys positionally; keep that spelling local
     # to the renderers instead of reintroducing a dict model in the AST.
@@ -696,7 +700,8 @@ def parse_program(text: str) -> Program:
                 to=_convert_node(r.get("to"), resolve_name),
                 predicate=_convert_node(r["predicate"], resolve_name),
                 line=r.get("_line", ln),
-                guarded=r.get("guarded", False)))
+                guarded=r.get("guarded", False),
+                source_op=r.get("source_op")))
         rulesets.append(RuleSet(name, opcodes, rules, comments, coverage, ln))
 
     return Program(decls, rulesets, features, preds, named_types,

@@ -19,6 +19,7 @@ import json
 import re
 
 from .. import ast as A
+from .. import nodes
 
 SCHEMA = "legalizer-spec-core"
 VERSION = "0.4"
@@ -108,6 +109,8 @@ class CoreJson:
     def legacy_dag(self, node):
         """Rule-guard semantics in the predicate-dag spelling old core used."""
         k = node.get("kind")
+        if k is not None and nodes.spec(k) is None:
+            raise ValueError("unknown core node kind %r" % (k,))
         if k == "leaf":
             return dict(node)
         if k == "not":
@@ -125,6 +128,8 @@ class CoreJson:
         if not isinstance(n, dict):
             return n
         k = n.get("kind")
+        if k is not None and nodes.spec(k) is None:
+            raise ValueError("unknown core node kind %r" % (k,))
         if k == "type":
             v = n["value"]
             if isinstance(v, A.SetValue):

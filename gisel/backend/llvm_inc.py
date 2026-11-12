@@ -23,6 +23,7 @@ import json
 from pathlib import Path
 
 from .. import ast as A
+from .. import nodes
 from ..actions import ACTIONS
 
 LICENSE_HEADER = """\
@@ -527,6 +528,8 @@ class IncEmitter:
 
     def _bool_dag_cxx(self, node, paren=False):
         """Mirror emitPredicateDag(ParenIfBinOp=false)."""
+        if not nodes.known(node, "bool"):
+            raise ValueError(f"unsupported predicate node {node!r}")
         k = node["kind"]
         if k == "leaf":
             return self._feature(node["args"][0])
@@ -946,9 +949,13 @@ class IncEmitter:
         index; the generic `coreFewerTo` shim marks every index covered and
         makes `legalizer-info-validation.mir` report a user-defined predicate.
         """
-        op = r.get("op")
-        if op not in ("fewer", "more"):
-            return None
+        source = r.get("source_op")
+        if source in ("clamp_min", "clamp_max"):
+            op = "fewer" if source == "clamp_max" else "more"
+        else:
+            op = r.get("op")
+            if op not in ("fewer", "more"):
+                return None
         on, to = r.get("on") or {}, r.get("to") or {}
         if on.get("kind") != "slot" or to.get("kind") != "replace":
             return None

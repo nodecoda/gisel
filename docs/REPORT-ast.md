@@ -152,3 +152,23 @@ gisel eval aarch64.core.json ...                  # 当时的 9632 点答案表�
 6. **`to_record_model` 仍存在。** 它是 `tests/test_ast.py` 的冻结摘要
    适配器，生产路径不调用；保留它是为了让迁移前后的字段级对照可复现，
    不是第二套模型。
+
+## 9 2026-11-13：节点词表是 schema，不是分派器
+
+`gisel/nodes.py` 只登记 core 正常形里出现过的 `kind` 及其 sort（value /
+bool / tag），给 `eval`、`backend/core_json`、`backend/llvm_inc` 共用一个
+“这个词认识不认识”的判断。它不提供求值函数，也不提供 C++ 拼写：
+
+- `eval` 仍在 `value` / `bool_value` 里按 kind 求值；
+- `core_json` 仍按 schema 0.4 序列化；
+- `llvm_inc._bool_dag_cxx` 仍按 C++ 语法拼谓词。
+
+三者共享的是**词表**，不是实现。`tests/test_node_kinds.py` 扫描冻结的
+`tests/artifacts/*.core.json`，任何一个 kind 没登记就失败；未知 kind 在
+eval / core / inc 三处都报错，不再静默落到 `False` 或 `0`。
+
+`clamp_min` / `clamp_max` 在 `dsl.compile_stmt` 里归一成 `more` / `fewer`，
+原先 `llvm_inc._clamp_call` 只能从谓词形状反推源构造。现在 `Rule.source_op`
+保留源操作符，`llvm_inc` 优先读它；core JSON 不输出该字段，所以核心产物
+字节不变。`legalFor` / `widenScalarFor` 的选择不是“反推源语”，而是
+**覆盖拼写策略**：`xxxIf` 与 `xxxFor` 对 type index 的覆盖不同，保留原逻辑。
