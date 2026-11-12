@@ -383,7 +383,10 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
   WebAssembly 也能到 `closure.count=0`。它仍是 opt-in，因为会改变“原子”定义。
 - PR 门禁只收 x86/none、x86/none-refine、riscv/rv64gc、riscv/rv64gc-refine
   四个 golden（`tools/check-graph-golden.sh`，并行后约 3m27s）。
-- AArch64 baseline 与 X86 的 C0–C3 在 `tools/check-nightly-graphs.sh` 里按
-  sha256 锁定，每夜跑一次（`nightly.yml`）；不进 PR 门，因为单是 AArch64
-  就要约 8 分钟、1.15M states。2026-11-13 首次录制：5 个配置并行 8m44s，
-  全部 `cycles=0` 且 `closure.count=0`。
+- 夜间档按 sha256 锁定十个配置：AArch64 baseline、X86 C0–C3，以及
+  ARM/ARMv7a-NEON、MIPS32、PPC default、M68k default、wasm32 各一个
+  （`tools/check-nightly-graphs.sh`，`nightly.yml`）。不进 PR 门，因为单是
+  AArch64 就要约 8 分钟、1.15M states。2026-11-13 录制：10 个配置并行
+  8m44s，全部 `cycles=0` 且 `closure.count=0`。
+- SPIR-V 只进 cases 门禁，不进 graph 夜间档：`spirv64-kernel --refine`
+  15 分钟未完成，钉进去只会得到一个慢超时，不是覆盖。

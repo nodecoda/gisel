@@ -155,3 +155,9 @@ ordering（可能是类型/谓词组合），留给下一轮定位。
 
 端到端 A/B（拿 gisel 生成的 `.inc` 替换现网实现、逐条比较答案）是**工作台**
 流程，不是用例生成的一部分，见 `docs/REPORT-ab.md`。
+
+## 7 门禁范围
+
+2026-11-13 起，`tools/check-cases-golden.sh` 覆盖全部九个 target；PR 门禁仍只跑
+x86/aarch64/riscv，其余六个在 `nightly.yml` 里按 sha256 比较。SPIR-V 的 cases
+可以生成（5,689 条），但它的 graph 在 15 分钟内没有跑完，所以只锁 cases。

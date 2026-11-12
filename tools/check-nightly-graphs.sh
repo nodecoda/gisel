@@ -24,6 +24,14 @@ CASES=(
   "x86-C1|tests/corpus/X86LegalizerInfo.gisel --features tests/cases/x86-features.json --config C1 --refine"
   "x86-C2|tests/corpus/X86LegalizerInfo.gisel --features tests/cases/x86-features.json --config C2 --refine"
   "x86-C3|tests/corpus/X86LegalizerInfo.gisel --features tests/cases/x86-features.json --config C3 --refine"
+  # The other six corpora: one cheap configuration each.  SPIR-V is cases-only:
+  # its graph has not finished in 15 minutes, so pinning it here would buy a
+  # slow timeout, not coverage.
+  "arm-neon|tests/corpus/ARMLegalizerInfo.gisel --features tests/cases/arm-features.json --config armv7a-neon --refine"
+  "mips32|tests/corpus/MipsLegalizerInfo.gisel --features tests/cases/mips-features.json --config mips32 --refine"
+  "ppc-default|tests/corpus/PowerPCLegalizerInfo.gisel --features tests/cases/ppc-features.json --config default --refine"
+  "m68k-default|tests/corpus/M68kLegalizerInfo.gisel --features tests/cases/m68k-features.json --config default --refine"
+  "wasm32|tests/corpus/WebAssemblyLegalizerInfo.gisel --features tests/cases/wasm-features.json --config wasm32 --refine"
 )
 
 pids=()

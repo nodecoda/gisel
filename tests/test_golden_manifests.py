@@ -33,7 +33,7 @@ class CaseFiles(unittest.TestCase):
     def test_manifest_names_match_the_script(self):
         script = (ROOT / "tools" / "check-cases-golden.sh").read_text()
         names = {name + ".cases.jsonl" for name in
-                 re.findall(r'^\s*(x86|aarch64|riscv)\)$', script, re.M)}
+                 re.findall(r'^\s*(x86|aarch64|riscv|arm|mips|ppc|m68k|wasm|spirv)\)$', script, re.M)}
         rows = manifest(ROOT / "tests/artifacts/cases/SHA256")
         self.assertEqual(set(rows), names)
         self.assertTrue(all(len(sha) == 64 for sha in rows.values()))

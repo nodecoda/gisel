@@ -4,8 +4,8 @@ set -euo pipefail
 # tools/check-cases-golden.sh [--record] [TARGET...]
 #
 # Regenerate the answerless query files the reports quote and compare their
-# sha256 with tests/artifacts/cases/SHA256.  TARGET is x86, aarch64 or riscv;
-# no argument means all three.
+# sha256 with tests/artifacts/cases/SHA256.  TARGET is any of the nine shipped
+# corpora; no argument means all nine.
 #
 # The counts are in docs/REPORT-cases.md; this gate is about the bytes.  A
 # changed query file is not automatically wrong, but it must be re-recorded
@@ -17,11 +17,11 @@ TARGETS=()
 while [[ $# -gt 0 ]]; do
   case "$1" in
     --record) RECORD=1; shift ;;
-    x86|aarch64|riscv) TARGETS+=("$1"); shift ;;
-    *) echo "usage: $0 [--record] [x86|aarch64|riscv ...]" >&2; exit 2 ;;
+    x86|aarch64|riscv|arm|mips|ppc|m68k|wasm|spirv) TARGETS+=("$1"); shift ;;
+    *) echo "usage: $0 [--record] [TARGET ...]" >&2; exit 2 ;;
   esac
 done
-[[ ${#TARGETS[@]} -eq 0 ]] && TARGETS=(x86 aarch64 riscv)
+[[ ${#TARGETS[@]} -eq 0 ]] && TARGETS=(x86 aarch64 riscv arm mips ppc m68k wasm spirv)
 
 OUT=$(mktemp -d "${TMPDIR:-/tmp}/gisel-cases.XXXXXX")
 trap 'python3 -c "import shutil,sys; shutil.rmtree(sys.argv[1], ignore_errors=True)" "$OUT"' EXIT
@@ -40,6 +40,24 @@ for target in "${TARGETS[@]}"; do
     riscv)
       args=(tests/corpus/RISCVLegalizerInfo.gisel
             --features tests/cases/riscv-features.json) ;;
+    arm)
+      args=(tests/corpus/ARMLegalizerInfo.gisel
+            --features tests/cases/arm-features.json) ;;
+    mips)
+      args=(tests/corpus/MipsLegalizerInfo.gisel
+            --features tests/cases/mips-features.json) ;;
+    ppc)
+      args=(tests/corpus/PowerPCLegalizerInfo.gisel
+            --features tests/cases/ppc-features.json) ;;
+    m68k)
+      args=(tests/corpus/M68kLegalizerInfo.gisel
+            --features tests/cases/m68k-features.json) ;;
+    wasm)
+      args=(tests/corpus/WebAssemblyLegalizerInfo.gisel
+            --features tests/cases/wasm-features.json) ;;
+    spirv)
+      args=(tests/corpus/SPIRVLegalizerInfo.gisel
+            --features tests/cases/spirv-features.json) ;;
   esac
   (
     python3 -m gisel cases "${args[@]}" --out "$OUT/$target.cases.jsonl" \
