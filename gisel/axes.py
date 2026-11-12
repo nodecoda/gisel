@@ -21,6 +21,7 @@ from pathlib import Path
 
 from . import ast as A
 from . import eval as E
+from . import llt as L
 
 
 AXIS_NAMES = ("types", "mem", "imm", "ordering")
@@ -61,16 +62,6 @@ def _dedup(values):
 
 def _row_key(row):
     return tuple(row)
-
-
-def _llt_text(value):
-    if value[0] == "bf16":
-        return "bf16"
-    if value[0] == "pointer":
-        return "p%d:%s" % (value[1], value[2])
-    if value[0] == "vector":
-        return ("nxv" if value[2] else "v") + str(value[1]) + _llt_text(value[3])
-    return {"scalar": "s", "integer": "i", "float": "f"}[value[0]] + str(value[1])
 
 
 class Axes:
@@ -402,9 +393,9 @@ class Axes:
 
     def _canon_row(self, row):
         t0, t1, mty, align = row
-        return (_llt_text(self.resolve_type(t0)) if t0 else "",
-                _llt_text(self.resolve_type(t1)) if t1 else "",
-                _llt_text(self.resolve_type(mty)) if mty else "",
+        return (L.spell(self.resolve_type(t0)) if t0 else "",
+                L.spell(self.resolve_type(t1)) if t1 else "",
+                L.spell(self.resolve_type(mty)) if mty else "",
                 int(align))
 
     def apply_mems(self, rows):

@@ -1,11 +1,10 @@
 """Tuple LLT operations used by the query generator and the graph.
 
-The evaluator (`gisel/eval.py`) owns LLT *semantics*: parsing a Core IR
-spelling, `isScalar`/`sizeInBits`, and the LLT operator== bag-of-bits rule.
-This module owns the *generation* view of the same tuples: how to spell one,
-which dimension it has, and what its neighbours are.  One copy, shared by
-`cases`, `domain` and `graph`; before this a probe in `cases` and the graph's
-node text could disagree about the same type.
+This is the single LLT module.  It owns both the evaluator's view
+(`isScalar`/`sizeInBits`/mutation) and the generation view (spelling,
+dimensions, neighbours); `gisel/eval.py` re-exports the evaluator names so
+existing callers keep working.  Before this, `eval.py`, `axes.py` and
+`domain.py` each had a copy and could disagree about the same tuple.
 
 A tuple LLT is the evaluator's normal form:
 
@@ -66,6 +65,20 @@ def lanes(t):
     return t[1] if t[0] == "vector" else None
 
 
+def total_bits(t):
+    """Total known-minimum bits, or None for a wildcard pointer/unknown."""
+    if t[0] == "vector":
+        elem = total_bits(t[3])
+        return None if elem is None else t[1] * elem
+    if t[0] == "pointer":
+        return t[2] if t[2] != "*" else None
+    if t[0] == "bf16":
+        return 16
+    if t[0] in ("scalar", "integer", "float"):
+        return t[1]
+    return None
+
+
 def resize_bits(t, bits):
     """Same shape, scalar/element/pointer width set to ``bits``."""
     if bits is None or bits <= 0:
@@ -89,9 +102,7 @@ def resize_bits(t, bits):
 def relane(t, count):
     if t[0] != "vector" or count <= 0:
         return None
-    if count == 1 and not t[2]:
-        return t[3]          # a fixed one-lane vector is the element type
-    return ("vector", count, t[2], t[3])
+    return scalar_or_vector(count, t[2], t[3])
 
 
 def mutate(t, dim, n):
@@ -132,3 +143,198 @@ def neighbours(t):
     if t[0] == "bf16":
         out.add(("float", 16))
     return {x for x in out if x is not None and x != t}
+
+
+# ---------------------------------------------------------------------------
+# LLT model
+#
+# LLTs are plain tuples; everything below is closed over this representation.
+#   ("scalar", bits)                          ANY_SCALAR
+#   ("integer", bits)                         INTEGER (extended LLT)
+#   ("float", bits)                           IEEE float, bits in {16,32,64,128}
+#   ("bf16",)                                 bfloat16
+#   ("pointer", addrspace, bits)              POINTER
+#   ("vector", lanes, scalable, elem)         fixed or scalable vector
+#   ("invalid",)                              LLT_invalid
+# ---------------------------------------------------------------------------
+
+def is_scalar(t):
+    """LLT::isScalar(): ANY_SCALAR, INTEGER and FLOAT are all scalar."""
+    return t[0] in ("scalar", "integer", "float", "bf16")
+
+
+def is_integer(t):
+    return t[0] == "integer"
+
+
+def is_float(t):
+    return t[0] == "float" or t[0] == "bf16"
+
+
+def is_float_ieee(t):
+    return t[0] == "float"
+
+
+def is_bf16(t):
+    return t[0] == "bf16"
+
+
+def is_pointer(t):
+    return t[0] == "pointer"
+
+
+def is_vector(t):
+    return t[0] == "vector"
+
+
+def is_scalable(t):
+    return is_vector(t) and t[2]
+
+
+def is_fixed_vector(t):
+    return is_vector(t) and not t[2]
+
+
+def is_pointer_vector(t):
+    return is_vector(t) and t[3][0] == "pointer"
+
+
+def is_valid(t):
+    return t[0] != "invalid"
+
+
+def scalar_size(t):
+    """getScalarSizeInBits: element size for vectors, scalar/pointer width else."""
+    if t[0] == "vector":
+        return scalar_size(t[3])
+    if t[0] == "pointer":
+        return t[2]
+    if t[0] == "bf16":
+        return 16
+    return t[1]
+
+
+def size_in_bits(t):
+    """(known_min_bits, scalable) for getSizeInBits."""
+    if t[0] == "vector":
+        elt, scalable = size_in_bits(t[3])
+        return (elt * t[1], scalable or t[2])
+    if t[0] == "pointer":
+        return (t[2], False)
+    if t[0] == "bf16":
+        return (16, False)
+    return (t[1], False)
+
+
+def size_in_bytes(t):
+    """getSizeInBytes: (min + 7) // 8."""
+    bits, scalable = size_in_bits(t)
+    return ((bits + 7) // 8, scalable)
+
+
+def num_elems(t):
+    # In the NDEBUG build the oracle runs in, getElementCount()'s
+    # isVector() assert is compiled out and a scalar/pointer stores
+    # ElementCount::getFixed(0), so getNumElements() returns 0 there.
+    if is_vector(t):
+        return t[1]
+    return 0
+
+
+def get_scalar_type(t):
+    return t[3] if is_vector(t) else t
+
+
+def get_element_type(t):
+    assert is_vector(t)
+    return t[3]
+
+
+def get_address_space(t):
+    assert t[0] == "pointer" or (is_vector(t) and t[3][0] == "pointer")
+    if is_vector(t):
+        return t[3][2]
+    return t[1]
+
+
+def change_element_type(t, new_elt):
+    """changeElementType: vector keeps its lanes; scalar becomes new_elt."""
+    if is_vector(t):
+        return ("vector", t[1], t[2], new_elt)
+    return new_elt
+
+
+def change_element_size(t, new_size):
+    """changeElementSize: invalid for pointers, keeps vector lanes."""
+    assert t[0] != "pointer" and not is_pointer_vector(t)
+    if is_vector(t):
+        return ("vector", t[1], t[2], change_element_size(t[3], new_size))
+    if is_integer(t):
+        return ("integer", new_size)
+    if is_float_ieee(t):
+        return ("float", new_size)
+    # bf16 and ANY_SCALAR both degrade to a plain scalar here, matching
+    # LLT::changeElementSize (isFloatIEEE() is false for bf16).
+    return ("scalar", new_size)
+
+
+def scalar_or_vector(lanes, scalable, elem):
+    """scalar-or-vector: one fixed lane is the element type itself."""
+    if lanes == 1 and not scalable:
+        return elem
+    return ("vector", lanes, scalable, elem)
+
+
+def change_element_count_div(t, n):
+    """divLanes: element count / n, keeping the scalable flag."""
+    assert is_vector(t)
+    return scalar_or_vector(t[1] // n, t[2], t[3])
+
+
+def fixed_vector(lanes, elem):
+    # `vec_of(1, T)` is T, for the same reason `scalarOrVecOf` collapses it.
+    return scalar_or_vector(lanes, False, elem)
+
+
+def scalable_vector(lanes, elem):
+    return ("vector", lanes, True, elem)
+
+
+def integer_type(bits, extended=True):
+    return ("integer", bits) if extended else ("scalar", bits)
+
+
+def collapse_extended(t):
+    """The runtime view of an LLT spelling.
+
+    LLT stores INTEGER/FLOAT/bfloat16 as distinct kinds only when
+    LLT::getUseExtended() is on; that flag is set by the target machine
+    (AArch64, AMDGPU, WebAssembly), not by the IR.  With the flag off,
+    float16 is just scalar(16) and integer(32) is scalar(32), so legality
+    predicates and mutations see no difference.
+    """
+    if t[0] in ("integer", "float"):
+        return ("scalar", t[1])
+    if t[0] == "bf16":
+        return ("scalar", 16)
+    if t[0] == "vector":
+        return ("vector", t[1], t[2], collapse_extended(t[3]))
+    return t
+
+
+def pow2ceil(x):
+    # LLVM PowerOf2Ceil: 1 << ceil(log2(x)); for 0 returns 1.
+    if x <= 1:
+        return 1
+    p = 1
+    while p < x:
+        p <<= 1
+    return p
+
+
+def is_pow2_32(x):
+    return x != 0 and (x & (x - 1)) == 0
+
+
+def align_to(x, n):
+    return ((x + n - 1) // n) * n

@@ -31,6 +31,7 @@ from . import analysis as AN
 from . import cases as C
 from . import llt as L
 from . import eval as E
+from . import llt as L
 from . import output
 from . import dsl
 
@@ -50,19 +51,6 @@ def _resolve(text, pointer_width):
     """Turn a configuration-dependent pointer spelling into a concrete one."""
     return text.replace("p0:*", "p0:%d" % pointer_width).replace(
         "p0:64", "p0:%d" % pointer_width)
-
-
-def _bits(t):
-    if t[0] in ("scalar", "integer", "float"):
-        return t[1]
-    if t[0] == "pointer":
-        return t[2] if t[2] != "*" else None
-    if t[0] == "vector":
-        elem = _bits(t[3])
-        return t[1] * elem if elem else None
-    if t[0] == "bf16":
-        return 16
-    return None
 
 
 def _named_types(source, pointer_width):
@@ -93,7 +81,7 @@ def _walk_mem_rows(node, out, pointer_width):
                                 t = E.parse_case_llt(mty)
                             except E.EvalError:
                                 continue
-                            bits = _bits(t)
+                            bits = L.total_bits(t)
                             if bits:
                                 out.add((mty, bits, int(row[3])))
         for value in node.values():
@@ -137,7 +125,7 @@ def _apply_mem_axis(mems, axes, pointer_width):
             parsed = E.parse_case_llt(mty)
         except E.EvalError:
             continue
-        bits = _bits(parsed)
+        bits = L.total_bits(parsed)
         if bits:
             out.append((mty, bits, int(align)))
     return sorted(set(out))
