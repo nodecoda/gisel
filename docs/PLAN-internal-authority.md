@@ -121,7 +121,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 | G 题面 | `domain + cases + 字面量展开`，不只 `cases` | 三个 target 都用 `domain`：X86 91,340（4 配置）；AArch64 8,432,640（9 配置）；RISC-V 2,029,976（8 配置）。`cases` 仍在，作规则感知的压缩补充 |
 | 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 130 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
 | U 题面 | 上游运行期规则表 + 独立类型宇宙 | 有：`upstream-source` 的 oracle 模块，9 个 target；证据见 `ab/EVIDENCE.json` 的 9 条 `U/*` |
-| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 结构侧：`graph` 的闭包审计默认开启；四个大 target 未 refine 时 rc=1（X86 277、AArch64 2,671、RISC-V 2,864、Wasm 302），`--refine` 后全 0（`REPORT-graph`），口径是“**refine 后闭包**”。行为侧：`ab/closure.py` 从 `cases` 与 `domain` 两个种子出发把 `new_type` 当下一问，跑到不动点；三个 L4 target 的并集 94,327 / 958,751 / 260,156 个状态，disagree 全 0、stuck 0（`ab/docs/CLOSURE.md`）。域外起点仍是边界 |
+| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 结构侧：`graph` 的闭包审计默认开启；四个大 target 未 refine 时 rc=1（X86 277、AArch64 2,671、RISC-V 2,864、Wasm 302），`--refine` 后全 0（`REPORT-graph`），口径是“**refine 后闭包**”。行为侧：`ab/closure.py` 从 `cases` 与 `domain` 两个种子出发把 `new_type` 当下一问，跑到不动点；九个 target 合计 `G` 种子 31,641 + 新增 3,867、`D` 种子 4,795,281 + 新增 8,675，disagree 全 0、stuck 0（`ab/docs/CLOSURE.md`）。三个 L4 target 的并集是 94,327 / 958,751 / 260,156。域外起点仍是边界 |
 | 不可答点 | 单列、计数并钉数 | X86 648 条（2026-11-11：删掉按 slot 0 查表的短路后实测；旧 1,418 里 528 条其实可答）；AArch64 domain 39,056/配置；`cases` 侧已归零（`REPORT-cases` §8.2） |
 | 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 9 个 target；MIR L1 六个（x86/aarch64/riscv/arm/mips，PPC 只有一条且无 generic 指令）、L2 九个、L3 三个，证据在 `ab/EVIDENCE.json` 的 `MIR-*`；L2 九个 target 全有 |
 | 可复现 | pin 更新自动重跑；产物 sha 固定 | `tests/artifacts` + `ab/oracle/`（`verify-evidence.sh` 76/76）；三个 L4 target 的 `G/U` 证据带 `snapshot`（corpus + features + inc），校验时会从 corpus 重生成 inc 并比对；改语料后用 `replay-frozen.py` 对冻结答案回放（九 target 全一致）；pin 漂移检测没有（只跟 pin） |
