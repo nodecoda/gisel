@@ -15,6 +15,8 @@ gisel 只有两个功能：把 `.gisel` 文件变成规则产物
 不是 gisel 本体——边界和固定规则见 [docs/SCOPE.md](docs/SCOPE.md)。
 那套工具实现的循环（钉版本 → 出题 → 对拍 → 归因）见
 [docs/LOOP.md](docs/LOOP.md)。
+三个仓库（gisel / upstream-source / ab）合起来的总览——做了什么、凭什么可信——
+见 [docs/OVERVIEW-zh.md](docs/OVERVIEW-zh.md)。
 
 ```sh
 # 从 checkout 运行：语料和冻结产物随仓库分发，不随 wheel 分发
