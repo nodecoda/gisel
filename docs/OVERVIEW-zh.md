@@ -9,14 +9,25 @@
 
 ## 0 全图
 
+数据流是单向的：上游事实往下游走，产物不倒流。
+
 ```text
 upstream-source ──(.gisel 语料)──▶ gisel ──(inc + 无答案查询)──▶ ab ──(答案 + diff)──▶ 归因
-   钉住 C++ 源码                     DSL → 产物 / 出题               新旧两个 LLVM
+       │                                                         ▲
+       └───────────────(U 题面 / oracle)────────────────────────┘
 ```
 
-依赖方向是单向的：`ab → upstream-source → gisel`。gisel 不读 LLVM 源码、不跑
-`llvm-tblgen`、不编译、不比较两个实现；它只读 `.gisel` 和它自己吐出的
-`.core.json`。
+代码依赖是另一回事，方向也不同：
+
+| 仓 | 依赖谁 | 形态 |
+|---|---|---|
+| `gisel` | 无 | 不 import 工作台代码；不读 LLVM 源码、不跑 `llvm-tblgen`、不编译、不比较两个实现 |
+| `upstream-source` | 产品路径无 | 只有测试里用 `python3 -m gisel lint` 校验自己产出的语料，不 import gisel 内部 |
+| `ab` | `gisel` + `upstream-source` | 消费 inc、查询与 U 题面 |
+
+换句话说：**upstream-source 生产 gisel 的输入，不是 gisel 的下游。** 它和 gisel 的
+唯一代码依赖是「测试期调 gisel CLI 验证语料」这一条；gisel 侧由
+`tests/test_scope.py` 保证库代码不 import `tools`/`tests`/`docs`，也不起外部进程。
 
 | 仓库 | 一句话 | 主要入口 |
 |---|---|---|
