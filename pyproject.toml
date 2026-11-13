@@ -36,4 +36,5 @@ gisel = [
     # drift, so the wheel cannot ship a corpus the checkout disagrees with.
     "data/corpus/*.gisel",
     "data/cases/*.json",
+    "data/artifacts/*.inc",
 ]

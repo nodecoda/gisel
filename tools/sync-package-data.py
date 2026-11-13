@@ -23,6 +23,10 @@ ROOT = Path(__file__).resolve().parents[1]
 PAIRS = (
     (ROOT / "tests" / "corpus", ROOT / "gisel" / "data" / "corpus", "*.gisel"),
     (ROOT / "tests" / "cases", ROOT / "gisel" / "data" / "cases", "*.json"),
+    # The workbench's frozen-evidence check regenerates these .inc files; the
+    # copies let it run from an installed wheel.  Only the top-level three:
+    # the rest of tests/artifacts/ is build output, not an input.
+    (ROOT / "tests" / "artifacts", ROOT / "gisel" / "data" / "artifacts", "*.inc"),
 )
 
 
