@@ -38,15 +38,33 @@ constant. `tests/test_cli.py::Version` fails if the two disagree, if
 
 ## 2. Build and check
 
+Build from a clean tree.  setuptools reuses `build/lib`, so a file deleted
+from `gisel/` survives there and lands in the next wheel:
+
 ```sh
 python -m venv /tmp/rel && /tmp/rel/bin/pip install -q build twine
+python - <<'PY'
+import pathlib, shutil
+for name in ("build", "dist"):
+    shutil.rmtree(pathlib.Path(name), ignore_errors=True)
+for path in pathlib.Path(".").glob("*.egg-info"):
+    shutil.rmtree(path, ignore_errors=True)
+PY
 /tmp/rel/bin/python -m build                 # dist/*.whl, dist/*.tar.gz
 /tmp/rel/bin/twine check dist/*
 ```
 
-`twine check` must print PASSED for both files.  The wheel carries the one
-bundled opcode table (`gisel/data/opcode-slots.json`, read by `lint`,
-`domain` and `graph`) and nothing else from the repository:
+This is not hypothetical: a wheel built over a stale `build/` carried
+`gisel/data/generic_opcodes.json`, a file the source tree had already deleted.
+
+`twine check` must print PASSED for both files.  Build in the venv above,
+not with the system `pip wheel`: Debian's pip 22 + setuptools 59 silently
+builds an empty `UNKNOWN-0.0.0-py3-none-any.whl` even though the isolated
+build installs `setuptools>=77`.  `python -m build` (the path CI uses) does
+not have that problem.
+
+The wheel carries the one bundled opcode table (`gisel/data/opcode-slots.json`,
+read by `lint`, `domain` and `graph`) and nothing else from the repository:
 
 ```sh
 python - <<'PY'
@@ -58,6 +76,12 @@ assert not any(n.endswith('data/generic_opcodes.json') for n in names), names
 leaked = [n for n in names if n.startswith(('tools/', 'tests/', 'docs/'))]
 assert not leaked, leaked
 assert any(n.endswith('licenses/LICENSE') for n in names), names
+# The product surface 0.2.0 predates: cases/domain/graph, and the .td path
+# must stay out (it was removed from the source tree, not just unwired).
+for want in ('gisel/cases.py', 'gisel/domain.py', 'gisel/graph.py'):
+    assert any(n.endswith(want) for n in names), (want, names)
+for gone in ('gisel/td.py', 'gisel/backend/table.py'):
+    assert not any(n.endswith(gone) for n in names), (gone, names)
 print(len(names), 'files')
 PY
 ```
