@@ -68,19 +68,56 @@ def gisel_version():
     return match.group(1)
 
 
+ENV_REF = re.compile(r"\$\{\{\s*env\.([A-Za-z_][A-Za-z0-9_]*)\s*\}\}")
+
+
+def workflow_env(text):
+    """The workflow-level `env:` table, as name -> value."""
+    values = {}
+    lines = text.splitlines()
+    for index, line in enumerate(lines):
+        if line.rstrip() != "env:":
+            continue
+        for entry in lines[index + 1:]:
+            if not entry.startswith("  ") or entry.startswith("    "):
+                break
+            name, _, value = entry.strip().partition(":")
+            if name and value:
+                values[name] = value.strip().strip('"').strip("'")
+        break
+    return values
+
+
+def resolve_ref(ref, env):
+    """`${{ env.NAME }}` is the pin, one level deep.
+
+    The workflows keep the gisel pin in one place on purpose; a checker that
+    only understood literals would force the sha to be copied into every job
+    again.  Anything this cannot resolve is reported unresolved, which still
+    fails the check.
+    """
+    match = ENV_REF.fullmatch(ref)
+    if match:
+        return env.get(match.group(1), ref)
+    return ref
+
+
 def checkout_refs(path):
     """The gisel refs a consumer workflow checks out, in file order."""
     workflow = path / ".github" / "workflows" / "ci.yml"
     if not workflow.exists():
         return []
+    text = workflow.read_text()
+    env = workflow_env(text)
     refs = []
     repository = None
-    for line in workflow.read_text().splitlines():
+    for line in text.splitlines():
         stripped = line.strip()
         if stripped.startswith("repository:"):
             repository = stripped.split(":", 1)[1].strip()
         elif stripped.startswith("ref:") and repository == "nodecoda/gisel":
-            refs.append((workflow, stripped.split(":", 1)[1].strip()))
+            refs.append((workflow, resolve_ref(stripped.split(":", 1)[1].strip(),
+                                               env)))
         elif stripped.startswith("- ") or stripped.startswith("uses:"):
             repository = None
     return refs
