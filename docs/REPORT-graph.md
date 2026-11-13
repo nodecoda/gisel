@@ -402,3 +402,46 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
 - SPIR-V 只进 cases 门禁，不进 graph 夜间档：`spirv64-kernel --refine`
   在 200,000 states 上限处停住（`G_FLDEXP`，15 s，rc=2）。钉进去只会得到
   一个确定性的 `unsupported_scale`，不是覆盖；它仍需要单独的剪枝工作。
+
+## 2026-11-14 实测（替换旧数字）
+
+旧文档里的 68 s / 15 min 来自旧快照，不再引用。下面的数字在同一台机器上
+重新跑过，命令原样可复制；机器为 4 vCPU / 16 GB，Python 3.10.12。
+
+```sh
+# X86：四个配置，默认分区（不 --refine）
+for c in C0 C1 C2 C3; do
+  /usr/bin/time -f '%e s %M KB' \
+    python3 -m gisel graph --corpus x86 --emit=core --config "$c" --json \
+    > "/tmp/graph-x86-$c.json"
+done
+
+# RISC-V：主配置
+/usr/bin/time -f '%e s %M KB' \
+  python3 -m gisel graph --corpus riscv --emit=core --config rv64gc --json \
+  > /tmp/graph-riscv-rv64gc.json
+```
+
+| 目标 | 配置 | 墙钟 | 峰值 RSS | states | edges | classes | cycles | closure 违例 |
+|---|---|---:|---:|---:|---:|---:|---:|---:|
+| X86 | C0 | 23.8 s | 114 MB | 68,667 | 27,935 | 4,031 | 0 | 272 |
+| X86 | C1 | 26.2 s | 112 MB | 68,656 | 26,285 | 4,020 | 0 | 277 |
+| X86 | C2 | 29.3 s | 112 MB | 68,588 | 25,885 | 4,067 | 0 | 265 |
+| X86 | C3 | 24.4 s | 113 MB | 68,667 | 27,740 | 4,031 | 0 | 272 |
+| RISC-V | rv64gc | 244.9 s | 620 MB | 521,903 | 28,925 | 8,005 | 0 | 2,864 |
+
+结论与边界：
+
+- **X86 不是 68 秒，是 25 秒量级**；四个配置的状态数几乎相同，墙钟差异来自
+  closure 检查，不是图规模。
+- **RISC-V 的 states 是 X86 的 7.6 倍**，墙钟约 10 倍。主要成本在类划分与
+  closure 对每个类成员重放变异，不在 DFS。
+- **`cycles=0` 不等于 `rc=0`**：上表默认分区都有 closure 违例（`outside` +
+  `partition`），进程返回 1。读“无环”时必须同时读 closure 计数。这条口径
+  已写进 `spec/graph.md` 与 `README`。
+- **AArch64** 没有单独重跑：cohort verify 的 `check-nightly-graphs.sh` gate
+  以 `--refine` 跑 baseline，墙钟 578.1 s，gate 通过（闭包成立）。这是当前
+  唯一可信的 AArch64 数字；不要引用旧的 15 分钟。
+- **未覆盖**：RISC-V 其余 7 个配置、AArch64 其余 8 个配置没有逐一复测。
+  `rv64gc` / `baseline` 是主配置，足以判断量级；全配置表应在需要时另立测量，
+  不能拿一个配置冒充全部。

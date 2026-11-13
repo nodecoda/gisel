@@ -16,7 +16,9 @@ gisel 只有两个功能：把 `.gisel` 文件变成规则产物
 那套工具实现的循环（钉版本 → 出题 → 对拍 → 归因）见
 [docs/LOOP.md](docs/LOOP.md)。
 三个仓库（gisel / gisel-anchor / gisel-ab）合起来的总览——做了什么、凭什么可信——
-见 [docs/OVERVIEW-zh.md](docs/OVERVIEW-zh.md)。
+见 [docs/OVERVIEW-zh.md](docs/OVERVIEW-zh.md)。常用任务见
+[docs/COOKBOOK-zh.md](docs/COOKBOOK-zh.md)，名词见
+[docs/GLOSSARY-zh.md](docs/GLOSSARY-zh.md)。
 
 ```sh
 # 从 checkout 运行：语料和冻结产物随仓库分发，不随 wheel 分发

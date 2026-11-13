@@ -16,7 +16,9 @@ live in the workbench (`tools/`) and are not part of gisel — see
 [docs/SCOPE.md](docs/SCOPE.md) for the boundary and the rule that keeps it
 fixed.
 The loop those tools implement (pin → cases → A/B → attribution) is in
-[docs/LOOP.md](docs/LOOP.md).
+[docs/LOOP.md](docs/LOOP.md).  Eight copy-paste tasks are in
+[docs/COOKBOOK-zh.md](docs/COOKBOOK-zh.md) and the vocabulary is in
+[docs/GLOSSARY-zh.md](docs/GLOSSARY-zh.md) (both Chinese).
 
 ```sh
 python3 -m pip install .        # or: python3 -m gisel (no install)

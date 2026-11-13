@@ -7,6 +7,17 @@
 > 文中的数字都绑定输入指纹（pin 的 commit、语料 sha），引用时必须连输入一起引；
 > 单独一个「0 diff」不构成结论。
 
+## 先选一条路
+
+| 你现在有什么 | 5 分钟能做什么 | 命令 |
+|---|---|---|
+| 只有 Python | 装三包，检查安装，出 X86 题面，生成/校验 inc，看图 | `pip install gisel gisel-anchor gisel-ab` → [docs/QUICKSTART-no-llvm.md](QUICKSTART-no-llvm.md) |
+| 有 LLVM checkout + ninja build | 记录路径，doctor，跑 M68k 完整对拍 | `gisel-ab setup --llvm DIR --build DIR` → [gisel-ab TUTORIAL](https://github.com/nodecoda/gisel-ab/blob/main/docs/TUTORIAL-m68k.md) |
+| 只有 git，没有构建 | 用 URL 重新导入语料，逐字节 check | `gisel-anchor import --all --git-repo URL --check` |
+
+8 个常用任务在 [COOKBOOK-zh.md](COOKBOOK-zh.md)；名词在
+[GLOSSARY-zh.md](GLOSSARY-zh.md)。下面的章节解释这些命令为什么成立。
+
 ## 0 全图
 
 数据流是单向的：上游事实往下游走，产物不倒流。

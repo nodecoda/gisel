@@ -1,0 +1,7 @@
+- id: gisel-lint
+  name: gisel lint
+  description: static checks for .gisel legalizer rules
+  entry: gisel lint
+  language: python
+  files: '\.gisel$'
+  pass_filenames: true
