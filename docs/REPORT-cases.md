@@ -72,7 +72,7 @@ AArch64（12,559）与 RISC-V（6,086）重跑后与文档一致。时间列是�
 2026-11-13 的实测，机器负载不同会变；计数不是。
 
 生成器只负责产题；“答案对不对”不在这里证明。`tests/cases/*_ref_dump.jsonl`
-及其交集统计已于 2026-11-10 删除，当前答案证据只有 `ab/` 的端到端对拍：
+及其交集统计已于 2026-11-10 删除，当前答案证据只有 `gisel-ab/` 的端到端对拍：
 同一份无答案查询喂给官方构建和 include 了我们 `.inc` 的构建，比较答案流。
 
 样例（X86，`G_LOAD`）：
@@ -106,7 +106,7 @@ AArch64（12,559）与 RISC-V（6,086）重跑后与文档一致。时间列是�
 - outside 是查询形状，不保证是合法 MIR 指令。
 - 生成文件是“查询”，不是 oracle；`gisel eval --cases` 需要
   `action/type_idx/new_type` 三列，所以不能直接吃这种文件。对拍入口是工作台的
-  `ab/diff.py`；`gisel cases --queries --oracle` 只负责压缩已完成的全量
+  `gisel-ab/diff.py`；`gisel cases --queries --oracle` 只负责压缩已完成的全量
   结果。
 
 ## 5.1 imm 轴补充（2026-11-08）

@@ -3,7 +3,7 @@
 每一行是一条会被读者当成结论的话。`command` 必须能从本仓库根目录直接跑，
 `expected` 是判据，`gate` 是跑它的 CI job（`local` 表示发版前手工跑）。
 跨仓结论（`import --check`、`check-pin.sh`、`verify-evidence.sh`）的门在
-`upstream-source` / `ab` 自己的 CI 里，不在这张表重复。
+`gisel-anchor` / `gisel-ab` 自己的 CI 里，不在这张表重复。
 
 新增/修改结论时先改这张表，再改文档。`tools/check-claims.py` 在 CI 里检查：
 命令引用的脚本/文件存在、判据非空、表不为空。

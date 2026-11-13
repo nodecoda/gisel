@@ -15,7 +15,7 @@ gisel 只有两个功能：把 `.gisel` 文件变成规则产物
 不是 gisel 本体——边界和固定规则见 [docs/SCOPE.md](docs/SCOPE.md)。
 那套工具实现的循环（钉版本 → 出题 → 对拍 → 归因）见
 [docs/LOOP.md](docs/LOOP.md)。
-三个仓库（gisel / upstream-source / ab）合起来的总览——做了什么、凭什么可信——
+三个仓库（gisel / gisel-anchor / gisel-ab）合起来的总览——做了什么、凭什么可信——
 见 [docs/OVERVIEW-zh.md](docs/OVERVIEW-zh.md)。
 
 ```sh
@@ -136,10 +136,10 @@ opcode 有多张表。AST 迁移记录在 `docs/REPORT-ast.md`；`.td` 渲染器
 是证据。
 
 证明两个 legalizer 实现答案一致，是**借助** gisel 完成，而不是 gisel 的
-功能本身：`ab/` 冻结一份无答案查询集，把同一份文件同时喂给官方构建和
+功能本身：`gisel-ab/` 冻结一份无答案查询集，把同一份文件同时喂给官方构建和
 带我们生成 `.inc` 的构建，再比较两侧的答案流。X86、AArch64、RISC-V 三个
-target 的双向对拍都已闭合：`ab/docs/EVIDENCE-WP2.md` 用 gisel 自己的题面
-提问（确认上游没有漏掉 gisel 的规则），`ab/docs/EVIDENCE-U.md` 用 oracle
+target 的双向对拍都已闭合：`gisel-ab/docs/EVIDENCE-WP2.md` 用 gisel 自己的题面
+提问（确认上游没有漏掉 gisel 的规则），`gisel-ab/docs/EVIDENCE-U.md` 用 oracle
 的题面提问（确认 gisel 没有漏掉上游规则）。这套工作台有自己的报告
 `docs/REPORT-ab.md`；边界见 `docs/SCOPE.md`。
 
@@ -147,7 +147,7 @@ target 的双向对拍都已闭合：`ab/docs/EVIDENCE-WP2.md` 用 gisel 自己�
 不了的语句直接拒绝，而不是猜；九份语料中没有一份是独立手写的第二份规则
 陈述——它们都是我们用自己的工具，从 LLVM 手写 C++ 构造函数里提取出来，
 作为自证准备的。所有语料都直接从手写 `.cpp` 构造函数到 `.gisel`
-（`upstream-source/importer/import-cxx.py`）；项目曾在中间加过的 `.td` 已经
+（`gisel-anchor/importer/import-cxx.py`）；项目曾在中间加过的 `.td` 已经
 不再使用。`docs/CORPORA.md` 逐份说明语料来自哪个上游文件、带哪些经过审查的
 偏离，以及冻结产物能证明什么、不能证明什么（三套产物都是自基线；规则保真
 来自 import-cxx --check 和端到端 A/B）。
@@ -171,13 +171,13 @@ M1–M3 行里的 `-gen-legalizer*` 是本项目在 LLVM 研究分支上加的 T
 完整链路见 `docs/CORPORA.md`。
 
 迁移和对拍工具属于**工作台**，不是 gisel 的功能
-（`docs/SCOPE.md`）：`upstream-source/importer/import-inventory.py` 估算接入
-一个 target 的成本，`upstream-source/importer/import-cxx.py` 把构造函数变成
-`.gisel`（遇到任何翻译不了的语句就退出 1，绝不静默丢规则），`ab/` 比较两个
+（`docs/SCOPE.md`）：`gisel-anchor/importer/import-inventory.py` 估算接入
+一个 target 的成本，`gisel-anchor/importer/import-cxx.py` 把构造函数变成
+`.gisel`（遇到任何翻译不了的语句就退出 1，绝不静默丢规则），`gisel-ab/` 比较两个
 实现。`import-cxx` 是面向钉住版本构造函数的专用一次性转录器，不是通用 C++
 解析器：`--all --check` 会重新转录并和入库语料逐字节比对，规则数漂移会
 直接报错。证据在 `docs/REPORT-riscv.md` 和 `docs/REPORT-ab.md`。转录器已在
-2026 年 11 月迁到同级 `upstream-source` checkout；`tools/import-cxx.py` 只是
+2026 年 11 月迁到同级 `gisel-anchor` checkout；`tools/import-cxx.py` 只是
 保留一个 release 的转发 shim，不是实现。
 
 `tests/artifacts/` 保存九份冻结的 C++/JSON 产物及其 `SHA256`：
@@ -185,8 +185,8 @@ X86、AArch64、RISC-V 各三份。上游 LLVM main 没有 legalizer 的 `.td`�
 `-gen-legalizer`；规则写死在手写的 `*LegalizerInfo.cpp` 构造函数里，语料就是
 从那里转录的。因此这些产物是 gisel 自己的冻结输出——一个漂移基线，不是对
 第二个实现的逐字节 oracle。规则保真在另外两层检查：
-`upstream-source import --check` 重新转录钉住的 C++，必须逐字节复现入库的
-`.gisel`；`ab/` 构建官方 legalizer 和带我们 `.inc` 的 legalizer，喂同一份
+`gisel-anchor import --check` 重新转录钉住的 C++，必须逐字节复现入库的
+`.gisel`；`gisel-ab/` 构建官方 legalizer 和带我们 `.inc` 的 legalizer，喂同一份
 无答案查询文件，比较两侧答案流。完整链路和经过审查的偏离见
 `docs/CORPORA.md`。
 
@@ -222,10 +222,10 @@ gisel eval --doc a.core.json --features tests/cases/features.json \
 ```
 
 `gisel cases` 产出的是问题，不是答案。`--answers` 把求值器的回答写成和编译
-出来的 runner 相同的 JSONL 形状，这样 `ab/diff.py` 就能比较两条答案流：
+出来的 runner 相同的 JSONL 形状，这样 `gisel-ab/diff.py` 就能比较两条答案流：
 
 ```sh
-python3 ../ab/diff.py runner.answers.jsonl a.answers.jsonl --json
+python3 ../gisel-ab/diff.py runner.answers.jsonl a.answers.jsonl --json
 ```
 
 当某个 runner 已经回答过同一份查询文件时，`gisel cases --against
@@ -240,7 +240,7 @@ gisel/backend/llvm_inc.py  AST -> .inc（M1）
 gisel/backend/check_json.py / core_json.py              M2 / M4
 gisel/eval.py           独立求值器（回答任意查询文件）
 gisel/cases.py          等价类 / 边界 / 域外用例生成
-gisel/answers.py        答案文件读取器（对拍本身在 ab/diff.py）
+gisel/answers.py        答案文件读取器（对拍本身在 gisel-ab/diff.py）
 gisel/contract.py       形状契约：哪些类型元组才算问题
 gisel/domain.py         opcode 槽位笛卡尔枚举（另一套题面）
 gisel/graph.py          (opcode, 类型类, mem, imm) 上的商图

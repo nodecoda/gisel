@@ -1,6 +1,6 @@
-# 工作台需求：已迁移到 `ab` 项目
+# 工作台需求：已迁移到 `gisel-ab` 项目
 
-对拍工作台的需求已随实现迁到独立项目 `ab`：
+对拍工作台的需求已随实现迁到独立项目 `gisel-ab`：
 
 - 需求：`/home/ubuntu/llvm/ab/docs/REQUIREMENTS-ab.md`
 - 报告：`/home/ubuntu/llvm/ab/docs/REPORT-ab.md`

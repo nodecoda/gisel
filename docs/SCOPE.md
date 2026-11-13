@@ -33,10 +33,10 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 
 | 工具 | 做什么 | 用 gisel 的哪个出口 |
 |---|---|---|
-| `upstream-source`（`import/`） | 转录钉住的 legalizer C++ 构造函数 → `.gisel` | 目标端：产出 gisel 的输入；已迁出本仓库 |
+| `gisel-anchor`（`import/`） | 转录钉住的 legalizer C++ 构造函数 → `.gisel` | 目标端：产出 gisel 的输入；已迁出本仓库 |
 | `tools/refresh-oracle.sh` | 用 `gisel gen` 刷新 `tests/artifacts/` | `gen --emit={inc,core,check}` |
-| `ab`（独立仓库） | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
-| `ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.jsonl`；比较与退出码在本文件 |
+| `gisel-ab`（独立仓库） | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
+| `gisel-ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.jsonl`；比较与退出码在本文件 |
 | `tools/reconcile-contract.py` | 把“契约外”与“不可答”对账：预测 crash 子集、观测不可答、两个差集 | `domain` 的查询 + 一侧答案 + `data/contract-aarch64.jsonc` |
 
 这一层的共同特征：**输入或对照物来自 gisel 之外**（LLVM 源码、llvm-tblgen、
@@ -73,8 +73,8 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 | 位置 | 越界形态 | 处置 |
 |---|---|---|
 | `docs/REPORT-cases.md` §6–§7 | 对拍结果住在用例生成报告里，读起来像 gisel 的能力 | 已整体搬到 `docs/REPORT-ab.md`，并在文首写明是工作台报告 |
-| `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令和比较逻辑都在 `ab/diff.py`；`gisel/answers.py` 只留读取器，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
-| `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 已迁到 `upstream-source/import/`；gisel 只留一个 release 的转发 shim |
+| `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令和比较逻辑都在 `gisel-ab/diff.py`；`gisel/answers.py` 只留读取器，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
+| `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 已迁到 `gisel-anchor/import/`；gisel 只留一个 release 的转发 shim |
 | `cases --against <llvm dump>` | 看起来像运行时依赖 LLVM | 它读的是冻结在 `tests/` 的 oracle，不是运行时依赖 |
 | `eval --answers` | 为对拍加的出口 | 属于求值器本身（答案就是它的输出），归本体 |
 | `gisel/answers.py` | 曾经是 `gisel/diff.py` 连同 CLI 一起 | 只留答案文件读取器；比较和命令都在工作台，依赖方向保持“工具 → 库” |
@@ -100,17 +100,17 @@ gisel 只负责“规则文本 ↔ 规则产物 / 查询”。**证明两条规�
 `opaque` 是谓词洞，变异侧没有第三个口。新增或改变逃逸口同样属于本节的审批
 范围。仓库根 `AGENTS.md` 是这条规则的执行面。
 
-## 7 三分法：gisel / upstream-source / ab（2026-11-10）
+## 7 三分法：gisel / gisel-anchor / gisel-ab（2026-11-10）
 
 工作台正在从本仓库拆成两个独立项目。拆完之后，本仓库只有 gisel 本体。
 
 | 项目 | 位置 | 做什么 | 不做 |
 |---|---|---|---|
 | **gisel** | 本仓库 | `.gisel` → `inc/check/core`；`.gisel` → `cases/domain` | 不读 LLVM 源码、不编译、不跑对拍 |
-| **upstream-source** | `/home/ubuntu/llvm/upstream-source` | 上游 C++ → `.gisel`（import）；上游规则表 → `U` 题面 + 覆盖率（oracle） | 不生成 `inc`、不跑对拍、不做归因 |
-| **ab** | `/home/ubuntu/llvm/ab` | 任意 query JSONL + 两个 runner → answers / diff / 归因 / 负控 | 不生成题面、不改 `.gisel` |
+| **gisel-anchor** | `/home/ubuntu/llvm/gisel-anchor` | 上游 C++ → `.gisel`（import）；上游规则表 → `U` 题面 + 覆盖率（oracle） | 不生成 `inc`、不跑对拍、不做归因 |
+| **gisel-ab** | `/home/ubuntu/llvm/gisel-ab` | 任意 query JSONL + 两个 runner → answers / diff / 归因 / 负控 | 不生成题面、不改 `.gisel` |
 
-依赖方向：`upstream-source → gisel`、`ab → gisel`；反向禁止。两个新项目只调
+依赖方向：`gisel-anchor → gisel`、`gisel-ab → gisel`；反向禁止。两个新项目只调
 gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
 
 迁移状态：
@@ -118,15 +118,15 @@ gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
 | WP | 内容 | 状态 |
 |---|---|---|
 | WP0 | 边界与契约（本表 + 两个新仓库的 `SCOPE.md`/`CONTRACTS.md`） | 完成 |
-| WP1 | `tools/import-cxx.py`、importer 测试、`PIN.json` → upstream-source | 完成 |
-| WP2 | `ab/*`、`tests/test_ab.py` → ab | 完成 |
+| WP1 | `tools/import-cxx.py`、importer 测试、`PIN.json` → gisel-anchor | 完成 |
+| WP2 | `gisel-ab/*`、`tests/test_ab.py` → gisel-ab | 完成 |
 
 双向证据（2026-11-10，九个 target）：
 
 | 方向 | 题面来源 | 结论 | 证据 |
 |---|---|---|---|
-| G：gisel 的规则上游都有 | gisel `cases` | 九 target `disagree=0`（X86/AArch64/RISC-V + ARM/Mips/PPC/M68k/WebAssembly/SPIR-V） | `ab/docs/EVIDENCE-WP2.md` |
-| U：上游的规则 gisel 没漏 | upstream-source `oracle` | 九 target `disagree=0`（X86/AArch64/RISC-V + ARM/Mips/PPC/M68k/WebAssembly/SPIR-V），另抓到一处生成语义 bug（已修） | `ab/docs/EVIDENCE-U.md` |
+| G：gisel 的规则上游都有 | gisel `cases` | 九 target `disagree=0`（X86/AArch64/RISC-V + ARM/Mips/PPC/M68k/WebAssembly/SPIR-V） | `gisel-ab/docs/EVIDENCE-WP2.md` |
+| U：上游的规则 gisel 没漏 | gisel-anchor `oracle` | 九 target `disagree=0`（X86/AArch64/RISC-V + ARM/Mips/PPC/M68k/WebAssembly/SPIR-V），另抓到一处生成语义 bug（已修） | `gisel-ab/docs/EVIDENCE-U.md` |
 
 两条都成立是“gisel 可作为内部权威”的前提，G 与 U 两个方向现在都覆盖九个
 target；AMDGPU 明确不接。

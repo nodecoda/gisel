@@ -18,17 +18,17 @@
 
 ```text
 上游 X86/AArch64/RISCVLegalizerInfo.cpp（手写 builder 链）
-  -> upstream-source/importer/import-cxx.py -> .gisel
+  -> gisel-anchor/importer/import-cxx.py -> .gisel
   -> gisel gen --emit={inc,check,core}
 ```
 
-`upstream-source/importer/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
+`gisel-anchor/importer/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
 构造函数用到的那一小撮写法，认不出来就带行号拒绝（rc=1），绝不静默丢规则。
 
 `--all` 还会在语料目录写 `tests/corpus/import-report.json`：9 个 target 的源文件
 sha、`.gisel` sha、rulesets/rules 计数、全量 refused/skipped/ignored/opaque。
 生成文件头注释只保留前 40 条 refusal，report **不截断**；`import-cxx --all --check`
-同时比 `.gisel` 与 report，`ab/tests/test_import_report.py` 再把 report 的
+同时比 `.gisel` 与 report，`gisel-ab/tests/test_import_report.py` 再把 report 的
 `corpus_sha256` 钉回随仓发布的语料。
 **AArch64 的 pin 指向 `trees/explore` 上打过一个小补丁的源文件**：原文在谓词里
 对非向量 / scalable 类型调 `LLT::getNumElements()` 和 `getSizeInBits()`，断言构建
@@ -49,23 +49,23 @@ PR（#237753、#238306、#238277、#235976、#237650、#239136）；其中 #2377
 #238306 已在 2026-11 合入上游，但 pin 仍停在它们之前，所以照样要带。工作台
 构建的官方侧应当是 `pin + patches`。所以偏离后的语料和官方侧行为一致：X86 端到端 3,019/3,019、
 AArch64 12,559/12,559、RISC-V 6,086/6,086 全部 agree（题面为 2026-11-11
-计数，答案证据在 `ab/EVIDENCE.json`）。2026-11-13 复核时 X86 的 `cases` 分母已变为 3,014
+计数，答案证据在 `gisel-ab/EVIDENCE.json`）。2026-11-13 复核时 X86 的 `cases` 分母已变为 3,014
 （`de8dbbf` 对齐 CTPOP 后少 5 条），A/B 证据仍是 2026-11-11 的 3,019 条，
 两者不要混用；见 `docs/REPORT-cases.md` §3.1。等这些 PR 合入上游，
 把 `commit` 前移，偏离函数会按设计**报错**（它断言旧文本还在），那时删掉它们
 即可——这正是它存在的意义。
 
 这条前提是机器检查的，不是注释：每个 `build-*-runner.sh` 编译前先跑
-`ab/check-pin.sh TREE`，它**按内容**比对 `PIN.json` 的 `official_base.files`——
+`gisel-ab/check-pin.sh TREE`，它**按内容**比对 `PIN.json` 的 `official_base.files`——
 12 个能改答案的文件的 sha256。官方侧冻结在 `trees/explore` @ `700e551714cc` /
 `builds/explore`，与 pin 的三条偏离（AArch64 `numElements()` 硬化、
 `memSizeInBytesNotPow2` 的可伸缩读取、`core*` builder）逐条登记在
-`official_base.deviations` 里；详见 `ab/docs/OFFICIAL-BASE.md`。
+`official_base.deviations` 里；详见 `gisel-ab/docs/OFFICIAL-BASE.md`。
 
 2026-11-11 之前这里只查祖先关系，于是 fork 上未声明的改动（AArch64 的
 `numElements()` 断言硬化）混进了官方侧而检查仍报 ok：祖先检查只能证明“pin 和
 patch 都在”，不能证明“没有别的改动”。现在内容不一致就 rc=1 并打印是哪个提交
-改的。换基线 = 重跑全部证据，成本写在 `ab/docs/OFFICIAL-BASE.md`。
+改的。换基线 = 重跑全部证据，成本写在 `gisel-ab/docs/OFFICIAL-BASE.md`。
 
 `git log` 里看到那两个 X86 修复**不**代表上游已合——它们只在
 `explore/06-review-fixes` 上，`origin/main` 没有。真的合入后，动 `PIN.json` 的
@@ -88,15 +88,15 @@ GS_POWERPC_SRC=.../PPCLegalizerInfo.cpp \
 GS_ARM_SRC=.../ARMLegalizerInfo.cpp \
 GS_MIPS_SRC=.../MipsLegalizerInfo.cpp \
 GS_SPIRV_SRC=.../SPIRVLegalizerInfo.cpp \
-  python3 ../upstream-source/importer/import-cxx.py --all --check \
-    --pin ../upstream-source/pin/PIN.json
+  python3 ../gisel-anchor/importer/import-cxx.py --all --check \
+    --pin ../gisel-anchor/pin/PIN.json
 ```
 
 `--check` 只比对、不写盘；任一目标计数漂移或文本不同都返回 1。生成的 `.gisel`
 头部记录源文件的 sha256，所以“这份语料来自哪份 cpp”不靠记忆。只跑一个目标：
 
 ```sh
-python3 ../upstream-source/importer/import-cxx.py X86 .../X86LegalizerInfo.cpp \
+python3 ../gisel-anchor/importer/import-cxx.py X86 .../X86LegalizerInfo.cpp \
     --out tests/corpus/X86LegalizerInfo.gisel
 ```
 
@@ -128,24 +128,24 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 
 | 语料 | 上游规则在哪 | 我们的提取路径 | 证据 | 能证明 |
 |---|---|---|---|---|
-| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | 转录 check + gisel 自基线 + 端到端 A/B | 生成器回归；规则保真靠 `ab/` |
+| X86 | `X86/GISel/X86LegalizerInfo.cpp` | cpp → gisel-anchor import → `.gisel` | 转录 check + gisel 自基线 + 端到端 A/B | 生成器回归；规则保真靠 `gisel-ab/` |
 | AArch64 | `AArch64/GISel/AArch64LegalizerInfo.cpp` | 同上 | 同上 | 同上 |
 | RISC-V | `RISCV/GISel/RISCVLegalizerInfo.cpp` | 同上 | 同上 | 同上 |
-| M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-m68k-end-to-end.sh` |
-| PowerPC | `PowerPC/GISel/PPCLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 98 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-ppc-end-to-end.sh` |
-| WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → upstream-source import → `.gisel` | gisel 自己的输出 + 886 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-wasm-end-to-end.sh` |
-| ARM | `ARM/ARMLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,614 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-arm-end-to-end.sh` |
-| Mips | `Mips/MipsLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,656 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-mips-end-to-end.sh` |
-| SPIRV | `SPIRV/SPIRVLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 5,136 条端到端对拍 | 生成器回归；规则保真靠 `ab/run-spirv-end-to-end.sh`（4 条两侧都断言，`--expect-unanswerable 4`） |
+| M68k | `M68k/GISel/M68kLegalizerInfo.cpp` | cpp → gisel-anchor import → `.gisel` | gisel 自己的输出 + 41 条端到端对拍 | 生成器回归；规则保真靠 `gisel-ab/run-m68k-end-to-end.sh` |
+| PowerPC | `PowerPC/GISel/PPCLegalizerInfo.cpp` | cpp → gisel-anchor import → `.gisel` | gisel 自己的输出 + 98 条端到端对拍 | 生成器回归；规则保真靠 `gisel-ab/run-ppc-end-to-end.sh` |
+| WebAssembly | `WebAssembly/GISel/WebAssemblyLegalizerInfo.cpp` | cpp → gisel-anchor import → `.gisel` | gisel 自己的输出 + 886 条端到端对拍 | 生成器回归；规则保真靠 `gisel-ab/run-wasm-end-to-end.sh` |
+| ARM | `ARM/ARMLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,614 条端到端对拍 | 生成器回归；规则保真靠 `gisel-ab/run-arm-end-to-end.sh` |
+| Mips | `Mips/MipsLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 1,656 条端到端对拍 | 生成器回归；规则保真靠 `gisel-ab/run-mips-end-to-end.sh` |
+| SPIRV | `SPIRV/SPIRVLegalizerInfo.cpp` | 同上 | gisel 自己的输出 + 5,136 条端到端对拍 | 生成器回归；规则保真靠 `gisel-ab/run-spirv-end-to-end.sh`（4 条两侧都断言，`--expect-unanswerable 4`） |
 
 ## 证据分三层，别混
 
-1. **转录保真（语料层）**：`upstream-source/importer/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
+1. **转录保真（语料层）**：`gisel-anchor/importer/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
    并且重新导入能逐字节复现 gisel 仓库里的 `.gisel`
-   （`upstream-source/import/tests/test_import_cxx.py`）。
+   （`gisel-anchor/import/tests/test_import_cxx.py`）。
    有偏离的地方在工具里点名，不是暗改。
 2. **规则保真（行为门，工作台）**：`gisel cases` 生成无答案查询，
-   `ab/` 把它同时喂给官方构建和 include 了我们 `.inc` 的构建，比较两侧
+   `gisel-ab/` 把它同时喂给官方构建和 include 了我们 `.inc` 的构建，比较两侧
    的答案流。这是端到端证据，不经过任何中间表。
 3. **生成器回归（自基线）**：`tests/artifacts/` 是 gisel 自己的冻结输出，用来
    抓语料/生成器漂移。它**不是**“与上游逐字节一致”的证据。
@@ -157,7 +157,7 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 ## 撤掉的工具
 
 `.td` bootstrap reader 和 `--emit=td` 都已删除，原因与保留项见
-`docs/REPORT-no-td.md`。`import-cxx.py` 已迁到独立仓库 `upstream-source/import/`（`docs/SCOPE.md` §7），
+`docs/REPORT-no-td.md`。`import-cxx.py` 已迁到独立仓库 `gisel-anchor/import/`（`docs/SCOPE.md` §7），
 只负责把目标端 C++ 转成 `.gisel`；它不是 gisel 的运行时依赖。gisel 里只留一个
 release 的转发 shim。
 

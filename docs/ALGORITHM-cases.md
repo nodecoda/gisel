@@ -628,7 +628,7 @@ python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel \
 
 早期基于冻结 dump 的交集对拍（`x86_ref_dump.jsonl` 等）已于 2026-11-10
 删除；那些数字只属于历史快照，不再作为证据。现在的 G 侧证据是
-`ab/EVIDENCE.json` 里的 `G/*` 与 `D/x86`，由 `ab/verify-evidence.sh` 校验。
+`gisel-ab/EVIDENCE.json` 里的 `G/*` 与 `D/x86`，由 `gisel-ab/verify-evidence.sh` 校验。
 
 复杂度上界很粗：`O(configs × Π_slots |B_slot| × rules)`。真正的约束是
 `|B| ≤ 20,000`、每槽 16 个候选、boundary 每条规则 24 条，所以时间是

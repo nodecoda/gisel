@@ -1,6 +1,6 @@
 """The corpus is gisel's input; the importer is somebody else's tool.
 
-The C++ transcriber moved to the `upstream-source` project.  This test is the
+The C++ transcriber moved to the `gisel-anchor` project.  This test is the
 gisel-side contract that keeps the checked-in corpus usable without any C++
 tooling: every file must still compile to `--emit=core`, and must still carry
 the rule count the last reviewed `--emit=core` produced (alias rulesets are

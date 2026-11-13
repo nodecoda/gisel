@@ -43,7 +43,7 @@ legalizer：`G_CONCAT_VECTORS` 的目标必须是向量、移位的两侧必须�
 
 ## 3 实测：`unanswerable` 的主体不是“上游 bug”，是域卫生
 
-AArch64 baseline（2026-11-11，`ab/docs/EVIDENCE-domain.md`）：
+AArch64 baseline（2026-11-11，`gisel-ab/docs/EVIDENCE-domain.md`）：
 
 ```text
 双端断言 39,056
@@ -115,7 +115,7 @@ ours      assert(mutationIsSane(...)) at LegalizerInfo.cpp:200
 `mutationIsSane`。
 
 两边都没有给出动作，所以不影响 `disagree=0`；但它说明“同为不可答”不等于
-“同一条路径”。`ab/diff.py --assert-sites` 把两者分开计数（`same` /
+“同一条路径”。`gisel-ab/diff.py --assert-sites` 把两者分开计数（`same` /
 `mismatch` / `missing`），不把 `mismatch` 算进 `disagree`。改谓词语义要动
 `.gisel` 语义和生成器，按治理规则先报批。
 

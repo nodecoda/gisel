@@ -109,7 +109,7 @@ The wheel ships one surface; check it before tagging:
 
 - `gisel --help` lists exactly `gen check cases domain lint eval graph`
   (`tests/test_cli.py::Commands`), and every verb answers `--help`.
-- `gisel diff` is rejected: that command lives in `ab/diff.py`.
+- `gisel diff` is rejected: that command lives in `gisel-ab/diff.py`.
 - The three exit codes mean the same thing everywhere (`spec/cli.md` §2):
   `0` yes, `1` no, `2` could not start.
 - `gisel/` imports no external-process or network module and no `tools/`
@@ -154,8 +154,8 @@ assume a checkout.
 | 仓 | 放什么 |
 |---|---|
 | `gisel` | corpus、cases / graph goldens、`inc`/`core` 产物 |
-| `upstream-source` | importer、`PIN.json`、`import-report.json` |
-| `ab` | 对拍工作台、冻结证据 |
+| `gisel-anchor` | importer、`PIN.json`、`import-report.json` |
+| `gisel-ab` | 对拍工作台、冻结证据 |
 
 发版前在三个干净的工作区各跑一次（`gisel` 根目录）：
 
@@ -166,10 +166,10 @@ bash tools/check-graph-golden.sh          # 约 3m30s（并行）
 bash tools/check-cases-golden.sh          # 约 6 分钟（三个 target 并行）
 bash tools/check-nightly-graphs.sh        # 约 9 分钟（五个贵配置并行）
 python3 tools/check-claims.py
-(cd ../upstream-source && python3 importer/import-cxx.py --all \
+(cd ../gisel-anchor && python3 importer/import-cxx.py --all \
    --pin pin/PIN.json --git-repo /tmp/llvm --check)
-(cd ../ab && VERIFY_FROZEN=1 ./verify-evidence.sh)
-tools/release-manifest.py                 # 写 ../ab/RELEASE.json
+(cd ../gisel-ab && VERIFY_FROZEN=1 ./verify-evidence.sh)
+tools/release-manifest.py                 # 写 ../gisel-ab/RELEASE.json
 ```
 
 `tools/release-manifest.py` 拒绝脏工作区：先提交，再生成清单。清单只记录

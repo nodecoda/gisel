@@ -4,7 +4,7 @@
 每一步的入口、产物，以及哪一步有证书。
 
 ```text
-1 钉版本 / 提取   upstream-source/pin/PIN.json ──import──> tests/corpus/*.gisel
+1 钉版本 / 提取   gisel-anchor/pin/PIN.json ──import──> tests/corpus/*.gisel
 2 出题            .gisel ──gisel cases──> queries.jsonl（无答案）
 3 对拍            官方程序 + 我们的 inc，同一份 queries ──> official/ours.answers.jsonl, diff.json
 4 归因            diff 的 owner ──> 改 gisel / 记录上游 issue / 记报告
@@ -13,7 +13,7 @@
 ## 1 钉版本，提取规则
 
 **入库的语料来自一个 commit，不是某人的工作区。** 见
-`../upstream-source/pin/PIN.json`：
+`../gisel-anchor/pin/PIN.json`：
 
 ```json
 {"commit": "9bfc850b9940…",
@@ -23,8 +23,8 @@
 证书命令（读 `git show <commit>:<path>`，不读工作区）：
 
 ```sh
-python3 ../upstream-source/importer/import-cxx.py --all \
-  --pin ../upstream-source/pin/PIN.json \
+python3 ../gisel-anchor/importer/import-cxx.py --all \
+  --pin ../gisel-anchor/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
 # 九个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
 ```
@@ -52,25 +52,25 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 WebAssembly 886 / ARM 1,614 / Mips 1,656），
 变了就停下来看新题目。
 
-另一半题面不来自 gisel：`../upstream-source/oracle` 从上游规则表生成 `U`
+另一半题面不来自 gisel：`../gisel-anchor/oracle` 从上游规则表生成 `U`
 （按规则区域抽样）和 `U-full`（同一题面按全部配置展开）。G 方向证明「gisel 的
 规则上游都有」，U 方向证明「上游的规则 gisel 没漏」；两条都跑，证据在
-`../ab/docs/EVIDENCE-U.md`。
+`../gisel-ab/docs/EVIDENCE-U.md`。
 
 ## 3 对拍
 
 ```sh
-../ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
-../ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc  OUT STATE
-../ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc   OUT STATE
-../ab/run-m68k-end-to-end.sh    TREE BUILD m68k.inc OUT
-../ab/run-ppc-end-to-end.sh     TREE BUILD ppc.inc  OUT
-../ab/run-wasm-end-to-end.sh    TREE BUILD wasm.inc OUT
-../ab/run-arm-end-to-end.sh     TREE BUILD arm.inc  OUT
-../ab/run-mips-end-to-end.sh    TREE BUILD mips.inc OUT
+../gisel-ab/run-end-to-end.sh         TREE BUILD x86.jsonl x86.inc OUT STATE
+../gisel-ab/run-aarch64-end-to-end.sh TREE BUILD a64.inc  OUT STATE
+../gisel-ab/run-riscv-end-to-end.sh   TREE BUILD rv.inc   OUT STATE
+../gisel-ab/run-m68k-end-to-end.sh    TREE BUILD m68k.inc OUT
+../gisel-ab/run-ppc-end-to-end.sh     TREE BUILD ppc.inc  OUT
+../gisel-ab/run-wasm-end-to-end.sh    TREE BUILD wasm.inc OUT
+../gisel-ab/run-arm-end-to-end.sh     TREE BUILD arm.inc  OUT
+../gisel-ab/run-mips-end-to-end.sh    TREE BUILD mips.inc OUT
 
 # U 方向：题面来自上游
-../ab/run-u-end-to-end.sh       TARGET U.jsonl OUT
+../gisel-ab/run-u-end-to-end.sh       TARGET U.jsonl OUT
 ```
 
 官方一侧必须是**从 pin 的 C++ 构建出来的构造函数**；我们的一侧把
@@ -92,7 +92,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 
 | 归因 | 动作 |
 |---|---|
-| 我们的翻译 / emitter / 求值 | 改 `upstream-source/importer/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
+| 我们的翻译 / emitter / 求值 | 改 `gisel-anchor/importer/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
 | 查询生成（题目本身不合法） | 改 `gisel/cases.py`，重算查询数并更新 pin |
 | 上游 | 落 `/home/ubuntu/admin/upstream-issues/`，不在构建树里“顺手修掉”当作结论 |
 | 未定性 | 在 `docs/REPORT-*.md` 里写“未覆盖”，不许并进 agree |
@@ -121,11 +121,11 @@ aarch64 12,595 / x86 3,027 / spirv 5,136` 条查询，`disagree = 0`；
 
 2026-11-10 比较结果槽过滤后，X86 / AArch64 / RISC-V 用新查询集重跑：
 `x86 3,019 / aarch64 12,559 / riscv 6,086` 条，`disagree = 0`，两侧答案文件
-逐字节相同（X86 6 条、RISC-V 2 条重复 key）。证据在 `ab/EVIDENCE.json` 的
-`G/x86`、`G/aarch64`、`G/riscv`，由 `ab/verify-evidence.sh` 校验。
+逐字节相同（X86 6 条、RISC-V 2 条重复 key）。证据在 `gisel-ab/EVIDENCE.json` 的
+`G/x86`、`G/aarch64`、`G/riscv`，由 `gisel-ab/verify-evidence.sh` 校验。
 
 X86 的 19 条原本是“语料对齐上游修复、官方侧还没修”的单边差异。把
-`patches`（`../upstream-source/pin/PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
+`patches`（`../gisel-anchor/pin/PIN.json`）落到树上、官方侧也具备修复后，两侧给出同一个
 `Unsupported`，差异归零。
 
 AArch64 的 117 条要拆成两层看：PR #238306 修好官方侧的 `mutationIsSane` 后
@@ -143,7 +143,7 @@ AArch64 的 117 条要拆成两层看：PR #238306 修好官方侧的 `mutationI
 
 2026-11-11 在 `dad5a61` 复测三份主语料的题面：`x86 3,019 / aarch64 12,559 /
 riscv 6,086` 条，计数与上表一致；`disagree = 0` 的答案证据仍以
-`ab/EVIDENCE.json`（2026-11-10 的 `G/*`）为准，本轮没有重跑两个 runner。
+`gisel-ab/EVIDENCE.json`（2026-11-10 的 `G/*`）为准，本轮没有重跑两个 runner。
 
 2026-11-13 复核：X86 的题面变成 **3,014**、M68k **70**、WebAssembly **894**；
 AArch64 / RISC-V 不变。上面的 3,019 / 35 / 886 是 2026-11-11 那次 A/B 的题面，

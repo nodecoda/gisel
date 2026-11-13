@@ -32,7 +32,7 @@ python3 tools/jsonl-census.py /home/ubuntu/llvm/ab/.ab/*/cache/official/*.jsonl
 | m68k | 35 | 0 | 0 | 0 |
 | 合计 | 17,264 | 0 | 0 | 0 |
 
-说明：`.ab/**/cache/official/*.jsonl` 是 `ab` 工作台的本机缓存，不进任何仓库；
+说明：`.ab/**/cache/official/*.jsonl` 是 `gisel-ab` 工作台的本机缓存，不进任何仓库；
 它是当前能拿到的最大真实答案集，但不是冻结发布物。普查工具只读，不改文件。
 
 ## 3 策略（W3.4b/c 要实现的）

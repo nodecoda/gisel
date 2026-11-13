@@ -165,7 +165,7 @@ def main(argv=None):
             "python3 tools/check-claims.py",
             "python3 importer/import-cxx.py --all --pin pin/PIN.json --check",
             "pin/make-base.sh TREE DEST --verify",
-            "ab/verify-evidence.sh",
+            "gisel-ab/verify-evidence.sh",
         ],
     }
     out = Path(args.out) if args.out else ab / "RELEASE.json"

@@ -9,7 +9,7 @@
 
 ```text
 upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
-  -> upstream-source/importer/import-cxx.py  （一次性转录，0 拒绝）
+  -> gisel-anchor/importer/import-cxx.py  （一次性转录，0 拒绝）
   -> tests/corpus/*.gisel
   -> gisel gen --emit={inc,check,core}
 ```
@@ -23,7 +23,7 @@ upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
 
 `tests/artifacts/` 的九份产物已按新语料重生成。它们**是 gisel 自己的冻结
 输出**，用于抓漂移，不是“与上游逐字节一致”的 oracle；规则保真靠
-`upstream-source/importer/import-cxx.py --check` 和 `ab/` 端到端对拍。
+`gisel-anchor/importer/import-cxx.py --check` 和 `gisel-ab/` 端到端对拍。
 
 AArch64 的 importer `TARGETS` 断言 744 条 builder call；3 条只改类型集合、
 不生成独立规则，所以 `gisel lint` 解析到 741 条。
@@ -41,7 +41,7 @@ A/B 还要多一轮“`.td` vs C++”的对拍。
 
 ## 3 为什么是专用工具，不是通用 C++ 导入器
 
-`upstream-source/importer/import-cxx.py` 只认这些构造函数用到的那一小撮写法。目标表
+`gisel-anchor/importer/import-cxx.py` 只认这些构造函数用到的那一小撮写法。目标表
 `TARGETS` 写死了目标、源相对路径、前缀和规则数；`--all --check`
 重新转录并和仓库里的 `.gisel` 逐字节对照。规则数变了就报 `DRIFT` 并返回 1，
 不会悄悄换一份语料。
@@ -164,11 +164,11 @@ subtarget 条件，是验证“新增一个 target 只差一个 `TARGETS` 条目
   `.gisel` 逐字节可复现；
 - 查询集 41 条（单 `default` 配置）；
 - 端到端 41/41 agree、0 disagree、0 unanswerable：
-  `ab/run-m68k-end-to-end.sh TREE BUILD m68k.inc OUT`。
+  `gisel-ab/run-m68k-end-to-end.sh TREE BUILD m68k.inc OUT`。
 
 M68k 是 LLVM 的 experimental target，构建时要加
 `LLVM_EXPERIMENTAL_TARGETS_TO_BUILD=M68k`；`toolset/configure.sh` 已支持这个
-环境变量。它的 runner 用的是 `ab/query_runner_common.h`，每目标文件约
+环境变量。它的 runner 用的是 `gisel-ab/query_runner_common.h`，每目标文件约
 30 行；其余 target 的接入按同一模板走。
 
 ## 10 WebAssembly 转正（2026-11-09）
@@ -180,7 +180,7 @@ M68k 一样走 `import-cxx`：
   **29 rulesets / 109 rules / 0 refused**，`.gisel` 逐字节可复现；
 - 查询集 886 条（`wasm32`/`wasm64` × `±sign-ext` 四个配置）；
 - 端到端 **886/886 agree、0 disagree、0 unanswerable**：
-  `ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc OUT`。
+  `gisel-ab/run-wasm-end-to-end.sh TREE BUILD wasm.inc OUT`。
 
 为了做到 0 拒绝，转录器补了三处（都是拼写归一，不是新增语义）：
 
@@ -218,7 +218,7 @@ PowerPC 的构造函数 91 行、15 个规则集 / 25 条规则，两处曾拒�
 **98/98 agree、0 disagree、1 unanswerable**：
 
 ```
-../ab/run-ppc-end-to-end.sh TREE BUILD ppc.inc OUT
+../gisel-ab/run-ppc-end-to-end.sh TREE BUILD ppc.inc OUT
 {"agree": 98, "disagree": 0, "unanswerable": 1}
 ```
 
@@ -280,10 +280,10 @@ ARM: 52 rulesets, 96 rules, 0 refused
 
 ```
 python3 -m gisel gen tests/corpus/ARMLegalizerInfo.gisel --emit=inc --out /tmp/arm.inc
-../ab/run-arm-end-to-end.sh TREE BUILD /tmp/arm.inc OUT
+../gisel-ab/run-arm-end-to-end.sh TREE BUILD /tmp/arm.inc OUT
 {"agree": 1614, "disagree": 0, "unanswerable": 0}
 
-python3 ../ab/ab.py run --target arm --tree TREE --build BUILD \
+python3 ../gisel-ab/ab.py run --target arm --tree TREE --build BUILD \
   --queries OUT/queries.jsonl --out OUT2
 target=arm compare=full queries=1614 agree=1614 disagree=0 unanswerable=0 rc=0
 ```
@@ -343,7 +343,7 @@ MSA 要求 `+fp64`，否则 `createTargetMachine` 直接 abort。
 ### 13.1 结果
 
 ```
-../ab/run-mips-end-to-end.sh TREE BUILD /tmp/mips.inc OUT
+../gisel-ab/run-mips-end-to-end.sh TREE BUILD /tmp/mips.inc OUT
 {"agree": 1647, "disagree": 0, "ref_asserted": 9}
 ```
 
@@ -408,7 +408,7 @@ target 的代码逐字节不变。
 
 ### 14.1 语料
 
-`upstream-source/importer/import-cxx.py SPIRV`：83 rulesets / 353 rules / 0 refused。0 拒绝的关键是
+`gisel-anchor/importer/import-cxx.py SPIRV`：83 rulesets / 353 rules / 0 refused。0 拒绝的关键是
 在 importer 里补了 SPIRV 用到的写法：
 
 - `auto &X = cond ? A : B` 类型集别名（`Types.set_alias`）；
@@ -426,7 +426,7 @@ target 的代码逐字节不变。
 ### 14.2 对拍
 
 ```
-../ab/run-spirv-end-to-end.sh TREE BUILD /tmp/spirv.inc OUT
+../gisel-ab/run-spirv-end-to-end.sh TREE BUILD /tmp/spirv.inc OUT
 {"agree": 5136, "disagree": 0, "unanswerable": 4}
 ```
 

@@ -1,7 +1,7 @@
 # 系统总览：三个仓库、两件事、一个闭环
 
 > **这不是 gisel 的能力说明。** gisel 本体只有两个功能（转译、出题），边界在
-> `docs/SCOPE.md`。本文把 `gisel` / `upstream-source` / `ab` 三个仓库放在一起，
+> `docs/SCOPE.md`。本文把 `gisel` / `gisel-anchor` / `gisel-ab` 三个仓库放在一起，
 > 回答两个问题：**这套东西做了什么，以及它凭什么说自己可信。**
 >
 > 文中的数字都绑定输入指纹（pin 的 commit、语料 sha），引用时必须连输入一起引；
@@ -12,7 +12,7 @@
 数据流是单向的：上游事实往下游走，产物不倒流。
 
 ```text
-upstream-source ──(.gisel 语料)──▶ gisel ──(inc + 无答案查询)──▶ ab ──(答案 + diff)──▶ 归因
+gisel-anchor ──(.gisel 语料)──▶ gisel ──(inc + 无答案查询)──▶ gisel-ab ──(答案 + diff)──▶ 归因
        │                                                         ▲
        └───────────────(U 题面 / oracle)────────────────────────┘
 ```
@@ -22,18 +22,18 @@ upstream-source ──(.gisel 语料)──▶ gisel ──(inc + 无答案查�
 | 仓 | 依赖谁 | 形态 |
 |---|---|---|
 | `gisel` | 无 | 不 import 工作台代码；不读 LLVM 源码、不跑 `llvm-tblgen`、不编译、不比较两个实现 |
-| `upstream-source` | 产品路径无 | 只有测试里用 `python3 -m gisel lint` 校验自己产出的语料，不 import gisel 内部 |
-| `ab` | `gisel` + `upstream-source` | 消费 inc、查询与 U 题面 |
+| `gisel-anchor` | 产品路径无 | 只有测试里用 `python3 -m gisel lint` 校验自己产出的语料，不 import gisel 内部 |
+| `gisel-ab` | `gisel` + `gisel-anchor` | 消费 inc、查询与 U 题面 |
 
-换句话说：**upstream-source 生产 gisel 的输入，不是 gisel 的下游。** 它和 gisel 的
+换句话说：**gisel-anchor 生产 gisel 的输入，不是 gisel 的下游。** 它和 gisel 的
 唯一代码依赖是「测试期调 gisel CLI 验证语料」这一条；gisel 侧由
 `tests/test_scope.py` 保证库代码不 import `tools`/`tests`/`docs`，也不起外部进程。
 
 | 仓库 | 一句话 | 主要入口 |
 |---|---|---|
 | `gisel` | DSL 编译器 + 出题器 | `gen` `check` `lint` `cases` `domain` `eval` `graph` |
-| `upstream-source` | 从钉住的 C++ 提取规则与「上游题面」 | `importer/import-cxx.py`、`oracle/` |
-| `ab` | 双实现对拍工作台 | `ab.py run`、`diff.py`、`closure.py`、`mir-replay.py`、`l3.py`、`cohort.py` |
+| `gisel-anchor` | 从钉住的 C++ 提取规则与「上游题面」 | `importer/import-cxx.py`、`oracle/` |
+| `gisel-ab` | 双实现对拍工作台 | `ab.py run`、`diff.py`、`closure.py`、`mir-replay.py`、`l3.py`、`cohort.py` |
 
 ## 1 gisel：把规则文本变成两样东西
 
@@ -41,7 +41,7 @@ upstream-source ──(.gisel 语料)──▶ gisel ──(inc + 无答案查�
 
 | 出口 | 产物 | 谁用 |
 |---|---|---|
-| `--emit=inc` | C++ 规则链，一条规则一次 builder 调用 | `ab` 把它 include 进上游构造函数 |
+| `--emit=inc` | C++ 规则链，一条规则一次 builder 调用 | `gisel-ab` 把它 include 进上游构造函数 |
 | `--emit=core` | schema 0.4 的正常形 JSON | `eval`、`graph` |
 | `--emit=check` | 字节级指纹 | `gisel check` 判断产物是否过期 |
 
@@ -127,7 +127,7 @@ LLT 空间是无限的（任意位宽、任意 lane 数）。随机采样只能�
 |---|---|---|---|
 | **G**（`cases`） | gisel | 规则感知的等价类代表 + 边界 + outside | gisel → 上游 |
 | **D**（`domain`） | gisel | 规则无关的声明值域全量 | gisel → 上游 |
-| **U** / **U-full** | `upstream-source/oracle` | 上游规则表 + 独立 LLT 宇宙；U 按规则区域抽样，U-full 按全部配置展开 | 上游 → gisel |
+| **U** / **U-full** | `gisel-anchor/oracle` | 上游规则表 + 独立 LLT 宇宙；U 按规则区域抽样，U-full 按全部配置展开 | 上游 → gisel |
 
 G 与 D **互不包含**：`cases` 含规则切点（X86 三千条量级），`domain` 含规则无关的
 笛卡尔积（当前生成器实测：X86 91,340；AArch64 每配置 936,960；RISC-V 每配置
@@ -141,7 +141,7 @@ G 与 D **互不包含**：`cases` 含规则切点（X86 三千条量级），`d
 
 两条都成立，gisel 才有资格当内部权威。九个 target 的 U（采样）与 U-full（全配置
 展开）都已跑过，`disagree=0`（双端断言点按 §4.4 单列，不算答案相同），各带一组
-「注入错 opcode」负控；证据在 `ab/docs/EVIDENCE-U.md`，分母在 `ab/SCOPE.md §7`。
+「注入错 opcode」负控；证据在 `gisel-ab/docs/EVIDENCE-U.md`，分母在 `gisel-ab/SCOPE.md §7`。
 
 ### 3.5 三个 target 的差别在轴，不在算法
 
@@ -170,13 +170,13 @@ legalize 是循环（`widen/narrow/scalarize` 后改类型再来一轮）。直�
 
 > **一步答案相同 + 后继函数相同 + 状态集对后继封闭 ⇒ 整个循环相同。**
 
-`ab/closure.py` 把第三步做成可执行：从种子出发，把每个非终结答案的 `new_type`
+`gisel-ab/closure.py` 把第三步做成可执行：从种子出发，把每个非终结答案的 `new_type`
 变成下一条查询，跑到不动点。于是 `S` 不是抽样集，而是「循环能走到的状态集」
 本身，归纳成立。
 
 **两个种子缺一不可**：`G`（`cases`，指针写 `p0:*`）与 `D`（`domain`，指针写
 `p0:64`）键拼写不同；X86 上两个闭包的交集只有一千多条，拿 `D` 当超集省掉 `G`
-是错的。见 `ab/docs/CLOSURE.md`。
+是错的。见 `gisel-ab/docs/CLOSURE.md`。
 
 ### 4.3 四层，从便宜到贵
 
@@ -188,7 +188,7 @@ legalize 是循环（`widen/narrow/scalarize` 后改类型再来一轮）。直�
 | **L3** | 两轮全量 `ninja check-llvm`，逐条比 lit 结果 | 发版前 |
 
 L0 是规则翻译门，MIR 层是行为门（覆盖多步合法化、custom action、verifier）。
-一层通过不等于另一层通过。覆盖矩阵在 `ab/SCOPE.md §7`：九个 target 都有 L0/D/
+一层通过不等于另一层通过。覆盖矩阵在 `gisel-ab/SCOPE.md §7`：九个 target 都有 L0/D/
 U-full 和 MIR L2，只有 X86/AArch64/RISC-V 有 L3。
 
 ### 4.4 `agree` 的口径要诚实
@@ -209,12 +209,12 @@ answered_equal = agree - unanswerable
 
 - `pin/PIN.json` 记录九份 C++ 的 commit 与 sha256；`--all --check` 逐字节复现，
   CI 里跑。
-- `ab/cohort.py` 把一次完整验证固化成 `cohort-*` tag：`plan` 列 gate，`tag` 打
+- `gisel-ab/cohort.py` 把一次完整验证固化成 `cohort-*` tag：`plan` 列 gate，`tag` 打
   标签，`verify` 在干净 clone 里重跑，`check` 只比对不重跑。`VERIFICATION.json`
   记每个 gate 的输入 blob 指纹，所以「语料变了」能在重新打 tag 之前被发现。
-- 独立仓 `ab` 的 `EVIDENCE.json` 存每轮运行的查询文件与答案 sha；`verify-evidence.sh`
+- 独立仓 `gisel-ab` 的 `EVIDENCE.json` 存每轮运行的查询文件与答案 sha；`verify-evidence.sh`
   从冻结的 per-test 文件重算结论，拒绝「换了 `.inc` 但库没变」的组合轮。
-- 上游缺陷单独记账：`upstream-source/docs/UPSTREAM-ISSUES.json`。
+- 上游缺陷单独记账：`gisel-anchor/docs/UPSTREAM-ISSUES.json`。
 
 **纪律**：「0 diff」「0 环」「已覆盖」必须带命令和输入指纹。`graph` 的 0 环尤其
 如此——早期版本的 6 个「自然环」是商类没把 shim guard 算进签名造成的假阳性，
@@ -243,7 +243,7 @@ answered_equal = agree - unanswerable
 - `0 diff` 只说明「两侧在这份题面/这条轨迹上一致」，不说明规则本身正确。
 
 这就是当前系统的可信度边界：**边界内，gisel 可以作为内部权威，用 inc 替换上游
-规则；边界外的事，明写在 `ab/docs/GAPS.md` 和 `ab/docs/BACKLOG.md` 里，不拿更小
+规则；边界外的事，明写在 `gisel-ab/docs/GAPS.md` 和 `gisel-ab/docs/BACKLOG.md` 里，不拿更小
 的图或更少的题冒充全量。**
 
 ## 7 想深挖，按这个顺序读
@@ -257,7 +257,7 @@ answered_equal = agree - unanswerable
 | 逃逸点契约 | `spec/escape-points.md` |
 | 商图找环 | `spec/graph.md`、`docs/REPORT-graph.md` |
 | 出题报告 | `docs/REPORT-cases.md` |
-| 对拍范围与结果 | `ab/SCOPE.md`、`ab/docs/REPORT-ab.md` |
-| 上游出题（U 方向） | `ab/docs/EVIDENCE-U.md`、`upstream-source/oracle/` |
-| 多步等价 | `ab/docs/CLOSURE.md` |
-| 缺口清单 | `ab/docs/GAPS.md`、`ab/docs/BACKLOG.md` |
+| 对拍范围与结果 | `gisel-ab/SCOPE.md`、`gisel-ab/docs/REPORT-ab.md` |
+| 上游出题（U 方向） | `gisel-ab/docs/EVIDENCE-U.md`、`gisel-anchor/oracle/` |
+| 多步等价 | `gisel-ab/docs/CLOSURE.md` |
+| 缺口清单 | `gisel-ab/docs/GAPS.md`、`gisel-ab/docs/BACKLOG.md` |

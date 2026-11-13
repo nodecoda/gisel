@@ -143,11 +143,11 @@ memory size and alignment), and outside probes that fall through to
 `spec/cases.md` is the contract, `docs/REPORT-cases.md` the evidence.
 
 Proving that two legalizer implementations answer the same way is done *with*
-gisel, not by gisel: `ab/` freezes an answerless query set, runs the
+gisel, not by gisel: `gisel-ab/` freezes an answerless query set, runs the
 official build and the build carrying the generated `.inc` on that same file,
 and compares the two answer streams.  Both directions are closed for X86,
-AArch64 and RISC-V: `ab/docs/EVIDENCE-WP2.md` asks gisel's own questions
-(no rule is missing upstream), `ab/docs/EVIDENCE-U.md` asks the oracle's
+AArch64 and RISC-V: `gisel-ab/docs/EVIDENCE-WP2.md` asks gisel's own questions
+(no rule is missing upstream), `gisel-ab/docs/EVIDENCE-U.md` asks the oracle's
 questions (no upstream rule is missing in gisel).  That workbench has its own
 report, `docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
 
@@ -157,7 +157,7 @@ guessing, and none of the nine corpora is an independent hand-written second
 statement -- they were extracted from LLVM's hand-written C++ constructors
 with our own tooling as a preparation for self-proof.  All of them go straight
 from the hand-written `.cpp` constructor to `.gisel`
-(`upstream-source/importer/import-cxx.py`); the `.td` this project once added in between is no
+(`gisel-anchor/importer/import-cxx.py`); the `.td` this project once added in between is no
 longer used.  `docs/CORPORA.md` says, per corpus, which upstream file it was
 extracted from, which reviewed deviations it carries, and what its frozen
 artifacts can and cannot prove (all three are self-baselines; rule fidelity
@@ -182,13 +182,13 @@ comes from import-cxx --check and the end-to-end A/B).
 upstream-main feature; `docs/CORPORA.md` has the full chain.
 
 Migration and A/B tooling is **workbench**, not a gisel function
-(`docs/SCOPE.md`): `upstream-source/importer/import-inventory.py` prices a target,
-`upstream-source/importer/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
-any statement it cannot translate), and `ab/` compares two
+(`docs/SCOPE.md`): `gisel-anchor/importer/import-inventory.py` prices a target,
+`gisel-anchor/importer/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
+any statement it cannot translate), and `gisel-ab/` compares two
 implementations.  `import-cxx` is a one-shot transcriber for the pinned
 constructors, not a general C++ parser: `--all --check` re-transcribes them
 and diffs the checked-in corpora, and a rule-count drift fails loudly.  The evidence lives in `docs/REPORT-riscv.md` and
-`docs/REPORT-ab.md`.  The transcriber moved to the sibling `upstream-source`
+`docs/REPORT-ab.md`.  The transcriber moved to the sibling `gisel-anchor`
 checkout in November 2026; `tools/import-cxx.py` is a one-release forwarding
 shim, not an implementation.
 
@@ -198,8 +198,8 @@ legalizer `.td` and no `-gen-legalizer`; the rules live in hand-written
 `*LegalizerInfo.cpp` constructors, and the corpora are transcribed from those.
 The artifacts are therefore gisel's own frozen output — a drift baseline, not
 a byte oracle against a second implementation.  Rule fidelity is checked on
-two other layers: `upstream-source import --check` re-transcribes the pinned C++
-and must reproduce the checked-in `.gisel` byte for byte, and `ab/`
+two other layers: `gisel-anchor import --check` re-transcribes the pinned C++
+and must reproduce the checked-in `.gisel` byte for byte, and `gisel-ab/`
 builds the official legalizer and the one carrying our `.inc`, feeds both the
 same answerless query file, and compares the answer streams.
 `docs/CORPORA.md` has the chain and the reviewed deviations.
@@ -237,10 +237,10 @@ gisel eval --doc a.core.json --features tests/cases/features.json \
 
 `gisel cases` produces questions, not answers.  `--answers` writes what the
 evaluator says in the same JSONL shape a compiled runner writes, so
-`ab/diff.py` can compare the two answer streams:
+`gisel-ab/diff.py` can compare the two answer streams:
 
 ```sh
-python3 ../ab/diff.py runner.answers.jsonl a.answers.jsonl --json
+python3 ../gisel-ab/diff.py runner.answers.jsonl a.answers.jsonl --json
 ```
 
 When a runner has already answered the same question file, `gisel cases
@@ -256,7 +256,7 @@ gisel/backend/llvm_inc.py  AST -> .inc (M1)
 gisel/backend/check_json.py / core_json.py              M2 / M4
 gisel/eval.py           standalone evaluator (answers any question file)
 gisel/cases.py          equivalence/boundary/outside case generation
-gisel/answers.py        answer-file reader (the A/B comparison is ab/diff.py)
+gisel/answers.py        answer-file reader (the A/B comparison is gisel-ab/diff.py)
 gisel/contract.py       shape contract: which type tuples are questions
 gisel/domain.py         opcode-slot cartesian enumeration (the other question set)
 gisel/graph.py          quotient graph over (opcode, type classes, mem, imm)

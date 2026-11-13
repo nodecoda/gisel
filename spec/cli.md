@@ -30,7 +30,7 @@ builder 链按文档顺序拼成一张表）；`--emit=inc` 保留源文件的 b
 这不是漂移，是契约。`lint` 的行号始终指向源文件。
 
 `cases` 与 `domain` 产出的是**问题**，不是答案文件；答案由外部 legalizer 或
-`eval` 给出，比较命令在工作台（`ab/diff.py`）。
+`eval` 给出，比较命令在工作台（`gisel-ab/diff.py`）。
 
 `domain --json` 打印的统计必须能复算分母：`raw_points`（截断前）、`truncated`、
 `points`（写盘行数）、`shape_dropped`/`shape_dropped_total`（被形状过滤丢掉的

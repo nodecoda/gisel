@@ -111,7 +111,7 @@ actions: {"Legal": 9, "NarrowScalar": 2, "Unsupported": 18, "WidenScalar": 6}
 ```
 
 这是**我们这套规则**给出的答案。它和上游 C++ 是否一致，需要 LLVM 才能判，
-那是 `ab` 的事（`ab/docs/TUTORIAL-m68k.md`）。没有 LLVM 时能证明的是：
+那是 `gisel-ab` 的事（`gisel-ab/docs/TUTORIAL-m68k.md`）。没有 LLVM 时能证明的是：
 规则能被解析、能出题、能被这套语义回答，且答案可复现。
 
 ## 6 找环
@@ -138,7 +138,7 @@ closure     : ok (0 violation(s), 0 shown)
 - 证到：`pip install gisel` 之后，九份语料可直接出题；题库可复算；求值可复现；
   M68k 的商图 0 环且闭包成立。
 - 没证：这套规则和上游 LLVM 一致。那需要 pin 的 LLVM 树和构建，见
-  `ab/docs/TUTORIAL-m68k.md`。
+  `gisel-ab/docs/TUTORIAL-m68k.md`。
 
 ## 8 常见问题
 

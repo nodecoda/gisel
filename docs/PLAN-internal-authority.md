@@ -30,7 +30,7 @@
 - **规则表**：只换规则，不换 loop、custom action、memdesc。
 
 在这个定义下，X86 的两条 deviation 不是“问题”，它们就是 fork baseline 的
-一部分；但必须在 `../upstream-source/pin/PIN.json` / `docs/CORPORA.md` 里点名，
+一部分；但必须在 `../gisel-anchor/pin/PIN.json` / `docs/CORPORA.md` 里点名，
 否则“权威”会滑成“gisel 干什么都算对”。
 
 ## 2 两阶段证明结构
@@ -117,18 +117,18 @@ forall q in U: Ans_g(q) = Ans_u(q)
 
 | 门 | 要求 | 当前状态 |
 |---|---|---|
-| 参照系 | 明确“对 pin+patches 权威”，deviation 点名 | `../upstream-source/pin/PIN.json` 记录 commit + patches；deviation 在 `docs/CORPORA.md` 点名 |
+| 参照系 | 明确“对 pin+patches 权威”，deviation 点名 | `../gisel-anchor/pin/PIN.json` 记录 commit + patches；deviation 在 `docs/CORPORA.md` 点名 |
 | G 题面 | `domain + cases + 字面量展开`，不只 `cases` | 三个 target 都用 `domain`：X86 91,340（4 配置）；AArch64 8,432,640（9 配置）；RISC-V 2,029,976（8 配置）。`cases` 仍在，作规则感知的压缩补充 |
 | 分区完备 | 每个等价类有代表点；`unexercised` 规则有交代 | X86 5 / AArch64 130 / RISC-V 46 条未命中（`REPORT-cases`、`REPORT-coverage`） |
-| U 题面 | 上游运行期规则表 + 独立类型宇宙 | 有：`upstream-source` 的 oracle 模块，9 个 target；证据见 `ab/EVIDENCE.json` 的 9 条 `U/*` |
-| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 结构侧：`graph` 的闭包审计默认开启；四个大 target 未 refine 时 rc=1（X86 277、AArch64 2,671、RISC-V 2,864、Wasm 302），`--refine` 后全 0（`REPORT-graph`），口径是“**refine 后闭包**”。行为侧：`ab/closure.py` 从 `cases` 与 `domain` 两个种子出发把 `new_type` 当下一问，跑到不动点；九个 target 合计 `G` 种子 31,641 + 新增 3,867、`D` 种子 4,795,281 + 新增 8,675，disagree 全 0、stuck 0（`ab/docs/CLOSURE.md`）。三个 L4 target 的并集是 94,327 / 958,751 / 260,156。域外起点仍是边界 |
+| U 题面 | 上游运行期规则表 + 独立类型宇宙 | 有：`gisel-anchor` 的 oracle 模块，9 个 target；证据见 `gisel-ab/EVIDENCE.json` 的 9 条 `U/*` |
+| 多步等价 | 闭包通过，或另证“后继封闭 + 终止” | 结构侧：`graph` 的闭包审计默认开启；四个大 target 未 refine 时 rc=1（X86 277、AArch64 2,671、RISC-V 2,864、Wasm 302），`--refine` 后全 0（`REPORT-graph`），口径是“**refine 后闭包**”。行为侧：`gisel-ab/closure.py` 从 `cases` 与 `domain` 两个种子出发把 `new_type` 当下一问，跑到不动点；九个 target 合计 `G` 种子 31,641 + 新增 3,867、`D` 种子 4,795,281 + 新增 8,675，disagree 全 0、stuck 0（`gisel-ab/docs/CLOSURE.md`）。三个 L4 target 的并集是 94,327 / 958,751 / 260,156。域外起点仍是边界 |
 | 不可答点 | 单列、计数并钉数 | X86 648 条（2026-11-11：删掉按 slot 0 查表的短路后实测；旧 1,418 里 528 条其实可答）；AArch64 domain 39,056/配置；`cases` 侧已归零（`REPORT-cases` §8.2） |
-| 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 9 个 target；MIR L1 六个（x86/aarch64/riscv/arm/mips，PPC 只有一条且无 generic 指令）、L2 九个、L3 三个，证据在 `ab/EVIDENCE.json` 的 `MIR-*`；L2 九个 target 全有 |
-| 可复现 | pin 更新自动重跑；产物 sha 固定 | `tests/artifacts` + `ab/oracle/`（`verify-evidence.sh` 76/76）；三个 L4 target 的 `G/U` 证据带 `snapshot`（corpus + features + inc），校验时会从 corpus 重生成 inc 并比对；改语料后用 `replay-frozen.py` 对冻结答案回放（九 target 全一致）；pin 漂移检测没有（只跟 pin） |
+| 回归 | getAction 对拍 + `inc` 编译进真实 target + llc/MIR 测试 | getAction 9 个 target；MIR L1 六个（x86/aarch64/riscv/arm/mips，PPC 只有一条且无 generic 指令）、L2 九个、L3 三个，证据在 `gisel-ab/EVIDENCE.json` 的 `MIR-*`；L2 九个 target 全有 |
+| 可复现 | pin 更新自动重跑；产物 sha 固定 | `tests/artifacts` + `gisel-ab/oracle/`（`verify-evidence.sh` 76/76）；三个 L4 target 的 `G/U` 证据带 `snapshot`（corpus + features + inc），校验时会从 corpus 重生成 inc 并比对；改语料后用 `replay-frozen.py` 对冻结答案回放（九 target 全一致）；pin 漂移检测没有（只跟 pin） |
 
 ## 6 负控：证明对拍有牙齿
 
-这是最关键的一环；2026-11-11 已在 `ab` 落地（9×`G-neg/*` + 9×`U-neg/*`）：
+这是最关键的一环；2026-11-11 已在 `gisel-ab` 落地（9×`G-neg/*` + 9×`U-neg/*`）：
 
 > 故意把一条 `legal` 改成 `lower`、把谓词放宽/收窄、删一条规则，重生成 `inc`，
 > 重编 ours runner，跑同一份题面——必须报分歧。
@@ -139,7 +139,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 机制已经在工作台（不是 gisel 功能）：
 
 ```sh
-../ab/inject-rule.py tests/corpus/X86LegalizerInfo.gisel \
+../gisel-ab/inject-rule.py tests/corpus/X86LegalizerInfo.gisel \
   --rule X86_ADD#1 --mutate action=Lower --expect-disagree
 ```
 
@@ -156,7 +156,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 - 每次改 `.gisel`，先对 frozen oracle 跑 `G`/`U` 两套题 + 负控，再进 fork：
 
   ```sh
-  ../ab/replay-frozen.py TARGET --tree ../llvm/trees/explore \
+  ../gisel-ab/replay-frozen.py TARGET --tree ../llvm/trees/explore \
     --build ../llvm/builds/explore --out /tmp/replay-TARGET --direction both
   ```
 
@@ -168,9 +168,9 @@ forall q in U: Ans_g(q) = Ans_u(q)
 |---|---|---|
 | L0 | 转录 + `inc` 编译 | 有 |
 | L1 | `G` 题面对拍 | 有 |
-| L2 | 负控注入能被抓 | 有：9×`G-neg/*` + 9×`U-neg/*`（`ab/EVIDENCE.json`），注入动作翻转/谓词放宽后必须报分歧 |
-| L3 | `U` 题面对拍 | 有：9×`U/*`（`ab/EVIDENCE.json`） |
-| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | refine 后闭包有（审计默认开启；`--refine` 后四个大 target `count=0`）；frozen oracle 有，且 `replay-frozen.py` 九 target × G/U 十八个方向逐条一致（`ab/docs/REPLAY-FROZEN.md`）；全量回归 3/9（x86/aarch64/riscv），另有 3 个 L1；CI：ab 绿、gisel 绿（2026-11-12 修复）、upstream-source 绿（`ada7db3`，import-tests + pin `--check`）。无 MIR 缺口 |
+| L2 | 负控注入能被抓 | 有：9×`G-neg/*` + 9×`U-neg/*`（`gisel-ab/EVIDENCE.json`），注入动作翻转/谓词放宽后必须报分歧 |
+| L3 | `U` 题面对拍 | 有：9×`U/*`（`gisel-ab/EVIDENCE.json`） |
+| L4 | 闭包/多步 + 全量回归 + frozen oracle + CI | refine 后闭包有（审计默认开启；`--refine` 后四个大 target `count=0`）；frozen oracle 有，且 `replay-frozen.py` 九 target × G/U 十八个方向逐条一致（`gisel-ab/docs/REPLAY-FROZEN.md`）；全量回归 3/9（x86/aarch64/riscv），另有 3 个 L1；CI：gisel-ab 绿、gisel 绿（2026-11-12 修复）、gisel-anchor 绿（`ada7db3`，import-tests + pin `--check`）。无 MIR 缺口 |
 
 “内部权威”应该是 L4 的 target 才授予。X86、AArch64、RISC-V 分别授，不要用
 一个总开关。
@@ -178,7 +178,7 @@ forall q in U: Ans_g(q) = Ans_u(q)
 采用（2026-11-12）：三个 L4 target 都已有 fork 采用分支
 `explore/{x86,aarch64,riscv}-adopt`（`nodecoda/llvm-project`）。每个分支的构建库
 sha 与 MIR-L3 “swapped” 记录逐位相同，80,596 条 lit 逐条一致，冻结 `G`/`U` 回放
-disagree 全 0；细节与回滚规则见 `ab/docs/ADOPT.md`。采用是 L4 之后的动作：它把
+disagree 全 0；细节与回滚规则见 `gisel-ab/docs/ADOPT.md`。采用是 L4 之后的动作：它把
 证据落到 fork 里，不改变 L4 的定义，也不覆盖 §10 的边界。
 
 ## 9 权威之后的变更流程
@@ -198,12 +198,12 @@ gisel 成为源之后，流程反过来：
 
 - 本文不证明 gisel 对所有 LLVM 输入正确；只对声明域、配置表和 fork baseline。
 - 不涉及上游接纳、RFC、社区评审；那是另一个问题。
-- 动态 `legalize` 循环：声明域上的后继闭包已有证据（`ab/docs/CLOSURE.md`），
+- 动态 `legalize` 循环：声明域上的后继闭包已有证据（`gisel-ab/docs/CLOSURE.md`），
   一步相同 + 后继相同 + 状态集封闭 ⇒ 循环相同。仍未覆盖的是起点在声明域之外
   （`s7`/`s31`、非常见 mem/imms）、`Custom` 动作体、以及 MIR 层副作用。
 - 分区闭包与后继闭包是两个问题：`--refine` 才让前者归零，后者直接问具体状态，
   不替前者作答。
-- `U` 方向已由 `upstream-source` 的 oracle 模块实现（九 target，证据在 `ab/EVIDENCE.json`）；A6 字面量展开仍是它的转录近似版。
+- `U` 方向已由 `gisel-anchor` 的 oracle 模块实现（九 target，证据在 `gisel-ab/EVIDENCE.json`）；A6 字面量展开仍是它的转录近似版。
 
 ## 11 一句话
 
@@ -211,6 +211,6 @@ gisel 成为源之后，流程反过来：
 > 保留参照 oracle，才叫我们自己有信心。**
 
 `G` 与 `U` 双向题面、负控、闭包和 frozen oracle 都已有证据；L3（全量
-`check-llvm`）已于 2026-11-12 进 `ab/EVIDENCE.json`，ab 与 gisel 的 CI 都是绿的。
+`check-llvm`）已于 2026-11-12 进 `gisel-ab/EVIDENCE.json`，gisel-ab 与 gisel 的 CI 都是绿的。
 剩下的缺口见下。逐条列在
-`ab/docs/GAPS.md`（O1）。
+`gisel-ab/docs/GAPS.md`（O1）。

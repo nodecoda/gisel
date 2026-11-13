@@ -8,7 +8,7 @@
 commit   5ec0c0d   (2026-11-13; the wasm32 golden was added after this commit,
                     and the other four goldens are byte-identical)
 version  gisel 0.3.0
-targets  X86 / AArch64 / RISC-V corpus at ../upstream-source/pin/PIN.json
+targets  X86 / AArch64 / RISC-V corpus at ../gisel-anchor/pin/PIN.json
 goldens  tests/artifacts/graph/{x86-none,riscv-rv64gc,wasm-wasm32}{,-refine}.json
 gate     tools/check-graph-golden.sh   (bytes + rc + closure.count)
 ```

@@ -116,7 +116,7 @@ gisel cases SOURCE --out FILE
 全量对拍使用工作台命令（不是 gisel 的子命令，见 `docs/SCOPE.md`）：
 
 ```sh
-python3 ../ab/diff.py official.answers.jsonl ours.answers.jsonl
+python3 ../gisel-ab/diff.py official.answers.jsonl ours.answers.jsonl
 ```
 
 它对完整 key 集合做 join，缺一条或答案不同都失败。主体对拍粒度是
