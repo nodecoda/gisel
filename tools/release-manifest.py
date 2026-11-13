@@ -3,7 +3,8 @@
 
     tools/release-manifest.py [--out PATH] [--cohort NAME]
 
-Reads the sibling checkouts (`AB_SRC` / `UPSTREAM_SOURCE`, default `../ab`
+Reads the sibling checkouts (`AB_SRC` / `UPSTREAM_SOURCE`, default
+`../gisel-ab` and `../gisel-anchor`, falling back to the pre-rename `../ab`
 and `../upstream-source`).  A manifest for a dirty worktree is a lie, so a
 dirty repo is an error; commit first.
 
@@ -28,6 +29,18 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+
+
+def sibling(env, *names):
+    """Resolve a sibling checkout: explicit env, then each name in order."""
+    override = os.environ.get(env)
+    if override:
+        return Path(override)
+    for name in names:
+        path = ROOT.parent / name
+        if path.is_dir():
+            return path
+    return ROOT.parent / names[0]
 
 
 def git(path, *args):
@@ -100,10 +113,9 @@ def main(argv=None):
                         help="the tag this manifest will be frozen under")
     args = parser.parse_args(argv)
 
-    ab = Path(os.environ.get("AB_SRC", ROOT.parent / "ab"))
-    upstream = Path(os.environ.get(
-        "UPSTREAM_SOURCE", ROOT.parent / "upstream-source"))
-    for name, path in (("ab", ab), ("upstream-source", upstream)):
+    ab = sibling("AB_SRC", "gisel-ab", "ab")
+    upstream = sibling("UPSTREAM_SOURCE", "gisel-anchor", "upstream-source")
+    for name, path in (("gisel-ab", ab), ("gisel-anchor", upstream)):
         if not (path / ".git").exists():
             return fail("%s is not a git checkout (%s)" % (name, path))
 
@@ -113,7 +125,8 @@ def main(argv=None):
         return fail("dirty worktree: %s" % ", ".join(sorted(dirty_repos)))
 
     gisel_commit = head(ROOT)
-    stale = stale_refs((("ab", ab), ("upstream-source", upstream)), gisel_commit)
+    stale = stale_refs((("gisel-ab", ab), ("gisel-anchor", upstream)),
+                       gisel_commit)
     if stale:
         return fail("consumer CI does not pin gisel %s: %s"
                     % (gisel_commit[:12], "; ".join(stale)))

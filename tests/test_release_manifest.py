@@ -9,6 +9,7 @@ import sys
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 ROOT = Path(__file__).resolve().parents[1]
 TOOL = ROOT / "tools" / "release-manifest.py"
@@ -72,6 +73,43 @@ class ReleaseManifest(unittest.TestCase):
             "arm.cases.jsonl", "mips.cases.jsonl", "ppc.cases.jsonl",
             "m68k.cases.jsonl", "wasm.cases.jsonl", "spirv.cases.jsonl"})
         self.assertTrue(all(len(sha) == 64 for sha in rows.values()))
+
+
+class Sibling(unittest.TestCase):
+    def test_new_name_wins_when_both_exist(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "gisel"
+            root.mkdir()
+            (Path(tmp) / "gisel-ab").mkdir()
+            (Path(tmp) / "ab").mkdir()
+            loaded = module()
+            loaded.ROOT = root
+            self.assertEqual(loaded.sibling("NO_SUCH_ENV_FOR_TEST",
+                                            "gisel-ab", "ab"),
+                             Path(tmp) / "gisel-ab")
+
+    def test_old_name_is_the_fallback(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "gisel"
+            root.mkdir()
+            (Path(tmp) / "ab").mkdir()
+            loaded = module()
+            loaded.ROOT = root
+            self.assertEqual(loaded.sibling("NO_SUCH_ENV_FOR_TEST",
+                                            "gisel-ab", "ab"),
+                             Path(tmp) / "ab")
+
+    def test_env_override_wins(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "gisel"
+            root.mkdir()
+            (Path(tmp) / "gisel-ab").mkdir()
+            loaded = module()
+            loaded.ROOT = root
+            env = dict(os.environ, AB_SRC="/elsewhere")
+            with mock.patch.dict(os.environ, env, clear=True):
+                self.assertEqual(loaded.sibling("AB_SRC", "gisel-ab", "ab"),
+                                 Path("/elsewhere"))
 
 
 if __name__ == "__main__":

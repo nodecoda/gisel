@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Deprecated shim: the transcriber now lives in ``upstream-source``.
+"""Deprecated shim: the transcriber now lives in ``gisel-anchor`` (or the pre-rename ``upstream-source``).
 
 Kept for one release so existing commands keep working.  Set
 ``UPSTREAM_SOURCE`` to override the sibling checkout location.
@@ -13,16 +13,28 @@ import sys
 from pathlib import Path
 
 REPO = Path(__file__).resolve().parents[1]
-TOOL = (Path(os.environ.get("UPSTREAM_SOURCE",
-                             REPO.parent / "upstream-source"))
-        / "importer" / "import-cxx.py")
+
+
+def _sibling(env, *names):
+    override = os.environ.get(env)
+    if override:
+        return Path(override)
+    for name in names:
+        path = REPO.parent / name
+        if path.is_dir():
+            return path
+    return REPO.parent / names[0]
+
+
+TOOL = _sibling("UPSTREAM_SOURCE", "gisel-anchor", "upstream-source") \
+    / "importer" / "import-cxx.py"
 
 
 def main(argv):
     if not TOOL.exists():
         sys.stderr.write(
             "import-cxx moved to %s; set UPSTREAM_SOURCE or clone "
-            "upstream-source next to gisel\n" % TOOL)
+            "gisel-anchor next to gisel\n" % TOOL)
         return 2
     sys.stderr.write("warning: tools/import-cxx.py moved to %s\n" % TOOL)
     return subprocess.call([sys.executable, str(TOOL), *argv])
