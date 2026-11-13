@@ -21,7 +21,7 @@
 命令：
 
 ```bash
-python3 tools/jsonl-census.py /home/ubuntu/llvm/ab/.ab/*/cache/official/*.jsonl
+python3 tools/jsonl-census.py /home/ubuntu/llvm/gisel-ab/.ab/*/cache/official/*.jsonl
 ```
 
 | target | 行数 | 坏行 | 重复 | 冲突 |
