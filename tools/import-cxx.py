@@ -27,7 +27,7 @@ def _sibling(env, *names):
 
 
 TOOL = _sibling("UPSTREAM_SOURCE", "gisel-anchor", "upstream-source") \
-    / "importer" / "import-cxx.py"
+    / "scripts" / "import-cxx.py"
 
 
 def main(argv):

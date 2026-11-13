@@ -2,11 +2,11 @@
 
 状态: 规范性。实现: `gisel/ast.py`（`parse_program`，文件级 AST）与
 `gisel/dsl.py`（`Parser`，规则体）。语料: `tests/corpus/*.gisel`
-（X86 328 条 / AArch64 741 条，由 `gisel-anchor/importer/import-cxx.py`
+（X86 328 条 / AArch64 741 条，由 `gisel-anchor/scripts/import-cxx.py`
 从手写 C++ 构造函数转录，规则保真由端到端 A/B 校验）；
 另有探针语料 `M68kLegalizerInfo.gisel`（44 行 / 13 条）与
 `WebAssemblyLegalizerInfo.gisel`（109 条），见 `docs/REPORT-wasm.md`。
-九份语料走同一条链路：手写 C++ 构造函数 → `gisel-anchor/importer/import-cxx.py` →
+九份语料走同一条链路：手写 C++ 构造函数 → `gisel-anchor/scripts/import-cxx.py` →
 `.gisel`（RISC-V 402 条 / 96 个 ruleset）。上游没有 legalizer 的 TableGen
 emitter，所以 `tests/artifacts/*` 是**自基线**，证据性质见 `docs/CORPORA.md`。
 任何语法改动都必须让这几份语料 round-trip。
@@ -260,7 +260,7 @@ lint 对其 `slot` 上界跳过并输出一条 ruleset 级 warning，不静默�
 - `imm(i)` 没有下界检查（见 §4）：`imm(7)` 在只有 1 个立即数的指令上不会被 lint 拦下。
 - 多 opcode 的 ruleset 用 `min(arity)` 做 J3b（`dsl.py:check_rules`），这是
   保守下界，不是 per-opcode 精确检查。
-- 导入器（`gisel-anchor/importer/import-cxx.py`）的产物暴露了三条表达边界，均**不改语法**：
+- 导入器（`gisel-anchor/scripts/import-cxx.py`）的产物暴露了三条表达边界，均**不改语法**：
   - 整型 subtarget 值（`ST.getXLen()`）不是 `feature`（bool）：用在比较右侧时
     换成 `select(feature("XLen == 64"), 64, 32)`。`feature` 只有 Bool 一种 sort。
   - `select` 的条件只认**名字**（`feature` 或 `pred` 记录，

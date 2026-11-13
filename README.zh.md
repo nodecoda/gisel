@@ -147,7 +147,7 @@ target 的双向对拍都已闭合：`gisel-ab/docs/EVIDENCE-WP2.md` 用 gisel �
 不了的语句直接拒绝，而不是猜；九份语料中没有一份是独立手写的第二份规则
 陈述——它们都是我们用自己的工具，从 LLVM 手写 C++ 构造函数里提取出来，
 作为自证准备的。所有语料都直接从手写 `.cpp` 构造函数到 `.gisel`
-（`gisel-anchor/importer/import-cxx.py`）；项目曾在中间加过的 `.td` 已经
+（`gisel-anchor/scripts/import-cxx.py`）；项目曾在中间加过的 `.td` 已经
 不再使用。`docs/CORPORA.md` 逐份说明语料来自哪个上游文件、带哪些经过审查的
 偏离，以及冻结产物能证明什么、不能证明什么（三套产物都是自基线；规则保真
 来自 import-cxx --check 和端到端 A/B）。
@@ -171,8 +171,8 @@ M1–M3 行里的 `-gen-legalizer*` 是本项目在 LLVM 研究分支上加的 T
 完整链路见 `docs/CORPORA.md`。
 
 迁移和对拍工具属于**工作台**，不是 gisel 的功能
-（`docs/SCOPE.md`）：`gisel-anchor/importer/import-inventory.py` 估算接入
-一个 target 的成本，`gisel-anchor/importer/import-cxx.py` 把构造函数变成
+（`docs/SCOPE.md`）：`gisel-anchor/scripts/import-inventory.py` 估算接入
+一个 target 的成本，`gisel-anchor/scripts/import-cxx.py` 把构造函数变成
 `.gisel`（遇到任何翻译不了的语句就退出 1，绝不静默丢规则），`gisel-ab/` 比较两个
 实现。`import-cxx` 是面向钉住版本构造函数的专用一次性转录器，不是通用 C++
 解析器：`--all --check` 会重新转录并和入库语料逐字节比对，规则数漂移会

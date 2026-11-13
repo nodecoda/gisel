@@ -10,7 +10,7 @@ LLVM C++  --import-cxx-->  .gisel  --gisel cases-->  无答案查询  --对拍--
 
 “我们没漏上游的规则”只能由这条链的前两段保证：
 
-- **C++ → .gisel**：`gisel-anchor/importer/import-cxx.py` 只接受它认识的构造，别的一律带行号
+- **C++ → .gisel**：`gisel-anchor/scripts/import-cxx.py` 只接受它认识的构造，别的一律带行号
   拒绝；`--check` 要求重新导入的结果与入库语料**逐字节相同**。所以语料不是
   “我们记得的规则”，是“C++ 里写着的规则”。
 - **.gisel → 查询**：每条规则至少要有一个查询把它**首命中**。少一条，对拍仍会
@@ -101,7 +101,7 @@ does not cover every rule
   X_G_FCMP#7: shadowed
 ```
 
-配 `../gisel-anchor/importer/import-cxx.py --all --pin ../gisel-anchor/pin/PIN.json --git-repo <llvm> --check` 一起用，就是这条链的
+配 `../gisel-anchor/scripts/import-cxx.py --all --pin ../gisel-anchor/pin/PIN.json --git-repo <llvm> --check` 一起用，就是这条链的
 两段证书：**语料 == C++**，且**每条规则都被问过**（剩下的会被点名）。
 
 ## 6 没做到的

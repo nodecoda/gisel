@@ -74,7 +74,7 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 |---|---|---|
 | `docs/REPORT-cases.md` §6–§7 | 对拍结果住在用例生成报告里，读起来像 gisel 的能力 | 已整体搬到 `docs/REPORT-ab.md`，并在文首写明是工作台报告 |
 | `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令和比较逻辑都在 `gisel-ab/diff.py`；`gisel/answers.py` 只留读取器，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
-| `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 已迁到 `gisel-anchor/import/`；gisel 只留一个 release 的转发 shim |
+| `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 已迁到 `gisel-anchor/scripts/import-cxx.py`；gisel 只留一个 release 的转发 shim |
 | `cases --against <llvm dump>` | 看起来像运行时依赖 LLVM | 它读的是冻结在 `tests/` 的 oracle，不是运行时依赖 |
 | `eval --answers` | 为对拍加的出口 | 属于求值器本身（答案就是它的输出），归本体 |
 | `gisel/answers.py` | 曾经是 `gisel/diff.py` 连同 CLI 一起 | 只留答案文件读取器；比较和命令都在工作台，依赖方向保持“工具 → 库” |

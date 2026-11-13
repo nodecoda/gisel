@@ -99,7 +99,7 @@ python3 -m pytest -q
 # 2. 语料与上游一致（9/9 matches，0 refused）
 #    PIN 与转录器都在 gisel-anchor；gisel 的 tools/import-cxx.py 只是
 #    一个转发的 shim（会打一行 deprecation 警告）。
-python3 ../gisel-anchor/importer/import-cxx.py --all \
+python3 ../gisel-anchor/scripts/import-cxx.py --all \
   --pin ../gisel-anchor/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
 

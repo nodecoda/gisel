@@ -1,7 +1,7 @@
 # Pressure test: M68k and WebAssembly
 
 > 历史说明：本报告写作时 `.td` 与 `table` 渲染器仍存在；它们已在 `docs/REPORT-no-td.md` 和 `spec/m3-scope.md` 中移除。
-> 这是工作台报告：`gisel-anchor/importer/import-cxx.py` 是工作台工具，不是 gisel 的功能；边界见 `docs/SCOPE.md`。
+> 这是工作台报告：`gisel-anchor/scripts/import-cxx.py` 是工作台工具，不是 gisel 的功能；边界见 `docs/SCOPE.md`。
 
 状态: 证据记录（2026-11-06，2026-11-09 追补）。语料:
 `tests/corpus/M68kLegalizerInfo.gisel`（13 条）、
@@ -158,7 +158,7 @@ status=2                      # 反例证明片段真的被编译
 ## 8 转正后的端到端证据（2026-11-09）
 
 ```
-$ python3 ../gisel-anchor/importer/import-cxx.py WebAssembly \
+$ python3 ../gisel-anchor/scripts/import-cxx.py WebAssembly \
     --pin ../gisel-anchor/pin/PIN.json \
     --git-repo /home/ubuntu/llvm/llvm-project \
     --out tests/corpus/WebAssemblyLegalizerInfo.gisel

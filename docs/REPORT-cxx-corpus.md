@@ -9,7 +9,7 @@
 
 ```text
 upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
-  -> gisel-anchor/importer/import-cxx.py  （一次性转录，0 拒绝）
+  -> gisel-anchor/scripts/import-cxx.py  （一次性转录，0 拒绝）
   -> tests/corpus/*.gisel
   -> gisel gen --emit={inc,check,core}
 ```
@@ -23,7 +23,7 @@ upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
 
 `tests/artifacts/` 的九份产物已按新语料重生成。它们**是 gisel 自己的冻结
 输出**，用于抓漂移，不是“与上游逐字节一致”的 oracle；规则保真靠
-`gisel-anchor/importer/import-cxx.py --check` 和 `gisel-ab/` 端到端对拍。
+`gisel-anchor/scripts/import-cxx.py --check` 和 `gisel-ab/` 端到端对拍。
 
 AArch64 的 importer `TARGETS` 断言 744 条 builder call；3 条只改类型集合、
 不生成独立规则，所以 `gisel lint` 解析到 741 条。
@@ -41,7 +41,7 @@ A/B 还要多一轮“`.td` vs C++”的对拍。
 
 ## 3 为什么是专用工具，不是通用 C++ 导入器
 
-`gisel-anchor/importer/import-cxx.py` 只认这些构造函数用到的那一小撮写法。目标表
+`gisel-anchor/scripts/import-cxx.py` 只认这些构造函数用到的那一小撮写法。目标表
 `TARGETS` 写死了目标、源相对路径、前缀和规则数；`--all --check`
 重新转录并和仓库里的 `.gisel` 逐字节对照。规则数变了就报 `DRIFT` 并返回 1，
 不会悄悄换一份语料。
@@ -408,7 +408,7 @@ target 的代码逐字节不变。
 
 ### 14.1 语料
 
-`gisel-anchor/importer/import-cxx.py SPIRV`：83 rulesets / 353 rules / 0 refused。0 拒绝的关键是
+`gisel-anchor/scripts/import-cxx.py SPIRV`：83 rulesets / 353 rules / 0 refused。0 拒绝的关键是
 在 importer 里补了 SPIRV 用到的写法：
 
 - `auto &X = cond ? A : B` 类型集别名（`Types.set_alias`）；

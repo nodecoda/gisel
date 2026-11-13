@@ -32,7 +32,7 @@ gisel-anchor ──(.gisel 语料)──▶ gisel ──(inc + 无答案查询)�
 | 仓库 | 一句话 | 主要入口 |
 |---|---|---|
 | `gisel` | DSL 编译器 + 出题器 | `gen` `check` `lint` `cases` `domain` `eval` `graph` |
-| `gisel-anchor` | 从钉住的 C++ 提取规则与「上游题面」 | `importer/import-cxx.py`、`oracle/` |
+| `gisel-anchor` | 从钉住的 C++ 提取规则与「上游题面」 | `scripts/import-cxx.py`、`src/gisel_anchor/oracle/` |
 | `gisel-ab` | 双实现对拍工作台 | `ab.py run`、`diff.py`、`closure.py`、`mir-replay.py`、`l3.py`、`cohort.py` |
 
 ## 1 gisel：把规则文本变成两样东西
@@ -63,7 +63,7 @@ gisel-anchor ──(.gisel 语料)──▶ gisel ──(inc + 无答案查询)�
 
 ```text
 pinned *LegalizerInfo.cpp
-      │ importer/import-cxx.py（认 builder 链，不是正则堆）
+      │ scripts/import-cxx.py（认 builder 链，不是正则堆）
       ▼
 tests/corpus/*.gisel   （冻结，随仓库分发）
 ```
@@ -127,7 +127,7 @@ LLT 空间是无限的（任意位宽、任意 lane 数）。随机采样只能�
 |---|---|---|---|
 | **G**（`cases`） | gisel | 规则感知的等价类代表 + 边界 + outside | gisel → 上游 |
 | **D**（`domain`） | gisel | 规则无关的声明值域全量 | gisel → 上游 |
-| **U** / **U-full** | `gisel-anchor/oracle` | 上游规则表 + 独立 LLT 宇宙；U 按规则区域抽样，U-full 按全部配置展开 | 上游 → gisel |
+| **U** / **U-full** | `gisel-anchor/src/gisel_anchor/oracle` | 上游规则表 + 独立 LLT 宇宙；U 按规则区域抽样，U-full 按全部配置展开 | 上游 → gisel |
 
 G 与 D **互不包含**：`cases` 含规则切点（X86 三千条量级），`domain` 含规则无关的
 笛卡尔积（当前生成器实测：X86 91,340；AArch64 每配置 936,960；RISC-V 每配置
@@ -258,6 +258,6 @@ answered_equal = agree - unanswerable
 | 商图找环 | `spec/graph.md`、`docs/REPORT-graph.md` |
 | 出题报告 | `docs/REPORT-cases.md` |
 | 对拍范围与结果 | `gisel-ab/SCOPE.md`、`gisel-ab/docs/REPORT-ab.md` |
-| 上游出题（U 方向） | `gisel-ab/docs/EVIDENCE-U.md`、`gisel-anchor/oracle/` |
+| 上游出题（U 方向） | `gisel-ab/docs/EVIDENCE-U.md`、`gisel-anchor/src/gisel_anchor/oracle/` |
 | 多步等价 | `gisel-ab/docs/CLOSURE.md` |
 | 缺口清单 | `gisel-ab/docs/GAPS.md`、`gisel-ab/docs/BACKLOG.md` |

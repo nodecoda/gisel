@@ -23,7 +23,7 @@
 证书命令（读 `git show <commit>:<path>`，不读工作区）：
 
 ```sh
-python3 ../gisel-anchor/importer/import-cxx.py --all \
+python3 ../gisel-anchor/scripts/import-cxx.py --all \
   --pin ../gisel-anchor/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
 # 九个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
@@ -52,7 +52,7 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 WebAssembly 886 / ARM 1,614 / Mips 1,656），
 变了就停下来看新题目。
 
-另一半题面不来自 gisel：`../gisel-anchor/oracle` 从上游规则表生成 `U`
+另一半题面不来自 gisel：`../gisel-anchor/src/gisel_anchor/oracle` 从上游规则表生成 `U`
 （按规则区域抽样）和 `U-full`（同一题面按全部配置展开）。G 方向证明「gisel 的
 规则上游都有」，U 方向证明「上游的规则 gisel 没漏」；两条都跑，证据在
 `../gisel-ab/docs/EVIDENCE-U.md`。
@@ -92,7 +92,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 
 | 归因 | 动作 |
 |---|---|
-| 我们的翻译 / emitter / 求值 | 改 `gisel-anchor/importer/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
+| 我们的翻译 / emitter / 求值 | 改 `gisel-anchor/scripts/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
 | 查询生成（题目本身不合法） | 改 `gisel/cases.py`，重算查询数并更新 pin |
 | 上游 | 落 `/home/ubuntu/admin/upstream-issues/`，不在构建树里“顺手修掉”当作结论 |
 | 未定性 | 在 `docs/REPORT-*.md` 里写“未覆盖”，不许并进 agree |

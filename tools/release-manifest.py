@@ -163,8 +163,8 @@ def main(argv=None):
             "bash tools/check-cases-golden.sh",
             "bash tools/check-nightly-graphs.sh",
             "python3 tools/check-claims.py",
-            "python3 importer/import-cxx.py --all --pin pin/PIN.json --check",
-            "pin/make-base.sh TREE DEST --verify",
+            "python3 scripts/import-cxx.py --all --pin pin/PIN.json --check",
+            "scripts/pin/make-base.sh TREE DEST --verify",
             "gisel-ab/verify-evidence.sh",
         ],
     }
