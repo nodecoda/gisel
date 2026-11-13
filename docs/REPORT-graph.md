@@ -186,7 +186,7 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| rv64gc | 521,899 | 28,925 | 28,925 | 413,778 | 46,884 | 29,114 | 3,198 | 30,313 | 8,001 | 0 |
+| rv64gc | 521,903 | 28,925 | 28,925 | 414,504 | 46,162 | 29,114 | 3,198 | 30,313 | 8,005 | 0 |
 
 `uncovered = ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']`
 （imm 轴或 variadic 槽数未给定）。
@@ -198,8 +198,16 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 
 2026-11-11 在 `dad5a61` 重跑：`--check-closure` 仍是 `count=2,864`
 （`partition 610` / `outside 2,254`），rc=1；把 refine 扩到跨槽目标后，
-`--refine` 得到 **`count=0`，rc=0**，classes 8,001 → 8,050（+49），
-states 522,992，edges 29,356，cycles 0。
+`--refine` 得到 **`count=0`，rc=0**，classes 8,005 → 8,054（+49），
+states 522,996，edges 29,356，cycles 0。
+
+2026-11-13 在 `6671815` 复测：该 commit 让规则里的 `p0:*` 按配置解析成
+`p0:64`（不再当“任意宽度”），所以上面这张表和 refined 数字一起变了：
+states 521,899 → 521,903，classes 8,001 → 8,005，`Legal` 590 → 400，
+`Lower` 44,987 → 44,443，`no-rule` 413,778 → 414,504；closure 仍是
+`count=2,864`，refine 后仍是 `count=0`。变化集中在指针槽：rv64gc 的
+`p0:32` 状态不再被 `p0:*` 规则误判为 legal。五个 graph golden 已按这次
+输出重录，`tests/artifacts/graph/SHA256` 同步。
 
 ## 5 AArch64 baseline：0 个环（去掉 MIR 不可达的形状之后）
 

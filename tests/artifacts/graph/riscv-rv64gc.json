@@ -1,7 +1,7 @@
 {
  "reports": [
   {
-   "classes": 8001,
+   "classes": 8005,
    "closure": {
     "checked": true,
     "count": 2864,
@@ -217,21 +217,21 @@
    "opaque": 29114,
    "outcomes": {
     "moves": 28925,
-    "no-rule": 413778,
+    "no-rule": 414504,
     "opaque": 29114,
     "outside": 3198,
     "stuck": 0,
-    "terminal": 46884
+    "terminal": 46162
    },
    "outside": 3198,
    "shape": 30313,
-   "states": 521899,
+   "states": 521903,
    "terminal": {
-    "Custom": 96,
-    "Legal": 590,
+    "Custom": 92,
+    "Legal": 400,
     "Libcall": 531,
-    "Lower": 44987,
-    "Unsupported": 680
+    "Lower": 44443,
+    "Unsupported": 696
    },
    "uncovered": [
     "G_SEXT_INREG",
