@@ -6,7 +6,9 @@ gisel's wheel never shipped it.
 
 Kept for one release as a pointer so old links do not 404.
 
-- Harness: `gisel-ab/ab.py`, `gisel-ab/diff.py`, `gisel-ab/attribute.py`, `gisel-ab/run-queries.py`
+- Entry point: `gisel-ab/ab.py` (one verb table; `ab.py --help`)
+- Package: `gisel-ab/src/gisel_ab/`
+- Evidence: `gisel-ab/evidence/`
 - Contract: `gisel-ab/CONTRACTS.md`
 - Reports: `gisel-ab/docs/REPORT-ab.md`, `gisel-ab/docs/REQUIREMENTS-ab.md`
-- Boundary: `docs/SCOPE.md` §7
+- Boundary: `gisel-ab/SCOPE.md` §7
