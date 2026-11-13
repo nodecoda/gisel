@@ -1,0 +1,1054 @@
+//===- AArch64LegalizerInfo.gisel - imported from AArch64LegalizerInfo.cpp -*- gisel -*-===//
+//
+// One-shot transcription: `tools/import-cxx.py AArch64 AArch64LegalizerInfo.cpp`.
+// Source sha256 2b5377c3eedddf82f17758e7cab763d99ce362e4c5422bb8e24bc4b7c8945d55.  Do not edit by hand; re-run the importer instead.
+//
+// The importer refuses what it cannot translate; every refusal below is a
+// statement that still has to be written by hand (or taught to the importer).
+//
+//===----------------------------------------------------------------------===//
+include "llvm/Target/LegalizerInfo.td"
+include "llvm/Target/Target.td"
+
+feature A_HasCSSC = ST.hasCSSC()
+feature A_HasFP16 = ST.hasFullFP16()
+feature A_HasRCPC3 = ST.hasRCPC3()
+feature A_HasSVE = ST.hasSVE()
+feature A_SmallCodeModel = TM.getCodeModel() == CodeModel::Small
+feature A_UseOutlineAtomics = ST.outlineAtomics() && !ST.hasLSE()
+feature A_hasBF16 = ST.hasBF16()
+feature A_hasFPARMv8 = ST.hasFPARMv8()
+feature A_hasMOPS = ST.hasMOPS()
+feature A_hasNEON = ST.hasNEON()
+
+type A_p0 = LLT::pointer(0, 64)
+type A_s8 = LLT::scalar(8)
+type A_s16 = LLT::scalar(16)
+type A_s32 = LLT::scalar(32)
+type A_s64 = LLT::scalar(64)
+type A_s128 = LLT::scalar(128)
+type A_v16s8 = LLT::fixed_vector(16, 8)
+type A_v8s8 = LLT::fixed_vector(8, 8)
+type A_v4s8 = LLT::fixed_vector(4, 8)
+type A_v2s8 = LLT::fixed_vector(2, 8)
+type A_v8s16 = LLT::fixed_vector(8, 16)
+type A_v4s16 = LLT::fixed_vector(4, 16)
+type A_v2s16 = LLT::fixed_vector(2, 16)
+type A_v2s32 = LLT::fixed_vector(2, 32)
+type A_v4s32 = LLT::fixed_vector(4, 32)
+type A_v2s64 = LLT::fixed_vector(2, 64)
+type A_v2p0 = LLT::fixed_vector(2, A_p0)
+type A_nxv16s8 = LLT::scalable_vector(16, A_s8)
+type A_nxv8s16 = LLT::scalable_vector(8, A_s16)
+type A_nxv4s32 = LLT::scalable_vector(4, A_s32)
+type A_nxv2s64 = LLT::scalable_vector(2, A_s64)
+type A_bf16 = LLT::bfloat16()
+type A_v4bf16 = LLT::fixed_vector(4, A_bf16)
+type A_v8bf16 = LLT::fixed_vector(8, A_bf16)
+type A_f16 = LLT::float16()
+type A_v4f16 = LLT::fixed_vector(4, A_f16)
+type A_v8f16 = LLT::fixed_vector(8, A_f16)
+type A_f32 = LLT::float32()
+type A_v2f32 = LLT::fixed_vector(2, A_f32)
+type A_v4f32 = LLT::fixed_vector(4, A_f32)
+type A_f64 = LLT::float64()
+type A_v2f64 = LLT::fixed_vector(2, A_f64)
+type A_f128 = LLT::float128()
+type A_i8 = LLT::integer(8)
+type A_v8i8 = LLT::fixed_vector(8, A_i8)
+type A_v16i8 = LLT::fixed_vector(16, A_i8)
+type A_i16 = LLT::integer(16)
+type A_v8i16 = LLT::fixed_vector(8, A_i16)
+type A_v4i16 = LLT::fixed_vector(4, A_i16)
+type A_i32 = LLT::integer(32)
+type A_v2i32 = LLT::fixed_vector(2, A_i32)
+type A_v4i32 = LLT::fixed_vector(4, A_i32)
+type A_i64 = LLT::integer(64)
+type A_v2i64 = LLT::fixed_vector(2, A_i64)
+type A_i128 = LLT::integer(128)
+type A_nxv16i8 = LLT::scalable_vector(16, A_i8)
+type A_nxv8i16 = LLT::scalable_vector(8, A_i16)
+type A_nxv4i32 = LLT::scalable_vector(4, A_i32)
+type A_nxv2i64 = LLT::scalable_vector(2, A_i64)
+type_set A_PackedVectorAllTypeList = [A_v16s8, A_v8s16, A_v4s32, A_v2s64, A_v2p0, A_v8s8, A_v4s16, A_v2s32]
+type_set A_ScalarAndPtrTypesList = [A_s8, A_s16, A_s32, A_s64, A_p0]
+type_set A_PackedVectorAllTypesVec = [A_v16s8, A_v8s16, A_v4s32, A_v2s64, A_v2p0, A_v8s8, A_v4s16, A_v2s32]
+type_set A_ScalarAndPtrTypesVec = [A_s8, A_s16, A_s32, A_s64, A_p0]
+
+ruleset A_G_IMPLICIT_DEF: G_IMPLICIT_DEF G_FREEZE G_CONSTANT_FOLD_BARRIER
+    legal in(slot(0), [A_p0, A_s8, A_s16, A_s32, A_s64, A_s128])
+    legal in(slot(0), [A_v2s8, A_v4s8, A_v8s8, A_v16s8, A_v2s16, A_v4s16, A_v8s16, A_v2s32, A_v4s32, A_v2s64, A_v2p0])
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s8))
+    narrow(slot(0), ty(A_s64))
+    more(slot(0), pow2)
+    widen(elem_of(slot(0)), min_vector_size(64))
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    clamp_max(0, A_p0, 2)
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+
+ruleset A_G_PHI: G_PHI
+    legal in(slot(0), [A_p0, A_s16, A_s32, A_s64])
+    legal in(slot(0), A_PackedVectorAllTypeList)
+    widen(slot(0), pow2)
+    more(slot(0), pow2)
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    widen(slot(0), ty(A_s16))
+    narrow(slot(0), ty(A_s64))
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    clamp_max(0, A_p0, 2)
+    widen(slot(0), 8)
+
+ruleset A_G_INSERT: G_INSERT
+    legal (in(slot(0), [A_s32, A_s64, A_p0]) and in(slot(1), [A_s8, A_s16, A_s32]) and size_of(slot(1)) < size_of(slot(0)))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    widen(slot(1), pow2)
+    widen(slot(1), ty(A_s8))
+    narrow(slot(1), ty(A_s16)) when in(slot(0), [A_s32])
+    narrow(slot(1), ty(A_s32)) when in(slot(0), [A_s64, A_p0])
+
+ruleset A_G_EXTRACT: G_EXTRACT
+    legal (in(slot(0), [A_s16, A_s32, A_s64, A_p0]) and in(slot(1), [A_s32, A_s64, A_s128, A_p0]) and size_of(slot(0)) < size_of(slot(1)))
+    widen(slot(1), pow2)
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s128))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s16))
+    narrow(slot(0), ty(A_s16)) when in(slot(1), [A_s32])
+    narrow(slot(0), ty(A_s32)) when in(slot(1), [A_s64, A_p0])
+    narrow(slot(0), ty(A_s64)) when in(slot(1), [A_s128])
+
+ruleset A_G_ADD: G_ADD G_SUB G_AND G_OR G_XOR
+    legal in(slot(0), [A_i32, A_i64, A_v8i8, A_v16i8, A_v4i16, A_v8i16, A_v2i32, A_v4i32, A_v2i64])
+    legal (A_HasSVE and in(slot(0), [A_nxv16i8, A_nxv8i16, A_nxv4i32, A_nxv2i64]))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    clamp_max(0, A_s8, 16)
+    clamp_max(0, A_s16, 8)
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    widen(elem_of(slot(0)), ty(A_s32)) when num_elems(slot(0)) <= 2
+    widen(elem_of(slot(0)), ty(A_s16)) when num_elems(slot(0)) <= 4
+    widen(elem_of(slot(0)), ty(A_s8)) when num_elems(slot(0)) <= 16
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    more(slot(0), pow2)
+
+ruleset A_G_MUL: G_MUL
+    legal in(slot(0), [A_i32, A_i64, A_v8i8, A_v16i8, A_v4i16, A_v8i16, A_v2i32, A_v4i32, A_v2i64])
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    clamp_max(0, A_s8, 16)
+    clamp_max(0, A_s16, 8)
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    widen(elem_of(slot(0)), ty(A_s32)) when num_elems(slot(0)) <= 2
+    widen(elem_of(slot(0)), ty(A_s16)) when num_elems(slot(0)) <= 4
+    widen(elem_of(slot(0)), ty(A_s8)) when num_elems(slot(0)) <= 16
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    more(slot(0), pow2)
+
+ruleset A_G_SHL: G_SHL G_ASHR G_LSHR
+    custom (not sort_of(slot(0)) == vector and size_of(slot(0)) == 32 and size_of(slot(1)) == 32)
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_i32], [A_i32, A_i64], [A_i64, A_i64], [A_v8i8, A_v8i8], [A_v16i8, A_v16i8], [A_v4i16, A_v4i16], [A_v8i16, A_v8i16], [A_v2i32, A_v2i32], [A_v4i32, A_v4i32], [A_v2i64, A_v2i64]])
+    widen(slot(1), pow2)
+    widen(slot(0), pow2)
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s64))
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    more(slot(0), pow2)
+    widen(slot(1), same_as(0))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    widen(slot(1), same_as(0)) when sort_of(slot(0)) == vector
+    narrow(slot(1), same_as(0)) when sort_of(slot(0)) == vector
+
+ruleset A_G_PTR_ADD: G_PTR_ADD
+    legal in_pairs(slot(0), slot(1), [[A_p0, A_i64], [A_v2p0, A_v2i64]])
+    widen(elem_of(slot(1)), ty(A_s64))
+    narrow(elem_of(slot(1)), ty(A_s64))
+    clamp_min(0, A_p0, num_elems(ty(A_v2p0)))
+    clamp_max(0, A_p0, num_elems(ty(A_v2p0)))
+
+ruleset A_G_PTRMASK: G_PTRMASK
+    legal in_pairs(slot(0), slot(1), [[A_p0, A_s64]])
+
+ruleset A_G_SDIV: G_SDIV G_UDIV
+    legal in(slot(0), [A_i32, A_i64])
+    libcall in(slot(0), [A_i128])
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    widen(slot(0), pow2)
+    scalarize(slot(0))
+
+ruleset A_G_SREM: G_SREM G_UREM G_SDIVREM G_UDIVREM
+    lower in(slot(0), [A_i8, A_i16, A_i32, A_i64, A_v2i32, A_v4i32, A_v2i64])
+    libcall in(slot(0), [A_i128])
+    widen(elem_of(slot(0)), pow2)
+    widen(elem_of(slot(0)), ty(A_s32))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    scalarize(slot(0))
+
+ruleset A_G_SMULO: G_SMULO G_UMULO
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    lower true
+
+ruleset A_G_SMULH: G_SMULH G_UMULH
+    legal in(slot(0), [A_i64, A_v16i8, A_v8i16, A_v4i32])
+    clamp_max(0, A_s8, 16)
+    clamp_max(0, A_s16, 8)
+    clamp_max(0, A_s32, 4)
+    lower true
+
+ruleset A_G_SMULFIX: G_SMULFIX G_UMULFIX G_SMULFIXSAT G_UMULFIXSAT
+    lower true
+
+ruleset A_G_SMIN: G_SMIN G_SMAX G_UMIN G_UMAX
+    legal in(slot(0), [A_v8i8, A_v16i8, A_v4i16, A_v8i16, A_v2i32, A_v4i32])
+    legal (A_HasCSSC and in(slot(0), [A_i32, A_i64]))
+    widen(slot(0), ty(A_s32)) when A_HasCSSC
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    lower true
+
+ruleset A_G_ABS: G_ABS
+    legal (A_HasCSSC and in(slot(0), [A_i32, A_i64]))
+    legal in(slot(0), [A_v16i8, A_v8i16, A_v4i32, A_v2i64, A_v2p0, A_v8i8, A_v4i16, A_v2i32])
+    custom (sort_of(slot(0)) == scalar and size_of(slot(0)) < 128)
+    widen(slot(0), replace(ty(A_v4i16))) when slot(0) == ty(A_v4s8)
+    widen(slot(0), replace(ty(A_v2i32))) when slot(0) == ty(A_v2s16)
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    more(slot(0), pow2)
+    lower true
+
+ruleset A_G_ABDS: G_ABDS G_ABDU G_UAVGFLOOR G_UAVGCEIL G_SAVGFLOOR G_SAVGCEIL
+    legal in(slot(0), [A_v8i8, A_v16i8, A_v4i16, A_v8i16, A_v2i32, A_v4i32])
+    lower true
+
+ruleset A_G_SADDE: G_SADDE G_SSUBE G_UADDE G_USUBE G_SADDO G_SSUBO G_UADDO G_USUBO
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_i32], [A_i64, A_i32]])
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s64))
+    widen(slot(0), pow2)
+    lower true
+
+ruleset A_G_FSHL: G_FSHL G_FSHR
+    custom in_pairs(slot(0), slot(1), [[A_i32, A_i32], [A_i32, A_i64], [A_i64, A_i64]])
+    lower true
+
+ruleset A_G_ROTR: G_ROTR
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_i64], [A_i64, A_i64]])
+    custom (sort_of(slot(0)) == scalar and bits_of(slot(1)) < 64)
+    lower true
+
+ruleset A_G_ROTL: G_ROTL
+    lower true
+
+ruleset A_G_SBFX: G_SBFX G_UBFX
+    custom in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s64, A_s64]])
+
+ruleset A_G_CTPOP: G_CTPOP
+    legal (A_HasCSSC and in_pairs(slot(0), slot(1), [[A_i32, A_i32], [A_i64, A_i64]]))
+    legal in_pairs(slot(0), slot(1), [[A_v8i8, A_v8i8], [A_v16i8, A_v16i8]])
+    custom (not A_HasCSSC and in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s64, A_s64]]))
+    custom in_pairs(slot(0), slot(1), [[A_s128, A_s128], [A_v4s16, A_v4s16], [A_v8s16, A_v8s16], [A_v2s32, A_v2s32], [A_v4s32, A_v4s32], [A_v2s64, A_v2s64]])
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s128))
+    widen(slot(0), pow2)
+    widen(slot(0), 8)
+    widen(slot(1), same_as(0)) when true
+    narrow(slot(1), same_as(0)) when true
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    more(slot(0), pow2)
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+
+ruleset A_G_CTLZ: G_CTLZ G_CTLS
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_i32], [A_i64, A_i64], [A_v8i8, A_v8i8], [A_v16i8, A_v16i8], [A_v4i16, A_v4i16], [A_v8i16, A_v8i16], [A_v2i32, A_v2i32], [A_v4i32, A_v4i32]])
+    widen(slot(1), pow2_min(32))
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s64))
+    widen(slot(1), 8)
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    more(slot(0), pow2)
+    scalarize(slot(0)) when bits_of(slot(0)) > 32
+    widen(slot(0), same_as(1))
+    narrow(slot(0), same_as(1))
+
+ruleset A_G_INSERT_SUBVECTOR: G_INSERT_SUBVECTOR
+    lower true
+
+ruleset A_G_CTLZ_ZERO_POISON: G_CTLZ_ZERO_POISON
+    lower true
+
+ruleset A_G_CTTZ: G_CTTZ
+    lower sort_of(slot(0)) == vector
+    widen(slot(1), pow2_min(32))
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s64))
+    widen(slot(0), same_as(1))
+    narrow(slot(0), same_as(1))
+    legal (A_HasCSSC and in(slot(0), [A_s32, A_s64]))
+    custom (not A_HasCSSC and in(slot(0), [A_s32, A_s64]))
+
+ruleset A_G_CTTZ_ZERO_POISON: G_CTTZ_ZERO_POISON
+    lower true
+
+ruleset A_G_BITREVERSE: G_BITREVERSE
+    legal in(slot(0), [A_i32, A_i64, A_v8i8, A_v16i8])
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), 8)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    more(slot(0), pow2)
+    lower true
+
+ruleset A_G_CLMUL: G_CLMUL
+    legal in(slot(0), [A_v8i8, A_v16i8])
+
+ruleset A_G_BSWAP: G_BSWAP
+    legal in(slot(0), [A_i32, A_i64, A_v4i16, A_v8i16, A_v2i32, A_v4i32, A_v2i64])
+    widen(elem_of(slot(0)), pow2_min(16))
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    more(slot(0), pow2)
+
+ruleset A_G_UADDSAT: G_UADDSAT G_SADDSAT G_USUBSAT G_SSUBSAT
+    legal in(slot(0), [A_v8i8, A_v16i8, A_v4i16, A_v8i16, A_v2i32, A_v4i32, A_v2i64])
+    legal (A_HasSVE and in(slot(0), [A_nxv16i8, A_nxv8i16, A_nxv4i32, A_nxv2i64]))
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    more(slot(0), pow2)
+    lower true
+
+ruleset A_G_FADD: G_FADD G_FSUB G_FMUL G_FDIV G_FMA G_FSQRT G_FMAXNUM G_FMINNUM G_FMAXIMUM G_FMINIMUM G_FCEIL G_FFLOOR G_FRINT G_FNEARBYINT G_INTRINSIC_TRUNC G_INTRINSIC_ROUND G_INTRINSIC_ROUNDEVEN
+    legal in(slot(0), [A_f32, A_f64, A_v2f32, A_v4f32, A_v2f64])
+    legal (A_HasFP16 and in(slot(0), [A_f16, A_v4f16, A_v8f16]))
+    libcall in(slot(0), [A_f128])
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    widen(slot(0), replace(elt_type_to(slot(0), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    more(slot(0), pow2)
+
+ruleset A_G_FABS: G_FABS G_FNEG
+    legal in(slot(0), [A_f32, A_f64, A_v2f32, A_v4f32, A_v2f64])
+    legal (A_HasFP16 and in(slot(0), [A_f16, A_bf16, A_v4f16, A_v4bf16, A_v8f16, A_v8bf16]))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    lower bits_of(slot(0)) > 64
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    more(slot(0), pow2)
+    lower in(slot(0), [A_f16, A_bf16, A_v4f16, A_v4bf16, A_v8f16, A_v8bf16])
+
+ruleset A_G_FREM: G_FREM G_FCOS G_FSIN G_FPOW G_FLOG G_FLOG2 G_FLOG10 G_FTAN G_FEXP G_FEXP2 G_FEXP10 G_FACOS G_FASIN G_FATAN G_FATAN2 G_FCOSH G_FSINH G_FTANH G_FMODF
+    libcall in(slot(0), [A_f32, A_f64, A_f128])
+    widen(slot(0), replace(elt_type_to(slot(0), ty(A_f32)))) when in(slot(0), [A_f16, A_bf16])
+    scalarize(slot(0))
+
+ruleset A_G_FPOWI: G_FPOWI G_FLDEXP
+    libcall in_pairs(slot(0), slot(1), [[A_f32, A_i32], [A_f64, A_i32], [A_f128, A_i32]])
+    widen(slot(0), replace(elt_type_to(slot(0), ty(A_f32)))) when in(slot(0), [A_f16, A_bf16])
+    scalarize(slot(0))
+
+ruleset A_G_LROUND: G_LROUND G_INTRINSIC_LRINT
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_f32], [A_i32, A_f64], [A_i64, A_f32], [A_i64, A_f64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_i32, A_f16], [A_i64, A_f16]]))
+    widen(slot(1), ty(A_s32))
+    libcall in_pairs(slot(0), slot(1), [[A_s64, A_s128]])
+    lower true
+
+ruleset A_G_LLROUND: G_LLROUND G_INTRINSIC_LLRINT
+    legal in_pairs(slot(0), slot(1), [[A_i64, A_f32], [A_i64, A_f64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_i64, A_f16]]))
+    widen(slot(0), ty(A_s64))
+    widen(slot(1), ty(A_s32))
+    libcall in_pairs(slot(0), slot(1), [[A_s64, A_s128]])
+    lower true
+
+ruleset A_G_FCOPYSIGN: G_FCOPYSIGN
+    more(slot(0), replace(vec_of(select(slot(0) == ty(A_s16), 4, 2), slot(0)))) when sort_of(slot(0)) == scalar
+    lower true
+
+ruleset A_G_FMAD: G_FMAD
+    lower true
+
+ruleset A_G_SEXTLOAD: G_SEXTLOAD
+    lower mem_ordering(mem_slot(0)) >= ordering_unordered
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_s32, A_p0, A_s8, 8), mem_desc(A_s32, A_p0, A_s16, 8), mem_desc(A_s32, A_p0, A_s32, 8), mem_desc(A_s64, A_p0, A_s8, 2), mem_desc(A_s64, A_p0, A_s16, 2), mem_desc(A_s64, A_p0, A_s32, 4), mem_desc(A_s64, A_p0, A_s64, 8), mem_desc(A_p0, A_p0, A_s64, 8), mem_desc(A_v2s32, A_p0, A_s64, 8)])
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    unsupported not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))
+    lower true
+
+ruleset A_G_ZEXTLOAD: G_ZEXTLOAD
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_s32, A_p0, A_s8, 8), mem_desc(A_s32, A_p0, A_s16, 8), mem_desc(A_s32, A_p0, A_s32, 8), mem_desc(A_s64, A_p0, A_s8, 2), mem_desc(A_s64, A_p0, A_s16, 2), mem_desc(A_s64, A_p0, A_s32, 4), mem_desc(A_s64, A_p0, A_s64, 8), mem_desc(A_p0, A_p0, A_s64, 8), mem_desc(A_v2s32, A_p0, A_s64, 8)])
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    unsupported not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))
+    lower true
+
+ruleset A_G_LOAD: G_LOAD
+    custom (A_HasRCPC3 and slot(0) == ty(A_s128) and mem_ordering(mem_slot(0)) == ordering_acquire)
+    custom (slot(0) == ty(A_s128) and mem_ordering(mem_slot(0)) >= ordering_unordered)
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_s8, A_p0, A_s8, 8), mem_desc(A_s16, A_p0, A_s16, 8), mem_desc(A_s32, A_p0, A_s32, 8), mem_desc(A_s64, A_p0, A_s64, 8), mem_desc(A_p0, A_p0, A_s64, 8), mem_desc(A_s128, A_p0, A_s128, 8), mem_desc(A_v8s8, A_p0, A_s64, 8), mem_desc(A_v16s8, A_p0, A_s128, 8), mem_desc(A_v4s16, A_p0, A_s64, 8), mem_desc(A_v8s16, A_p0, A_s128, 8), mem_desc(A_v2s32, A_p0, A_s64, 8), mem_desc(A_v4s32, A_p0, A_s128, 8), mem_desc(A_v2s64, A_p0, A_s128, 8)])
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_s32, A_p0, A_s8, 8), mem_desc(A_s32, A_p0, A_s16, 8), mem_desc(A_s64, A_p0, A_s32, 8)])
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_nxv16s8, A_p0, A_nxv16s8, 8), mem_desc(A_nxv8s16, A_p0, A_nxv8s16, 8), mem_desc(A_nxv4s32, A_p0, A_nxv4s32, 8), mem_desc(A_nxv2s64, A_p0, A_nxv2s64, 8)])
+    widen(slot(0), pow2_min(8))
+    clamp_max(0, A_s8, 16)
+    clamp_max(0, A_s16, 8)
+    clamp_max(0, A_s32, 4)
+    clamp_max(0, A_s64, 2)
+    clamp_max(0, A_p0, 2)
+    lower (not is_byte_sized(mem_ty(mem_slot(0))) or not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0)))))
+    widen(slot(0), ty(A_s8))
+    narrow(slot(0), ty(A_s64))
+    narrow(slot(0), replace(ty(A_i32))) when (sort_of(slot(0)) == scalar and slot(0) != mem_ty(mem_slot(0)) and size_of(slot(0)) > 32)
+    bitcast(slot(0), replace(int_of_size(size_of(slot(0))))) when in(slot(0), [A_v4s8])
+    custom ((sort_of(slot(0)) == pointer_vector and addr_space(slot(0)) == 0))
+    scalarize(slot(0)) when in(slot(0), [A_v2s16, A_v2s8])
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+
+ruleset A_G_STORE: G_STORE
+    custom (A_HasRCPC3 and slot(0) == ty(A_s128) and mem_ordering(mem_slot(0)) == ordering_release)
+    custom (slot(0) == ty(A_s128) and mem_ordering(mem_slot(0)) >= ordering_unordered)
+    widen(slot(0), replace(elt_size_to(slot(0), size_of(ty(A_s32))))) when ((sort_of(slot(0)) == scalar and size_of(slot(0)) < 32) and mem_ordering(mem_slot(0)) >= ordering_release)
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_s8, A_p0, A_s8, 8), mem_desc(A_s16, A_p0, A_s8, 8), mem_desc(A_s32, A_p0, A_s8, 8), mem_desc(A_s64, A_p0, A_s8, 8), mem_desc(A_s16, A_p0, A_s16, 8), mem_desc(A_s32, A_p0, A_s16, 8), mem_desc(A_s64, A_p0, A_s16, 8), mem_desc(A_s32, A_p0, A_s8, 8), mem_desc(A_s32, A_p0, A_s16, 8), mem_desc(A_s32, A_p0, A_s32, 8), mem_desc(A_s64, A_p0, A_s64, 8), mem_desc(A_s64, A_p0, A_s32, 8), mem_desc(A_p0, A_p0, A_s64, 8), mem_desc(A_s128, A_p0, A_s128, 8), mem_desc(A_v16s8, A_p0, A_s128, 8), mem_desc(A_v8s8, A_p0, A_s64, 8), mem_desc(A_v4s16, A_p0, A_s64, 8), mem_desc(A_v8s16, A_p0, A_s128, 8), mem_desc(A_v2s32, A_p0, A_s64, 8), mem_desc(A_v4s32, A_p0, A_s128, 8), mem_desc(A_v2s64, A_p0, A_s128, 8)])
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_nxv16s8, A_p0, A_nxv16s8, 8), mem_desc(A_nxv8s16, A_p0, A_nxv8s16, 8), mem_desc(A_nxv4s32, A_p0, A_nxv4s32, 8), mem_desc(A_nxv2s64, A_p0, A_nxv2s64, 8)])
+    widen(slot(0), ty(A_s8))
+    narrow(slot(0), ty(A_s64))
+    widen(elem_of(slot(0)), ty(A_s8))
+    lower (sort_of(slot(0)) == scalar and slot(0) != mem_ty(mem_slot(0)))
+    clamp_max(0, A_s8, 16)
+    clamp_max(0, A_s16, 8)
+    clamp_max(0, A_s32, 4)
+    clamp_max(0, A_s64, 2)
+    clamp_max(0, A_p0, 2)
+    lower not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0))))
+    bitcast(slot(0), replace(int_of_size(size_of(slot(0))))) when (in(slot(0), [A_v4s8]) and size_of(slot(0)) == size_of(mem_ty(mem_slot(0))))
+    custom ((sort_of(slot(0)) == pointer_vector and addr_space(slot(0)) == 0))
+    scalarize(slot(0)) when in(slot(0), [A_v2s16, A_v2s8])
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    lower true
+
+ruleset A_G_INDEXED_STORE: G_INDEXED_STORE
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(A_p0, A_s8, A_s8, 8), mem_desc(A_p0, A_s16, A_s16, 8), mem_desc(A_p0, A_s32, A_s8, 8), mem_desc(A_p0, A_s32, A_s16, 8), mem_desc(A_p0, A_s32, A_s32, 8), mem_desc(A_p0, A_s64, A_s64, 8), mem_desc(A_p0, A_p0, A_p0, 8), mem_desc(A_p0, A_v8s8, A_v8s8, 8), mem_desc(A_p0, A_v16s8, A_v16s8, 8), mem_desc(A_p0, A_v4s16, A_v4s16, 8), mem_desc(A_p0, A_v8s16, A_v8s16, 8), mem_desc(A_p0, A_v2s32, A_v2s32, 8), mem_desc(A_p0, A_v4s32, A_v4s32, 8), mem_desc(A_p0, A_v2s64, A_v2s64, 8), mem_desc(A_p0, A_v2p0, A_v2p0, 8), mem_desc(A_p0, A_s128, A_s128, 8)])
+    unsupported true
+
+ruleset A_G_INDEXED_LOAD: G_INDEXED_LOAD
+    unsupported mem_ordering(mem_slot(0)) >= ordering_unordered
+    legal ((not ((not in(slot(0), A_PackedVectorAllTypesVec) and not in(slot(0), A_ScalarAndPtrTypesVec) and slot(0) != ty(A_s128))) and (not (slot(1) != ty(A_p0)) and true)))
+    unsupported true
+
+ruleset A_G_INDEXED_SEXTLOAD: G_INDEXED_SEXTLOAD G_INDEXED_ZEXTLOAD
+    unsupported mem_ordering(mem_slot(0)) >= ordering_unordered
+    legal (in(slot(0), [A_s16, A_s32, A_s64]) and (not (slot(1) != ty(A_p0)) and ((slot(0) == ty(A_s16) and mem_ty(mem_slot(0)) == ty(A_s8)) or (not (slot(0) == ty(A_s16)) and ((slot(0) == ty(A_s32) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16))) or (not (slot(0) == ty(A_s32)) and (slot(0) == ty(A_s64) and (mem_ty(mem_slot(0)) == ty(A_s8) or mem_ty(mem_slot(0)) == ty(A_s16) or mem_ty(mem_slot(0)) == ty(A_s32)))))))))
+    unsupported true
+
+ruleset A_G_CONSTANT: G_CONSTANT
+    legal in(slot(0), [A_p0, A_s8, A_s16, A_s32, A_s64])
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s8))
+    narrow(slot(0), ty(A_s64))
+
+ruleset A_G_FCONSTANT: G_FCONSTANT
+    legal in(slot(0), [A_s16, A_s32, A_s64, A_s128])
+
+ruleset A_G_ICMP: G_ICMP
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_i32], [A_i32, A_i64], [A_i32, A_p0]])
+    widen(elem_of(slot(1)), pow2)
+    widen(elem_of(slot(1)), ty(A_s8))
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s64))
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s32))
+    scalarize(slot(1)) when bits_of(slot(1)) > 64
+    widen(slot(0), same_as(1)) when (sort_of(slot(0)) == vector and not sort_of(slot(1)) == pointer_vector and elem_of(slot(0)) != elem_of(slot(1)))
+    widen(elem_of(slot(1)), ty(A_s32)) when slot(1) == ty(A_v2s16)
+    widen(elem_of(slot(0)), ty(A_s64)) when sort_of(slot(1)) == pointer_vector
+    more(slot(1), pow2)
+    clamp_min(1, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(1, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(1, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(1, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(1, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(1, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(1, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(1, A_s64, num_elems(ty(A_v2s64)))
+    clamp_min(1, A_p0, num_elems(ty(A_v2p0)))
+    clamp_max(1, A_p0, num_elems(ty(A_v2p0)))
+    custom sort_of(slot(0)) == vector
+
+ruleset A_G_FCMP: G_FCMP
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_f32], [A_i32, A_f64], [A_v4i32, A_v4f32], [A_v2i32, A_v2f32], [A_v2i64, A_v2f64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_i32, A_f16], [A_v4i16, A_v4f16], [A_v8i16, A_v8f16]]))
+    widen(elem_of(slot(1)), pow2)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s32))
+    widen(slot(1), replace(elt_type_to(slot(1), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
+    scalarize(slot(1)) when bits_of(slot(1)) > 64
+    widen(slot(0), same_as(1)) when (sort_of(slot(0)) == vector and not sort_of(slot(1)) == pointer_vector and elem_of(slot(0)) != elem_of(slot(1)))
+    clamp_min(1, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(1, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(1, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(1, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(1, A_s64, 2)
+    more(slot(1), pow2)
+    libcall in_pairs(slot(0), slot(1), [[A_s32, A_s128]])
+
+ruleset A_G_ZEXT: G_ZEXT G_SEXT G_ANYEXT
+    legal ((not (sort_of(slot(0)) == vector) and (not ((size_of(slot(0)) < 8 or size_of(slot(0)) >= 128 or not is_pow2(size_of(slot(0))))) and (not ((size_of(slot(1)) < 8 or not is_pow2(size_of(slot(1))))) and true))))
+    legal in_pairs(slot(0), slot(1), [[A_v8s16, A_v8s8], [A_v4s32, A_v4s16], [A_v2s64, A_v2s32]])
+    widen(slot(0), ty(A_s64))
+    narrow(slot(0), ty(A_s64))
+    more(slot(0), pow2)
+    clamp_max(1, A_s8, 8)
+    clamp_max(1, A_s16, 4)
+    clamp_max(1, A_s32, 2)
+    lower (bits_of(slot(0)) > mul(bits_of(slot(1)), 2) and sort_of(slot(0)) == vector and (bits_of(slot(1)) == 8 or bits_of(slot(1)) == 16))
+    clamp_min(1, A_s8, 8)
+    clamp_min(1, A_s16, 4)
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+
+ruleset A_G_TRUNC: G_TRUNC
+    legal in_pairs(slot(0), slot(1), [[A_v8s8, A_v8s16], [A_v4s16, A_v4s32], [A_v2s32, A_v2s64]])
+    more(slot(0), pow2)
+    clamp_max(0, A_s8, 8)
+    clamp_max(0, A_s16, 4)
+    clamp_max(0, A_s32, 2)
+    widen(elem_of(slot(0)), ty(A_s8)) when sort_of(slot(0)) == vector
+    lower (sort_of(slot(0)) == vector and size_of(slot(1)) > 128 and mul(bits_of(slot(0)), 2) <= bits_of(slot(1)))
+    clamp_min(0, A_s8, 8)
+    clamp_min(0, A_s16, 4)
+    legal true
+
+ruleset A_G_TRUNC_SSAT_S: G_TRUNC_SSAT_S G_TRUNC_SSAT_U G_TRUNC_USAT_U
+    legal in_pairs(slot(0), slot(1), [[A_v8i8, A_v8i16], [A_v4i16, A_v4i32], [A_v2i32, A_v2i64]])
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v2s32)))
+    lower true
+
+ruleset A_G_SEXT_INREG: G_SEXT_INREG
+    legal in(slot(0), [A_i32, A_i64, A_v8i8, A_v16i8, A_v4i16, A_v8i16, A_v2i32, A_v4i32, A_v2i64])
+    narrow(slot(0), ty(A_s64))
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    lower true
+
+ruleset A_G_FPTRUNC: G_FPTRUNC
+    legal in_pairs(slot(0), slot(1), [[A_f16, A_f32], [A_f16, A_f64], [A_f32, A_f64], [A_v4f16, A_v4f32], [A_v2f32, A_v2f64]])
+    legal (A_hasBF16 and in_pairs(slot(0), slot(1), [[A_bf16, A_f32], [A_v4bf16, A_v4f32]]))
+    libcall in_pairs(slot(0), slot(1), [[A_f16, A_f128], [A_f32, A_f128], [A_f64, A_f128]])
+    more(slot(1), pow2)
+    custom (bits_of(slot(1)) == 64 and bits_of(slot(0)) == 16)
+    lower in_pairs(slot(0), slot(1), [[A_bf16, A_f32], [A_v4bf16, A_v4f32]])
+    clamp_min(1, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(1, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(1, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(1, A_s64, num_elems(ty(A_v2s64)))
+    scalarize(slot(0))
+
+ruleset A_G_FPEXT: G_FPEXT
+    legal in_pairs(slot(0), slot(1), [[A_f32, A_f16], [A_f64, A_f16], [A_f32, A_bf16], [A_f64, A_f32], [A_v4f32, A_v4f16], [A_v4f32, A_v4bf16], [A_v2f64, A_v2f32]])
+    libcall in_pairs(slot(0), slot(1), [[A_f128, A_f64], [A_f128, A_f32], [A_f128, A_f16]])
+    more(slot(0), pow2)
+    widen(slot(1), replace(elt_type_to(slot(1), ty(A_f32)))) when (sort_of(slot(1)) == vector and sort_of(slot(0)) == vector and bits_of(slot(1)) == 16 and bits_of(slot(0)) == 64)
+    clamp_min(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    scalarize(slot(0))
+
+ruleset A_G_FPTOSI: G_FPTOSI G_FPTOUI
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_f32], [A_i64, A_f32], [A_i32, A_f64], [A_i64, A_f64], [A_v2i32, A_v2f32], [A_v4i32, A_v4f32], [A_v2i64, A_v2f64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_i32, A_f16], [A_i64, A_f16], [A_v4i16, A_v4f16], [A_v8i16, A_v8f16]]))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    scalarize(slot(1)) when bits_of(slot(1)) > 64
+    narrow(slot(0), replace(ty(A_i64))) when (slot(1) == ty(A_f16) and size_of(slot(0)) > 64)
+    more(slot(0), pow2)
+    widen(elem_of(slot(0)), pow2)
+    widen(slot(0), ty(A_s32))
+    widen(slot(1), replace(elt_type_to(slot(1), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
+    widen(slot(1), replace(elt_size_to(slot(1), bits_of(slot(0))))) when (bits_of(slot(0)) <= 64 and bits_of(slot(0)) > bits_of(slot(1)))
+    widen(slot(0), replace(elt_size_to(slot(0), bits_of(slot(1))))) when (bits_of(slot(1)) <= 64 and bits_of(slot(0)) < bits_of(slot(1)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    libcall in_pairs(slot(0), slot(1), [[A_i32, A_f128], [A_i64, A_f128], [A_i128, A_f128], [A_i128, A_f32], [A_i128, A_f64]])
+
+ruleset A_G_FPTOSI_SAT: G_FPTOSI_SAT G_FPTOUI_SAT
+    legal in_pairs(slot(0), slot(1), [[A_i32, A_f32], [A_i64, A_f32], [A_i32, A_f64], [A_i64, A_f64], [A_v2i32, A_v2f32], [A_v4i32, A_v4f32], [A_v2i64, A_v2f64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_i16, A_f16], [A_i32, A_f16], [A_i64, A_f16], [A_v4i16, A_v4f16], [A_v8i16, A_v8f16]]))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    scalarize(slot(1)) when bits_of(slot(1)) > 64
+    narrow(slot(0), replace(ty(A_i64))) when (slot(1) == ty(A_f16) and size_of(slot(0)) > 64)
+    lower ((sort_of(slot(0)) == scalar and size_of(slot(0)) > 64) or (sort_of(slot(1)) == scalar and size_of(slot(1)) > 64))
+    more(slot(0), pow2)
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(A_s32))
+    widen(slot(1), replace(elt_type_to(slot(1), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(1)))) or is_bfloat16(scalar_of(slot(1))))
+    widen(slot(1), replace(elt_size_to(slot(1), bits_of(slot(0))))) when ((bits_of(slot(0)) == 16 or bits_of(slot(0)) == 32 or bits_of(slot(0)) == 64) and bits_of(slot(0)) > bits_of(slot(1)))
+    widen(slot(0), replace(elt_size_to(slot(0), bits_of(slot(1))))) when ((bits_of(slot(1)) == 16 or bits_of(slot(1)) == 32 or bits_of(slot(1)) == 64) and bits_of(slot(0)) < bits_of(slot(1)))
+    widen(elem_of(slot(0)), pow2)
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+
+ruleset A_G_SITOFP: G_SITOFP G_UITOFP
+    legal in_pairs(slot(0), slot(1), [[A_f32, A_i32], [A_f64, A_i32], [A_f32, A_i64], [A_f64, A_i64], [A_v2f32, A_v2i32], [A_v4f32, A_v4i32], [A_v2f64, A_v2i64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_f16, A_i32], [A_f16, A_i64], [A_v4f16, A_v4i16], [A_v8f16, A_v8i16]]))
+    unsupported is_bfloat16(scalar_of(slot(0)))
+    scalarize(slot(1)) when bits_of(slot(1)) > 64
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    more(slot(1), pow2)
+    widen(elem_of(slot(1)), pow2)
+    widen(slot(1), ty(A_f32))
+    lower (sort_of(slot(1)) == vector and bits_of(slot(1)) == 64 and bits_of(slot(0)) == 16)
+    widen(slot(0), select(A_HasFP16, 16, 32))
+    scalarize(slot(0)) when (bits_of(slot(0)) == 32 and bits_of(slot(1)) == 64)
+    widen(slot(0), replace(elt_size_to(slot(0), bits_of(slot(1))))) when (bits_of(slot(1)) <= 64 and bits_of(slot(0)) < bits_of(slot(1)))
+    widen(slot(1), replace(elt_size_to(slot(1), bits_of(slot(0))))) when (bits_of(slot(0)) <= 64 and bits_of(slot(0)) > bits_of(slot(1)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    libcall in_pairs(slot(0), slot(1), [[A_f16, A_i128], [A_f32, A_i128], [A_f64, A_i128], [A_f128, A_i128], [A_f128, A_i32], [A_f128, A_i64]])
+
+ruleset A_G_BR: G_BR
+    legal true
+
+ruleset A_G_BRCOND: G_BRCOND
+    legal in(slot(0), [A_s32])
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s32))
+
+ruleset A_G_BRINDIRECT: G_BRINDIRECT
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_SELECT: G_SELECT
+    legal in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s64, A_s32], [A_p0, A_s32]])
+    widen(slot(0), pow2)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s32))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    widen(slot(1), same_as(0)) when (sort_of(slot(0)) == vector and sort_of(slot(1)) == vector)
+    lower sort_of(slot(0)) == vector
+
+ruleset A_G_FRAME_INDEX: G_FRAME_INDEX
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_GLOBAL_VALUE: G_GLOBAL_VALUE
+    custom A_SmallCodeModel
+
+ruleset A_G_GLOBAL_VALUE_2: G_GLOBAL_VALUE
+    legal (not A_SmallCodeModel and in(slot(0), [A_p0]))
+
+ruleset A_G_PTRAUTH_GLOBAL_VALUE: G_PTRAUTH_GLOBAL_VALUE
+    legal (slot(0) == A_p0 and slot(1) == A_p0)
+
+ruleset A_G_PTRTOINT: G_PTRTOINT
+    legal in_pairs(slot(0), slot(1), [[A_i64, A_p0], [A_v2i64, A_v2p0]])
+    widen(slot(0), pow2_min(64))
+    widen(slot(0), ty(A_s64))
+    narrow(slot(0), ty(A_s64))
+    clamp_max(0, A_s64, 2)
+
+ruleset A_G_INTTOPTR: G_INTTOPTR
+    unsupported size_of(slot(0)) != size_of(slot(1))
+    legal in_pairs(slot(0), slot(1), [[A_p0, A_i64], [A_v2p0, A_v2i64]])
+    clamp_max(1, A_s64, 2)
+
+ruleset A_G_BITCAST: G_BITCAST
+    legal in_pairs(slot(0), slot(1), [[A_s16, A_s16]])
+    legal in_pairs(slot(0), slot(1), [[A_s32, A_s32], [A_s32, A_v2s16], [A_s32, A_v4s8], [A_v2s16, A_s32], [A_v2s16, A_v2s16], [A_v2s16, A_v4s8], [A_v4s8, A_s32], [A_v4s8, A_v2s16], [A_v4s8, A_v4s8]])
+    legal in_pairs(slot(0), slot(1), [[A_s64, A_s64], [A_s64, A_v8s8], [A_s64, A_v4s16], [A_s64, A_v2s32], [A_v8s8, A_s64], [A_v8s8, A_v8s8], [A_v8s8, A_v4s16], [A_v8s8, A_v2s32], [A_v4s16, A_s64], [A_v4s16, A_v8s8], [A_v4s16, A_v4s16], [A_v4s16, A_v2s32], [A_v2s32, A_s64], [A_v2s32, A_v8s8], [A_v2s32, A_v4s16], [A_v2s32, A_v2s32]])
+    legal in_pairs(slot(0), slot(1), [[A_s128, A_s128], [A_s128, A_v16s8], [A_s128, A_v8s16], [A_s128, A_v4s32], [A_s128, A_v2s64], [A_s128, A_v2p0], [A_v16s8, A_s128], [A_v16s8, A_v16s8], [A_v16s8, A_v8s16], [A_v16s8, A_v4s32], [A_v16s8, A_v2s64], [A_v16s8, A_v2p0], [A_v8s16, A_s128], [A_v8s16, A_v16s8], [A_v8s16, A_v8s16], [A_v8s16, A_v4s32], [A_v8s16, A_v2s64], [A_v8s16, A_v2p0], [A_v4s32, A_s128], [A_v4s32, A_v16s8], [A_v4s32, A_v8s16], [A_v4s32, A_v4s32], [A_v4s32, A_v2s64], [A_v4s32, A_v2p0], [A_v2s64, A_s128], [A_v2s64, A_v16s8], [A_v2s64, A_v8s16], [A_v2s64, A_v4s32], [A_v2s64, A_v2s64], [A_v2s64, A_v2p0], [A_v2p0, A_s128], [A_v2p0, A_v16s8], [A_v2p0, A_v8s16], [A_v2p0, A_v4s32], [A_v2p0, A_v2s64], [A_v2p0, A_v2p0]])
+    custom (sort_of(slot(0)) == scalar and sort_of(slot(1)) == vector and bits_of(slot(1)) == 1)
+    lower ((sort_of(slot(0)) == vector and not sort_of(slot(1)) == vector) or (not sort_of(slot(0)) == vector and sort_of(slot(1)) == vector))
+    lower (not ((not (sort_of(slot(0)) == vector and not sort_of(slot(0)) == scalable_vector) or not (sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector))) and urem(mul(num_elems(slot(1)), pow2_ceil(num_elems(slot(0)))), num_elems(slot(0))) != 0)
+    more(slot(0), pow2)
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    lower true
+
+ruleset A_G_VASTART: G_VASTART
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_VAARG: G_VAARG
+    custom in_pairs(slot(0), slot(1), [[A_s8, A_p0], [A_s16, A_p0], [A_s32, A_p0], [A_s64, A_p0], [A_p0, A_p0]])
+    widen(slot(0), ty(A_s8))
+    narrow(slot(0), ty(A_s64))
+    widen(slot(0), pow2_min(8))
+
+ruleset A_G_ATOMIC_CMPXCHG_WITH_SUCCESS: G_ATOMIC_CMPXCHG_WITH_SUCCESS
+    lower (in(slot(0), [A_s8, A_s16, A_s32, A_s64, A_s128]) and slot(2) == A_p0)
+
+ruleset A_G_ATOMIC_CMPXCHG: G_ATOMIC_CMPXCHG
+    legal (not A_UseOutlineAtomics and in_pairs(slot(0), slot(1), [[A_s32, A_p0], [A_s64, A_p0]]))
+    custom (not A_UseOutlineAtomics and in_pairs(slot(0), slot(1), [[A_s128, A_p0]]))
+    libcall (A_UseOutlineAtomics and in_pairs(slot(0), slot(1), [[A_s8, A_p0], [A_s16, A_p0], [A_s32, A_p0], [A_s64, A_p0], [A_s128, A_p0]]))
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+
+ruleset A_G_ATOMICRMW_XCHG: G_ATOMICRMW_XCHG G_ATOMICRMW_ADD G_ATOMICRMW_SUB G_ATOMICRMW_AND G_ATOMICRMW_OR G_ATOMICRMW_XOR
+    legal (not A_UseOutlineAtomics and in_pairs(slot(0), slot(1), [[A_s32, A_p0], [A_s64, A_p0]]))
+    libcall (A_UseOutlineAtomics and in_pairs(slot(0), slot(1), [[A_s8, A_p0], [A_s16, A_p0], [A_s32, A_p0], [A_s64, A_p0]]))
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+
+ruleset A_G_ATOMICRMW_MIN: G_ATOMICRMW_MIN G_ATOMICRMW_MAX G_ATOMICRMW_UMIN G_ATOMICRMW_UMAX
+    legal (in(slot(0), [A_s32, A_s64]) and slot(1) == A_p0)
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s64))
+
+ruleset A_G_BLOCK_ADDR: G_BLOCK_ADDR
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_MERGE_VALUES: G_MERGE_VALUES
+    widen(slot(1), pow2_min(8))
+    lower (sort_of(slot(0)) == scalar and not is_pow2(size_of(slot(0))) and size_of(slot(0)) < 64)
+    widen(slot(0), pow2_min(32))
+    widen(slot(1), ty(A_s8))
+    narrow(slot(1), ty(A_s64))
+    widen(slot(0), ty(A_s32))
+    narrow(slot(0), ty(A_s128))
+    legal ((size_of(slot(0)) == 32 or size_of(slot(0)) == 64 or size_of(slot(0)) == 128) and (size_of(slot(1)) == 8 or size_of(slot(1)) == 16 or size_of(slot(1)) == 32 or size_of(slot(1)) == 64))
+
+ruleset A_G_UNMERGE_VALUES: G_UNMERGE_VALUES
+    widen(slot(0), pow2_min(8))
+    lower (sort_of(slot(1)) == scalar and not is_pow2(size_of(slot(1))) and size_of(slot(1)) < 64)
+    widen(slot(1), pow2_min(32))
+    widen(slot(0), ty(A_s8))
+    narrow(slot(0), ty(A_s64))
+    widen(slot(1), ty(A_s32))
+    narrow(slot(1), ty(A_s128))
+    legal ((size_of(slot(1)) == 32 or size_of(slot(1)) == 64 or size_of(slot(1)) == 128) and (size_of(slot(0)) == 8 or size_of(slot(0)) == 16 or size_of(slot(0)) == 32 or size_of(slot(0)) == 64))
+
+ruleset A_G_EXTRACT_VECTOR_ELT: G_EXTRACT_VECTOR_ELT
+    legal (A_HasSVE and in_triples(slot(0), slot(1), slot(2), [[A_s16, A_nxv16s8, A_s64], [A_s16, A_nxv8s16, A_s64], [A_s32, A_nxv4s32, A_s64], [A_s64, A_nxv2s64, A_s64]]))
+    unsupported (not (sort_of(slot(1)) == scalable_vector) and slot(0) != elem_of(slot(1)))
+    widen(slot(2), ty(A_s64))
+    custom (slot(1) == ty(A_v8s8) or slot(1) == ty(A_v16s8) or slot(1) == ty(A_v2s16) or slot(1) == ty(A_v4s16) or slot(1) == ty(A_v8s16) or slot(1) == ty(A_v2s32) or slot(1) == ty(A_v4s32) or slot(1) == ty(A_v2s64) or slot(1) == ty(A_v2p0))
+    widen(elem_of(slot(0)), ty(A_s64)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 2)
+    widen(elem_of(slot(0)), ty(A_s32)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 4)
+    widen(elem_of(slot(0)), ty(A_s16)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 8)
+    widen(elem_of(slot(0)), ty(A_s8)) when ((sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and num_elems(slot(1)) <= 16)
+    widen(elem_of(slot(0)), ty(A_s8))
+    more(slot(1), pow2)
+    clamp_max(1, A_s64, 2)
+    clamp_max(1, A_s32, 4)
+    clamp_max(1, A_s16, 8)
+    clamp_max(1, A_s8, 16)
+    clamp_max(1, A_p0, 2)
+    scalarize(slot(1)) when bits_of(slot(1)) > 64
+
+ruleset A_G_INSERT_VECTOR_ELT: G_INSERT_VECTOR_ELT
+    legal in(slot(0), [A_v8s8, A_v16s8, A_v4s16, A_v8s16, A_v2s32, A_v4s32, A_v2s64, A_v2p0])
+    legal (A_HasSVE and in_triples(slot(0), slot(1), slot(2), [[A_nxv16s8, A_s32, A_s64], [A_nxv8s16, A_s32, A_s64], [A_nxv4s32, A_s32, A_s64], [A_nxv2s64, A_s64, A_s64]]))
+    more(slot(0), pow2)
+    widen(elem_of(slot(0)), min_vector_size(64))
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s64, 2)
+    clamp_max(0, A_p0, 2)
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+
+ruleset A_G_BUILD_VECTOR: G_BUILD_VECTOR
+    legal in_pairs(slot(0), slot(1), [[A_v8s8, A_s8], [A_v16s8, A_s8], [A_v4s16, A_s16], [A_v8s16, A_s16], [A_v2s32, A_s32], [A_v4s32, A_s32], [A_v2s64, A_s64], [A_v2p0, A_p0]])
+    clamp_min(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    widen(elem_of(slot(0)), ty(A_s8))
+    widen(elem_of(slot(0)), min_vector_size(64))
+    widen(elem_of(slot(0)), pow2)
+    widen(slot(1), same_as(0))
+
+ruleset A_G_BUILD_VECTOR_TRUNC: G_BUILD_VECTOR_TRUNC
+    lower true
+
+ruleset A_G_SPLAT_VECTOR: G_SPLAT_VECTOR
+    legal in_pairs(slot(0), slot(1), [[A_v8s8, A_s8], [A_v8s8, A_s32], [A_v16s8, A_s8], [A_v16s8, A_s32], [A_v4s16, A_s16], [A_v4s16, A_s32], [A_v8s16, A_s16], [A_v8s16, A_s32], [A_v2s32, A_s32], [A_v4s32, A_s32], [A_v2s64, A_s64], [A_v2p0, A_p0]])
+
+ruleset A_G_SHUFFLE_VECTOR: G_SHUFFLE_VECTOR
+    legal (not (slot(0) != slot(1)) and in(slot(0), [A_v8s8, A_v16s8, A_v4s16, A_v8s16, A_v2s32, A_v4s32, A_v2s64]))
+    more(slot(1), replace(same_as(0))) when num_elems(slot(0)) > num_elems(slot(1))
+    more(slot(0), pow2)
+    more(slot(0), replace(same_as(1))) when num_elems(slot(0)) < num_elems(slot(1))
+    widen(slot(0), 8)
+    clamp_min(0, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(0, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(0, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(0, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_max(0, A_s32, num_elems(ty(A_v4s32)))
+    clamp_min(0, A_s64, num_elems(ty(A_v2s64)))
+    clamp_max(0, A_s64, num_elems(ty(A_v2s64)))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+    bitcast(slot(0), replace(elt_type_to(slot(0), ty(A_i64)))) when sort_of(slot(0)) == pointer_vector
+
+ruleset A_G_CONCAT_VECTORS: G_CONCAT_VECTORS
+    legal in_pairs(slot(0), slot(1), [[A_v16s8, A_v8s8], [A_v8s16, A_v4s16], [A_v4s32, A_v2s32]])
+    custom ((sort_of(slot(0)) == vector and not sort_of(slot(0)) == scalable_vector) and bits_of(slot(0)) < 8)
+    bitcast(slot(0), replace(elt_size_to(div_lanes(slot(0), num_elems(slot(1))), size_of(slot(1))))) when ((sort_of(slot(0)) == vector and not sort_of(slot(0)) == scalable_vector) and (sort_of(slot(1)) == vector and not sort_of(slot(1)) == scalable_vector) and bits_of(slot(0)) >= 8 and is_pow2(bits_of(slot(0))) and size_of(slot(0)) <= 128 and size_of(slot(1)) <= 64)
+
+ruleset A_G_EXTRACT_SUBVECTOR: G_EXTRACT_SUBVECTOR
+    legal in_pairs(slot(0), slot(1), [[A_v8s8, A_v16s8], [A_v4s16, A_v8s16], [A_v2s32, A_v4s32]])
+    widen(elem_of(slot(0)), pow2)
+    clamp_max(0, A_s8, 16)
+    clamp_max(0, A_s16, 8)
+    clamp_max(0, A_s32, 4)
+    clamp_min(1, A_s8, num_elems(ty(A_v8s8)))
+    clamp_max(1, A_s8, num_elems(ty(A_v16s8)))
+    clamp_min(1, A_s16, num_elems(ty(A_v4s16)))
+    clamp_max(1, A_s16, num_elems(ty(A_v8s16)))
+    clamp_min(1, A_s32, num_elems(ty(A_v2s32)))
+    clamp_max(1, A_s32, num_elems(ty(A_v4s32)))
+    lower true
+    imm_idx(0)
+
+ruleset A_G_SPLAT_VECTOR_2: G_SPLAT_VECTOR
+    legal (A_HasSVE and in_pairs(slot(0), slot(1), [[A_nxv4s32, A_s32], [A_nxv2s64, A_s64]]))
+
+ruleset A_G_JUMP_TABLE: G_JUMP_TABLE
+    legal in(slot(0), [A_p0])
+
+ruleset A_G_BRJT: G_BRJT
+    legal in_pairs(slot(0), slot(1), [[A_p0, A_s64]])
+
+ruleset A_G_TRAP: G_TRAP G_DEBUGTRAP G_UBSANTRAP
+    legal true
+
+ruleset A_G_DYN_STACKALLOC: G_DYN_STACKALLOC
+    custom true
+
+ruleset A_G_STACKSAVE: G_STACKSAVE G_STACKRESTORE
+    lower true
+
+ruleset A_G_BZERO: G_BZERO
+    unsupported A_hasMOPS
+
+ruleset A_G_MEMSET: G_MEMSET
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))
+    custom (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))
+    imm_idx(0)
+
+ruleset A_G_MEMCPY: G_MEMCPY G_MEMMOVE
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))
+    imm_idx(0)
+
+ruleset A_G_MEMCPY_INLINE: G_MEMCPY_INLINE
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_p0]) and in(slot(2), [A_s64]))
+
+ruleset A_G_MEMSET_INLINE: G_MEMSET_INLINE
+    legal (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s64]) and in(slot(2), [A_s64]))
+    custom (A_hasMOPS and in(slot(0), [A_p0]) and in(slot(1), [A_s8]) and in(slot(2), [A_s64]))
+
+ruleset A_G_BZERO_2: G_BZERO G_MEMCPY G_MEMMOVE G_MEMSET
+    libcall not A_hasMOPS
+
+ruleset A_G_VECREDUCE_FADD: G_VECREDUCE_FADD
+    legal in_pairs(slot(0), slot(1), [[A_f32, A_v2f32], [A_f32, A_v4f32], [A_f64, A_v2f64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_f16, A_v4f16], [A_f16, A_v8f16]]))
+    widen(slot(0), replace(elt_type_to(slot(0), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+    clamp_max(1, A_s64, 2)
+    clamp_max(1, A_s32, 4)
+    clamp_max(1, A_s16, 8)
+    more(slot(1), pow2)
+    scalarize(slot(1))
+    lower true
+
+ruleset A_G_VECREDUCE_FMUL: G_VECREDUCE_FMUL
+    widen(slot(0), replace(elt_type_to(slot(0), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+    clamp_max(1, A_s64, 2)
+    clamp_max(1, A_s32, 4)
+    clamp_max(1, A_s16, 8)
+    clamp_max(1, A_s32, 2)
+    clamp_max(1, A_s16, 4)
+    scalarize(slot(1))
+    lower true
+
+ruleset A_G_VECREDUCE_SEQ_FADD: G_VECREDUCE_SEQ_FADD G_VECREDUCE_SEQ_FMUL
+    scalarize(slot(2))
+    lower true
+
+ruleset A_G_VECREDUCE_ADD: G_VECREDUCE_ADD
+    legal in_pairs(slot(0), slot(1), [[A_i8, A_v8i8], [A_i8, A_v16i8], [A_i16, A_v4i16], [A_i16, A_v8i16], [A_i32, A_v2i32], [A_i32, A_v4i32], [A_i64, A_v2i64]])
+    more(slot(1), pow2)
+    clamp_max(1, A_s64, 2)
+    clamp_max(1, A_s32, 4)
+    clamp_max(1, A_s16, 8)
+    clamp_max(1, A_s8, 16)
+    widen(elem_of(slot(1)), min_vector_size(64))
+    scalarize(slot(1))
+
+ruleset A_G_VECREDUCE_FMIN: G_VECREDUCE_FMIN G_VECREDUCE_FMAX G_VECREDUCE_FMINIMUM G_VECREDUCE_FMAXIMUM
+    legal in_pairs(slot(0), slot(1), [[A_f32, A_v2f32], [A_f32, A_v4f32], [A_f64, A_v2f64]])
+    legal (A_HasFP16 and in_pairs(slot(0), slot(1), [[A_f16, A_v4f16], [A_f16, A_v8f16]]))
+    widen(slot(0), replace(elt_type_to(slot(0), ty(A_f32)))) when ((not A_HasFP16 and is_float16(scalar_of(slot(0)))) or is_bfloat16(scalar_of(slot(0))))
+    clamp_max(1, A_s64, 2)
+    clamp_max(1, A_s32, 4)
+    clamp_max(1, A_s16, 8)
+    scalarize(slot(1))
+    lower true
+
+ruleset A_G_VECREDUCE_MUL: G_VECREDUCE_MUL
+    clamp_max(1, A_s32, 2)
+    clamp_max(1, A_s16, 4)
+    clamp_max(1, A_s8, 8)
+    scalarize(slot(1))
+    lower true
+
+ruleset A_G_VECREDUCE_SMIN: G_VECREDUCE_SMIN G_VECREDUCE_SMAX G_VECREDUCE_UMIN G_VECREDUCE_UMAX
+    legal in_pairs(slot(0), slot(1), [[A_i8, A_v8i8], [A_i8, A_v16i8], [A_i16, A_v4i16], [A_i16, A_v8i16], [A_i32, A_v2i32], [A_i32, A_v4i32]])
+    more(slot(1), pow2) when (sort_of(slot(1)) == vector and elem_of(slot(1)) != ty(A_s8) and (urem(num_elems(slot(1)), 2) != 0))
+    clamp_max(1, A_s64, 2)
+    clamp_max(1, A_s32, 4)
+    clamp_max(1, A_s16, 8)
+    clamp_max(1, A_s8, 16)
+    scalarize(slot(1))
+    lower true
+
+ruleset A_G_VECREDUCE_OR: G_VECREDUCE_OR G_VECREDUCE_AND G_VECREDUCE_XOR
+    fewer(slot(1), replace(div_lanes(slot(1), 2))) when (not (sort_of(slot(1)) == scalar) and (not (not is_pow2(num_elems(slot(1)))) and size_of(slot(1)) > 64))
+    scalarize(slot(1))
+    lower true
+
+ruleset A_G_VECTOR_COMPRESS: G_VECTOR_COMPRESS
+    lower true
+
+ruleset A_G_GET_FPENV: G_GET_FPENV G_SET_FPENV G_RESET_FPENV G_GET_FPMODE G_SET_FPMODE G_RESET_FPMODE
+    libcall true
+
+ruleset A_G_GET_ROUNDING: G_GET_ROUNDING G_SET_ROUNDING
+    custom in(slot(0), [A_s32])
+
+ruleset A_G_IS_FPCLASS: G_IS_FPCLASS
+    lower true
+
+ruleset A_G_PREFETCH: G_PREFETCH
+    custom true
+
+ruleset A_G_SCMP: G_SCMP G_UCMP
+    lower true
+
+ruleset A_G_INTRINSIC: G_INTRINSIC G_INTRINSIC_W_SIDE_EFFECTS
+    legal true
+
+ruleset A_G_FENCE: G_FENCE
+    legal true
+
+ruleset A_G_INVOKE_REGION_START: G_INVOKE_REGION_START
+    legal true

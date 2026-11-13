@@ -27,4 +27,13 @@ version = {attr = "gisel.__version__"}
 include = ["gisel*"]
 
 [tool.setuptools.package-data]
-gisel = ["data/*.json", "data/*.jsonc"]
+gisel = [
+    "data/*.json",
+    "data/*.jsonc",
+    # `--corpus NAME` has to work from an installed wheel, where tests/ does
+    # not exist.  These are byte-identical copies of tests/corpus and
+    # tests/cases; tools/sync-package-data.py refreshes them and CI fails on
+    # drift, so the wheel cannot ship a corpus the checkout disagrees with.
+    "data/corpus/*.gisel",
+    "data/cases/*.json",
+]

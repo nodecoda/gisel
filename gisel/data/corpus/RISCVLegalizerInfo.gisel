@@ -1,0 +1,684 @@
+//===- RISCVLegalizerInfo.gisel - imported from RISCVLegalizerInfo.cpp -*- gisel -*-===//
+//
+// One-shot transcription: `tools/import-cxx.py RISCV RISCVLegalizerInfo.cpp`.
+// Source sha256 ad529e1f1a9e62fa8bbd3a7d68f2b46f41f3cf8f1e74556c709bffbd43b9e889.  Do not edit by hand; re-run the importer instead.
+//
+// The importer refuses what it cannot translate; every refusal below is a
+// statement that still has to be written by hand (or taught to the importer).
+//
+//===----------------------------------------------------------------------===//
+include "llvm/Target/LegalizerInfo.td"
+include "llvm/Target/Target.td"
+
+feature R_XLen_32 = XLen == 32
+feature R_XLen_64 = XLen == 64
+feature R_XLen_le_ELen = (ST.hasVInstructions() && XLen <= ST.getELen())
+feature R_enableUnalignedScalarMem = ST.enableUnalignedScalarMem()
+feature R_getELen_64 = (ST.hasVInstructions() && ST.getELen() == 64)
+feature R_hasStdExtA = ST.hasStdExtA()
+feature R_hasStdExtD = ST.hasStdExtD()
+feature R_hasStdExtF = ST.hasStdExtF()
+feature R_hasStdExtM = ST.hasStdExtM()
+feature R_hasStdExtP = ST.hasStdExtP()
+feature R_hasStdExtZbb = ST.hasStdExtZbb()
+feature R_hasStdExtZbc = ST.hasStdExtZbc()
+feature R_hasStdExtZbkb = ST.hasStdExtZbkb()
+feature R_hasStdExtZbkc = ST.hasStdExtZbkc()
+feature R_hasStdExtZfa = ST.hasStdExtZfa()
+feature R_hasStdExtZfh = ST.hasStdExtZfh()
+feature R_hasStdExtZfhmin = ST.hasStdExtZfhmin()
+feature R_hasStdExtZilsd = ST.hasStdExtZilsd()
+feature R_hasStdExtZmmul = ST.hasStdExtZmmul()
+feature R_hasVInstructions = ST.hasVInstructions()
+feature R_hasVInstructionsF64 = ST.hasVInstructionsF64()
+feature R_hasVInstructionsI64 = ST.hasVInstructionsI64()
+feature R_hasVendorXTHeadBb = ST.hasVendorXTHeadBb()
+feature R_is64Bit = ST.is64Bit()
+feature R_subtargetInfoHasZbb = STI.hasStdExtZbb()
+
+type R_sXLen_lo = LLT::scalar(32)
+type R_sXLen_hi = LLT::scalar(64)
+type R_sDoubleXLen_hi = LLT::scalar(128)
+type R_p0 = LLT::pointer(0, XLen)
+type R_s1 = LLT::scalar(1)
+type R_s8 = LLT::scalar(8)
+type R_s16 = LLT::scalar(16)
+type R_f16 = LLT::float16()
+type R_s32 = LLT::scalar(32)
+type R_s64 = LLT::scalar(64)
+type R_s128 = LLT::scalar(128)
+type R_nxv1s1 = LLT::scalable_vector(1, R_s1)
+type R_nxv2s1 = LLT::scalable_vector(2, R_s1)
+type R_nxv4s1 = LLT::scalable_vector(4, R_s1)
+type R_nxv8s1 = LLT::scalable_vector(8, R_s1)
+type R_nxv16s1 = LLT::scalable_vector(16, R_s1)
+type R_nxv32s1 = LLT::scalable_vector(32, R_s1)
+type R_nxv64s1 = LLT::scalable_vector(64, R_s1)
+type R_nxv1s8 = LLT::scalable_vector(1, R_s8)
+type R_nxv2s8 = LLT::scalable_vector(2, R_s8)
+type R_nxv4s8 = LLT::scalable_vector(4, R_s8)
+type R_nxv8s8 = LLT::scalable_vector(8, R_s8)
+type R_nxv16s8 = LLT::scalable_vector(16, R_s8)
+type R_nxv32s8 = LLT::scalable_vector(32, R_s8)
+type R_nxv64s8 = LLT::scalable_vector(64, R_s8)
+type R_nxv1s16 = LLT::scalable_vector(1, R_s16)
+type R_nxv2s16 = LLT::scalable_vector(2, R_s16)
+type R_nxv4s16 = LLT::scalable_vector(4, R_s16)
+type R_nxv8s16 = LLT::scalable_vector(8, R_s16)
+type R_nxv16s16 = LLT::scalable_vector(16, R_s16)
+type R_nxv32s16 = LLT::scalable_vector(32, R_s16)
+type R_nxv1s32 = LLT::scalable_vector(1, R_s32)
+type R_nxv2s32 = LLT::scalable_vector(2, R_s32)
+type R_nxv4s32 = LLT::scalable_vector(4, R_s32)
+type R_nxv8s32 = LLT::scalable_vector(8, R_s32)
+type R_nxv16s32 = LLT::scalable_vector(16, R_s32)
+type R_nxv1s64 = LLT::scalable_vector(1, R_s64)
+type R_nxv2s64 = LLT::scalable_vector(2, R_s64)
+type R_nxv4s64 = LLT::scalable_vector(4, R_s64)
+type R_nxv8s64 = LLT::scalable_vector(8, R_s64)
+type R_nxv1p0 = LLT::scalable_vector(1, R_p0)
+type R_nxv2p0 = LLT::scalable_vector(2, R_p0)
+type R_nxv4p0 = LLT::scalable_vector(4, R_p0)
+type R_nxv8p0 = LLT::scalable_vector(8, R_p0)
+type R_nxv16p0 = LLT::scalable_vector(16, R_p0)
+select R_sXLen = if R_XLen_64 then R_sXLen_hi else R_sXLen_lo
+select R_sDoubleXLen = if R_XLen_64 then R_sDoubleXLen_hi else R_sXLen_hi
+pred R_has64BitScalar = (R_XLen_64 or R_hasStdExtD)
+select R_maxScalar = if R_has64BitScalar then R_s64 else R_s32
+type_set R_BoolVecTys = [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]
+type_set R_IntOrFPVecTys = [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]
+type_set R_PtrVecTys = [R_nxv1p0, R_nxv2p0, R_nxv4p0, R_nxv8p0, R_nxv16p0]
+
+ruleset R_G_ADD: G_ADD G_SUB
+    legal in(slot(0), [R_sXLen])
+    legal (in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64)))
+    custom (R_is64Bit and in(slot(0), [R_s32]))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_AND: G_AND G_OR G_XOR
+    legal in(slot(0), [R_sXLen])
+    legal (in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64)))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_UADDE: G_UADDE G_UADDO G_USUBE G_USUBO G_READ_REGISTER G_WRITE_REGISTER
+    lower true
+
+ruleset R_G_SADDE: G_SADDE G_SADDO G_SSUBE G_SSUBO
+    widen(slot(0), ty(R_sXLen))
+    lower true
+
+ruleset R_G_UADDSAT: G_UADDSAT G_SADDSAT G_USUBSAT G_SSUBSAT G_SSHLSAT G_USHLSAT
+    lower true
+
+ruleset R_G_SHL: G_SHL G_ASHR G_LSHR
+    legal in_pairs(slot(0), slot(1), [[R_sXLen, R_sXLen]])
+    custom (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    widen(slot(0), pow2)
+    widen(slot(1), ty(R_sXLen))
+    narrow(slot(1), ty(R_sXLen))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_ZEXT: G_ZEXT G_SEXT G_ANYEXT
+    legal in_pairs(slot(0), slot(1), [[R_s32, R_s16]])
+    legal (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s64, R_s16], [R_s64, R_s32]]))
+    legal ((in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(1)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(1)) != 1 or R_getELen_64))))
+    custom (in(slot(1), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(1)) != 1 or R_getELen_64)))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_TRUNC: G_TRUNC
+    legal true
+
+ruleset R_G_SEXT_INREG: G_SEXT_INREG
+    legal (slot(0) == R_sXLen and (((R_subtargetInfoHasZbb and (((size_of(slot(0)) == 64 and imm(0) == 32)) or in(imm(0), [8, 16]))) or (not R_subtargetInfoHasZbb and (size_of(slot(0)) == 64 and imm(0) == 32)))))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    lower true
+
+ruleset R_G_MERGE_VALUES: G_MERGE_VALUES
+    legal ((R_XLen_32 and (R_hasStdExtD or R_hasStdExtZilsd)) and (slot(0) == R_s64 and slot(1) == R_s32))
+    widen(slot(1), pow2_min(select(R_XLen_64, 64, 32)))
+    widen(slot(0), pow2_min(select(R_XLen_64, 64, 32)))
+    widen(slot(1), ty(R_sXLen))
+    narrow(slot(1), ty(R_sXLen))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_UNMERGE_VALUES: G_UNMERGE_VALUES
+    legal ((R_XLen_32 and (R_hasStdExtD or R_hasStdExtZilsd)) and (slot(1) == R_s64 and slot(0) == R_s32))
+    widen(slot(0), pow2_min(select(R_XLen_64, 64, 32)))
+    widen(slot(1), pow2_min(select(R_XLen_64, 64, 32)))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    widen(slot(1), ty(R_sXLen))
+    narrow(slot(1), ty(R_sXLen))
+
+ruleset R_G_FSHL: G_FSHL G_FSHR
+    lower true
+
+ruleset R_G_ROTR: G_ROTR G_ROTL
+    legal ((R_hasStdExtZbb or R_hasStdExtZbkb) and in_pairs(slot(0), slot(1), [[R_sXLen, R_sXLen]]))
+    custom ((R_is64Bit and (R_hasStdExtZbb or R_hasStdExtZbkb)) and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    lower true
+
+ruleset R_G_BITREVERSE: G_BITREVERSE
+    custom (R_hasStdExtZbkb and in(slot(0), [R_s8]))
+    narrow(slot(0), ty(R_sXLen))
+    lower true
+
+ruleset R_G_BITCAST: G_BITCAST
+    legal (((in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))) or (in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64)))) and ((in(slot(1), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(1)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(1)) != 1 or R_getELen_64))) or (in(slot(1), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(1)) != 1 or R_getELen_64)))))
+
+ruleset R_G_BSWAP: G_BSWAP
+    legal ((R_hasStdExtZbb or R_hasStdExtZbkb) and in(slot(0), [R_sXLen]))
+    widen(slot(0), ty(R_sXLen)) when (R_hasStdExtZbb or R_hasStdExtZbkb)
+    narrow(slot(0), ty(R_sXLen)) when (R_hasStdExtZbb or R_hasStdExtZbkb)
+    narrow(slot(0), ty(R_sXLen)) when not (R_hasStdExtZbb or R_hasStdExtZbkb)
+    lower not (R_hasStdExtZbb or R_hasStdExtZbkb)
+
+ruleset R_G_CLMUL: G_CLMUL
+    legal (R_hasStdExtZbkc and in(slot(0), [R_sXLen]))
+    unsupported true
+
+ruleset R_G_CLMULH: G_CLMULH
+    legal (R_hasStdExtZbkc and in(slot(0), [R_sXLen]))
+    custom ((R_is64Bit and R_hasStdExtZbkc) and in(slot(0), [R_s32]))
+    unsupported true
+
+ruleset R_G_CLMULR: G_CLMULR
+    legal (R_hasStdExtZbc and in(slot(0), [R_sXLen]))
+    custom ((R_is64Bit and R_hasStdExtZbc) and in(slot(0), [R_s32]))
+    unsupported true
+
+ruleset R_G_CTLZ_ZERO_POISON: G_CTLZ_ZERO_POISON
+    widen(slot(0), ty(R_sXLen)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    narrow(slot(0), ty(R_sXLen)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    widen(slot(1), same_as(0)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    narrow(slot(1), same_as(0)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    narrow(slot(0), ty(R_sXLen)) when (not R_hasStdExtZbb and not R_hasVendorXTHeadBb)
+    widen(slot(1), same_as(0)) when (not R_hasStdExtZbb and not R_hasVendorXTHeadBb)
+    narrow(slot(1), same_as(0)) when (not R_hasStdExtZbb and not R_hasVendorXTHeadBb)
+    lower true
+
+ruleset R_G_CTTZ_ZERO_POISON: G_CTTZ_ZERO_POISON
+    narrow(slot(0), ty(R_sXLen)) when not R_hasStdExtZbb
+    widen(slot(1), same_as(0)) when not R_hasStdExtZbb
+    narrow(slot(1), same_as(0)) when not R_hasStdExtZbb
+    lower true
+
+ruleset R_G_CTLZ: G_CTLZ G_CTTZ
+    legal (R_hasStdExtZbb and in_pairs(slot(0), slot(1), [[R_sXLen, R_sXLen]]))
+    custom (R_hasStdExtZbb and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    widen(slot(0), ty(R_s32)) when R_hasStdExtZbb
+    narrow(slot(0), ty(R_sXLen)) when R_hasStdExtZbb
+    widen(slot(0), pow2) when R_hasStdExtZbb
+    widen(slot(1), same_as(0)) when R_hasStdExtZbb
+    narrow(slot(1), same_as(0)) when R_hasStdExtZbb
+
+ruleset R_G_CTLZ_2: G_CTLZ
+    legal ((not R_hasStdExtZbb and R_hasVendorXTHeadBb) and in_pairs(slot(0), slot(1), [[R_sXLen, R_sXLen]]))
+    widen(slot(0), ty(R_sXLen)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    narrow(slot(0), ty(R_sXLen)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    widen(slot(1), same_as(0)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    narrow(slot(1), same_as(0)) when (not R_hasStdExtZbb and R_hasVendorXTHeadBb)
+    narrow(slot(0), ty(R_sXLen)) when (not R_hasStdExtZbb and not R_hasVendorXTHeadBb)
+    widen(slot(1), same_as(0)) when (not R_hasStdExtZbb and not R_hasVendorXTHeadBb)
+    narrow(slot(1), same_as(0)) when (not R_hasStdExtZbb and not R_hasVendorXTHeadBb)
+    lower (not R_hasStdExtZbb and not R_hasVendorXTHeadBb)
+
+ruleset R_G_CTTZ: G_CTTZ
+    narrow(slot(0), ty(R_sXLen)) when not R_hasStdExtZbb
+    widen(slot(1), same_as(0)) when not R_hasStdExtZbb
+    narrow(slot(1), same_as(0)) when not R_hasStdExtZbb
+    lower not R_hasStdExtZbb
+
+ruleset R_G_CTLS: G_CTLS
+    legal (R_hasStdExtP and in_pairs(slot(0), slot(1), [[R_sXLen, R_sXLen]]))
+    custom (R_hasStdExtP and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    widen(slot(0), ty(R_s32)) when R_hasStdExtP
+    narrow(slot(0), ty(R_sXLen)) when R_hasStdExtP
+    widen(slot(0), pow2) when R_hasStdExtP
+    widen(slot(1), same_as(0)) when R_hasStdExtP
+    narrow(slot(1), same_as(0)) when R_hasStdExtP
+    narrow(slot(0), ty(R_sXLen)) when not R_hasStdExtP
+    widen(slot(1), same_as(0)) when not R_hasStdExtP
+    narrow(slot(1), same_as(0)) when not R_hasStdExtP
+    lower not R_hasStdExtP
+
+ruleset R_G_CTPOP: G_CTPOP
+    legal (R_hasStdExtZbb and in_pairs(slot(0), slot(1), [[R_sXLen, R_sXLen]]))
+    widen(slot(0), ty(R_sXLen)) when R_hasStdExtZbb
+    narrow(slot(0), ty(R_sXLen)) when R_hasStdExtZbb
+    widen(slot(1), same_as(0)) when R_hasStdExtZbb
+    narrow(slot(1), same_as(0)) when R_hasStdExtZbb
+    widen(slot(0), pow2_min(8)) when not R_hasStdExtZbb
+    widen(slot(0), ty(R_s8)) when not R_hasStdExtZbb
+    narrow(slot(0), ty(R_sXLen)) when not R_hasStdExtZbb
+    widen(slot(1), same_as(0)) when not R_hasStdExtZbb
+    narrow(slot(1), same_as(0)) when not R_hasStdExtZbb
+    lower not R_hasStdExtZbb
+
+ruleset R_G_CONSTANT: G_CONSTANT
+    legal in(slot(0), [R_p0])
+    legal (not R_is64Bit and in(slot(0), [R_s32]))
+    custom (R_is64Bit and in(slot(0), [R_s64]))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_FREEZE: G_FREEZE
+    legal in(slot(0), [R_s16, R_s32, R_p0])
+    legal (R_is64Bit and in(slot(0), [R_s64]))
+    legal (in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64)))
+    legal (in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64)))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_s16))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_IMPLICIT_DEF: G_IMPLICIT_DEF G_CONSTANT_FOLD_BARRIER
+    legal in(slot(0), [R_s32, R_sXLen, R_p0])
+    legal (in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64)))
+    legal (in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64)))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_s32))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_ICMP: G_ICMP
+    legal in_pairs(slot(0), slot(1), [[R_sXLen, R_sXLen], [R_sXLen, R_p0]])
+    legal ((in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(1)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(1)) != 1 or R_getELen_64))))
+    widen(slot(1), 8)
+    widen(slot(1), ty(R_sXLen))
+    narrow(slot(1), ty(R_sXLen))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_SELECT: G_SELECT
+    legal in_pairs(slot(0), slot(1), [[R_s32, R_sXLen], [R_p0, R_sXLen]])
+    legal ((in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(1)) != 1 or R_getELen_64))))
+    legal ((R_XLen_64 or R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s64, R_sXLen]]))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_s32))
+    narrow(slot(0), ty(R_maxScalar))
+    widen(slot(1), ty(R_sXLen))
+    narrow(slot(1), ty(R_sXLen))
+
+ruleset R_G_LOAD: G_LOAD
+    legal (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s16, R_p0, R_s8, 8), mem_desc(R_s32, R_p0, R_s8, 8), mem_desc(R_s16, R_p0, R_s16, 8), mem_desc(R_s32, R_p0, R_s16, 8), mem_desc(R_s32, R_p0, R_s32, 8), mem_desc(R_p0, R_p0, R_sXLen, 8)]))
+    legal (not R_enableUnalignedScalarMem and R_XLen_64 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s16, R_p0, R_s8, 8), mem_desc(R_s32, R_p0, R_s8, 8), mem_desc(R_s16, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s32, 32), mem_desc(R_p0, R_p0, R_sXLen, 64)]))
+    legal (not R_enableUnalignedScalarMem and R_XLen_32 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s16, R_p0, R_s8, 8), mem_desc(R_s32, R_p0, R_s8, 8), mem_desc(R_s16, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s32, 32), mem_desc(R_p0, R_p0, R_sXLen, 32)]))
+    legal (R_XLen_64 and (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s8, 8), mem_desc(R_s64, R_p0, R_s16, 8), mem_desc(R_s64, R_p0, R_s32, 8), mem_desc(R_s64, R_p0, R_s64, 8)])))
+    legal (R_XLen_64 and (not R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s8, 8), mem_desc(R_s64, R_p0, R_s16, 16), mem_desc(R_s64, R_p0, R_s32, 32), mem_desc(R_s64, R_p0, R_s64, 64)])))
+    legal ((not R_XLen_64 and (R_hasStdExtD or R_hasStdExtZilsd)) and (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s64, 8)])))
+    legal ((not R_XLen_64 and (R_hasStdExtD or R_hasStdExtZilsd)) and (not R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s64, 64)])))
+    legal (R_hasVInstructions and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_nxv2s8, R_p0, R_nxv2s8, 8), mem_desc(R_nxv4s8, R_p0, R_nxv4s8, 8), mem_desc(R_nxv8s8, R_p0, R_nxv8s8, 8), mem_desc(R_nxv16s8, R_p0, R_nxv16s8, 8), mem_desc(R_nxv32s8, R_p0, R_nxv32s8, 8), mem_desc(R_nxv64s8, R_p0, R_nxv64s8, 8), mem_desc(R_nxv2s16, R_p0, R_nxv2s16, 16), mem_desc(R_nxv4s16, R_p0, R_nxv4s16, 16), mem_desc(R_nxv8s16, R_p0, R_nxv8s16, 16), mem_desc(R_nxv16s16, R_p0, R_nxv16s16, 16), mem_desc(R_nxv32s16, R_p0, R_nxv32s16, 16), mem_desc(R_nxv2s32, R_p0, R_nxv2s32, 32), mem_desc(R_nxv4s32, R_p0, R_nxv4s32, 32), mem_desc(R_nxv8s32, R_p0, R_nxv8s32, 32), mem_desc(R_nxv16s32, R_p0, R_nxv16s32, 32)]))
+    legal ((R_hasVInstructions and R_getELen_64) and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_nxv1s8, R_p0, R_nxv1s8, 8), mem_desc(R_nxv1s16, R_p0, R_nxv1s16, 16), mem_desc(R_nxv1s32, R_p0, R_nxv1s32, 32)]))
+    legal ((R_hasVInstructions and R_hasVInstructionsI64) and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_nxv1s64, R_p0, R_nxv1s64, 64), mem_desc(R_nxv2s64, R_p0, R_nxv2s64, 64), mem_desc(R_nxv4s64, R_p0, R_nxv4s64, 64), mem_desc(R_nxv8s64, R_p0, R_nxv8s64, 64)]))
+    custom (R_hasVInstructions and (in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))))
+    custom ((R_hasVInstructions and R_XLen_le_ELen) and (in(slot(0), [R_nxv1p0, R_nxv2p0, R_nxv4p0, R_nxv8p0, R_nxv16p0]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64) and (num_elems(slot(0)) != 16 or bits_of(slot(0)) == 32))))
+    widen(slot(0), pow2_min(8))
+    lower (not is_byte_sized(mem_ty(mem_slot(0))) or not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0)))))
+    widen(slot(0), ty(R_s16))
+    narrow(slot(0), ty(R_sXLen))
+    lower true
+
+ruleset R_G_STORE: G_STORE
+    legal (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s16, R_p0, R_s8, 8), mem_desc(R_s32, R_p0, R_s8, 8), mem_desc(R_s16, R_p0, R_s16, 8), mem_desc(R_s32, R_p0, R_s16, 8), mem_desc(R_s32, R_p0, R_s32, 8), mem_desc(R_p0, R_p0, R_sXLen, 8)]))
+    legal (not R_enableUnalignedScalarMem and R_XLen_64 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s16, R_p0, R_s8, 8), mem_desc(R_s32, R_p0, R_s8, 8), mem_desc(R_s16, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s32, 32), mem_desc(R_p0, R_p0, R_sXLen, 64)]))
+    legal (not R_enableUnalignedScalarMem and R_XLen_32 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s16, R_p0, R_s8, 8), mem_desc(R_s32, R_p0, R_s8, 8), mem_desc(R_s16, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s16, 16), mem_desc(R_s32, R_p0, R_s32, 32), mem_desc(R_p0, R_p0, R_sXLen, 32)]))
+    legal (R_XLen_64 and (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s8, 8), mem_desc(R_s64, R_p0, R_s16, 8), mem_desc(R_s64, R_p0, R_s32, 8), mem_desc(R_s64, R_p0, R_s64, 8)])))
+    legal (R_XLen_64 and (not R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s8, 8), mem_desc(R_s64, R_p0, R_s16, 16), mem_desc(R_s64, R_p0, R_s32, 32), mem_desc(R_s64, R_p0, R_s64, 64)])))
+    legal ((not R_XLen_64 and (R_hasStdExtD or R_hasStdExtZilsd)) and (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s64, 8)])))
+    legal ((not R_XLen_64 and (R_hasStdExtD or R_hasStdExtZilsd)) and (not R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s64, 64)])))
+    legal (R_hasVInstructions and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_nxv2s8, R_p0, R_nxv2s8, 8), mem_desc(R_nxv4s8, R_p0, R_nxv4s8, 8), mem_desc(R_nxv8s8, R_p0, R_nxv8s8, 8), mem_desc(R_nxv16s8, R_p0, R_nxv16s8, 8), mem_desc(R_nxv32s8, R_p0, R_nxv32s8, 8), mem_desc(R_nxv64s8, R_p0, R_nxv64s8, 8), mem_desc(R_nxv2s16, R_p0, R_nxv2s16, 16), mem_desc(R_nxv4s16, R_p0, R_nxv4s16, 16), mem_desc(R_nxv8s16, R_p0, R_nxv8s16, 16), mem_desc(R_nxv16s16, R_p0, R_nxv16s16, 16), mem_desc(R_nxv32s16, R_p0, R_nxv32s16, 16), mem_desc(R_nxv2s32, R_p0, R_nxv2s32, 32), mem_desc(R_nxv4s32, R_p0, R_nxv4s32, 32), mem_desc(R_nxv8s32, R_p0, R_nxv8s32, 32), mem_desc(R_nxv16s32, R_p0, R_nxv16s32, 32)]))
+    legal ((R_hasVInstructions and R_getELen_64) and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_nxv1s8, R_p0, R_nxv1s8, 8), mem_desc(R_nxv1s16, R_p0, R_nxv1s16, 16), mem_desc(R_nxv1s32, R_p0, R_nxv1s32, 32)]))
+    legal ((R_hasVInstructions and R_hasVInstructionsI64) and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_nxv1s64, R_p0, R_nxv1s64, 64), mem_desc(R_nxv2s64, R_p0, R_nxv2s64, 64), mem_desc(R_nxv4s64, R_p0, R_nxv4s64, 64), mem_desc(R_nxv8s64, R_p0, R_nxv8s64, 64)]))
+    custom (R_hasVInstructions and (in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))))
+    custom ((R_hasVInstructions and R_XLen_le_ELen) and (in(slot(0), [R_nxv1p0, R_nxv2p0, R_nxv4p0, R_nxv8p0, R_nxv16p0]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64) and (num_elems(slot(0)) != 16 or bits_of(slot(0)) == 32))))
+    widen(slot(0), ty(R_s16))
+    narrow(slot(0), ty(R_sXLen))
+    lower (not is_byte_sized(mem_ty(mem_slot(0))) or not is_pow2(size_in_bytes_of(mem_ty(mem_slot(0)))))
+    lower true
+
+ruleset R_G_SEXTLOAD: G_SEXTLOAD G_ZEXTLOAD
+    legal (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_sXLen, R_p0, R_s8, 8), mem_desc(R_sXLen, R_p0, R_s16, 8)]))
+    legal (not R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_sXLen, R_p0, R_s8, 8), mem_desc(R_sXLen, R_p0, R_s16, 16)]))
+    legal (R_XLen_64 and (R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s32, 8)])))
+    legal (R_XLen_64 and (not R_enableUnalignedScalarMem and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(R_s64, R_p0, R_s32, 32)])))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    lower true
+
+ruleset R_G_PTR_ADD: G_PTR_ADD G_PTRMASK
+    legal in_pairs(slot(0), slot(1), [[R_p0, R_sXLen]])
+
+ruleset R_G_PTRTOINT: G_PTRTOINT
+    legal in_pairs(slot(0), slot(1), [[R_sXLen, R_p0]])
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_INTTOPTR: G_INTTOPTR
+    legal in_pairs(slot(0), slot(1), [[R_p0, R_sXLen]])
+    widen(slot(1), ty(R_sXLen))
+    narrow(slot(1), ty(R_sXLen))
+
+ruleset R_G_BR: G_BR
+    legal true
+
+ruleset R_G_BRCOND: G_BRCOND
+    legal in(slot(0), [R_sXLen])
+    widen(slot(0), ty(R_sXLen))
+
+ruleset R_G_BRJT: G_BRJT
+    custom in_pairs(slot(0), slot(1), [[R_p0, R_sXLen]])
+
+ruleset R_G_BRINDIRECT: G_BRINDIRECT
+    legal in(slot(0), [R_p0])
+
+ruleset R_G_PHI: G_PHI
+    legal in(slot(0), [R_p0, R_s32, R_sXLen])
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_s32))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_GLOBAL_VALUE: G_GLOBAL_VALUE G_JUMP_TABLE G_CONSTANT_POOL
+    legal in(slot(0), [R_p0])
+
+ruleset R_G_MUL: G_MUL
+    legal (R_hasStdExtZmmul and in(slot(0), [R_sXLen]))
+    widen(slot(0), pow2) when R_hasStdExtZmmul
+    widen(slot(0), ty(R_sXLen)) when R_hasStdExtZmmul
+    narrow(slot(0), ty(R_sXLen)) when R_hasStdExtZmmul
+
+ruleset R_G_SMULH: G_SMULH G_UMULH
+    legal (R_hasStdExtZmmul and in(slot(0), [R_sXLen]))
+    lower R_hasStdExtZmmul
+
+ruleset R_G_SMULO: G_SMULO G_UMULO
+    widen(slot(0), ty(R_sXLen)) when R_hasStdExtZmmul
+    lower R_hasStdExtZmmul
+
+ruleset R_G_MUL_2: G_MUL
+    libcall (not R_hasStdExtZmmul and in(slot(0), [R_sXLen, R_sDoubleXLen]))
+    widen(slot(0), pow2) when not R_hasStdExtZmmul
+    widen(slot(0), ty(R_sXLen)) when not R_hasStdExtZmmul
+    narrow(slot(0), ty(R_sDoubleXLen)) when not R_hasStdExtZmmul
+
+ruleset R_G_SMULH_2: G_SMULH G_UMULH
+    lower (not R_hasStdExtZmmul and in(slot(0), [R_sXLen]))
+
+ruleset R_G_SMULO_2: G_SMULO G_UMULO
+    widen(slot(0), ty(R_sXLen)) when not R_hasStdExtZmmul
+    widen(slot(0), replace(ty(R_sDoubleXLen))) when (not R_hasStdExtZmmul and slot(0) == R_sXLen)
+    lower not R_hasStdExtZmmul
+
+ruleset R_G_SDIV: G_SDIV G_UDIV G_UREM
+    legal (R_hasStdExtM and in(slot(0), [R_sXLen]))
+    custom (R_hasStdExtM and in(slot(0), [R_s32]))
+    libcall (R_hasStdExtM and in(slot(0), [R_sDoubleXLen]))
+    widen(slot(0), ty(R_s32)) when R_hasStdExtM
+    narrow(slot(0), ty(R_sDoubleXLen)) when R_hasStdExtM
+    widen(slot(0), pow2) when R_hasStdExtM
+
+ruleset R_G_SREM: G_SREM
+    legal (R_hasStdExtM and in(slot(0), [R_sXLen]))
+    libcall (R_hasStdExtM and in(slot(0), [R_sDoubleXLen]))
+    widen(slot(0), ty(R_sXLen)) when R_hasStdExtM
+    narrow(slot(0), ty(R_sDoubleXLen)) when R_hasStdExtM
+    widen(slot(0), pow2) when R_hasStdExtM
+
+ruleset R_G_UDIV: G_UDIV G_SDIV G_UREM G_SREM
+    libcall (not R_hasStdExtM and in(slot(0), [R_sXLen, R_sDoubleXLen]))
+    widen(slot(0), ty(R_sXLen)) when not R_hasStdExtM
+    narrow(slot(0), ty(R_sDoubleXLen)) when not R_hasStdExtM
+    widen(slot(0), pow2) when not R_hasStdExtM
+
+ruleset R_G_SDIVREM: G_SDIVREM G_UDIVREM
+    lower true
+
+ruleset R_G_ABS: G_ABS
+    custom (R_hasStdExtZbb and in(slot(0), [R_sXLen]))
+    widen(slot(0), ty(R_sXLen)) when R_hasStdExtZbb
+    lower true
+
+ruleset R_G_ABDS: G_ABDS G_ABDU
+    widen(slot(0), ty(R_sXLen)) when R_hasStdExtZbb
+    lower true
+
+ruleset R_G_UMAX: G_UMAX G_UMIN G_SMAX G_SMIN
+    legal (R_hasStdExtZbb and in(slot(0), [R_sXLen]))
+    widen(slot(0), ty(R_sXLen)) when R_hasStdExtZbb
+    lower true
+
+ruleset R_G_SCMP: G_SCMP G_UCMP
+    lower true
+
+ruleset R_G_FRAME_INDEX: G_FRAME_INDEX
+    legal in(slot(0), [R_p0])
+
+ruleset R_G_MEMCPY: G_MEMCPY G_MEMMOVE G_MEMSET
+    libcall true
+
+ruleset R_G_MEMCPY_INLINE: G_MEMCPY_INLINE G_MEMSET_INLINE
+    lower true
+
+ruleset R_G_DYN_STACKALLOC: G_DYN_STACKALLOC G_STACKSAVE G_STACKRESTORE
+    lower true
+
+ruleset R_G_READCYCLECOUNTER: G_READCYCLECOUNTER G_READSTEADYCOUNTER
+    legal (R_is64Bit and in(slot(0), [R_s64]))
+    custom (not R_is64Bit and in(slot(0), [R_s64]))
+
+ruleset R_G_FADD: G_FADD G_FSUB G_FMUL G_FDIV G_FMA G_FSQRT G_FMAXNUM G_FMINNUM G_FMAXIMUMNUM G_FMINIMUMNUM
+    legal (R_hasStdExtF and in(slot(0), [R_s32]))
+    legal (R_hasStdExtD and in(slot(0), [R_s64]))
+    legal (R_hasStdExtZfh and in(slot(0), [R_s16]))
+    libcall in(slot(0), [R_s32, R_s64])
+    libcall (R_is64Bit and in(slot(0), [R_s128]))
+
+ruleset R_G_FNEG: G_FNEG G_FABS
+    legal (R_hasStdExtF and in(slot(0), [R_s32]))
+    legal (R_hasStdExtD and in(slot(0), [R_s64]))
+    legal (R_hasStdExtZfh and in(slot(0), [R_s16]))
+    lower in(slot(0), [R_s32, R_s64, R_s128])
+
+ruleset R_G_FREM: G_FREM
+    libcall in(slot(0), [R_s32, R_s64])
+    libcall (R_is64Bit and in(slot(0), [R_s128]))
+    widen(slot(0), ty(R_s32))
+    scalarize(slot(0))
+
+ruleset R_G_FCOPYSIGN: G_FCOPYSIGN
+    legal (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_s64, R_s64], [R_s32, R_s64], [R_s64, R_s32]]))
+    legal (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_s16, R_s16], [R_s16, R_s32], [R_s32, R_s16]]))
+    legal ((R_hasStdExtZfh and R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s16, R_s64], [R_s64, R_s16]]))
+    lower true
+
+ruleset R_G_FPTRUNC: G_FPTRUNC
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_s32, R_s64]]))
+    legal (R_hasStdExtZfhmin and in_pairs(slot(0), slot(1), [[R_s16, R_s32]]))
+    legal ((R_hasStdExtZfhmin and R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s16, R_s64]]))
+    libcall in_pairs(slot(0), slot(1), [[R_s16, R_s32], [R_s16, R_s64], [R_s32, R_s64]])
+    libcall (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s32, R_s128], [R_s64, R_s128]]))
+
+ruleset R_G_FPEXT: G_FPEXT
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_s64, R_s32]]))
+    legal (R_hasStdExtZfhmin and in_pairs(slot(0), slot(1), [[R_s32, R_s16]]))
+    legal ((R_hasStdExtZfhmin and R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s64, R_s16]]))
+    libcall (not R_hasStdExtZfhmin and in_pairs(slot(0), slot(1), [[R_s32, R_s16]]))
+    libcall (not (R_hasStdExtZfhmin and R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s64, R_s16]]))
+    libcall in_pairs(slot(0), slot(1), [[R_s64, R_s32]])
+    libcall (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s128, R_s32], [R_s128, R_s64]]))
+
+ruleset R_G_FCMP: G_FCMP
+    legal (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_sXLen, R_s32]]))
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_sXLen, R_s64]]))
+    legal (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_sXLen, R_s16]]))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    widen(slot(1), ty(R_s32))
+    libcall in_pairs(slot(0), slot(1), [[R_sXLen, R_s32], [R_sXLen, R_s64]])
+    libcall (R_is64Bit and in_pairs(slot(0), slot(1), [[R_sXLen, R_s128]]))
+
+ruleset R_G_IS_FPCLASS: G_IS_FPCLASS
+    custom (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_s1, R_s32]]))
+    custom (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_s1, R_s64]]))
+    custom (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_s1, R_s16]]))
+    lower true
+
+ruleset R_G_FCONSTANT: G_FCONSTANT
+    legal (R_hasStdExtF and in(slot(0), [R_s32]))
+    legal (R_hasStdExtD and in(slot(0), [R_s64]))
+    legal (R_hasStdExtZfhmin and in(slot(0), [R_s16]))
+    lower in(slot(0), [R_s32, R_s64, R_s128])
+
+ruleset R_G_FPTOSI: G_FPTOSI G_FPTOUI
+    legal (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_sXLen, R_s32]]))
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_sXLen, R_s64]]))
+    legal (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_sXLen, R_s16]]))
+    custom ((R_is64Bit and R_hasStdExtF) and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    custom ((R_is64Bit and R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s32, R_s64]]))
+    custom ((R_is64Bit and R_hasStdExtZfh) and in_pairs(slot(0), slot(1), [[R_s32, R_s16]]))
+    widen(slot(0), pow2)
+    widen(slot(0), ty(R_s32))
+    widen(slot(1), replace(ty(R_s32))) when (slot(1) == ty(R_f16) and not R_hasStdExtZfh and (R_is64Bit or slot(0) == ty(R_s32)))
+    libcall (not R_hasStdExtZfhmin and in_pairs(slot(0), slot(1), [[R_s64, R_f16]]))
+    narrow(slot(0), replace(ty(R_s32))) when in_pairs(slot(0), slot(1), [[R_s64, R_f16]])
+    libcall in_pairs(slot(0), slot(1), [[R_s32, R_s32], [R_s64, R_s32], [R_s32, R_s64], [R_s64, R_s64]])
+    libcall (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s32, R_s128], [R_s64, R_s128]]))
+    libcall (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s128, R_s32], [R_s128, R_s64], [R_s128, R_s128]]))
+
+ruleset R_G_FPTOSI_SAT: G_FPTOSI_SAT G_FPTOUI_SAT
+    custom (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_sXLen, R_s32]]))
+    custom (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_sXLen, R_s64]]))
+    custom (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_sXLen, R_s16]]))
+    custom ((R_is64Bit and R_hasStdExtF) and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    custom ((R_is64Bit and R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s32, R_s64]]))
+    custom ((R_is64Bit and R_hasStdExtZfh) and in_pairs(slot(0), slot(1), [[R_s32, R_s16]]))
+    widen(slot(1), replace(ty(R_s32))) when slot(1) == R_s16
+    lower (sort_of(slot(0)) == scalar and sort_of(slot(1)) == scalar)
+
+ruleset R_G_LROUND: G_LROUND G_LLROUND
+    legal (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_sXLen, R_s32]]))
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_sXLen, R_s64]]))
+    legal (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_sXLen, R_s16]]))
+    custom ((R_is64Bit and R_hasStdExtF) and in_pairs(slot(0), slot(1), [[R_s32, R_s32]]))
+    custom ((R_is64Bit and R_hasStdExtD) and in_pairs(slot(0), slot(1), [[R_s32, R_s64]]))
+    custom ((R_is64Bit and R_hasStdExtZfh) and in_pairs(slot(0), slot(1), [[R_s32, R_s16]]))
+    widen(slot(1), ty(R_s32))
+    libcall in_pairs(slot(0), slot(1), [[R_s32, R_s32], [R_s64, R_s32], [R_s32, R_s64], [R_s64, R_s64], [R_s32, R_s128], [R_s64, R_s128]])
+
+ruleset R_G_INTRINSIC_LRINT: G_INTRINSIC_LRINT G_INTRINSIC_LLRINT
+    legal (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_sXLen, R_s32]]))
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_sXLen, R_s64]]))
+    legal (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_sXLen, R_s16]]))
+    widen(slot(0), ty(R_sXLen))
+    widen(slot(1), ty(R_s32))
+    libcall in_pairs(slot(0), slot(1), [[R_s32, R_s32], [R_s64, R_s32], [R_s32, R_s64], [R_s64, R_s64], [R_s32, R_s128], [R_s64, R_s128]])
+
+ruleset R_G_SITOFP: G_SITOFP G_UITOFP
+    legal (R_hasStdExtF and in_pairs(slot(0), slot(1), [[R_s32, R_sXLen]]))
+    legal (R_hasStdExtD and in_pairs(slot(0), slot(1), [[R_s64, R_sXLen]]))
+    legal (R_hasStdExtZfh and in_pairs(slot(0), slot(1), [[R_s16, R_sXLen]]))
+    widen(slot(1), pow2)
+    widen(slot(1), replace(ty(R_sXLen))) when (sort_of(slot(0)) == scalar and sort_of(slot(1)) == scalar and size_of(slot(1)) < select(R_XLen_64, 64, 32) and ((R_hasStdExtF and size_of(slot(0)) == 32) or (R_hasStdExtD and size_of(slot(0)) == 64) or (R_hasStdExtZfh and size_of(slot(0)) == 16)))
+    widen(slot(1), ty(R_s32))
+    libcall in_pairs(slot(0), slot(1), [[R_s32, R_s32], [R_s64, R_s32], [R_s32, R_s64], [R_s64, R_s64]])
+    libcall (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s128, R_s32], [R_s128, R_s64]]))
+    libcall (R_is64Bit and in_pairs(slot(0), slot(1), [[R_s32, R_s128], [R_s64, R_s128], [R_s128, R_s128]]))
+
+ruleset R_G_FCEIL: G_FCEIL G_FFLOOR G_FRINT G_FNEARBYINT G_INTRINSIC_TRUNC G_INTRINSIC_ROUND G_INTRINSIC_ROUNDEVEN
+    legal (R_hasStdExtZfa and in(slot(0), [R_s32]))
+    legal ((R_hasStdExtZfa and R_hasStdExtD) and in(slot(0), [R_s64]))
+    legal ((R_hasStdExtZfa and R_hasStdExtZfh) and in(slot(0), [R_s16]))
+    libcall in(slot(0), [R_s32, R_s64])
+    libcall (R_is64Bit and in(slot(0), [R_s128]))
+
+ruleset R_G_FMAXIMUM: G_FMAXIMUM G_FMINIMUM
+    legal (R_hasStdExtZfa and in(slot(0), [R_s32]))
+    legal ((R_hasStdExtZfa and R_hasStdExtD) and in(slot(0), [R_s64]))
+    legal ((R_hasStdExtZfa and R_hasStdExtZfh) and in(slot(0), [R_s16]))
+
+ruleset R_G_FCOS: G_FCOS G_FSIN G_FTAN G_FPOW G_FLOG G_FLOG2 G_FLOG10 G_FEXP G_FEXP2 G_FEXP10 G_FACOS G_FASIN G_FATAN G_FATAN2 G_FCOSH G_FSINH G_FTANH G_FMODF G_FSINCOS
+    libcall in(slot(0), [R_s32, R_s64])
+    libcall (R_is64Bit and in(slot(0), [R_s128]))
+
+ruleset R_G_FPOWI: G_FPOWI G_FLDEXP
+    libcall in_pairs(slot(0), slot(1), [[R_s32, R_s32], [R_s64, R_s32]])
+    libcall (R_is64Bit and in(slot(0), [R_s128, R_s32]))
+
+ruleset R_G_FCANONICALIZE: G_FCANONICALIZE
+    legal (R_hasStdExtF and in(slot(0), [R_s32]))
+    legal (R_hasStdExtD and in(slot(0), [R_s64]))
+    legal (R_hasStdExtZfh and in(slot(0), [R_s16]))
+
+ruleset R_G_VASTART: G_VASTART
+    custom in(slot(0), [R_p0])
+
+ruleset R_G_VAARG: G_VAARG
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    lower in_pairs(slot(0), slot(1), [[R_sXLen, R_p0], [R_p0, R_p0]])
+
+ruleset R_G_VSCALE: G_VSCALE
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    custom in(slot(0), [R_sXLen])
+
+ruleset R_G_SPLAT_VECTOR: G_SPLAT_VECTOR
+    legal ((in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))) and slot(1) == R_sXLen)
+    custom ((in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64))) and slot(1) == R_s1)
+    legal ((R_XLen_32 and (R_hasVInstructionsF64 and R_hasStdExtD)) and (in(slot(0), [R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and slot(1) == R_s64))
+    custom ((R_XLen_32 and not (R_hasVInstructionsF64 and R_hasStdExtD) and R_hasVInstructionsI64) and (in(slot(0), [R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and slot(1) == R_s64))
+    widen(slot(1), ty(R_sXLen))
+    narrow(slot(1), ty(R_sXLen))
+
+ruleset R_G_EXTRACT_SUBVECTOR: G_EXTRACT_SUBVECTOR
+    bitcast(slot(0), replace(elt_type_to(div_lanes(slot(0), 8), ty(R_s8)))) when ((in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(1)) != 1 or R_getELen_64))) and ((elem_of(slot(0)) == ty(R_s1) and num_elems(slot(0)) >= 8 and num_elems(slot(1)) >= 8)))
+    custom (((in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(1)) != 1 or R_getELen_64)))) or ((in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(1)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(1)) != 1 or R_getELen_64)))))
+
+ruleset R_G_INSERT_SUBVECTOR: G_INSERT_SUBVECTOR
+    custom ((in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(1)) != 1 or R_getELen_64))))
+    custom ((in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))) and (in(slot(1), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(1)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(1)) != 1 or R_getELen_64))))
+
+ruleset R_G_ATOMIC_CMPXCHG_WITH_SUCCESS: G_ATOMIC_CMPXCHG_WITH_SUCCESS
+    lower (in(slot(0), [R_s8, R_s16, R_s32, R_s64]) and slot(2) == R_p0)
+
+ruleset R_G_ATOMIC_CMPXCHG: G_ATOMIC_CMPXCHG G_ATOMICRMW_ADD G_ATOMICRMW_XCHG G_ATOMICRMW_AND G_ATOMICRMW_OR G_ATOMICRMW_XOR
+    legal (R_hasStdExtA and in_pairs(slot(0), slot(1), [[R_sXLen, R_p0]]))
+    libcall (not R_hasStdExtA and in_pairs(slot(0), slot(1), [[R_s8, R_p0], [R_s16, R_p0], [R_s32, R_p0], [R_s64, R_p0]]))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+
+ruleset R_G_ATOMICRMW_SUB: G_ATOMICRMW_SUB
+    libcall (not R_hasStdExtA and in_pairs(slot(0), slot(1), [[R_s8, R_p0], [R_s16, R_p0], [R_s32, R_p0], [R_s64, R_p0]]))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    lower true
+
+ruleset R_G_ATOMICRMW_MAX: G_ATOMICRMW_MAX G_ATOMICRMW_MIN G_ATOMICRMW_UMAX G_ATOMICRMW_UMIN
+    legal (R_hasStdExtA and in_pairs(slot(0), slot(1), [[R_sXLen, R_p0]]))
+    widen(slot(0), ty(R_sXLen))
+    narrow(slot(0), ty(R_sXLen))
+    unsupported true
+
+ruleset R_G_PREFETCH: G_PREFETCH
+    legal slot(0) == R_p0
+
+ruleset R_G_INSERT_VECTOR_ELT: G_INSERT_VECTOR_ELT
+    legal ((in(slot(0), [R_nxv1s8, R_nxv2s8, R_nxv4s8, R_nxv8s8, R_nxv16s8, R_nxv32s8, R_nxv64s8, R_nxv1s16, R_nxv2s16, R_nxv4s16, R_nxv8s16, R_nxv16s16, R_nxv32s16, R_nxv1s32, R_nxv2s32, R_nxv4s32, R_nxv8s32, R_nxv16s32, R_nxv1s64, R_nxv2s64, R_nxv4s64, R_nxv8s64]) and (R_hasVInstructions and (bits_of(slot(0)) != 64 or R_hasVInstructionsI64) and (num_elems(slot(0)) != 1 or R_getELen_64))) and (elem_of(slot(0)) == slot(1)) and slot(2) == R_sXLen)
+    legal ((in(slot(0), [R_nxv1s1, R_nxv2s1, R_nxv4s1, R_nxv8s1, R_nxv16s1, R_nxv32s1, R_nxv64s1]) and (R_hasVInstructions and (num_elems(slot(0)) != 1 or R_getELen_64))) and (elem_of(slot(0)) == slot(1)) and slot(2) == R_sXLen)
+
+ruleset R_G_INTRINSIC: G_INTRINSIC G_INTRINSIC_W_SIDE_EFFECTS
+    legal true
+
+ruleset R_G_FENCE: G_FENCE
+    legal true
+
+ruleset R_G_TRAP: G_TRAP G_DEBUGTRAP G_UBSANTRAP
+    legal true

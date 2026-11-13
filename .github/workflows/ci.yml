@@ -26,6 +26,8 @@ jobs:
           done
       - name: claims point at real files
         run: python3 tools/check-claims.py
+      - name: bundled corpus matches the checkout
+        run: python3 tools/sync-package-data.py --check
       - name: unit tests
         run: python3 -m unittest discover -v -s tests
       - name: nine corpora are byte-identical

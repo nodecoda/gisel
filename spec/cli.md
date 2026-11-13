@@ -12,8 +12,8 @@ gisel 只有这七个命令。新增一个命令等于新增一块产品面，�
 | `gen` | 把规则文本发射成一种产物 | 源文件、`--emit`、`--out` | 产物文件；stdout 一行统计 |
 | `check` | 产物是否与源文件一致 | 源文件、`--emit`、`--against` | 一致时 stdout 一行；不一致时 stderr 输出 unified diff |
 | `lint` | 静态检查，不产生产物 | 源文件、可选 `--manifest` | stderr 诊断，stdout 汇总（`--json` 时是机器可读汇总） |
-| `cases` | 生成无答案的测试查询 | 源文件、`--features`、可选 `--axes`/`--queries`/`--oracle`/`--ruleset` | 查询 JSONL 文件；stdout 统计 |
-| `domain` | 枚举无答案查询域（笛卡尔积） | 源文件、可选 `--features`/`--axes` | 查询 JSONL 文件 |
+| `cases` | 生成无答案的测试查询 | 源文件或 `--corpus NAME`、`--features`、可选 `--axes`/`--queries`/`--oracle`/`--ruleset` | 查询 JSONL 文件；stdout 统计 |
+| `domain` | 枚举无答案查询域（笛卡尔积） | 源文件或 `--corpus NAME`、可选 `--features`/`--axes` | 查询 JSONL 文件 |
 | `eval` | 用 schema-0.4 正常形回答查询 | `--doc`、`--features`、`--cases` | 汇总或 `--answers OUT` 的答案 JSONL |
 | `graph` | 在类型×类空间上建商图并找环 | 源文件、`--emit=core` | stdout 报告（`--json` 可机读） |
 
@@ -43,6 +43,19 @@ builder 链按文档顺序拼成一张表）；`--emit=inc` 保留源文件的 b
 2），不是“这个 ruleset 没有查询”。大 target 用这个参数分块跑，块之间按
 ruleset 不重叠。
 
+`cases` 与 `domain` 还接受 `--corpus NAME` 代替位置参数：名字取自随包发布的
+`gisel/data/corpora.json`（`x86 aarch64 riscv arm mips ppc m68k wasm spirv`），
+展开成一个 `.gisel` 加配套的 `--features`/`--axes`。它是纯粹的糖：同一 target
+用 `--corpus` 和用两个显式路径必须写出逐字节相同的文件。同时给位置参数和
+`--corpus` 是用法错误（退出码 2），不猜哪个赢；名字拼错同样退出 2，并列出
+可选名字。
+
+捆绑语料的**规范副本**在 `tests/corpus`、`tests/cases`：冻结产物把
+`tests/corpus/...` 记成每条规则的出现位置，所以目录布局不动。wheel 里带的是
+`gisel/data/corpus`、`gisel/data/cases` 下的逐字节副本，由
+`tools/sync-package-data.py` 生成；CI 用 `--check` 挡住漂移，副本与 checkout
+不一致就失败。这样 `pip install gisel` 之后不需要 checkout 也能直接出题。
+
 ## 2 退出码
 
 所有命令共用这三个码，没有别的：
@@ -59,7 +72,7 @@ ruleset 不重叠。
 ## 3 全局约定
 
 - **不调用外部程序**：不跑 `llvm-tblgen`、编译器、`llc`；不联网。唯一的
-  外部依赖是随包发布的 `gisel/data/*.json`。
+  外部依赖是随包发布的 `gisel/data/`（槽表、契约与捆绑语料）。
 - **确定性**：同样的输入产生逐字节相同的输出。没有时间戳、随机数或字典序
   之外的隐式排序；`gen` 的产物可以直接进 `check`。
 - **流分离**：结论/产物走 stdout（`gen` 写文件），人类可读的诊断走 stderr。

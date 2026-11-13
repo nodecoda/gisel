@@ -1,0 +1,78 @@
+//===- PowerPCLegalizerInfo.gisel - imported from PPCLegalizerInfo.cpp -*- gisel -*-===//
+//
+// One-shot transcription: `tools/import-cxx.py PowerPC PPCLegalizerInfo.cpp`.
+// Source sha256 4ca6a62b6f435c6e3e8ce1d576458a111026bdcbd35d978c22160f840cc3aa2a.  Do not edit by hand; re-run the importer instead.
+//
+// The importer refuses what it cannot translate; every refusal below is a
+// statement that still has to be written by hand (or taught to the importer).
+//
+//===----------------------------------------------------------------------===//
+include "llvm/Target/LegalizerInfo.td"
+include "llvm/Target/Target.td"
+
+
+type P_P0 = LLT::pointer(0, 64)
+type P_S1 = LLT::scalar(1)
+type P_S8 = LLT::scalar(8)
+type P_S16 = LLT::scalar(16)
+type P_S32 = LLT::scalar(32)
+type P_S64 = LLT::scalar(64)
+type P_V16S8 = LLT::fixed_vector(16, 8)
+type P_V8S16 = LLT::fixed_vector(8, 16)
+type P_V4S32 = LLT::fixed_vector(4, 32)
+type P_V2S64 = LLT::fixed_vector(2, 64)
+
+ruleset P_G_IMPLICIT_DEF: G_IMPLICIT_DEF
+    legal in(slot(0), [P_S64])
+
+ruleset P_G_CONSTANT: G_CONSTANT
+    legal in(slot(0), [P_S32, P_S64])
+    widen(slot(0), ty(P_S64))
+    narrow(slot(0), ty(P_S64))
+
+ruleset P_G_ZEXT: G_ZEXT G_SEXT G_ANYEXT
+    legal in_pairs(slot(0), slot(1), [[P_S64, P_S1], [P_S64, P_S8], [P_S64, P_S16], [P_S64, P_S32]])
+    widen(slot(0), ty(P_S64))
+    narrow(slot(0), ty(P_S64))
+
+ruleset P_G_AND: G_AND G_OR G_XOR
+    legal in(slot(0), [P_S64, P_V4S32])
+    widen(slot(0), ty(P_S64))
+    narrow(slot(0), ty(P_S64))
+    bitcast(slot(0), replace(ty(P_V4S32))) when slot(0) != P_V4S32
+
+ruleset P_G_ADD: G_ADD G_SUB
+    legal in(slot(0), [P_S64, P_V16S8, P_V8S16, P_V4S32, P_V2S64])
+    widen(slot(0), ty(P_S64))
+    narrow(slot(0), ty(P_S64))
+
+ruleset P_G_BITCAST: G_BITCAST
+    legal ((not ((urem(size_of(slot(0)), 32) == 1 or size_of(slot(0)) > 128)) and ((sort_of(slot(0)) == vector and (bits_of(elem_of(slot(0))) == 8 or bits_of(elem_of(slot(0))) == 16 or bits_of(elem_of(slot(0))) == 32 or bits_of(elem_of(slot(0))) == 64)) or (not (sort_of(slot(0)) == vector) and true))) and (not ((urem(size_of(slot(1)), 32) == 1 or size_of(slot(1)) > 128)) and ((sort_of(slot(1)) == vector and (bits_of(elem_of(slot(1))) == 8 or bits_of(elem_of(slot(1))) == 16 or bits_of(elem_of(slot(1))) == 32 or bits_of(elem_of(slot(1))) == 64)) or (not (sort_of(slot(1)) == vector) and true))))
+    lower true
+
+ruleset P_G_FADD: G_FADD G_FSUB G_FMUL G_FDIV
+    legal in(slot(0), [P_S32, P_S64, P_V4S32, P_V2S64])
+
+ruleset P_G_FCMP: G_FCMP
+    legal in_pairs(slot(0), slot(1), [[P_S1, P_S32], [P_S1, P_S64]])
+
+ruleset P_G_FPTOSI: G_FPTOSI G_FPTOUI
+    legal in_pairs(slot(0), slot(1), [[P_S64, P_S32], [P_S64, P_S64]])
+
+ruleset P_G_SITOFP: G_SITOFP G_UITOFP
+    legal in_pairs(slot(0), slot(1), [[P_S32, P_S64], [P_S64, P_S64]])
+
+ruleset P_G_LOAD: G_LOAD G_STORE
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(P_S64, P_P0, P_S64, 8), mem_desc(P_S32, P_P0, P_S32, 4)])
+
+ruleset P_G_FCONSTANT: G_FCONSTANT
+    lower in(slot(0), [P_S32, P_S64])
+
+ruleset P_G_CONSTANT_POOL: G_CONSTANT_POOL
+    legal in(slot(0), [P_P0])
+
+ruleset P_G_BR: G_BR
+    legal true
+
+ruleset P_G_INTRINSIC: G_INTRINSIC G_INTRINSIC_W_SIDE_EFFECTS
+    legal true

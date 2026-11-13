@@ -28,6 +28,7 @@ from pathlib import Path
 from . import ast as A
 from . import axes as axesmod
 from . import analysis as AN
+from . import corpus as corpora
 from . import cases as C
 from . import llt as L
 from . import eval as E
@@ -242,11 +243,32 @@ def enumerate_domain(source, features, configs=None, pointer_width=64,
         stats["shape_dropped_total"] = sum(shape_dropped.values())
 
 
+def _inputs(args):
+    """Resolve the positional source, --corpus, --features and --axes."""
+    if args.source and args.corpus:
+        raise corpora.CorpusError("give a .gisel source or --corpus NAME, "
+                                  "not both")
+    source, features, axes = args.source, args.features, args.axes
+    if args.corpus:
+        entry = corpora.get(args.corpus)
+        source = str(entry.source)
+        features = features or (str(entry.features) if entry.features else None)
+        axes = axes or (str(entry.axes) if entry.axes else None)
+    if not source:
+        raise corpora.CorpusError(
+            "give a .gisel source or --corpus NAME (bundled: %s)"
+            % ", ".join(corpora.names()))
+    return source, features, axes
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="gisel domain",
         description="enumerate the answerless query domain (D*)")
-    ap.add_argument("source")
+    ap.add_argument("source", nargs="?",
+                    help="a .gisel source (or use --corpus NAME)")
+    ap.add_argument("--corpus", metavar="NAME",
+                    help="a bundled corpus: %s" % ", ".join(corpora.names()))
     ap.add_argument("--out", required=True)
     ap.add_argument("--features",
                     help="feature truth table (default: derive none/all/only-N)")
@@ -260,10 +282,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     try:
-        axes = axesmod.load(args.axes) if args.axes else None
+        source, features_path, axes_path = _inputs(args)
+        axes = axesmod.load(axes_path) if axes_path else None
         _doc, features, axes = AN.session(
-            args.source, features=args.features, configs=args.configs,
-            axes=axes)
+            source, features=features_path, configs=args.configs, axes=axes)
         if axes is not None:
             domain_profile = axes.profile("domain")
             if domain_profile.get("full", True) is False:
@@ -283,7 +305,7 @@ def main(argv=None):
 
     slots = load_opcode_slots(args.slots)
     diagnostics = {}
-    rows = list(enumerate_domain(args.source, features, configs,
+    rows = list(enumerate_domain(source, features, configs,
                                  args.pointer_width, slots, axes,
                                  diagnostics))
     raw_points = len(rows)
@@ -299,7 +321,7 @@ def main(argv=None):
     if rc:
         return rc
 
-    types, mems, _ = effective_axes(args.source, args.pointer_width, axes)
+    types, mems, _ = effective_axes(source, args.pointer_width, axes)
     stats = {
         "configs": configs,
         "types": len(types),

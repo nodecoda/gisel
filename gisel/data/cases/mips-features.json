@@ -1,0 +1,27 @@
+{
+  "mips32": {
+    "ST.hasMSA()": false,
+    "ST.hasMips32r2()": false,
+    "ST.systemSupportsUnalignedAccess()": false
+  },
+  "mips32r2": {
+    "ST.hasMSA()": false,
+    "ST.hasMips32r2()": true,
+    "ST.systemSupportsUnalignedAccess()": false
+  },
+  "mips32r6": {
+    "ST.hasMSA()": false,
+    "ST.hasMips32r2()": true,
+    "ST.systemSupportsUnalignedAccess()": true
+  },
+  "mips32r5-msa": {
+    "ST.hasMSA()": true,
+    "ST.hasMips32r2()": true,
+    "ST.systemSupportsUnalignedAccess()": false
+  },
+  "mips32r6-msa": {
+    "ST.hasMSA()": true,
+    "ST.hasMips32r2()": true,
+    "ST.systemSupportsUnalignedAccess()": true
+  }
+}

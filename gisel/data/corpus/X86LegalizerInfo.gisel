@@ -1,0 +1,525 @@
+//===- X86LegalizerInfo.gisel - imported from X86LegalizerInfo.cpp -*- gisel -*-===//
+//
+// One-shot transcription: `tools/import-cxx.py X86 X86LegalizerInfo.cpp`.
+// Source sha256 79f2376096c3271910840a42c6270932011078df9fff343bfd96c226523336cd.  Do not edit by hand; re-run the importer instead.
+//
+// The importer refuses what it cannot translate; every refusal below is a
+// statement that still has to be written by hand (or taught to the importer).
+//
+//===----------------------------------------------------------------------===//
+include "llvm/Target/LegalizerInfo.td"
+include "llvm/Target/Target.td"
+
+feature X_HasAVX = Subtarget.hasAVX()
+feature X_HasAVX2 = Subtarget.hasAVX2()
+feature X_HasAVX512 = Subtarget.hasAVX512()
+feature X_HasBITALG = Subtarget.hasBITALG()
+feature X_HasBMI = Subtarget.hasBMI()
+feature X_HasBWI = Subtarget.hasAVX512() && Subtarget.hasBWI()
+feature X_HasCMOV = Subtarget.canUseCMOV()
+feature X_HasDQI = Subtarget.hasAVX512() && Subtarget.hasDQI()
+feature X_HasLZCNT = Subtarget.hasLZCNT()
+feature X_HasPOPCNT = Subtarget.hasPOPCNT()
+feature X_HasSSE1 = Subtarget.hasSSE1()
+feature X_HasSSE2 = Subtarget.hasSSE2()
+feature X_HasSSE41 = Subtarget.hasSSE41()
+feature X_HasVLX = Subtarget.hasVLX()
+feature X_HasVPOPCNTDQ = Subtarget.hasVPOPCNTDQ()
+feature X_Is64Bit = Subtarget.is64Bit()
+feature X_UseX87 = !Subtarget.useSoftFloat() && Subtarget.hasX87()
+
+type X_p0 = LLT::pointer(0, Subtarget.isTarget64BitLP64() ? 64 : 32)
+type X_s1 = LLT::scalar(1)
+type X_s8 = LLT::scalar(8)
+type X_s16 = LLT::scalar(16)
+type X_s32 = LLT::scalar(32)
+type X_s64 = LLT::scalar(64)
+type X_s80 = LLT::scalar(80)
+type X_s128 = LLT::scalar(128)
+type X_v2s32 = LLT::fixed_vector(2, 32)
+type X_v4s8 = LLT::fixed_vector(4, 8)
+type X_v16s8 = LLT::fixed_vector(16, 8)
+type X_v8s16 = LLT::fixed_vector(8, 16)
+type X_v4s32 = LLT::fixed_vector(4, 32)
+type X_v2s64 = LLT::fixed_vector(2, 64)
+type X_v2p0 = LLT::fixed_vector(2, X_p0)
+type X_v32s8 = LLT::fixed_vector(32, 8)
+type X_v16s16 = LLT::fixed_vector(16, 16)
+type X_v8s32 = LLT::fixed_vector(8, 32)
+type X_v4s64 = LLT::fixed_vector(4, 64)
+type X_v4p0 = LLT::fixed_vector(4, X_p0)
+type X_v64s8 = LLT::fixed_vector(64, 8)
+type X_v32s16 = LLT::fixed_vector(32, 16)
+type X_v16s32 = LLT::fixed_vector(16, 32)
+type X_v8s64 = LLT::fixed_vector(8, 64)
+pred X_useX87NoSSE1 = (X_UseX87 and not X_HasSSE1)
+select X_sMaxScalar = if X_Is64Bit then X_s64 else X_s32
+select X_s8MaxVectorNoAVX512 = if X_HasAVX then X_v32s8 else X_v16s8
+select X_s8MaxVector = if X_HasAVX512 then X_v64s8 else X_s8MaxVectorNoAVX512
+select X_s16MaxVectorNoAVX512 = if X_HasAVX then X_v16s16 else X_v8s16
+select X_s16MaxVector = if X_HasAVX512 then X_v32s16 else X_s16MaxVectorNoAVX512
+select X_s32MaxVectorNoAVX512 = if X_HasAVX then X_v8s32 else X_v4s32
+select X_s32MaxVector = if X_HasAVX512 then X_v16s32 else X_s32MaxVectorNoAVX512
+select X_s64MaxVectorNoAVX512 = if X_HasAVX then X_v4s64 else X_v2s64
+select X_s64MaxVector = if X_HasAVX512 then X_v8s64 else X_s64MaxVectorNoAVX512
+select X_sse2MaxScalar = if X_HasSSE2 then X_s64 else X_s32
+select X_x87MinScalar = if X_useX87NoSSE1 then X_s16 else X_s32
+select X_cmovMinScalar = if X_HasCMOV then X_s16 else X_s8
+type_set X_IntTypes32 = [X_s8, X_s16, X_s32, X_p0]
+type_set X_IntTypes64 = [X_s8, X_s16, X_s32, X_s64, X_p0]
+type_set X_PtrTypes32 = [X_s1, X_s8, X_s16, X_s32]
+type_set X_PtrTypes64 = [X_s1, X_s8, X_s16, X_s32, X_s64]
+
+ruleset X_G_IMPLICIT_DEF: G_IMPLICIT_DEF G_PHI G_FREEZE G_CONSTANT_FOLD_BARRIER
+    legal in(slot(0), [X_p0, X_s1, X_s8, X_s16, X_s32, X_s64])
+    legal (X_UseX87 and in(slot(0), [X_s80]))
+    legal (X_Is64Bit and in(slot(0), [X_s128]))
+    legal (X_HasSSE2 and in(slot(0), [X_v16s8, X_v8s16, X_v4s32, X_v2s64]))
+    legal (X_HasAVX and in(slot(0), [X_v32s8, X_v16s16, X_v8s32, X_v4s64]))
+    legal (X_HasAVX512 and in(slot(0), [X_v64s8, X_v32s16, X_v16s32, X_v8s64]))
+    widen(elem_of(slot(0)), pow2_min(8))
+    widen(elem_of(slot(0)), ty(X_s8))
+    narrow(elem_of(slot(0)), ty(X_sMaxScalar))
+    more(slot(0), pow2)
+    clamp_min(0, X_s8, num_elems(ty(X_v16s8)))
+    clamp_max(0, X_s8, num_elems(ty(X_s8MaxVector)))
+    clamp_min(0, X_s16, num_elems(ty(X_v8s16)))
+    clamp_max(0, X_s16, num_elems(ty(X_s16MaxVector)))
+    clamp_min(0, X_s32, num_elems(ty(X_v4s32)))
+    clamp_max(0, X_s32, num_elems(ty(X_s32MaxVector)))
+    clamp_min(0, X_s64, num_elems(ty(X_v2s64)))
+    clamp_max(0, X_s64, num_elems(ty(X_s64MaxVector)))
+    clamp_max(0, X_p0, select(X_Is64Bit, num_elems(ty(X_s64MaxVector)), num_elems(ty(X_s32MaxVector))))
+    scalarize(slot(0)) when bits_of(slot(0)) > 64
+
+ruleset X_G_CONSTANT: G_CONSTANT
+    legal in(slot(0), [X_p0, X_s8, X_s16, X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    widen(slot(0), pow2_min(8))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+
+ruleset X_G_LROUND: G_LROUND G_LLROUND
+    widen(slot(1), replace(ty(X_s32))) when slot(1) == X_s16
+    libcall true
+
+ruleset X_G_FCOS: G_FCOS G_FCOSH G_FACOS G_FSIN G_FSINH G_FASIN G_FTAN G_FTANH G_FATAN G_FATAN2 G_FPOW G_FEXP G_FEXP2 G_FEXP10 G_FLOG G_FLOG2 G_FLOG10 G_FPOWI G_FSINCOS G_FCEIL G_FFLOOR
+    libcall true
+
+ruleset X_G_FNEG: G_FNEG
+    legal ((X_UseX87 and not X_HasSSE1) and in(slot(0), [X_s32]))
+    legal ((X_UseX87 and not X_HasSSE2) and in(slot(0), [X_s64]))
+    legal (X_UseX87 and in(slot(0), [X_s80]))
+    lower true
+
+ruleset X_G_FSQRT: G_FSQRT
+    legal ((X_HasSSE1 or X_UseX87) and in(slot(0), [X_s32]))
+    legal ((X_HasSSE2 or X_UseX87) and in(slot(0), [X_s64]))
+    legal (X_UseX87 and in(slot(0), [X_s80]))
+
+ruleset X_G_GET_ROUNDING: G_GET_ROUNDING G_SET_ROUNDING
+    custom in(slot(0), [X_s32])
+
+ruleset X_G_MERGE_VALUES: G_MERGE_VALUES
+    widen(slot(1), pow2_min(8))
+    widen(slot(0), pow2_min(16))
+    widen(slot(1), ty(X_s8))
+    widen(slot(0), ty(X_s32))
+    legal ((size_of(slot(0)) == 16 or size_of(slot(0)) == 32 or size_of(slot(0)) == 64 or size_of(slot(0)) == 128 or size_of(slot(0)) == 256 or size_of(slot(0)) == 512) and (size_of(slot(1)) == 8 or size_of(slot(1)) == 16 or size_of(slot(1)) == 32 or size_of(slot(1)) == 64 or size_of(slot(1)) == 128 or size_of(slot(1)) == 256))
+
+ruleset X_G_UNMERGE_VALUES: G_UNMERGE_VALUES
+    widen(slot(0), pow2_min(8))
+    widen(slot(1), pow2_min(16))
+    widen(slot(0), ty(X_s8))
+    widen(slot(1), ty(X_s32))
+    legal ((size_of(slot(1)) == 16 or size_of(slot(1)) == 32 or size_of(slot(1)) == 64 or size_of(slot(1)) == 128 or size_of(slot(1)) == 256 or size_of(slot(1)) == 512) and (size_of(slot(0)) == 8 or size_of(slot(0)) == 16 or size_of(slot(0)) == 32 or size_of(slot(0)) == 64 or size_of(slot(0)) == 128 or size_of(slot(0)) == 256))
+
+ruleset X_G_UMIN: G_UMIN G_UMAX G_SMIN G_SMAX
+    widen(slot(0), pow2_min(32))
+    lower true
+
+ruleset X_G_ADD: G_ADD G_SUB
+    legal in(slot(0), [X_s8, X_s16, X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    legal (X_HasSSE2 and in(slot(0), [X_v16s8, X_v8s16, X_v4s32, X_v2s64]))
+    legal (X_HasAVX2 and in(slot(0), [X_v32s8, X_v16s16, X_v8s32, X_v4s64]))
+    legal (X_HasAVX512 and in(slot(0), [X_v16s32, X_v8s64]))
+    legal (X_HasBWI and in(slot(0), [X_v64s8, X_v32s16]))
+    clamp_min(0, X_s8, 16)
+    clamp_min(0, X_s16, 8)
+    clamp_min(0, X_s32, 4)
+    clamp_min(0, X_s64, 2)
+    clamp_max(0, X_s8, select(X_HasBWI, 64, select(X_HasAVX2, 32, 16)))
+    clamp_max(0, X_s16, select(X_HasBWI, 32, select(X_HasAVX2, 16, 8)))
+    clamp_max(0, X_s32, select(X_HasAVX512, 16, select(X_HasAVX2, 8, 4)))
+    clamp_max(0, X_s64, select(X_HasAVX512, 8, select(X_HasAVX2, 4, 2)))
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_UADDE: G_UADDE G_UADDO G_USUBE G_USUBO
+    legal in_pairs(slot(0), slot(1), [[X_s8, X_s8], [X_s16, X_s8], [X_s32, X_s8]])
+    legal (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s64, X_s8]]))
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    widen(slot(1), ty(X_s8))
+    narrow(slot(1), ty(X_s8))
+    scalarize(slot(0))
+
+ruleset X_G_MUL: G_MUL
+    legal in(slot(0), [X_s8, X_s16, X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    legal (X_HasSSE2 and in(slot(0), [X_v8s16]))
+    legal (X_HasSSE41 and in(slot(0), [X_v4s32]))
+    legal (X_HasAVX2 and in(slot(0), [X_v16s16, X_v8s32]))
+    legal (X_HasAVX512 and in(slot(0), [X_v16s32]))
+    legal (X_HasDQI and in(slot(0), [X_v8s64]))
+    legal ((X_HasDQI and X_HasVLX) and in(slot(0), [X_v2s64, X_v4s64]))
+    legal (X_HasBWI and in(slot(0), [X_v32s16]))
+    clamp_min(0, X_s16, 8)
+    clamp_min(0, X_s32, 4)
+    clamp_min(0, X_s64, select(X_HasVLX, 2, 8))
+    clamp_max(0, X_s16, select(X_HasBWI, 32, select(X_HasAVX2, 16, 8)))
+    clamp_max(0, X_s32, select(X_HasAVX512, 16, select(X_HasAVX2, 8, 4)))
+    clamp_max(0, X_s64, 8)
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_SMULH: G_SMULH G_UMULH
+    legal in(slot(0), [X_s8, X_s16, X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_SDIV: G_SDIV G_SREM G_UDIV G_UREM
+    legal in(slot(0), [X_s8, X_s16, X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    libcall in(slot(0), [X_s64])
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+
+ruleset X_G_SHL: G_SHL G_LSHR G_ASHR
+    legal in_pairs(slot(0), slot(1), [[X_s8, X_s8], [X_s16, X_s8], [X_s32, X_s8]])
+    legal (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s64, X_s8]]))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    widen(slot(1), ty(X_s8))
+    narrow(slot(1), ty(X_s8))
+
+ruleset X_G_AND: G_AND G_OR G_XOR
+    legal in(slot(0), [X_s8, X_s16, X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    legal (X_HasSSE2 and in(slot(0), [X_v16s8, X_v8s16, X_v4s32, X_v2s64]))
+    legal (X_HasAVX and in(slot(0), [X_v32s8, X_v16s16, X_v8s32, X_v4s64]))
+    legal (X_HasAVX512 and in(slot(0), [X_v64s8, X_v32s16, X_v16s32, X_v8s64]))
+    clamp_min(0, X_s8, num_elems(ty(X_v16s8)))
+    clamp_max(0, X_s8, num_elems(ty(X_s8MaxVector)))
+    clamp_min(0, X_s16, num_elems(ty(X_v8s16)))
+    clamp_max(0, X_s16, num_elems(ty(X_s16MaxVector)))
+    clamp_min(0, X_s32, num_elems(ty(X_v4s32)))
+    clamp_max(0, X_s32, num_elems(ty(X_s32MaxVector)))
+    clamp_min(0, X_s64, num_elems(ty(X_v2s64)))
+    clamp_max(0, X_s64, num_elems(ty(X_s64MaxVector)))
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_ICMP: G_ICMP
+    legal (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s8, X_s8], [X_s8, X_s16], [X_s8, X_s32], [X_s8, X_s64], [X_s8, X_p0]]))
+    legal (not X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s8, X_s8], [X_s8, X_s16], [X_s8, X_s32], [X_s8, X_p0]]))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_s8))
+    widen(slot(1), pow2_min(8))
+    widen(slot(1), ty(X_s8))
+    narrow(slot(1), ty(X_sMaxScalar))
+
+ruleset X_G_BSWAP: G_BSWAP
+    legal in(slot(0), [X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    widen(slot(0), pow2_min(32))
+    widen(slot(0), ty(X_s32))
+    narrow(slot(0), ty(X_sMaxScalar))
+
+ruleset X_G_CTPOP: G_CTPOP
+    legal (X_HasPOPCNT and in_pairs(slot(0), slot(1), [[X_s16, X_s16], [X_s32, X_s32]]))
+    legal ((X_HasPOPCNT and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s64, X_s64]]))
+    legal (X_HasVPOPCNTDQ and in_pairs(slot(0), slot(1), [[X_v4s32, X_v4s32], [X_v8s32, X_v8s32], [X_v16s32, X_v16s32], [X_v2s64, X_v2s64], [X_v4s64, X_v4s64], [X_v8s64, X_v8s64]]))
+    legal (X_HasBITALG and in_pairs(slot(0), slot(1), [[X_v16s8, X_v16s8], [X_v32s8, X_v32s8], [X_v64s8, X_v64s8], [X_v8s16, X_v8s16], [X_v16s16, X_v16s16], [X_v32s16, X_v32s16]]))
+    widen(slot(1), pow2_min(16))
+    widen(slot(1), ty(X_s16))
+    narrow(slot(1), ty(X_sMaxScalar))
+    widen(slot(0), same_as(1))
+    narrow(slot(0), same_as(1))
+
+ruleset X_G_CTLZ: G_CTLZ
+    legal (X_HasLZCNT and in_pairs(slot(0), slot(1), [[X_s16, X_s16], [X_s32, X_s32]]))
+    legal ((X_HasLZCNT and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s64, X_s64]]))
+    widen(slot(1), pow2_min(16))
+    widen(slot(1), ty(X_s16))
+    narrow(slot(1), ty(X_sMaxScalar))
+    widen(slot(0), same_as(1))
+    narrow(slot(0), same_as(1))
+
+ruleset X_G_CTTZ_ZERO_POISON: G_CTTZ_ZERO_POISON
+    legal in_pairs(slot(0), slot(1), [[X_s16, X_s16], [X_s32, X_s32]])
+    legal (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s64, X_s64]]))
+    widen(slot(1), pow2_min(16))
+    widen(slot(1), ty(X_s16))
+    narrow(slot(1), ty(X_sMaxScalar))
+    widen(slot(0), same_as(1))
+    narrow(slot(0), same_as(1))
+
+ruleset X_G_CTTZ: G_CTTZ
+    legal (X_HasBMI and in_pairs(slot(0), slot(1), [[X_s16, X_s16], [X_s32, X_s32]]))
+    legal ((X_HasBMI and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s64, X_s64]]))
+    widen(slot(1), pow2_min(16))
+    widen(slot(1), ty(X_s16))
+    narrow(slot(1), ty(X_sMaxScalar))
+    widen(slot(0), same_as(1))
+    narrow(slot(0), same_as(1))
+
+ruleset X_G_BR: G_BR
+    legal true
+
+ruleset X_G_BRCOND: G_BRCOND
+    legal in(slot(0), [X_s1])
+
+ruleset X_G_PTRTOINT: G_PTRTOINT
+    legal (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s1, X_p0], [X_s8, X_p0], [X_s16, X_p0], [X_s32, X_p0], [X_s64, X_p0]]))
+    legal (not X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s1, X_p0], [X_s8, X_p0], [X_s16, X_p0], [X_s32, X_p0]]))
+    narrow(slot(0), ty(X_sMaxScalar))
+    widen(slot(0), pow2_min(8))
+
+ruleset X_G_INTTOPTR: G_INTTOPTR
+    legal in_pairs(slot(0), slot(1), [[X_p0, X_sMaxScalar]])
+
+ruleset X_G_CONSTANT_POOL: G_CONSTANT_POOL
+    legal in(slot(0), [X_p0])
+
+ruleset X_G_PTR_ADD: G_PTR_ADD
+    legal in_pairs(slot(0), slot(1), [[X_p0, X_s32]])
+    legal (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_p0, X_s64]]))
+    widen(slot(1), pow2_min(32))
+    widen(slot(1), ty(X_s32))
+    narrow(slot(1), ty(X_sMaxScalar))
+
+ruleset X_G_FRAME_INDEX: G_FRAME_INDEX
+    legal in(slot(0), [X_p0])
+
+ruleset X_G_GLOBAL_VALUE: G_GLOBAL_VALUE
+    custom in(slot(0), [X_p0])
+
+ruleset X_G_LOAD: G_LOAD
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s8, X_p0, X_s8, 1), mem_desc(X_s16, X_p0, X_s16, 1), mem_desc(X_s32, X_p0, X_s32, 1), mem_desc(X_s80, X_p0, X_s80, 1), mem_desc(X_p0, X_p0, X_p0, 1), mem_desc(X_v4s8, X_p0, X_v4s8, 1)])
+    legal (X_Is64Bit and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s64, X_p0, X_s64, 1), mem_desc(X_v2s32, X_p0, X_v2s32, 1)]))
+    legal (X_HasSSE1 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v4s32, X_p0, X_v4s32, 1)]))
+    legal (X_HasSSE2 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v16s8, X_p0, X_v16s8, 1), mem_desc(X_v8s16, X_p0, X_v8s16, 1), mem_desc(X_v2s64, X_p0, X_v2s64, 1), mem_desc(X_v2p0, X_p0, X_v2p0, 1)]))
+    legal (X_HasAVX and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v32s8, X_p0, X_v32s8, 1), mem_desc(X_v16s16, X_p0, X_v16s16, 1), mem_desc(X_v8s32, X_p0, X_v8s32, 1), mem_desc(X_v4s64, X_p0, X_v4s64, 1), mem_desc(X_v4p0, X_p0, X_v4p0, 1)]))
+    legal (X_HasAVX512 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v64s8, X_p0, X_v64s8, 1), mem_desc(X_v32s16, X_p0, X_v32s16, 1), mem_desc(X_v16s32, X_p0, X_v16s32, 1), mem_desc(X_v8s64, X_p0, X_v8s64, 1)]))
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s8, X_p0, X_s1, 1), mem_desc(X_s16, X_p0, X_s8, 1), mem_desc(X_s32, X_p0, X_s8, 1), mem_desc(X_s32, X_p0, X_s16, 1)])
+    legal (X_Is64Bit and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s64, X_p0, X_s8, 1), mem_desc(X_s64, X_p0, X_s16, 1), mem_desc(X_s64, X_p0, X_s32, 1)]))
+    widen(slot(0), pow2_min(8))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_STORE: G_STORE
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s8, X_p0, X_s8, 1), mem_desc(X_s16, X_p0, X_s16, 1), mem_desc(X_s32, X_p0, X_s32, 1), mem_desc(X_s80, X_p0, X_s80, 1), mem_desc(X_p0, X_p0, X_p0, 1), mem_desc(X_v4s8, X_p0, X_v4s8, 1)])
+    legal (X_Is64Bit and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s64, X_p0, X_s64, 1), mem_desc(X_v2s32, X_p0, X_v2s32, 1)]))
+    legal (X_HasSSE1 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v4s32, X_p0, X_v4s32, 1)]))
+    legal (X_HasSSE2 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v16s8, X_p0, X_v16s8, 1), mem_desc(X_v8s16, X_p0, X_v8s16, 1), mem_desc(X_v2s64, X_p0, X_v2s64, 1), mem_desc(X_v2p0, X_p0, X_v2p0, 1)]))
+    legal (X_HasAVX and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v32s8, X_p0, X_v32s8, 1), mem_desc(X_v16s16, X_p0, X_v16s16, 1), mem_desc(X_v8s32, X_p0, X_v8s32, 1), mem_desc(X_v4s64, X_p0, X_v4s64, 1), mem_desc(X_v4p0, X_p0, X_v4p0, 1)]))
+    legal (X_HasAVX512 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_v64s8, X_p0, X_v64s8, 1), mem_desc(X_v32s16, X_p0, X_v32s16, 1), mem_desc(X_v16s32, X_p0, X_v16s32, 1), mem_desc(X_v8s64, X_p0, X_v8s64, 1)]))
+    custom slot(0) != mem_ty(mem_slot(0))
+    widen(slot(0), pow2_min(8))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_SEXTLOAD: G_SEXTLOAD
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s16, X_p0, X_s8, 1), mem_desc(X_s32, X_p0, X_s8, 1), mem_desc(X_s32, X_p0, X_s16, 1)])
+    legal (X_Is64Bit and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s64, X_p0, X_s8, 1), mem_desc(X_s64, X_p0, X_s16, 1), mem_desc(X_s64, X_p0, X_s32, 1)]))
+
+ruleset X_G_ZEXTLOAD: G_ZEXTLOAD
+    legal in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s16, X_p0, X_s8, 1), mem_desc(X_s32, X_p0, X_s8, 1), mem_desc(X_s32, X_p0, X_s16, 1)])
+    legal (X_Is64Bit and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s64, X_p0, X_s8, 1), mem_desc(X_s64, X_p0, X_s16, 1), mem_desc(X_s64, X_p0, X_s32, 1)]))
+
+ruleset X_G_FPEXTLOAD: G_FPEXTLOAD
+    legal (X_UseX87 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s80, X_p0, X_s32, 1), mem_desc(X_s80, X_p0, X_s64, 1), mem_desc(X_s64, X_p0, X_s32, 1)]))
+
+ruleset X_G_FPTRUNCSTORE: G_FPTRUNCSTORE
+    legal (X_UseX87 and in_mem_desc(slot(0), slot(1), mem_slot(0), [mem_desc(X_s80, X_p0, X_s32, 1), mem_desc(X_s80, X_p0, X_s64, 1), mem_desc(X_s64, X_p0, X_s32, 1)]))
+
+ruleset X_G_ANYEXT: G_ANYEXT
+    legal in(slot(0), [X_s8, X_s16, X_s32, X_s128])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    widen(slot(0), pow2_min(8))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    widen(slot(1), pow2_min(8))
+    widen(slot(1), ty(X_s8))
+    narrow(slot(1), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_SEXT: G_SEXT G_ZEXT
+    legal in(slot(0), [X_s8, X_s16, X_s32])
+    legal (X_Is64Bit and in(slot(0), [X_s64]))
+    widen(slot(0), pow2_min(8))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_sMaxScalar))
+    widen(slot(1), pow2_min(8))
+    widen(slot(1), ty(X_s8))
+    narrow(slot(1), ty(X_sMaxScalar))
+    scalarize(slot(0))
+
+ruleset X_G_TRUNC: G_TRUNC
+    legal in_pairs(slot(0), slot(1), [[X_s1, X_s8], [X_s1, X_s16], [X_s1, X_s32], [X_s1, X_s64], [X_s1, X_s128], [X_s8, X_s8], [X_s8, X_s16], [X_s8, X_s32], [X_s8, X_s64], [X_s8, X_s128], [X_s16, X_s8], [X_s16, X_s16], [X_s16, X_s32], [X_s16, X_s64], [X_s16, X_s128], [X_s32, X_s8], [X_s32, X_s16], [X_s32, X_s32], [X_s32, X_s64], [X_s32, X_s128], [X_s64, X_s8], [X_s64, X_s16], [X_s64, X_s32], [X_s64, X_s64], [X_s64, X_s128]])
+
+ruleset X_G_SEXT_INREG: G_SEXT_INREG
+    lower true
+
+ruleset X_G_FCONSTANT: G_FCONSTANT
+    legal in(slot(0), [X_s32, X_s64])
+    legal (X_UseX87 and in(slot(0), [X_s80]))
+
+ruleset X_G_FADD: G_FADD G_FSUB G_FMUL G_FDIV
+    legal in(slot(0), [X_s32, X_s64])
+    legal (X_HasSSE1 and in(slot(0), [X_v4s32]))
+    legal (X_HasSSE2 and in(slot(0), [X_v2s64]))
+    legal (X_HasAVX and in(slot(0), [X_v8s32, X_v4s64]))
+    legal (X_HasAVX512 and in(slot(0), [X_v16s32, X_v8s64]))
+    legal (X_UseX87 and in(slot(0), [X_s80]))
+
+ruleset X_G_FABS: G_FABS
+    legal (X_UseX87 and in(slot(0), [X_s80]))
+    legal ((X_UseX87 and not X_Is64Bit) and in(slot(0), [X_s64]))
+    lower true
+
+ruleset X_G_FCMP: G_FCMP
+    legal ((X_HasSSE1 or X_UseX87) and in(slot(0), [X_s8, X_s32]))
+    legal ((X_HasSSE2 or X_UseX87) and in(slot(0), [X_s8, X_s64]))
+    legal (X_UseX87 and in(slot(0), [X_s8, X_s80]))
+    widen(slot(0), ty(X_s8))
+    narrow(slot(0), ty(X_s8))
+    widen(slot(1), ty(X_s32))
+    narrow(slot(1), ty(X_sse2MaxScalar))
+    widen(slot(1), pow2)
+
+ruleset X_G_FPEXT: G_FPEXT
+    legal (X_HasSSE2 and in_pairs(slot(0), slot(1), [[X_s64, X_s32]]))
+    legal (X_HasAVX and in_pairs(slot(0), slot(1), [[X_v4s64, X_v4s32]]))
+    legal (X_HasAVX512 and in_pairs(slot(0), slot(1), [[X_v8s64, X_v8s32]]))
+    lower (X_UseX87 and in_pairs(slot(0), slot(1), [[X_s64, X_s32], [X_s80, X_s32], [X_s80, X_s64]]))
+    libcall true
+
+ruleset X_G_FPTRUNC: G_FPTRUNC
+    legal (X_HasSSE2 and in_pairs(slot(0), slot(1), [[X_s32, X_s64]]))
+    legal (X_HasAVX and in_pairs(slot(0), slot(1), [[X_v4s32, X_v4s64]]))
+    legal (X_HasAVX512 and in_pairs(slot(0), slot(1), [[X_v8s32, X_v8s64]]))
+    lower (X_UseX87 and in_pairs(slot(0), slot(1), [[X_s32, X_s64], [X_s32, X_s80], [X_s64, X_s80]]))
+
+ruleset X_G_SITOFP: G_SITOFP
+    legal (X_HasSSE1 and in_pairs(slot(0), slot(1), [[X_s32, X_s32]]))
+    legal ((X_HasSSE1 and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s32, X_s64]]))
+    legal (X_HasSSE2 and in_pairs(slot(0), slot(1), [[X_s64, X_s32]]))
+    legal ((X_HasSSE2 and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s64, X_s64]]))
+    widen(slot(1), ty(X_x87MinScalar))
+    narrow(slot(1), ty(X_sMaxScalar))
+    widen(slot(1), pow2)
+    custom (X_UseX87 and in_pairs(slot(0), slot(1), [[X_s32, X_s16], [X_s32, X_s32], [X_s32, X_s64], [X_s64, X_s16], [X_s64, X_s32], [X_s64, X_s64], [X_s80, X_s16], [X_s80, X_s32], [X_s80, X_s64]]))
+    widen(slot(0), ty(X_s32))
+    narrow(slot(0), ty(X_sse2MaxScalar))
+    widen(slot(0), pow2)
+
+ruleset X_G_FPTOSI: G_FPTOSI
+    legal (X_HasSSE1 and in_pairs(slot(0), slot(1), [[X_s32, X_s32]]))
+    legal ((X_HasSSE1 and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s64, X_s32]]))
+    legal (X_HasSSE2 and in_pairs(slot(0), slot(1), [[X_s32, X_s64]]))
+    legal ((X_HasSSE2 and X_Is64Bit) and in_pairs(slot(0), slot(1), [[X_s64, X_s64]]))
+    widen(slot(0), ty(X_x87MinScalar))
+    narrow(slot(0), ty(X_sMaxScalar))
+    widen(slot(0), pow2)
+    custom (X_UseX87 and in_pairs(slot(0), slot(1), [[X_s16, X_s32], [X_s16, X_s64], [X_s16, X_s80], [X_s32, X_s32], [X_s32, X_s64], [X_s32, X_s80], [X_s64, X_s32], [X_s64, X_s64], [X_s64, X_s80]]))
+    widen(slot(1), ty(X_s32))
+    narrow(slot(1), ty(X_sse2MaxScalar))
+    widen(slot(1), pow2)
+
+ruleset X_G_UITOFP: G_UITOFP
+    legal (X_HasAVX512 and in_pairs(slot(0), slot(1), [[X_s32, X_s32], [X_s32, X_s64], [X_s64, X_s32], [X_s64, X_s64]]))
+    custom (not X_HasAVX512 and ((X_HasSSE1 and slot(0) == X_s32) or (X_HasSSE2 and slot(0) == X_s64)) and (sort_of(slot(1)) == scalar and size_of(slot(1)) < select(X_Is64Bit, 64, 32)))
+    lower (not X_HasAVX512 and ((X_HasSSE1 and slot(0) == X_s32) or (X_HasSSE2 and slot(0) == X_s64)) and (X_Is64Bit and slot(1) == X_s64))
+    widen(slot(0), ty(X_s32))
+    narrow(slot(0), ty(X_sse2MaxScalar))
+    widen(slot(0), pow2)
+    widen(slot(1), ty(X_s32))
+    narrow(slot(1), ty(X_sMaxScalar))
+    widen(slot(1), pow2)
+
+ruleset X_G_FPTOUI: G_FPTOUI
+    legal (X_HasAVX512 and in_pairs(slot(0), slot(1), [[X_s32, X_s32], [X_s32, X_s64], [X_s64, X_s32], [X_s64, X_s64]]))
+    custom (not X_HasAVX512 and ((X_HasSSE1 and slot(1) == X_s32) or (X_HasSSE2 and slot(1) == X_s64)) and (sort_of(slot(0)) == scalar and size_of(slot(0)) < select(X_Is64Bit, 64, 32)))
+    lower (not X_HasAVX512 and ((X_HasSSE1 and slot(1) == X_s32) or (X_HasSSE2 and slot(1) == X_s64)) and (X_Is64Bit and slot(0) == X_s64))
+    widen(slot(0), ty(X_s32))
+    narrow(slot(0), ty(X_sMaxScalar))
+    widen(slot(0), pow2)
+    widen(slot(1), ty(X_s32))
+    narrow(slot(1), ty(X_sse2MaxScalar))
+    widen(slot(1), pow2)
+
+ruleset X_G_BUILD_VECTOR: G_BUILD_VECTOR
+    custom ((X_HasSSE1 and in(slot(0), [X_v4s32])) or (X_HasSSE2 and in(slot(0), [X_v2s64, X_v8s16, X_v16s8])) or (X_HasAVX and in(slot(0), [X_v4s64, X_v8s32, X_v16s16, X_v32s8])) or (X_HasAVX512 and in(slot(0), [X_v8s64, X_v16s32, X_v32s16, X_v64s8])))
+    clamp_max(0, X_s8, num_elems(ty(X_s8MaxVector)))
+    clamp_max(0, X_s16, num_elems(ty(X_s16MaxVector)))
+    clamp_max(0, X_s32, num_elems(ty(X_s32MaxVector)))
+    clamp_max(0, X_s64, num_elems(ty(X_s64MaxVector)))
+
+ruleset X_G_EXTRACT: G_EXTRACT
+    legal ((X_HasAVX and in_pairs(slot(0), slot(1), [[X_v16s8, X_v32s8], [X_v8s16, X_v16s16], [X_v4s32, X_v8s32], [X_v2s64, X_v4s64]])) or (X_HasAVX512 and in_pairs(slot(0), slot(1), [[X_v16s8, X_v64s8], [X_v32s8, X_v64s8], [X_v8s16, X_v32s16], [X_v16s16, X_v32s16], [X_v4s32, X_v16s32], [X_v8s32, X_v16s32], [X_v2s64, X_v8s64], [X_v4s64, X_v8s64]])))
+
+ruleset X_G_INSERT: G_INSERT
+    legal ((X_HasAVX and in_pairs(slot(1), slot(0), [[X_v16s8, X_v32s8], [X_v8s16, X_v16s16], [X_v4s32, X_v8s32], [X_v2s64, X_v4s64]])) or (X_HasAVX512 and in_pairs(slot(1), slot(0), [[X_v16s8, X_v64s8], [X_v32s8, X_v64s8], [X_v8s16, X_v32s16], [X_v16s16, X_v32s16], [X_v4s32, X_v16s32], [X_v8s32, X_v16s32], [X_v2s64, X_v8s64], [X_v4s64, X_v8s64]])))
+
+ruleset X_G_CONCAT_VECTORS: G_CONCAT_VECTORS
+    legal (X_HasSSE1 and in_pairs(slot(0), slot(1), [[X_v32s8, X_v16s8], [X_v16s16, X_v8s16], [X_v8s32, X_v4s32], [X_v4s64, X_v2s64]]))
+    legal (X_HasAVX and in_pairs(slot(0), slot(1), [[X_v64s8, X_v16s8], [X_v64s8, X_v32s8], [X_v32s16, X_v8s16], [X_v32s16, X_v16s16], [X_v16s32, X_v4s32], [X_v16s32, X_v8s32], [X_v8s64, X_v2s64], [X_v8s64, X_v4s64]]))
+
+ruleset X_G_SELECT: G_SELECT
+    legal in_pairs(slot(0), slot(1), [[X_s16, X_s32], [X_s32, X_s32], [X_p0, X_s32]])
+    legal (not X_HasCMOV and in_pairs(slot(0), slot(1), [[X_s8, X_s32]]))
+    legal (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s64, X_s32]]))
+    legal (X_UseX87 and in_pairs(slot(0), slot(1), [[X_s80, X_s32]]))
+    widen(slot(1), ty(X_s32))
+    narrow(slot(1), ty(X_s32))
+    widen(slot(0), pow2_min(8))
+    widen(slot(0), ty(X_cmovMinScalar))
+    narrow(slot(0), ty(X_sMaxScalar))
+
+ruleset X_G_MEMCPY: G_MEMCPY G_MEMMOVE G_MEMSET
+    libcall true
+
+ruleset X_G_DYN_STACKALLOC: G_DYN_STACKALLOC G_STACKSAVE G_STACKRESTORE
+    lower true
+
+ruleset X_G_IS_FPCLASS: G_IS_FPCLASS
+    lower (X_Is64Bit and in_pairs(slot(0), slot(1), [[X_s1, X_s32], [X_s1, X_s64], [X_s1, X_s80]]))
+
+ruleset X_G_INTRINSIC_ROUNDEVEN: G_INTRINSIC_ROUNDEVEN G_INTRINSIC_TRUNC
+    scalarize(slot(0))
+    widen(slot(0), ty(X_s32))
+    libcall true
+
+ruleset X_G_INTRINSIC: G_INTRINSIC G_INTRINSIC_W_SIDE_EFFECTS
+    legal true
+
+ruleset X_G_TRAP: G_TRAP G_DEBUGTRAP G_UBSANTRAP
+    legal true
+
+ruleset X_G_INVOKE_REGION_START: G_INVOKE_REGION_START
+    legal true

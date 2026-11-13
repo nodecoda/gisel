@@ -9,6 +9,7 @@ from pathlib import Path
 from . import __version__
 from . import ast as A, dsl
 from . import cases as casegen
+from . import corpus as corpora
 from . import domain as domaingen
 from .backend import check_json, core_json, llvm_inc
 
@@ -176,7 +177,10 @@ def main(argv=None):
 
     cs = sub.add_parser("cases",
                         help="generate equivalence/boundary/outside test cases")
-    cs.add_argument("source")
+    cs.add_argument("source", nargs="?",
+                    help="a .gisel source (or use --corpus NAME)")
+    cs.add_argument("--corpus", metavar="NAME",
+                    help="a bundled corpus: %s" % ", ".join(corpora.names()))
     cs.add_argument("--out", required=True, help="JSONL case file to write")
     cs.add_argument("--features",
                     help="feature truth table (default: derive none/all/only-N)")
@@ -198,7 +202,10 @@ def main(argv=None):
 
     d = sub.add_parser("domain",
                        help="enumerate the answerless query domain (D*)")
-    d.add_argument("source")
+    d.add_argument("source", nargs="?",
+                   help="a .gisel source (or use --corpus NAME)")
+    d.add_argument("--corpus", metavar="NAME",
+                   help="a bundled corpus: %s" % ", ".join(corpora.names()))
     d.add_argument("--out", required=True, help="JSONL query file to write")
     d.add_argument("--features",
                    help="feature truth table (default: derive none/all/only-N)")

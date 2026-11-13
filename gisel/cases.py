@@ -39,6 +39,7 @@ import sys
 from dataclasses import dataclass, field
 
 from . import axes as axesmod
+from . import corpus as corpora
 from . import answers as answer_file
 from . import analysis
 from . import eval as E
@@ -922,11 +923,32 @@ def differ(generation, doc, features, oracle_path):
 
 # ---- CLI -----------------------------------------------------------------
 
+def _inputs(args):
+    """Resolve the positional source, --corpus, --features and --axes."""
+    if args.source and args.corpus:
+        raise corpora.CorpusError("give a .gisel source or --corpus NAME, "
+                                  "not both")
+    source, features, axes = args.source, args.features, args.axes
+    if args.corpus:
+        entry = corpora.get(args.corpus)
+        source = str(entry.source)
+        features = features or (str(entry.features) if entry.features else None)
+        axes = axes or (str(entry.axes) if entry.axes else None)
+    if not source:
+        raise corpora.CorpusError(
+            "give a .gisel source or --corpus NAME (bundled: %s)"
+            % ", ".join(corpora.names()))
+    return source, features, axes
+
+
 def main(argv=None):
     ap = argparse.ArgumentParser(
         prog="gisel cases",
         description="generate equivalence-class, boundary and outside cases")
-    ap.add_argument("source")
+    ap.add_argument("source", nargs="?",
+                    help="a .gisel source (or use --corpus NAME)")
+    ap.add_argument("--corpus", metavar="NAME",
+                    help="a bundled corpus: %s" % ", ".join(corpora.names()))
     ap.add_argument("--out", required=True)
     ap.add_argument("--features",
                     help="feature truth table (default: derive none/all/only-N)")
@@ -947,9 +969,10 @@ def main(argv=None):
     args = ap.parse_args(argv)
 
     try:
-        axes = axesmod.load(args.axes) if args.axes else None
+        source, features_path, axes_path = _inputs(args)
+        axes = axesmod.load(axes_path) if axes_path else None
         doc, features, axes = session(
-            args.source, features=args.features, configs=args.configs,
+            source, features=features_path, configs=args.configs,
             axes=axes)
         cases_profile = axes.profile("cases") if axes is not None else {}
         max_slot_values = int(cases_profile.get("max_slot_values", 16))

@@ -1,0 +1,52 @@
+{
+  "schema": 1,
+  "note": "Bundled copies of tests/corpus and tests/cases so the wheel is usable without a checkout. tests/ stays canonical; tools/sync-package-data.py refreshes these copies and tests/test_package_data.py fails on drift.",
+  "targets": {
+    "x86": {
+      "corpus": "corpus/X86LegalizerInfo.gisel",
+      "features": "cases/x86-features.json",
+      "axes": null
+    },
+    "aarch64": {
+      "corpus": "corpus/AArch64LegalizerInfo.gisel",
+      "features": "cases/features.json",
+      "axes": "cases/aarch64-mem-orderings.axes.json"
+    },
+    "riscv": {
+      "corpus": "corpus/RISCVLegalizerInfo.gisel",
+      "features": "cases/riscv-features.json",
+      "axes": null
+    },
+    "arm": {
+      "corpus": "corpus/ARMLegalizerInfo.gisel",
+      "features": "cases/arm-features.json",
+      "axes": null
+    },
+    "mips": {
+      "corpus": "corpus/MipsLegalizerInfo.gisel",
+      "features": "cases/mips-features.json",
+      "axes": null
+    },
+    "ppc": {
+      "corpus": "corpus/PowerPCLegalizerInfo.gisel",
+      "features": "cases/ppc-features.json",
+      "axes": null
+    },
+    "m68k": {
+      "corpus": "corpus/M68kLegalizerInfo.gisel",
+      "features": "cases/m68k-features.json",
+      "axes": null
+    },
+    "wasm": {
+      "corpus": "corpus/WebAssemblyLegalizerInfo.gisel",
+      "features": "cases/wasm-features.json",
+      "axes": null
+    },
+    "spirv": {
+      "corpus": "corpus/SPIRVLegalizerInfo.gisel",
+      "features": "cases/spirv-features.json",
+      "axes": null
+    }
+  },
+  "source": "tests/corpus and tests/cases (canonical in the gisel checkout)"
+}
