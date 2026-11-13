@@ -75,7 +75,7 @@ python3 -m gisel check /tmp/demo/hello.gisel --emit=inc --against /tmp/demo/hell
 
 ## 命令
 
-七个命令，一个产品面；`spec/cli.md` 是规范契约。
+八个命令，一个产品面；`spec/cli.md` 是规范契约。
 
 | 命令 | 做什么 |
 |---|---|
@@ -86,10 +86,15 @@ python3 -m gisel check /tmp/demo/hello.gisel --emit=inc --against /tmp/demo/hell
 | `domain` | 同一空间的全量笛卡尔枚举 |
 | `eval` | 用 schema-0.4 正常形回答查询 |
 | `graph` | 建商图并找环 |
+| `doctor` | 安装自检：数据、语料、命令面（不需要 LLVM） |
 
-七个命令共用同一套退出码：`0` 成功，`1` 结论是“否”（产物过期、lint
+八个命令共用同一套退出码：`0` 成功，`1` 结论是“否”（产物过期、lint
 报错、答案不一致、有环），`2` 这次运行根本没开始（用法、IO、语法错误）。
 `2` 永远不代表规则差异。
+
+`gisel doctor` 是装完之后的第一条命令：它检查 Python 版本、随包的槽表与
+契约、九份捆绑语料（每份打 sha）和命令面，失败项直接给 `fix`。它不跑
+LLVM、不联网，退出码只有 0 和 2。
 
 ### 一条命令看懂图
 

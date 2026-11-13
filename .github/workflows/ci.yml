@@ -70,8 +70,8 @@ jobs:
       - name: installed product surface
         run: |
           set -eu
-          # spec/cli.md: seven verbs, one version, one exit-code vocabulary.
-          for command in gen check cases domain lint eval graph; do
+          # spec/cli.md: eight verbs, one version, one exit-code vocabulary.
+          for command in gen check cases domain lint eval graph doctor; do
             /tmp/gisel-venv/bin/gisel "$command" --help > /dev/null
           done
           /tmp/gisel-venv/bin/gisel --version | grep -qx \

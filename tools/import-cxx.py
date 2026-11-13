@@ -15,7 +15,7 @@ from pathlib import Path
 REPO = Path(__file__).resolve().parents[1]
 TOOL = (Path(os.environ.get("UPSTREAM_SOURCE",
                              REPO.parent / "upstream-source"))
-        / "import" / "import-cxx.py")
+        / "importer" / "import-cxx.py")
 
 
 def main(argv):

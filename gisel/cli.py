@@ -17,7 +17,8 @@ BACKENDS = ("inc", "check", "core")
 # The product surface, in one place.  `spec/cli.md` is the prose contract,
 # `tests/test_cli.py` checks the parser against it, and `tests/test_scope.py`
 # checks the spec table against this tuple.
-COMMANDS = ("gen", "check", "cases", "domain", "lint", "eval", "graph")
+COMMANDS = ("gen", "check", "cases", "domain", "lint", "eval", "graph",
+            "doctor")
 
 
 def _read_text(path):
@@ -250,11 +251,18 @@ def main(argv=None):
     gr.add_argument("--progress", action="store_true")
     gr.add_argument("--json", action="store_true")
 
+    doc = sub.add_parser("doctor",
+                         help="check that this installation works (no LLVM)")
+    doc.add_argument("--json", action="store_true")
+
     if set(sub.choices) != set(COMMANDS):
         raise RuntimeError("parser and COMMANDS disagree: %s vs %s"
                            % (sorted(sub.choices), COMMANDS))
 
     args = ap.parse_args(argv)
+    if args.cmd == "doctor":
+        from . import doctor
+        return doctor.run(as_json=args.json)
     if args.cmd == "gen":
         source_text = _read_text(args.source)
         if source_text is None:
