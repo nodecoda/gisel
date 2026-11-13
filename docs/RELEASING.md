@@ -166,7 +166,7 @@ bash tools/check-graph-golden.sh          # 约 3m30s（并行）
 bash tools/check-cases-golden.sh          # 约 6 分钟（三个 target 并行）
 bash tools/check-nightly-graphs.sh        # 约 9 分钟（五个贵配置并行）
 python3 tools/check-claims.py
-(cd ../upstream-source && python3 import/import-cxx.py --all \
+(cd ../upstream-source && python3 importer/import-cxx.py --all \
    --pin pin/PIN.json --git-repo /tmp/llvm --check)
 (cd ../ab && VERIFY_FROZEN=1 ./verify-evidence.sh)
 tools/release-manifest.py                 # 写 ../ab/RELEASE.json

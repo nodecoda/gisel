@@ -23,7 +23,7 @@
 证书命令（读 `git show <commit>:<path>`，不读工作区）：
 
 ```sh
-python3 ../upstream-source/import/import-cxx.py --all \
+python3 ../upstream-source/importer/import-cxx.py --all \
   --pin ../upstream-source/pin/PIN.json \
   --git-repo /home/ubuntu/llvm/llvm-project --check
 # 九个 target 各打印 "read … from 9bfc850b9940" 和 ": matches"
@@ -92,7 +92,7 @@ OUT/official.answers.jsonl   OUT/ours.answers.jsonl   OUT/diff.json
 
 | 归因 | 动作 |
 |---|---|
-| 我们的翻译 / emitter / 求值 | 改 `upstream-source/import/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
+| 我们的翻译 / emitter / 求值 | 改 `upstream-source/importer/import-cxx.py`、`gisel/backend/*`、`gisel/eval.py`，然后重跑 1–3 |
 | 查询生成（题目本身不合法） | 改 `gisel/cases.py`，重算查询数并更新 pin |
 | 上游 | 落 `/home/ubuntu/admin/upstream-issues/`，不在构建树里“顺手修掉”当作结论 |
 | 未定性 | 在 `docs/REPORT-*.md` 里写“未覆盖”，不许并进 agree |

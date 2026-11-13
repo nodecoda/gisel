@@ -150,7 +150,7 @@ def main(argv=None):
             "bash tools/check-cases-golden.sh",
             "bash tools/check-nightly-graphs.sh",
             "python3 tools/check-claims.py",
-            "python3 import/import-cxx.py --all --pin pin/PIN.json --check",
+            "python3 importer/import-cxx.py --all --pin pin/PIN.json --check",
             "pin/make-base.sh TREE DEST --verify",
             "ab/verify-evidence.sh",
         ],

@@ -32,7 +32,7 @@ upstream-source ──(.gisel 语料)──▶ gisel ──(inc + 无答案查�
 | 仓库 | 一句话 | 主要入口 |
 |---|---|---|
 | `gisel` | DSL 编译器 + 出题器 | `gen` `check` `lint` `cases` `domain` `eval` `graph` |
-| `upstream-source` | 从钉住的 C++ 提取规则与「上游题面」 | `import/import-cxx.py`、`oracle/` |
+| `upstream-source` | 从钉住的 C++ 提取规则与「上游题面」 | `importer/import-cxx.py`、`oracle/` |
 | `ab` | 双实现对拍工作台 | `ab.py run`、`diff.py`、`closure.py`、`mir-replay.py`、`l3.py`、`cohort.py` |
 
 ## 1 gisel：把规则文本变成两样东西
@@ -63,7 +63,7 @@ upstream-source ──(.gisel 语料)──▶ gisel ──(inc + 无答案查�
 
 ```text
 pinned *LegalizerInfo.cpp
-      │ import/import-cxx.py（认 builder 链，不是正则堆）
+      │ importer/import-cxx.py（认 builder 链，不是正则堆）
       ▼
 tests/corpus/*.gisel   （冻结，随仓库分发）
 ```

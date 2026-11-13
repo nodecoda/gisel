@@ -18,11 +18,11 @@
 
 ```text
 上游 X86/AArch64/RISCVLegalizerInfo.cpp（手写 builder 链）
-  -> upstream-source/import/import-cxx.py -> .gisel
+  -> upstream-source/importer/import-cxx.py -> .gisel
   -> gisel gen --emit={inc,check,core}
 ```
 
-`upstream-source/import/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
+`upstream-source/importer/import-cxx.py` 是**一次性转录工具**，不是通用 C++ 解析器：它只认这三种
 构造函数用到的那一小撮写法，认不出来就带行号拒绝（rc=1），绝不静默丢规则。
 
 `--all` 还会在语料目录写 `tests/corpus/import-report.json`：9 个 target 的源文件
@@ -88,7 +88,7 @@ GS_POWERPC_SRC=.../PPCLegalizerInfo.cpp \
 GS_ARM_SRC=.../ARMLegalizerInfo.cpp \
 GS_MIPS_SRC=.../MipsLegalizerInfo.cpp \
 GS_SPIRV_SRC=.../SPIRVLegalizerInfo.cpp \
-  python3 ../upstream-source/import/import-cxx.py --all --check \
+  python3 ../upstream-source/importer/import-cxx.py --all --check \
     --pin ../upstream-source/pin/PIN.json
 ```
 
@@ -96,7 +96,7 @@ GS_SPIRV_SRC=.../SPIRVLegalizerInfo.cpp \
 头部记录源文件的 sha256，所以“这份语料来自哪份 cpp”不靠记忆。只跑一个目标：
 
 ```sh
-python3 ../upstream-source/import/import-cxx.py X86 .../X86LegalizerInfo.cpp \
+python3 ../upstream-source/importer/import-cxx.py X86 .../X86LegalizerInfo.cpp \
     --out tests/corpus/X86LegalizerInfo.gisel
 ```
 
@@ -140,7 +140,7 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 
 ## 证据分三层，别混
 
-1. **转录保真（语料层）**：`upstream-source/import/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
+1. **转录保真（语料层）**：`upstream-source/importer/import-cxx.py` 从 C++ 构造函数转录，0 拒绝，
    并且重新导入能逐字节复现 gisel 仓库里的 `.gisel`
    （`upstream-source/import/tests/test_import_cxx.py`）。
    有偏离的地方在工具里点名，不是暗改。

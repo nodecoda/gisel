@@ -157,7 +157,7 @@ guessing, and none of the nine corpora is an independent hand-written second
 statement -- they were extracted from LLVM's hand-written C++ constructors
 with our own tooling as a preparation for self-proof.  All of them go straight
 from the hand-written `.cpp` constructor to `.gisel`
-(`upstream-source/import/import-cxx.py`); the `.td` this project once added in between is no
+(`upstream-source/importer/import-cxx.py`); the `.td` this project once added in between is no
 longer used.  `docs/CORPORA.md` says, per corpus, which upstream file it was
 extracted from, which reviewed deviations it carries, and what its frozen
 artifacts can and cannot prove (all three are self-baselines; rule fidelity
@@ -182,8 +182,8 @@ comes from import-cxx --check and the end-to-end A/B).
 upstream-main feature; `docs/CORPORA.md` has the full chain.
 
 Migration and A/B tooling is **workbench**, not a gisel function
-(`docs/SCOPE.md`): `upstream-source/import/import-inventory.py` prices a target,
-`upstream-source/import/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
+(`docs/SCOPE.md`): `upstream-source/importer/import-inventory.py` prices a target,
+`upstream-source/importer/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
 any statement it cannot translate), and `ab/` compares two
 implementations.  `import-cxx` is a one-shot transcriber for the pinned
 constructors, not a general C++ parser: `--all --check` re-transcribes them

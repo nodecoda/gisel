@@ -94,7 +94,7 @@ except 落成**更窄的谓词**（命名 `pred` 或内联 `and not ...`）。�
 `tests/cases/*_ref_dump.jsonl` 及其 `EvaluatorCorpus` 门禁已于 2026-11-10
 删除。那批“参考实现 → 冻结答案 → 用 gisel 复算”的表是 table 时代的取巧，
 方向是反的；现在只认 `c++ → gisel`。转录保真由
-`upstream-source/import/import-cxx.py --check` 保证，规则保真由端到端 A/B 保证。
+`upstream-source/importer/import-cxx.py --check` 保证，规则保真由端到端 A/B 保证。
 
 历史表曾经暴露过四类 schema 形状 bug（`{"kind":"nary","op":"all_of"}`、
 `{"kind":"not","arg":...}` 的 DAG 拼法、集合元素里的 `select` 类型、
