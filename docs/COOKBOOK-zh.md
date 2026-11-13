@@ -4,7 +4,10 @@
 安装（三个包）：
 
 ```sh
-python3 -m pip install gisel gisel-anchor gisel-ab
+python3 -m pip install gisel
+# PyPI 凭据到位前，另外两个从 GitHub 安装；gisel-ab 会从 PyPI 取 gisel 依赖
+python3 -m pip install "git+https://github.com/nodecoda/gisel-anchor"
+python3 -m pip install "git+https://github.com/nodecoda/gisel-ab"
 ```
 
 ## 1 自检：这台机器能不能用

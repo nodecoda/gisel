@@ -11,7 +11,7 @@
 
 | 你现在有什么 | 5 分钟能做什么 | 命令 |
 |---|---|---|
-| 只有 Python | 装三包，检查安装，出 X86 题面，生成/校验 inc，看图 | `pip install gisel gisel-anchor gisel-ab` → [docs/QUICKSTART-no-llvm.md](QUICKSTART-no-llvm.md) |
+| 只有 Python | 装三包，检查安装，出 X86 题面，生成/校验 inc，看图 | `pip install gisel` + 从 GitHub 装 anchor/ab → [docs/QUICKSTART-no-llvm.md](QUICKSTART-no-llvm.md) |
 | 有 LLVM checkout + ninja build | 记录路径，doctor，跑 M68k 完整对拍 | `gisel-ab setup --llvm DIR --build DIR` → [gisel-ab TUTORIAL](https://github.com/nodecoda/gisel-ab/blob/main/docs/TUTORIAL-m68k.md) |
 | 只有 git，没有构建 | 用 URL 重新导入语料，逐字节 check | `gisel-anchor import --all --git-repo URL --check` |
 
