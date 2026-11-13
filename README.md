@@ -19,15 +19,22 @@ The loop those tools implement (pin → cases → A/B → attribution) is in
 [docs/LOOP.md](docs/LOOP.md).
 
 ```sh
-# from a checkout: the corpus and frozen artifacts ship with the repo,
-# not with the wheel (the wheel carries the opcode and shape tables lint needs).
 python3 -m pip install .        # or: python3 -m gisel (no install)
+gisel doctor                    # first: is this install able to work?
+gisel cases --corpus x86 --out x86.cases.jsonl    # 3014 answerless queries
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
 gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
-gisel cases tests/corpus/X86LegalizerInfo.gisel --out x86.cases.jsonl \
-            --features tests/cases/x86-features.json   # equivalence/boundary/outside
 ```
+
+The nine corpora and their feature tables ship **inside the wheel**
+(`gisel/data/corpus`, `gisel/data/cases`); `tests/` keeps the canonical copies
+because every frozen artifact records `tests/corpus/...` as the origin of its
+rulesets.  `--corpus NAME` is sugar over "source + features" and works with or
+without a checkout.
+
+No LLVM anywhere: [docs/QUICKSTART-no-llvm.md](docs/QUICKSTART-no-llvm.md)
+walks install → doctor → questions → answers → graph in about five minutes.
 
 ## Five minutes
 

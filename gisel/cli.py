@@ -163,14 +163,18 @@ def main(argv=None):
     sub = ap.add_subparsers(dest="cmd", required=True)
 
     g = sub.add_parser("gen", help="generate a backend artifact")
-    g.add_argument("source")
+    g.add_argument("source", nargs="?", help="a .gisel source (or --corpus NAME)")
+    g.add_argument("--corpus", metavar="NAME",
+                   help="a bundled corpus: %s" % ", ".join(corpora.names()))
     g.add_argument("--emit", default="inc", choices=BACKENDS,
                    help="backend: inc (-gen-legalizer), check "
                         "(-gen-legalizer-check), core (-gen-legalizer-core)")
     g.add_argument("--out", required=True)
 
     c = sub.add_parser("check", help="verify a generated artifact is up to date")
-    c.add_argument("source")
+    c.add_argument("source", nargs="?", help="a .gisel source (or --corpus NAME)")
+    c.add_argument("--corpus", metavar="NAME",
+                   help="a bundled corpus: %s" % ", ".join(corpora.names()))
     c.add_argument("--emit", default="inc", choices=BACKENDS)
     c.add_argument("--against", help="artifact to compare against")
     c.add_argument("--strict-origin", action="store_true",
@@ -219,7 +223,9 @@ def main(argv=None):
     d.add_argument("--json", action="store_true", help="print stats as JSON")
 
     l = sub.add_parser("lint", help="static checks over a source file (no LLVM)")
-    l.add_argument("source")
+    l.add_argument("source", nargs="?", help="a .gisel source (or --corpus NAME)")
+    l.add_argument("--corpus", metavar="NAME",
+                   help="a bundled corpus: %s" % ", ".join(corpora.names()))
     l.add_argument("--manifest",
                    help="opcode arity JSON (default: the bundled table)")
     l.add_argument("--json", action="store_true", help="machine-readable diagnostics")
@@ -234,7 +240,9 @@ def main(argv=None):
     e.add_argument("--verbose", action="store_true")
 
     gr = sub.add_parser("graph", help="find cycles in the legalizer quotient graph")
-    gr.add_argument("source")
+    gr.add_argument("source", nargs="?", help="a .gisel source (or --corpus NAME)")
+    gr.add_argument("--corpus", metavar="NAME",
+                    help="a bundled corpus: %s" % ", ".join(corpora.names()))
     gr.add_argument("--emit", default="core", choices=("core",),
                     help="graph input normal form (only core is supported)")
     gr.add_argument("--features")
@@ -260,6 +268,21 @@ def main(argv=None):
                            % (sorted(sub.choices), COMMANDS))
 
     args = ap.parse_args(argv)
+    if args.cmd in ("gen", "check", "lint"):
+        # `--corpus NAME` and a positional source are two spellings of one
+        # input; resolve here so no handler has to know both exist.
+        try:
+            source, features, axes = corpora.resolve(
+                args.source, args.corpus, getattr(args, "features", None),
+                getattr(args, "axes", None))
+        except corpora.CorpusError as exc:
+            print("gisel %s: %s" % (args.cmd, exc), file=sys.stderr)
+            return 2
+        args.source = source
+        if hasattr(args, "features") and features:
+            args.features = features
+        if hasattr(args, "axes") and axes:
+            args.axes = axes
     if args.cmd == "doctor":
         from . import doctor
         return doctor.run(as_json=args.json)

@@ -925,21 +925,7 @@ def differ(generation, doc, features, oracle_path):
 
 def _inputs(args):
     """Resolve the positional source, --corpus, --features and --axes."""
-    if args.source and args.corpus:
-        raise corpora.CorpusError("give a .gisel source or --corpus NAME, "
-                                  "not both")
-    source, features, axes = args.source, args.features, args.axes
-    if args.corpus:
-        entry = corpora.get(args.corpus)
-        source = str(entry.source)
-        features = features or (str(entry.features) if entry.features else None)
-        axes = axes or (str(entry.axes) if entry.axes else None)
-    if not source:
-        raise corpora.CorpusError(
-            "give a .gisel source or --corpus NAME (bundled: %s)"
-            % ", ".join(corpora.names()))
-    return source, features, axes
-
+    return corpora.resolve(args.source, args.corpus, args.features, args.axes)
 
 def main(argv=None):
     ap = argparse.ArgumentParser(

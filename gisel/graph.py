@@ -1030,7 +1030,10 @@ def _oracle_inputs(path, configs, extended):
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="gisel graph",
                                      description="find cycles in the legalizer quotient graph")
-    parser.add_argument("source")
+    parser.add_argument("source", nargs="?",
+                        help="a .gisel source (or --corpus NAME)")
+    parser.add_argument("--corpus", metavar="NAME",
+                        help="a bundled corpus")
     parser.add_argument("--emit", default="core", choices=("core",),
                         help="graph input normal form (only core is supported)")
     parser.add_argument("--features")
@@ -1054,6 +1057,13 @@ def main(argv=None):
                         help="print per-ruleset progress on stderr")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
+    from . import corpus as corpora
+    try:
+        args.source, args.features, args.axes = corpora.resolve(
+            args.source, args.corpus, args.features, args.axes)
+    except corpora.CorpusError as exc:
+        print("gisel graph: %s" % exc, file=sys.stderr)
+        return 2
     try:
         axis_profile = axesmod.load(args.axes) if args.axes else None
         doc, features, axis_profile = AN.session(

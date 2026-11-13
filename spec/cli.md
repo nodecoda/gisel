@@ -9,13 +9,13 @@ gisel 只有这八个命令。新增一个命令等于新增一块产品面，�
 
 | 命令 | 做什么 | 输入 | 输出 |
 |---|---|---|---|
-| `gen` | 把规则文本发射成一种产物 | 源文件、`--emit`、`--out` | 产物文件；stdout 一行统计 |
-| `check` | 产物是否与源文件一致 | 源文件、`--emit`、`--against` | 一致时 stdout 一行；不一致时 stderr 输出 unified diff |
-| `lint` | 静态检查，不产生产物 | 源文件、可选 `--manifest` | stderr 诊断，stdout 汇总（`--json` 时是机器可读汇总） |
+| `gen` | 把规则文本发射成一种产物 | 源文件或 `--corpus NAME`、`--emit`、`--out` | 产物文件；stdout 一行统计 |
+| `check` | 产物是否与源文件一致 | 源文件或 `--corpus NAME`、`--emit`、`--against` | 一致时 stdout 一行；不一致时 stderr 输出 unified diff |
+| `lint` | 静态检查，不产生产物 | 源文件或 `--corpus NAME`、可选 `--manifest` | stderr 诊断，stdout 汇总（`--json` 时是机器可读汇总） |
 | `cases` | 生成无答案的测试查询 | 源文件或 `--corpus NAME`、`--features`、可选 `--axes`/`--queries`/`--oracle`/`--ruleset` | 查询 JSONL 文件；stdout 统计 |
 | `domain` | 枚举无答案查询域（笛卡尔积） | 源文件或 `--corpus NAME`、可选 `--features`/`--axes` | 查询 JSONL 文件 |
 | `eval` | 用 schema-0.4 正常形回答查询 | `--doc`、`--features`、`--cases` | 汇总或 `--answers OUT` 的答案 JSONL |
-| `graph` | 在类型×类空间上建商图并找环 | 源文件、`--emit=core` | stdout 报告（`--json` 可机读） |
+| `graph` | 在类型×类空间上建商图并找环 | 源文件或 `--corpus NAME`、`--emit=core` | stdout 报告（`--json` 可机读） |
 | `doctor` | 安装自检：这套 gisel 能不能干活 | 无（可选 `--json`） | stdout 检查表；失败项带 `fix` |
 
 `--emit` 的三个值对应三类产物，后缀只是约定：`inc`（C++ 链）、`check`
@@ -44,12 +44,17 @@ builder 链按文档顺序拼成一张表）；`--emit=inc` 保留源文件的 b
 2），不是“这个 ruleset 没有查询”。大 target 用这个参数分块跑，块之间按
 ruleset 不重叠。
 
-`cases` 与 `domain` 还接受 `--corpus NAME` 代替位置参数：名字取自随包发布的
+所有读 `.gisel` 文件的命令（`gen` `check` `lint` `cases` `domain` `graph`）
+都接受 `--corpus NAME` 代替位置参数：名字取自随包发布的
 `gisel/data/corpora.json`（`x86 aarch64 riscv arm mips ppc m68k wasm spirv`），
-展开成一个 `.gisel` 加配套的 `--features`/`--axes`。它是纯粹的糖：同一 target
-用 `--corpus` 和用两个显式路径必须写出逐字节相同的文件。同时给位置参数和
-`--corpus` 是用法错误（退出码 2），不猜哪个赢；名字拼错同样退出 2，并列出
-可选名字。
+展开成一个 `.gisel` 加配套的 `--features`/`--axes`（命令不用这两个参数时忽略）。
+它是纯粹的糖：`cases`/`domain` 的输出与显式路径逐字节相同，`gen --emit=inc`
+也相同；`--emit=core` 会把**读取路径**记进每条规则的 `origin`，所以用
+`--corpus` 生成的 core 记录的是包内绝对路径，跨机器不逐字节相同。
+`check` 默认忽略 origin（`--strict-origin` 才比），冻结产物与 golden 一律用
+`tests/corpus` 的显式路径生成，不受影响。
+同时给位置参数和 `--corpus` 是用法错误（退出码 2），不猜哪个赢；名字拼错同样
+退出 2，并列出可选名字。
 
 捆绑语料的**规范副本**在 `tests/corpus`、`tests/cases`：冻结产物把
 `tests/corpus/...` 记成每条规则的出现位置，所以目录布局不动。wheel 里带的是

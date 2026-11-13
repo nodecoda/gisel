@@ -62,3 +62,24 @@ def get(name: str) -> Corpus:
     return Corpus(name=name, source=_path(entry["corpus"]),
                   features=_path(entry.get("features")),
                   axes=_path(entry.get("axes")))
+
+
+def resolve(source, name, features=None, axes=None):
+    """A positional source or ``--corpus NAME`` -> (source, features, axes).
+
+    Every verb that reads a `.gisel` file accepts both spellings, so the rule
+    lives here instead of once per command.  Giving both is a usage error: a
+    silent winner would make `--corpus x86 stray.gisel` mean whichever one the
+    command happened to look at first.
+    """
+    if source and name:
+        raise CorpusError("give a .gisel source or --corpus NAME, not both")
+    if not name:
+        if not source:
+            raise CorpusError("give a .gisel source or --corpus NAME "
+                              "(bundled: %s)" % ", ".join(names()))
+        return source, features, axes
+    entry = get(name)
+    return (str(entry.source),
+            features or (str(entry.features) if entry.features else None),
+            axes or (str(entry.axes) if entry.axes else None))

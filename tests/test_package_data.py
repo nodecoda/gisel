@@ -106,7 +106,61 @@ class ShortcutEqualsTwoPaths(unittest.TestCase):
             self.assertEqual(len(out.read_text().splitlines()), 112)
 
 
+class EveryVerbAcceptsTheName(unittest.TestCase):
+    """The sugar is not specific to cases/domain: one spelling everywhere."""
+
+    def test_gen_lint_and_graph_accept_a_name(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            inc = tmp / "m68k.inc"
+            core = tmp / "m68k.core.json"
+            a = run("gen", "--corpus", "m68k", "--emit=inc", "--out", str(inc))
+            self.assertEqual(a.returncode, 0, a.stderr)
+            self.assertIn("13 rules", a.stdout)
+            b = run("gen", "--corpus", "m68k", "--emit=core", "--out", str(core))
+            self.assertEqual(b.returncode, 0, b.stderr)
+            c = run("lint", "--corpus", "m68k")
+            self.assertEqual(c.returncode, 0, c.stderr)
+            self.assertIn("0 error(s)", c.stdout)
+            d = run("graph", "--corpus", "m68k")
+            self.assertEqual(d.returncode, 0, d.stderr)
+            self.assertIn("cycles      : 0", d.stdout)
+
+    def test_gen_by_name_matches_gen_by_path_byte_for_byte(self):
+        from gisel import corpus
+        entry = corpus.get("m68k")
+        with tempfile.TemporaryDirectory() as tmp:
+            tmp = Path(tmp)
+            by_name = tmp / "a.inc"
+            by_path = tmp / "b.inc"
+            run("gen", "--corpus", "m68k", "--emit=inc", "--out", str(by_name))
+            run("gen", str(entry.source), "--emit=inc", "--out", str(by_path))
+            self.assertEqual(by_name.read_bytes(), by_path.read_bytes())
+
+    def test_check_accepts_a_name_and_ignores_origin_by_default(self):
+        # A core artifact generated from `--corpus` records the package path
+        # in every origin; `check` strips origins unless --strict-origin, so
+        # comparing it with a tests/corpus artifact still passes.
+        with tempfile.TemporaryDirectory() as tmp:
+            core = Path(tmp) / "m68k.core.json"
+            run("gen", "--corpus", "m68k", "--emit=core", "--out", str(core))
+            same = run("check", "--corpus", "m68k", "--emit=core",
+                       "--against", str(core))
+            self.assertEqual(same.returncode, 0, same.stderr)
+            strict = run("check", "--corpus", "m68k", "--emit=core",
+                         "--strict-origin", "--against", str(core))
+            self.assertEqual(strict.returncode, 0, strict.stderr)
+
+
 class BadInvocations(unittest.TestCase):
+    def test_gen_rejects_both_spellings(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            done = run("gen", "tests/corpus/M68kLegalizerInfo.gisel",
+                       "--corpus", "m68k", "--emit=inc",
+                       "--out", str(Path(tmp) / "x.inc"))
+        self.assertEqual(done.returncode, 2)
+        self.assertIn("not both", done.stderr)
+
     def test_source_and_corpus_together_is_a_usage_error(self):
         with tempfile.TemporaryDirectory() as tmp:
             done = run("cases", "tests/corpus/M68kLegalizerInfo.gisel",
