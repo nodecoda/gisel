@@ -121,11 +121,27 @@ LLT 空间是无限的（任意位宽、任意 lane 数）。随机采样只能�
 产物是**不带答案的查询 JSONL**（`config/name/types/mem/imms`）。答案是两侧现场
 算的，避免「出题人自己给答案」的循环论证。
 
-`cases` 与 `domain` 是两套题，**互不包含**：
+题面有三套，来自两个生成器：
 
-- `cases` 规则感知（X86 三千条量级），含规则切点；
-- `domain` 规则无关的声明值域笛卡尔积（当前生成器实测：X86 91,340；AArch64 每
-  配置 936,960；RISC-V 每配置 253,747），含非法组合和求值错误。
+| 题面 | 生成方 | 覆盖什么 | 证明方向 |
+|---|---|---|---|
+| **G**（`cases`） | gisel | 规则感知的等价类代表 + 边界 + outside | gisel → 上游 |
+| **D**（`domain`） | gisel | 规则无关的声明值域全量 | gisel → 上游 |
+| **U** / **U-full** | `upstream-source/oracle` | 上游规则表 + 独立 LLT 宇宙；U 按规则区域抽样，U-full 按全部配置展开 | 上游 → gisel |
+
+G 与 D **互不包含**：`cases` 含规则切点（X86 三千条量级），`domain` 含规则无关的
+笛卡尔积（当前生成器实测：X86 91,340；AArch64 每配置 936,960；RISC-V 每配置
+253,747）和非法组合。U 不是从 gisel 的规则推出来的，它问的不是「gisel 写对了吗」，
+而是「上游的规则 gisel 有没有漏」。
+
+两个方向要分开说：
+
+- **G/D 方向**两侧一致：`G ⊆ U`——gisel 的规则上游都有，没有自创行为；
+- **U 方向**两侧一致：`U ⊆ G`——上游问到的规则，gisel 都答得出、答得对。
+
+两条都成立，gisel 才有资格当内部权威。九个 target 的 U（采样）与 U-full（全配置
+展开）都已跑过，`disagree=0`（双端断言点按 §4.4 单列，不算答案相同），各带一组
+「注入错 opcode」负控；证据在 `ab/docs/EVIDENCE-U.md`，分母在 `ab/SCOPE.md §7`。
 
 ### 3.5 三个 target 的差别在轴，不在算法
 
@@ -208,15 +224,19 @@ answered_equal = agree - unanswerable
 
 **证明了**（两个方向分开说）：
 
-1. gisel 出的题，两侧答案一致 → **gisel 的规则没有超出上游，且行为对齐**（L0 +
-   closure + MIR）。
-2. 上游自身的问题（`unanswerable`、断言崩溃、死循环）被单独定性、计数、提 issue
+1. **G/D 方向**（gisel 出题）：两侧答案一致 → **gisel 的规则没有超出上游**
+   （`G ⊆ U`），且多步行为对齐（closure + MIR）。
+2. **U 方向**（上游出题）：九个 target 的 U 与 U-full 两侧一致 → **上游的规则
+   gisel 没有漏**（`U ⊆ G`）；每个 target 都有注入错 opcode 的负控，证明这条链路
+   抓得到错。
+3. 上游自身的问题（`unanswerable`、断言崩溃、死循环）被单独定性、计数、提 issue
    → 它们没有混进「一致」里。
 
 **没证明**：
 
-- **U 方向**：上游有、gisel 漏掉的规则。这要靠「上游出题、gisel 应答」的反向
-  对拍（`upstream-source/oracle/` + `ab/run-u-*`），是后续工作。
+- **U 题面的完备性**：U 建在「声明的 LLT 宇宙 + 抽样点」上，`unexercised` /
+  `shadowed` 逐条 allowlist，`dropped` 是上游自己不能作答的形状。它是 `U ⊆ G` 的
+  分母，不是全部合法 IR；U-full 展开的是配置，不是类型空间。
 - 逃逸点内部的谓词语义。
 - 闭包不成立时，`graph` 的 0 环不是「无环证明」；非 refine 的 AArch64 闭包是
   opt-in 门，不是常驻门。
@@ -238,5 +258,6 @@ answered_equal = agree - unanswerable
 | 商图找环 | `spec/graph.md`、`docs/REPORT-graph.md` |
 | 出题报告 | `docs/REPORT-cases.md` |
 | 对拍范围与结果 | `ab/SCOPE.md`、`ab/docs/REPORT-ab.md` |
+| 上游出题（U 方向） | `ab/docs/EVIDENCE-U.md`、`upstream-source/oracle/` |
 | 多步等价 | `ab/docs/CLOSURE.md` |
 | 缺口清单 | `ab/docs/GAPS.md`、`ab/docs/BACKLOG.md` |

@@ -52,6 +52,11 @@ python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel \
 WebAssembly 886 / ARM 1,614 / Mips 1,656），
 变了就停下来看新题目。
 
+另一半题面不来自 gisel：`../upstream-source/oracle` 从上游规则表生成 `U`
+（按规则区域抽样）和 `U-full`（同一题面按全部配置展开）。G 方向证明「gisel 的
+规则上游都有」，U 方向证明「上游的规则 gisel 没漏」；两条都跑，证据在
+`../ab/docs/EVIDENCE-U.md`。
+
 ## 3 对拍
 
 ```sh
@@ -63,6 +68,9 @@ WebAssembly 886 / ARM 1,614 / Mips 1,656），
 ../ab/run-wasm-end-to-end.sh    TREE BUILD wasm.inc OUT
 ../ab/run-arm-end-to-end.sh     TREE BUILD arm.inc  OUT
 ../ab/run-mips-end-to-end.sh    TREE BUILD mips.inc OUT
+
+# U 方向：题面来自上游
+../ab/run-u-end-to-end.sh       TARGET U.jsonl OUT
 ```
 
 官方一侧必须是**从 pin 的 C++ 构建出来的构造函数**；我们的一侧把
