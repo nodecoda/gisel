@@ -9,7 +9,7 @@ required.
 | version | state | note |
 |---|---|---|
 | 0.2.0 | on PyPI | https://pypi.org/project/gisel/0.2.0/ — wheel + sdist, plus the GitHub release |
-| 0.3.0 | unreleased | current `__version__`; adds `graph`, `eval --answers`, `feature NAME` predicates, `lint imm`, and the product-surface pin |
+| 0.3.0 | unreleased | current `__version__`; adds `graph`, `eval --answers`, `feature NAME` predicates, `lint imm`, the product-surface pin, **the nine corpora inside the wheel** (`gisel/data/corpus`, `gisel/data/cases`), `--corpus NAME` on every verb that reads a `.gisel` file, and `doctor` |
 
 Infrastructure, done once (2026-11-06):
 
