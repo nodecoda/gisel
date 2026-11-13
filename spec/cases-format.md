@@ -39,6 +39,10 @@ key 固定为：
 - `types`：LLT 文本数组，按 slot 顺序；拼写用 Core IR（`s32`、`i32`、`f16`、
   `v4s32`、`nxv4s32`、`p0:64`）。`p0:*` 是“宽度由 config 决定”的通配，
   只允许出现在查询里；答案侧要 join 必须写成同一具体宽度。
+  答案侧怎么把它变成具体宽度：**读该配置那一行的 `_pointer_width`，没有就
+  读 `_xlen`（RISC-V 表的写法），两者都没有才保持通配**。这条与 `.inc` 一致
+  ——生成代码里 `R_p0` 是 `LLT::pointer(0, XLen)`，宽度由目标在编译期决定，
+  所以同一个 `p0:*` 在 rv32 上不等于 `p0:64`。
 - `mem`：`null`，或 `[mty, align]`，或
   `[mty, align, ordering, failure_ordering]`。写方在
   `ordering == failure_ordering == "NotAtomic"` 时**可以**省略后两项；

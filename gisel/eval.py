@@ -191,6 +191,33 @@ def _is_scalar_like(t):
     return t[0] in ("scalar", "integer", "float", "bf16")
 
 
+# A feature table may declare the configuration's pointer width.  `_xlen` is
+# what the RISC-V table already carries; `_pointer_width` is the generic name.
+# Without either key the wildcard stays a wildcard, which is what every table
+# written before this convention relies on.
+POINTER_WIDTH_KEYS = ("_pointer_width", "_xlen")
+
+
+def config_pointer_width(table, config):
+    row = table.get(config) or {}
+    for key in POINTER_WIDTH_KEYS:
+        value = row.get(key)
+        if isinstance(value, int) and not isinstance(value, bool) and value > 0:
+            return value
+    return None
+
+
+def resolve_pointer_width(t, width):
+    """`p0:*` -> `p0:<width>`; recurses into the element of a vector."""
+    if not isinstance(t, tuple) or width is None:
+        return t
+    if t[0] == "pointer" and t[2] == "*":
+        return ("pointer", t[1], width)
+    if t[0] == "vector":
+        return (t[0], t[1], t[2], resolve_pointer_width(t[3], width))
+    return t
+
+
 def has_wildcard(t):
     """A pointer whose width the configuration decides (`p0:*`)."""
     if t[0] == "pointer":
@@ -445,7 +472,9 @@ class Evaluator:
         the branch is resolved here, not in the document.
         """
         if isinstance(v, str):
-            return parse_core_llt(v, self.extended(config))
+            return resolve_pointer_width(
+                parse_core_llt(v, self.extended(config)),
+                config_pointer_width(self.features.table, config))
         sel = v["select"]
         if self.bool_value(sel["cond"], types, mems, config, imms):
             return self.type_value(sel["then"], types, mems, config, imms)
