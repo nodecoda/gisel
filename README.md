@@ -214,9 +214,10 @@ same answerless query file, and compares the answer streams.
 `docs/CORPORA.md` has the chain and the reviewed deviations.
 
 ```sh
-python3 -m pytest -q                          # 282 passed, 383 subtests
-python3 -m unittest discover -q -s tests      # Ran 282 tests
+python3 -m pytest -q                          # ok
+python3 -m unittest discover -q -s tests      # ok
 (cd tests/artifacts && sha256sum -c SHA256)   # 9/9
+python3 tools/audit-docs.py                    # docs that can no longer be true
 ```
 
 `gisel lint` runs the J1/J2b/J3a/J3b checks over the normal form and prints

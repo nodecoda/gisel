@@ -198,9 +198,10 @@ gisel 自己的冻结输出——一个漂移基线，不是对
 `docs/CORPORA.md`。
 
 ```sh
-python3 -m pytest -q                          # 243 passed, 92 subtests
-python3 -m unittest discover -q -s tests      # Ran 243 tests
+python3 -m pytest -q                          # ok
+python3 -m unittest discover -q -s tests      # ok
 (cd tests/artifacts && sha256sum -c SHA256)   # 9/9
+python3 tools/audit-docs.py                    # 已经不可能为真的文档
 ```
 
 `gisel lint` 在正常形上跑 J1/J2b/J3a/J3b 检查，打印

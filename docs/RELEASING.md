@@ -43,7 +43,7 @@ workflow cannot run.
 ## 1. Bump the version in one place
 
 ```
-gisel/__init__.py     __version__ = "0.3.0"
+gisel/__init__.py     __version__ = "<next>"
 ```
 
 That is the only copy. `pyproject.toml` declares `dynamic = ["version"]` and

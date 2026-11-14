@@ -111,6 +111,11 @@ legal (feature("Subtarget.hasSignExt()") and in(slot(0), [Wasm_i32, Wasm_i64])
 
 ## 6 验证
 
+以下是当时的快照：`td` / `table` 两个出口已经移除，`--emit` 现在只有
+`inc` / `check` / `core`（见 `docs/KNOWN-LIMITATIONS.md`）。命令保留原样，
+`--emit` 的值按历史记录读，不要照抄。
+
+<!-- audit: historical -->
 ```
 $ python3 -m gisel lint tests/corpus/M68kLegalizerInfo.gisel
 M68kLegalizerInfo.gisel: 0 error(s), 0 warning(s), 13 rule(s)

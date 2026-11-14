@@ -28,8 +28,8 @@ gisel doctor
 ```
 gisel doctor
 python           ok   3.10.12
-version          ok   0.3.0
-install          ok   pypi 0.3.0
+version          ok   0.3.3
+install          ok   pypi 0.3.3
 opcode-slots     ok   schema 1, commit 700e551714cc
 contracts        ok   contract-aarch64.jsonc contract-shapes.jsonc
 commands         ok   9: gen check cases domain lint eval graph doctor demo

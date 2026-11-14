@@ -66,13 +66,13 @@ GI
 python3 -m gisel graph /tmp/gisel-graph-report/fixture.gisel \
   --config none --json > /tmp/gisel-graph-report/fixture.json
 # rc=0  states=4 edges=1 cycles=0
-# sha256 2ed41c9e96363b929f4db480fd960fdabd2c1614b0b1cdad2c640cb5772b6cc8
+# sha256 4c5267064dfbf5aa65bbb98a1ad39a724b5a69a5576990f52287aa222b6cf144
 
 python3 -m gisel graph /tmp/gisel-graph-report/fixture.gisel \
   --config none --inject-edge --json > /tmp/gisel-graph-report/fixture-inject.json
 # rc=1  states=4 edges=2 cycles=1
 # injected: G_ADD[3] -> G_ADD[1]（原边 1 -> 3 的反向）
-# sha256 8609d5a267b914a2aad3189586011a706fb06d92f1e4125b8b39d1e87d06f7ad
+# sha256 295119a80ef02bff9580089ce21600d180a4e10c56e425472e6cbd94d84207c6
 ```
 
 注入边是必需的负控：没有它，“0 环”可能只是 DFS 没跑到。
@@ -92,9 +92,10 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 | C2 | 68,588 | 25,885 | 25,885 | 31,055 | 8,120 | 1,181 | 2,347 | 11,945 | 4,067 | 0 | 265 |
 | C3 | 68,667 | 27,740 | 27,740 | 30,518 | 7,037 | 1,177 | 2,195 | 11,945 | 4,031 | 0 | 272 |
 
-2026-11-12 在 `028f581` 复测（图实现无改动，`de8dbbf` 对齐 X86 CTPOP 与
-`08bfd1c`/`e226856` 的向量 lane 处理抬高了 states/edges）；JSON 的 SHA-256 是
-`37385728c13f9fbe85d1ba5156b0806cd32423972eaf4691590881dde1c8da13`。
+C0 行与冻结的 `tests/artifacts/graph/x86-none.json` 逐字段一致（`--config none`
+与 C0 是同一个有限域；字节 SHA-256 见 `tests/artifacts/SHA256`，由
+`tools/check-graph-golden.sh` 把关）。四配置的整体输出没有冻结：重跑上面的
+命令即可复算 C1–C3，本文不引用它们的临时文件哈希。
 
 `uncovered` 始终是两个 variadic opcode：`G_INTRINSIC`、`G_INTRINSIC_W_SIDE_EFFECTS`
 （bundled opcode manifest 没有固定槽数）。
