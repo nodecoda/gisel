@@ -42,6 +42,13 @@ ruleset G_ADD: G_ADD
     widen(slot(0), pow2)
 """
 
+ONLY_OUTSIDE = """\
+type S4096 = LLT::scalar(4096)
+
+ruleset G_ADD: G_ADD
+    widen(slot(0), pow2_min(8192))
+"""
+
 
 MEMBER_MIX = """\
 type S3 = LLT::scalar(3)
@@ -134,19 +141,25 @@ class GraphFixture(unittest.TestCase):
         self.assertTrue(report.closure["ok"], report.closure)
 
     def test_outside_is_counted(self):
-        # `widen(pow2)` sends `s3` to `s4`, a width no axis enumerates.
-        report = self.build(OUTSIDE)
-        self.assertGreater(report.public()["outside"], 0)
+        # Every member of the class widens past the enumerated domain: no
+        # representative can stay inside, so the state itself is `outside`.
+        report = self.build(ONLY_OUTSIDE, check_closure=True)
+        self.assertEqual(report.public()["outside"], 1)
+        self.assertTrue(report.closure["ok"], report.closure)
 
     def test_a_class_that_straddles_the_enumerated_domain_is_not_closed(self):
         # `s3` widens to `s4` (outside), while `s7`/`s24` in the same class
         # widen to the enumerated `s8`/`s32`.  The class is not a function on
-        # the enumerated domain, and closure must say so.
+        # the enumerated domain, and closure must say so.  The representative
+        # is re-picked from an in-domain member, so the state is not `outside`
+        # and the audit names `s3`, the member that actually leaves.
         checked = self.build(OUTSIDE, check_closure=True)
         self.assertFalse(checked.closure["ok"], checked.closure)
-        self.assertEqual(checked.closure["kinds"]["outside"], 6)
+        self.assertEqual(checked.closure["kinds"],
+                         {"partition": 0, "outside": 1})
+        self.assertEqual(checked.public()["outside"], 0)
         members = {v["member"][0] for v in checked.closure["violations"]}
-        self.assertIn("s7", members)
+        self.assertEqual(members, {"s3"})
 
     def test_a_sentinel_the_axes_carry_is_not_outside(self):
         # The axes include the stable sentinels, so a mutation into one is an
@@ -158,16 +171,15 @@ class GraphFixture(unittest.TestCase):
         self.assertEqual(report.public()["outside"], 0)
         self.assertTrue(report.closure["ok"], report.closure)
 
-    def test_closure_audits_members_of_an_outside_class(self):
-        # The representative `s3` widens to the unenumerated `s4`; `s7` is in
-        # the same class and widens to the enumerated `s8`.  The old audit
-        # looked at moving representatives only, so `s7` was never asked.
+    def test_closure_audits_members_of_a_border_class(self):
+        # The audit must still ask every member of the class, not only the
+        # in-domain representative: `s3` is the one that exits.
         report = self.build(OUTSIDE, check_closure=True)
         self.assertEqual(report.public()["cycles"], 0)
         members = {v["member"][0] for v in report.closure["violations"]}
-        self.assertIn("s7", members)
+        self.assertEqual(members, {"s3"})
         self.assertEqual(report.closure["kinds"],
-                         {"partition": 0, "outside": 6})
+                         {"partition": 0, "outside": 1})
 
     def test_implicit_guard_takes_part_in_the_class(self):
         # X86_UMIN spells the widen rule with a bare `true` predicate; only

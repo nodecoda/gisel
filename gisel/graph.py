@@ -695,6 +695,54 @@ def _shape_representative(opcode, pools):
     return None
 
 
+def _repick_outside(state, evaluate_one):
+    """A better representative for a state whose representative left the domain.
+
+    One member is chosen to *name* a state; the state's outcome used to be
+    that member's outcome.  Classes mix declared types with boundary probes
+    (`s129`, `i65`): a probe can widen past the enumerated domain while an
+    ordinary member stays inside.  Calling the whole state `outside` then
+    drops the edge the legalizer actually takes, and the audit reports the
+    class as unclosed against a representative the legalizer never sees.
+    Try the other shape-legal members in axis order and adopt the first one
+    whose successor exists; `None` means every member leaves the domain.
+    """
+    opcode = state["key"][0]
+    for types in itertools.product(*state["pools"]):
+        if types == state["types"] or not AN.type_shape_ok(opcode, types):
+            continue
+        result = evaluate_one(dict(state, types=types))
+        if result[0] != "outside":
+            return types, result
+    return None
+
+
+def _repick_outside_states(states, evaluate_one, edges):
+    """Give every `outside` state a representative that stayed in the domain.
+
+    A state used to inherit the outcome of an arbitrary member; boundary
+    probes (`s129`, `i65`) made whole classes look `outside` while ordinary
+    members still had an edge.  Re-picking before the closure audit keeps the
+    graph, the outcomes and the audit on one representative, and makes
+    ``outcomes.outside`` mean what it says: no member has a successor.
+    """
+    for key in sorted(states, key=_node_text):
+        state = states[key]
+        if state["outcome"] != "outside":
+            continue
+        better = _repick_outside(state, evaluate_one)
+        if better is None:
+            continue
+        types, (outcome, action, type_idx, rule, target_key) = better
+        state.update({"types": types, "outcome": outcome, "action": action,
+                      "type_idx": type_idx, "rule": rule})
+        edges.pop(key, None)
+        if outcome == "moves":
+            edges[key].append((target_key, {
+                "action": action, "type_idx": type_idx, "rule": rule,
+            }))
+
+
 def _state_key(opcode, type_classes, mem_class, imm_class=None):
     # Keep the historical three-tuple when the ruleset does not read imm, so
     # no-imm graphs keep their exact text and keys.
@@ -985,6 +1033,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
                     for offset, result in enumerate(results):
                         key = keys[start + offset]
                         apply_one(key, states[key], result)
+            _repick_outside_states(states, evaluate_one, edges)
             closure = _empty_closure(check_closure)
             if check_closure:
                 ordered = sorted(states, key=_node_text)
@@ -998,6 +1047,7 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     else:
         for key, state in states.items():
             apply_one(key, state, evaluate_one(state))
+        _repick_outside_states(states, evaluate_one, edges)
         closure = _empty_closure(check_closure)
         if check_closure:
             for key in sorted(states, key=_node_text):
