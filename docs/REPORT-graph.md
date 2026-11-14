@@ -390,8 +390,10 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
 
 ## 9 未覆盖
 
-- AArch64 只跑了 `baseline`；另外四个配置的图和闭包没有跑。单配置约 8 分钟、
-  1.15M states 是当前的成本上限。
+- AArch64 的 9 个配置都跑过 `--refine`（`REPORT-graph-configs.md`，17/17
+  closure=0）；默认分区（不 refine）的逐条归因 2026-11-14 补齐 9 个配置：
+  7 个是 1,985、`fullfp16`/`sve` 是 1,968，见
+  [docs/REPORT-closure-why.md](REPORT-closure-why.md)。
 - RISC-V 的 imm 轴、ordering 轴没有跑；闭包在 `rv64gc` 上跑过，`--refine` 后通过（§4）。
 - SPIR-V 单配置在 200,000 states 上限处停住（`G_FLDEXP`，15 s，rc=2）；
   没有图和闭包数字。`--max-states` 把“跑不完”变成可复现的 `unsupported_scale`。

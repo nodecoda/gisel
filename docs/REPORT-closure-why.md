@@ -30,6 +30,7 @@ WebAssembly / AArch64 上仍然是 `closure.count=0`、`cycles=0`。**签字口�
 | RISC-V ristretto / rv64zbb | 62 | **27** | 16 | 11 | 无跨槽类，只剩宽度类 |
 | WebAssembly wasm32 | 302 | **272** | 168 | 104 | 211 条是 `G_FCOPYSIGN` 跨槽类 |
 | AArch64 baseline | 2,671 | **1,985** | 178 | 1,807 | 1,764 条是 FCOPYSIGN + VECREDUCE |
+| AArch64 fullfp16 / sve | — | **1,968** | 178 | 1,790 | 同上；17 条浮点规则变 Legal |
 
 注意 RISC-V 的 `partition` 从 610 涨到 984：原来被 `outside` 代表点遮住的类，
 重选代表点后开始被审计，露出了本来就存在的多目标/不同规则。总数下降、
@@ -57,10 +58,12 @@ python3 -m gisel graph tests/corpus/WebAssemblyLegalizerInfo.gisel \
   --features tests/cases/wasm-features.json --config wasm32 --json \
   > /tmp/graph-wasm32.json
 
-# AArch64 baseline（与 nightly / 闭包计数测试同一条命令：不带 --axes）
-python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
-  --features tests/cases/features.json --config baseline --json \
-  > /tmp/graph-aarch64.json
+# AArch64：9 个配置（与 nightly / 闭包计数测试同一条命令：不带 --axes）
+for c in baseline small-cm fullfp16 sve bf16 cssc rcpc3 lse outline-atomics; do
+  python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
+    --features tests/cases/features.json --config "$c" --json \
+    > "/tmp/graph-aarch64-$c.json"
+done
 ```
 
 全量违例用同一条命令的 `closure.violations`（生产默认保留 20 条样例；归因时把
@@ -169,6 +172,24 @@ G_SDIVREM / G_SREM / G_UDIVREM / G_UREM 各 7 ...
   `nxv8i8` 不在枚举轴里（`outside` 392 × 3），另有 49 × 3 多目标。
 - 其余是 `v16s8 → v16s32` 这类元素宽度中间类型出域。
 
+9 个配置都跑了默认分区（`--no-axes`，4 个进程并发，单配置约 105 s / 1.45 GB）：
+
+| config | states | outside（状态） | closure | partition | outside（违例） |
+|---|---:|---:|---:|---:|---:|
+| baseline | 1,104,645 | 12,602 | **1,985** | 178 | 1,807 |
+| small-cm | 1,104,645 | 12,602 | **1,985** | 178 | 1,807 |
+| fullfp16 | 1,104,645 | 11,750 | **1,968** | 178 | 1,790 |
+| sve | 1,104,645 | 11,750 | **1,968** | 178 | 1,790 |
+| bf16 | 1,104,645 | 12,602 | **1,985** | 178 | 1,807 |
+| cssc | 1,104,649 | 12,602 | **1,985** | 178 | 1,807 |
+| rcpc3 | 1,104,645 | 12,602 | **1,985** | 178 | 1,807 |
+| lse | 1,104,645 | 12,602 | **1,985** | 178 | 1,807 |
+| outline-atomics | 1,104,645 | 12,602 | **1,985** | 178 | 1,807 |
+
+`fullfp16`/`sve` 少 852 个出域状态、17 条违例：打开后这些浮点操作在第一步就
+`Legal`，不再产生“成员出域、代表点 moves”的混合类；`partition` 178 不变。
+`cssc` 多 4 个状态来自它自己打开的规则，违例数不变。
+
 178 条 `partition` 全是 `multiple target classes`；1,807 条是 `outside`。
 AArch64 的 refine 运行仍然是 `closure.count=0`、`cycles=0`（nightly
 `aarch64-baseline.json`）。
@@ -190,10 +211,7 @@ AArch64 的 refine 运行仍然是 `closure.count=0`、`cycles=0`（nightly
 
 ## 5 未覆盖
 
-- AArch64 只归因了 `baseline`；其余 8 个配置的默认分区（不 refine）没有重跑。
-  它们的 refine 数字在 `REPORT-graph-configs.md`，但那份矩阵早于本次 repick，
-  默认分区计数不适用。
-- SPIR-V 仍在 `--max-states 200000` 处 `unsupported_scale`，没有图。
+- SPIR-V 仍在 `--max-states 200000` 处 `unsupported_scale`，没有图（本轮不处理）。
 - `outside` 的中间类型（`s4`、`nxv8i8`、`v16s32`、`v2s3`）没有补进轴；补进去
   会把 `outside` 改记成 `partition`，不会让默认分区闭合。
 - RISC-V 的 imm / ordering 轴仍未在默认分区下归因。
@@ -201,7 +219,8 @@ AArch64 的 refine 运行仍然是 `closure.count=0`、`cycles=0`（nightly
 ## 6 对签字口径的影响
 
 - 旧的“X86 272 / RISC-V 2,864 / wasm32 302 / AArch64 2,671”不再引用；
-  当前值是 272 / 1,607 / 272 / 1,985。
+  当前值是 X86 272、RISC-V 1,607、wasm32 272、AArch64 1,985（`fullfp16`/`sve`
+  1,968，其余 7 个配置 1,985）。
 - 结论仍是：默认分区的 `cycles=0` 是代表点商图上的条件结论；可签字的
   “无环”必须带 `--refine`（`closure.count=0`），并同时打印
   `outside` / `opaque`。
