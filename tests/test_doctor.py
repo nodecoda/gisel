@@ -80,3 +80,56 @@ class BrokenInstall(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class InstallSource(unittest.TestCase):
+    """`install` says pypi / git / checkout; support starts from that line."""
+
+    def test_the_healthy_install_names_a_source(self):
+        doc = json.loads(run("--json").stdout)
+        check = next(c for c in doc["checks"] if c["name"] == "install")
+        self.assertEqual(check["status"], "ok")
+        self.assertRegex(check["detail"], r"^(pypi|git|checkout)")
+
+    def _check(self, root, direct=None):
+        from gisel import doctor
+
+        class Dist:
+            def __init__(self, root, direct):
+                self._root = root
+                self._direct = direct
+
+            def locate_file(self, name):
+                return Path(self._root) / name
+
+            def read_text(self, name):
+                return self._direct
+
+        import importlib.metadata as md
+        with mock.patch.object(md, "distribution", lambda name: Dist(root, direct)):
+            return doctor._install()
+
+    def test_site_packages_without_a_direct_url_is_pypi(self):
+        check = self._check("/tmp/venv/lib/python3.12/site-packages")
+        self.assertEqual(check.status, "ok")
+        self.assertTrue(check.detail.startswith("pypi "), check.detail)
+
+    def test_a_vcs_install_names_the_commit(self):
+        check = self._check(
+            "/tmp/venv/lib/python3.12/site-packages",
+            '{"url": "https://github.com/nodecoda/gisel",'
+            ' "vcs_info": {"vcs": "git", "commit_id": "%s"}}' % ("a" * 40))
+        self.assertEqual(check.status, "ok")
+        self.assertEqual(check.detail, "git " + "a" * 12)
+
+    def test_a_local_install_is_a_checkout(self):
+        check = self._check(
+            "/tmp/venv/lib/python3.12/site-packages",
+            '{"url": "file:///home/you/gisel", "dir_info": {}}')
+        self.assertEqual(check.status, "ok")
+        self.assertEqual(check.detail, "checkout /home/you/gisel")
+
+    def test_metadata_outside_site_packages_is_a_checkout(self):
+        check = self._check("/home/you/gisel")
+        self.assertEqual(check.status, "ok")
+        self.assertEqual(check.detail, "checkout /home/you/gisel")

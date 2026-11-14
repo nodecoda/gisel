@@ -11,6 +11,7 @@ required.
 | 0.2.0 | on PyPI | https://pypi.org/project/gisel/0.2.0/ — wheel + sdist, plus the GitHub release |
 | 0.3.0 | on PyPI | https://pypi.org/project/gisel/0.3.0/ — adds `graph`, `eval --answers`, `feature NAME` predicates, `lint imm`, the product-surface pin, **the nine corpora inside the wheel** (`gisel/data/corpus`, `gisel/data/cases`), `--corpus NAME` on every verb that reads a `.gisel` file, and `doctor` |
 | 0.3.1 | on PyPI | https://pypi.org/project/gisel/0.3.1/ — adds `demo` (lint → `gen --emit=inc` → `cases` → refined `graph` on the bundled x86 corpus, ~25 s) and the first-screen install path: `scripts/install.sh` (pipx / uv tool / venv), `install.yml` on a machine with no checkout, and the GHCR image. No rule, corpus or artifact changed |
+| 0.3.2 | on PyPI | https://pypi.org/project/gisel/0.3.2/ — `doctor` gains `install : pypi|git|checkout` so a support question starts with which install is running; the container workflow now rebuilds only when an image input changes |
 
 Infrastructure, done once (2026-11-06):
 
@@ -31,7 +32,7 @@ Companion packages, same token, same `skip-existing` rule:
 | package | version | PyPI | how |
 |---|---|---|---|
 | `gisel-anchor` | 0.2.0 | https://pypi.org/project/gisel-anchor/ | tag `v0.2.0` → `publish.yml` |
-| `gisel-ab` | 0.9.0 | https://pypi.org/project/gisel-ab/ | tag `v0.9.0` → `publish.yml` |
+| `gisel-ab` | 0.9.1 | https://pypi.org/project/gisel-ab/ | tag `v0.9.1` → `publish.yml` |
 
 The three packages are independent wheels; `gisel-ab` depends on
 `gisel>=0.3,<0.4`, and `gisel-anchor` has no dependency.  A manual

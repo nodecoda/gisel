@@ -16,7 +16,7 @@ gisel 只有这九个命令。新增一个命令等于新增一块产品面，�
 | `domain` | 枚举无答案查询域（笛卡尔积） | 源文件或 `--corpus NAME`、可选 `--features`/`--axes` | 查询 JSONL 文件 |
 | `eval` | 用 schema-0.4 正常形回答查询 | `--doc`、`--features`、`--cases` | 汇总或 `--answers OUT` 的答案 JSONL |
 | `graph` | 在类型×类空间上建商图并找环 | 源文件或 `--corpus NAME`、`--emit=core` | stdout 报告（`--json` 可机读） |
-| `doctor` | 安装自检：这套 gisel 能不能干活 | 无（可选 `--json`） | stdout 检查表；失败项带 `fix` |
+| `doctor` | 安装自检：这套 gisel 能不能干活 | 无（可选 `--json`） | stdout 检查表（含 `install : pypi|git|checkout`）；失败项带 `fix` |
 | `demo` | 一条命令跑完 lint → gen → cases → graph | 可选 `--corpus NAME`（默认 `x86`）、`--out DIR`（默认 `gisel-demo`）、`--config NAME` | 产物写进 `--out`；stdout 逐阶段打印命令、该命令的真实输出与产物路径 |
 
 `--emit` 的三个值对应三类产物，后缀只是约定：`inc`（C++ 链）、`check`
@@ -83,6 +83,10 @@ ruleset 不重叠。
 
 `doctor` 只用 0 和 2：0 = 所有检查通过，2 = 有一项失败（这次运行没能
 证明工具可用）。它不返回 1，因为“环境坏了”不是关于规则的结论。
+`install` 这一行只报告来源，不会失败：`pypi <version>`（metadata 在
+site-packages 且没有 `direct_url.json`）、`git <commit12>`（pip 的
+`direct_url.json` 带 `vcs_info`）、`checkout <path>`（本地目录安装，或直接
+从源码树运行）。支持问题先看这一行，再往下看具体失败的检查。
 
 `2` 不是“结论是否定”的意思：它表示这次运行没有完成，结论无意义。脚本里
 应该把 `2` 当失败处理，并且不要把它归因成规则差异。

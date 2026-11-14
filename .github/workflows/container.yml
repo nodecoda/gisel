@@ -2,10 +2,23 @@ name: container
 
 # The image is a second supported way to run the three tools with no Python on
 # the host: `docker run --rm ghcr.io/nodecoda/gisel gisel demo`.
+#
+# Only the files the image actually contains can change its bytes, so a docs
+# push does not rebuild it.  Release tags do not need their own trigger: a
+# `v*` tag always names a commit whose main push ran this workflow, and the
+# tag is read from `gisel/__init__.py`, so tagging `v0.3.2` is what makes the
+# `:0.3.2` tag exist.
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    paths:
+      - Dockerfile
+      - .dockerignore
+      - gisel/**
+      - pyproject.toml
+      - README.md
+      - LICENSE
+      - .github/workflows/container.yml
   workflow_dispatch:
 
 permissions:

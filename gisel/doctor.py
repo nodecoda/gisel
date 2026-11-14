@@ -59,6 +59,44 @@ def _version() -> Check:
     return Check("version", OK, __version__)
 
 
+def _install() -> Check:
+    """Where this gisel came from: pypi, a git commit, or a checkout.
+
+    Support questions start with "which one am I running", and the answer is
+    already on disk: pip writes `direct_url.json` for `git+`/local installs,
+    and metadata outside a site-packages directory can only be a source tree.
+    This check never fails -- a checkout is a supported way to run gisel, and
+    a broken *install* shows up in the checks below, not here.
+    """
+    from importlib import metadata
+    from . import __version__
+    try:
+        dist = metadata.distribution("gisel")
+    except metadata.PackageNotFoundError:
+        return Check("install", OK, "checkout (no installed metadata)")
+    try:
+        raw = dist.read_text("direct_url.json")
+    except OSError:
+        raw = None
+    if raw:
+        try:
+            direct = json.loads(raw)
+        except json.JSONDecodeError:
+            direct = {}
+        vcs = direct.get("vcs_info") or {}
+        if vcs:
+            commit = str(vcs.get("commit_id") or "")[:12]
+            return Check("install", OK, "git %s" % (commit or "unknown"))
+        url = str(direct.get("url") or "")
+        if url.startswith("file://") or "dir_info" in direct:
+            path = url[len("file://"):] if url.startswith("file://") else ""
+            return Check("install", OK, "checkout %s" % (path or "unknown"))
+    root = str(dist.locate_file(""))
+    if "site-packages" in root or "dist-packages" in root:
+        return Check("install", OK, "pypi %s" % __version__)
+    return Check("install", OK, "checkout %s" % root)
+
+
 def _data_dir() -> Path:
     from . import corpus
     return corpus.DATA
@@ -139,7 +177,7 @@ def _commands() -> Check:
 
 
 def checks() -> list[Check]:
-    return ([_python(), _version(), _opcode_slots(), _contracts(),
+    return ([_python(), _version(), _install(), _opcode_slots(), _contracts(),
              _commands()] + _corpora())
 
 

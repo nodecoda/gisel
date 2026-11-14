@@ -29,16 +29,18 @@ gisel doctor
 gisel doctor
 python           ok   3.10.12
 version          ok   0.3.0
+install          ok   pypi 0.3.0
 opcode-slots     ok   schema 1, commit 700e551714cc
 contracts        ok   contract-aarch64.jsonc contract-shapes.jsonc
 commands         ok   9: gen check cases domain lint eval graph doctor demo
 corpora          ok   9 targets: aarch64 arm m68k mips ppc riscv spirv wasm x86
 corpus:m68k      ok   c9cd4a22344b M68kLegalizerInfo.gisel
 ...
-15/15 ok
+16/16 ok
 ```
 
-九份语料每份打一个 sha：这些数你可以自己用 `sha256sum` 复算。少一份数据、
+`install` 说明这套 gisel 从哪来（`pypi` / `git <commit>` / `checkout <path>`），
+支持问题先看这一行。九份语料每份打一个 sha：这些数你可以自己用 `sha256sum` 复算。少一份数据、
 Python 太旧、wheel 装坏，都会在这里失败并给 `fix:`，退出码 2。
 `--json` 给你同样的东西，形状是 `{ok, checks:[{name,status,detail,fix}]}`。
 
