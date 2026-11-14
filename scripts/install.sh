@@ -150,10 +150,13 @@ case "$MODE" in
 pipx)
     BIN=$(pipx environment --value PIPX_BIN_DIR 2>/dev/null || true)
     [ -n "$BIN" ] || BIN=$HOME/.local/bin
-    # One venv, three tools: ab imports gisel, so injecting keeps a single
-    # copy of gisel on the machine instead of three that can disagree.
+    # One install per tool: `pipx inject` puts the package into gisel's venv
+    # but does not expose its console script, so `gisel-ab` would not exist on
+    # PATH.  `pipx install gisel-ab` pulls gisel in as its declared
+    # dependency (`gisel>=0.3,<0.4`), so ab still has a gisel to import.
     run pipx install --force "$SPEC_GISEL"
-    run pipx inject gisel "$SPEC_ANCHOR" "$SPEC_AB"
+    run pipx install --force "$SPEC_ANCHOR"
+    run pipx install --force "$SPEC_AB"
     GISEL=$BIN/gisel
     ANCHOR=$BIN/gisel-anchor
     AB=$BIN/gisel-ab
