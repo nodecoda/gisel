@@ -70,10 +70,13 @@ jobs:
       - name: installed product surface
         run: |
           set -eu
-          # spec/cli.md: eight verbs, one version, one exit-code vocabulary.
-          for command in gen check cases domain lint eval graph doctor; do
+          # spec/cli.md: nine verbs, one version, one exit-code vocabulary.
+          for command in gen check cases domain lint eval graph doctor demo; do
             /tmp/gisel-venv/bin/gisel "$command" --help > /dev/null
           done
+          /tmp/gisel-venv/bin/gisel demo --corpus m68k \
+            --out "$RUNNER_TEMP/demo" > "$RUNNER_TEMP/demo.log"
+          grep -q "^demo: ok" "$RUNNER_TEMP/demo.log"
           /tmp/gisel-venv/bin/gisel --version | grep -qx \
             "gisel $(/tmp/gisel-venv/bin/python -c 'import gisel; print(gisel.__version__)')"
           if /tmp/gisel-venv/bin/gisel diff a b 2> /dev/null; then

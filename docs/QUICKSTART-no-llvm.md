@@ -11,6 +11,12 @@ python3 -m venv /tmp/gv && . /tmp/gv/bin/activate
 pip install gisel
 ```
 
+或者一条命令装三件套（pipx → uv tool → venv，哪个有就用哪个）：
+
+```sh
+curl -fsSL https://raw.githubusercontent.com/nodecoda/gisel/main/scripts/install.sh | sh
+```
+
 需要 Python 3.10+。没有其他依赖。
 
 ## 1 先问它能不能干活
@@ -25,7 +31,7 @@ python           ok   3.10.12
 version          ok   0.3.0
 opcode-slots     ok   schema 1, commit 700e551714cc
 contracts        ok   contract-aarch64.jsonc contract-shapes.jsonc
-commands         ok   8: gen check cases domain lint eval graph doctor
+commands         ok   9: gen check cases domain lint eval graph doctor demo
 corpora          ok   9 targets: aarch64 arm m68k mips ppc riscv spirv wasm x86
 corpus:m68k      ok   c9cd4a22344b M68kLegalizerInfo.gisel
 ...
@@ -36,7 +42,47 @@ corpus:m68k      ok   c9cd4a22344b M68kLegalizerInfo.gisel
 Python 太旧、wheel 装坏，都会在这里失败并给 `fix:`，退出码 2。
 `--json` 给你同样的东西，形状是 `{ok, checks:[{name,status,detail,fix}]}`。
 
-## 2 出题
+## 2 一条命令跑完全流程
+
+不想一条条抄命令：
+
+```sh
+gisel demo
+```
+
+它按 lint → `gen --emit=inc` → `cases` → `graph --refine` 的顺序，用随包
+安装的 x86 语料把四个阶段各跑一次，产物写到 `./gisel-demo/`：
+
+```
+gisel demo: x86, 4 stages, no LLVM
+artifacts: /path/to/gisel-demo
+
+[1/4] lint
+$ gisel lint --corpus x86
+x86: 0 error(s), 0 warning(s), 328 rule(s)
+...
+[4/4] build the quotient graph
+$ gisel graph --corpus x86 --refine --config C0
+# --refine: split classes until the successor is a function (default partition is coarser)
+...
+verdict     : CONDITIONAL (cycles=0, closure=0, outside=2240, opaque=1187)
+closure     : ok (0 violation(s), 0 shown)
+
+demo: ok (23.0 s)
+wrote:
+  /path/to/gisel-demo/x86.inc
+  /path/to/gisel-demo/x86.cases.jsonl
+next:
+  gisel graph --corpus x86 --json > graph.json   # one config; drop --config for all
+  gisel domain --corpus x86 --out domain.jsonl
+  gisel check --corpus x86 --emit=inc --against /path/to/gisel-demo/x86.inc
+```
+
+用时随机器变，官方 CI 的 4 核 runner 也在 60 秒以内；`--corpus m68k`
+是 0.3 秒的冒烟版。`--config` 换配置，`--out` 换目录。demo 只是把下面
+这些命令按顺序跑一遍：每个阶段的输出和单独运行时逐字节相同。
+
+## 3 出题
 
 ```sh
 gisel cases --corpus m68k --out m68k.cases.jsonl
@@ -53,7 +99,7 @@ rules=13 witnessed=11 shadowed=2 unexercised=0
 `cases` 出的是**问题**，没有答案。三类：等价类代表点、类边界、域外一档。
 `unexercised=0` 表示没有规则被生成出来却没被问到。
 
-## 3 全量题面（对照用）
+## 4 全量题面（对照用）
 
 ```sh
 gisel domain --corpus m68k --out m68k.domain.jsonl
@@ -67,7 +113,7 @@ m68k.domain.jsonl: points=112 configs=default types=5 mems=5 opcodes=12 shape_dr
 `domain` 里有 `cases` 不会生成的非法组合，`cases` 里有 `domain` 的形状过滤丢掉的点。
 比较分母时先弄清你用的是哪一个。
 
-## 4 生成产物
+## 5 生成产物
 
 ```sh
 gisel gen --corpus m68k --emit=inc  --out m68k.inc
@@ -87,7 +133,7 @@ gisel check --corpus m68k --emit=core --against m68k.core.json
 # m68k.core.json: up to date
 ```
 
-## 5 自己回答这批问题
+## 6 自己回答这批问题
 
 ```sh
 gisel eval --doc m68k.core.json \
@@ -114,7 +160,7 @@ actions: {"Legal": 9, "NarrowScalar": 2, "Unsupported": 18, "WidenScalar": 6}
 那是 `gisel-ab` 的事（`gisel-ab/docs/TUTORIAL-m68k.md`）。没有 LLVM 时能证明的是：
 规则能被解析、能出题、能被这套语义回答，且答案可复现。
 
-## 6 找环
+## 7 找环
 
 ```sh
 gisel graph --corpus m68k
@@ -133,14 +179,14 @@ closure     : ok (0 violation(s), 0 shown)
 图上 0 环，且闭包成立（每个类的所有成员在变异后落回同一个类）。这两个条件
 要一起读：闭包不成立时，0 环只是“在代表点上没找到环”。
 
-## 7 这一页证到了什么
+## 8 这一页证到了什么
 
 - 证到：`pip install gisel` 之后，九份语料可直接出题；题库可复算；求值可复现；
   M68k 的商图 0 环且闭包成立。
 - 没证：这套规则和上游 LLVM 一致。那需要 pin 的 LLVM 树和构建，见
   `gisel-ab/docs/TUTORIAL-m68k.md`。
 
-## 8 常见问题
+## 9 常见问题
 
 | 现象 | 原因 | 动作 |
 |---|---|---|

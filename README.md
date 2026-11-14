@@ -21,12 +21,21 @@ The loop those tools implement (pin → cases → A/B → attribution) is in
 [docs/GLOSSARY-zh.md](docs/GLOSSARY-zh.md) (both Chinese).
 
 ```sh
-python3 -m pip install gisel    # PyPI; or: python3 -m gisel (no install)
-gisel doctor                    # first: is this install able to work?
+# one command, no checkout: pipx -> uv tool -> venv, whichever exists
+curl -fsSL https://raw.githubusercontent.com/nodecoda/gisel/main/scripts/install.sh | sh
+
+gisel doctor                    # is this install able to work?
+gisel demo                      # lint -> inc -> cases -> graph, ~25 s
 gisel cases --corpus x86 --out x86.cases.jsonl    # 3014 answerless queries
-gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
-gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
-gisel lint  tests/corpus/X86LegalizerInfo.gisel   # static checks, no LLVM
+gisel gen   --corpus x86 --emit=inc --out x86.inc   # the C++ chain
+gisel check --corpus x86 --emit=inc --against x86.inc   # still current?
+gisel lint  --corpus x86    # static checks, no LLVM
+```
+
+Or with no Python on the host at all:
+
+```sh
+docker run --rm ghcr.io/nodecoda/gisel:latest gisel demo
 ```
 
 The nine corpora and their feature tables ship **inside the wheel**
@@ -85,7 +94,7 @@ product.
 
 ## Commands
 
-Seven commands, one product surface; `spec/cli.md` is the normative contract.
+Nine commands, one product surface; `spec/cli.md` is the normative contract.
 
 | command | what it does |
 |---|---|
@@ -96,8 +105,10 @@ Seven commands, one product surface; `spec/cli.md` is the normative contract.
 | `domain` | the same space as a full Cartesian enumeration |
 | `eval` | answer queries against the schema-0.4 normal form |
 | `graph` | build the quotient graph and look for cycles |
+| `doctor` | is this install able to work? (no LLVM) |
+| `demo` | all of the above once, into one directory (~25 s) |
 
-Exit codes are shared by all seven: `0` success, `1` the answer is "no" (stale
+Exit codes are shared by all nine: `0` success, `1` the answer is "no" (stale
 artifact, lint error, disagreeing answer, a cycle), `2` the run could not start
 (usage, IO, syntax).  `2` is never a rule difference.
 

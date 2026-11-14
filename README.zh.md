@@ -21,9 +21,9 @@ gisel 只有两个功能：把 `.gisel` 文件变成规则产物
 [docs/GLOSSARY-zh.md](docs/GLOSSARY-zh.md)。
 
 ```sh
-# 从 checkout 运行：语料和冻结产物随仓库分发，不随 wheel 分发
-# （wheel 里带的是 lint 需要的 opcode 表和形状表）。
+# 九份语料随 wheel 一起安装（gisel/data），所以装完就能用 --corpus。
 python3 -m pip install gisel    # PyPI 安装；或者：python3 -m gisel（不安装）
+gisel demo                      # 一条命令跑完 lint -> inc -> cases -> graph，约 25 秒
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
 gisel lint  tests/corpus/X86LegalizerInfo.gisel   # 静态检查，不需要 LLVM
@@ -89,8 +89,9 @@ python3 -m gisel check /tmp/demo/hello.gisel --emit=inc --against /tmp/demo/hell
 | `eval` | 用 schema-0.4 正常形回答查询 |
 | `graph` | 建商图并找环 |
 | `doctor` | 安装自检：数据、语料、命令面（不需要 LLVM） |
+| `demo` | 一条命令把 lint → gen → cases → graph 跑一遍（约 25 秒） |
 
-八个命令共用同一套退出码：`0` 成功，`1` 结论是“否”（产物过期、lint
+九个命令共用同一套退出码：`0` 成功，`1` 结论是“否”（产物过期、lint
 报错、答案不一致、有环），`2` 这次运行根本没开始（用法、IO、语法错误）。
 `2` 永远不代表规则差异。
 

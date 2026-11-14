@@ -5,7 +5,7 @@
 
 ## 1 命令表
 
-gisel 只有这八个命令。新增一个命令等于新增一块产品面，必须先改本文。
+gisel 只有这九个命令。新增一个命令等于新增一块产品面，必须先改本文。
 
 | 命令 | 做什么 | 输入 | 输出 |
 |---|---|---|---|
@@ -17,6 +17,7 @@ gisel 只有这八个命令。新增一个命令等于新增一块产品面，�
 | `eval` | 用 schema-0.4 正常形回答查询 | `--doc`、`--features`、`--cases` | 汇总或 `--answers OUT` 的答案 JSONL |
 | `graph` | 在类型×类空间上建商图并找环 | 源文件或 `--corpus NAME`、`--emit=core` | stdout 报告（`--json` 可机读） |
 | `doctor` | 安装自检：这套 gisel 能不能干活 | 无（可选 `--json`） | stdout 检查表；失败项带 `fix` |
+| `demo` | 一条命令跑完 lint → gen → cases → graph | 可选 `--corpus NAME`（默认 `x86`）、`--out DIR`（默认 `gisel-demo`）、`--config NAME` | 产物写进 `--out`；stdout 逐阶段打印命令、该命令的真实输出与产物路径 |
 
 `--emit` 的三个值对应三类产物，后缀只是约定：`inc`（C++ 链）、`check`
 （JSON）、`core`（schema-0.4 JSON）。`table`（C++ 表）已于 2026-11-09 移除，
@@ -72,6 +73,14 @@ ruleset 不重叠。
 | 1 | 输入合法，但结论是“否” | `check` 产物过期；`lint` 有 error；`eval` 对不上；`graph` 有环或闭包不成立 |
 | 2 | 无法开始 | 用法错误、文件读不到、语法错误、manifest/特性表坏了、写盘失败 |
 
+`demo` 把四个命令按 lint → `gen --emit=inc` → `cases` → `graph --refine` 的顺序
+在进程内跑一遍，只读捆绑语料，不需要 checkout、不需要 LLVM。它是脚本，不是新的
+语义：每个阶段就是那条命令本身，输出与单独运行一致。退出码取第一个非零阶段
+（graph 的 1 = 有环或闭包不成立，属于结论而非安装故障，stderr 会说明）。默认
+`x86`（约 25 s）+ 特性表里的第一个配置，`--config` 可换、去掉配置请直接跑
+`gisel graph`。`--refine` 由 demo 显式传：X86 的默认分区在闭包审计下有 272 条
+违例，演示要跑出 `closure: ok`，但 `graph` 的默认值仍是关闭（`spec/graph.md`）。
+
 `doctor` 只用 0 和 2：0 = 所有检查通过，2 = 有一项失败（这次运行没能
 证明工具可用）。它不返回 1，因为“环境坏了”不是关于规则的结论。
 
@@ -81,7 +90,8 @@ ruleset 不重叠。
 ## 3 全局约定
 
 - **不调用外部程序**：不跑 `llvm-tblgen`、编译器、`llc`；不联网。唯一的
-  外部依赖是随包发布的 `gisel/data/`（槽表、契约与捆绑语料）。
+  外部依赖是随包发布的 `gisel/data/`（槽表、契约与捆绑语料）——`demo` 也只读
+  这些，四个阶段在同一个进程里跑，不 fork 子进程（`graph --jobs` 除外）。
   例外只有 `gisel graph --jobs N`（N>1）：它在内部 fork 状态求值和闭包
   审计的 worker，不执行任何外部程序，输出仍与串行逐字节相同；没有 fork
   的平台自动退回串行。

@@ -18,7 +18,7 @@ BACKENDS = ("inc", "check", "core")
 # `tests/test_cli.py` checks the parser against it, and `tests/test_scope.py`
 # checks the spec table against this tuple.
 COMMANDS = ("gen", "check", "cases", "domain", "lint", "eval", "graph",
-            "doctor")
+            "doctor", "demo")
 
 
 def _read_text(path):
@@ -265,6 +265,17 @@ def main(argv=None):
                          help="check that this installation works (no LLVM)")
     doc.add_argument("--json", action="store_true")
 
+    # `demo` owns its argument set like `cases`/`graph`: it runs those verbs.
+    dm = sub.add_parser("demo",
+                        help="run lint, gen, cases and graph once (no LLVM)")
+    dm.add_argument("--corpus", default=None, metavar="NAME",
+                    help="bundled corpus (default: x86)")
+    dm.add_argument("--out", default=None, metavar="DIR",
+                    help="directory for the demo artifacts")
+    dm.add_argument("--config", default=None, metavar="NAME",
+                    help="graph configuration (default: the first in the "
+                         "corpus feature table)")
+
     if set(sub.choices) != set(COMMANDS):
         raise RuntimeError("parser and COMMANDS disagree: %s vs %s"
                            % (sorted(sub.choices), COMMANDS))
@@ -369,6 +380,9 @@ def main(argv=None):
     if args.cmd == "graph":
         from . import graph
         return graph.main(argv[1:])
+    if args.cmd == "demo":
+        from . import demo
+        return demo.main(argv[1:])
     from . import eval as evaluator
     # `eval` owns its own argument set; drop the subcommand word.
     return evaluator.main(argv[1:])
