@@ -23,7 +23,7 @@ gisel 只有两个功能：把 `.gisel` 文件变成规则产物
 ```sh
 # 从 checkout 运行：语料和冻结产物随仓库分发，不随 wheel 分发
 # （wheel 里带的是 lint 需要的 opcode 表和形状表）。
-python3 -m pip install .        # 或者：python3 -m gisel（不安装）
+python3 -m pip install gisel    # PyPI 安装；或者：python3 -m gisel（不安装）
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
 gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
 gisel lint  tests/corpus/X86LegalizerInfo.gisel   # 静态检查，不需要 LLVM

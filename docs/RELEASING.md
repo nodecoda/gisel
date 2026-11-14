@@ -9,7 +9,7 @@ required.
 | version | state | note |
 |---|---|---|
 | 0.2.0 | on PyPI | https://pypi.org/project/gisel/0.2.0/ — wheel + sdist, plus the GitHub release |
-| 0.3.0 | unreleased | current `__version__`; adds `graph`, `eval --answers`, `feature NAME` predicates, `lint imm`, the product-surface pin, **the nine corpora inside the wheel** (`gisel/data/corpus`, `gisel/data/cases`), `--corpus NAME` on every verb that reads a `.gisel` file, and `doctor` |
+| 0.3.0 | on PyPI | https://pypi.org/project/gisel/0.3.0/ — adds `graph`, `eval --answers`, `feature NAME` predicates, `lint imm`, the product-surface pin, **the nine corpora inside the wheel** (`gisel/data/corpus`, `gisel/data/cases`), `--corpus NAME` on every verb that reads a `.gisel` file, and `doctor` |
 
 Infrastructure, done once (2026-11-06):
 
@@ -24,6 +24,18 @@ Optional, better long-term: add a pending trusted publisher on PyPI
 (owner `nodecoda`, repo `gisel`, workflow `publish.yml`, environment `pypi`)
 and delete `password:` from the publish job — the action then uses OIDC and
 the token secret can be revoked.
+
+Companion packages, same token, same `skip-existing` rule:
+
+| package | version | PyPI | how |
+|---|---|---|---|
+| `gisel-anchor` | 0.2.0 | https://pypi.org/project/gisel-anchor/ | tag `v0.2.0` → `publish.yml` |
+| `gisel-ab` | 0.9.0 | https://pypi.org/project/gisel-ab/ | tag `v0.9.0` → `publish.yml` |
+
+The three packages are independent wheels; `gisel-ab` depends on
+`gisel>=0.3,<0.4`, and `gisel-anchor` has no dependency.  A manual
+`twine upload dist/*` from a clean tree is the fallback when a tag's
+workflow cannot run.
 
 ## 1. Bump the version in one place
 

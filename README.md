@@ -21,7 +21,7 @@ The loop those tools implement (pin → cases → A/B → attribution) is in
 [docs/GLOSSARY-zh.md](docs/GLOSSARY-zh.md) (both Chinese).
 
 ```sh
-python3 -m pip install .        # or: python3 -m gisel (no install)
+python3 -m pip install gisel    # PyPI; or: python3 -m gisel (no install)
 gisel doctor                    # first: is this install able to work?
 gisel cases --corpus x86 --out x86.cases.jsonl    # 3014 answerless queries
 gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
