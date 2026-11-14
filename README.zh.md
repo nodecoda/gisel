@@ -116,6 +116,8 @@ gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
 只要有类成员落到枚举域外或落到不同的后继类，命令就返回 1，这时 `cycles=0`
 只是“在被检查的那个划分上没找到环”，不是对整个定义域的证明。`--refine`
 会拆开违规的类；X86 C1 用 `--refine` 后 rc=0（`docs/REPORT-graph.md` §3）。
+每份报告还带 `verdict`：`safe` 要求无环、闭包成立、`outside`/`opaque` 全零；
+真实 target 通常显示 `conditional`，同一行给出计数——这是诚实的边界，不是失败。
 
 ## 架构
 

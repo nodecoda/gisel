@@ -1,6 +1,6 @@
 # `gisel graph --json` goldens
 
-These are the outputs of `gisel graph --json` on three configurations, in two
+These are the outputs of `gisel graph --json` on five configurations, in two
 partitions. They exist so a change to the value set, the class partition, the
 successor computation, or the closure audit is a byte diff, not an opinion.
 
@@ -23,7 +23,12 @@ The refined partition splits those classes until every member has one successor
 class. It exits 0 with `closure.count == 0`, so the signed statement is:
 
 > `cycles = 0` on the declared axes, with the class partition closed under the
-> mutation (`--refine`), and `outside` reported separately.
+> mutation (`--refine`), and `outside`/`opaque` reported separately.
+
+Every report carries `verdict`: `safe` only when all four are zero, `unsafe`
+when there is a cycle, `conditional` otherwise.  The refined X86/RISC-V files
+are `conditional` because `outside` is 2,240 / 3,622; the verdict keeps that
+boundary next to the "no cycle" claim instead of hiding it.
 
 `--refine` does not make every mutation land inside the domain. `outside`
 increases (2,240 on x86, 3,622 on riscv) and those states have no outgoing edge:

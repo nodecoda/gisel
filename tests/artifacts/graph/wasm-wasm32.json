@@ -229,7 +229,8 @@
    },
    "uncovered": [
     "G_SEXT_INREG"
-   ]
+   ],
+   "verdict": "conditional"
   }
  ]
 }

@@ -505,6 +505,14 @@ class Report:
             s.get("action") for s in self.states.values()
             if s["outcome"] == "terminal")
         cycles, samples = _find_cycles(self.edges)
+        closure = self.closure
+        if cycles:
+            verdict = "unsafe"
+        elif not closure.get("checked") or not closure.get("ok") \
+                or outcomes.get("outside", 0) or outcomes.get("opaque", 0):
+            verdict = "conditional"
+        else:
+            verdict = "safe"
         out = {
             "config": self.config,
             "states": len(self.states),
@@ -514,6 +522,7 @@ class Report:
             "opaque": outcomes.get("opaque", 0),
             "outside": outcomes.get("outside", 0),
             "cycles": cycles,
+            "verdict": verdict,
             "cycle_samples": [[_node_text(x) for x in sample]
                               for sample in samples],
             "classes": self.classes,
@@ -1145,6 +1154,15 @@ def main(argv=None):
         print("outside     : %d" % output["outside"])
         print("shape       : %d" % output["shape"])
         print("cycles      : %d" % output["cycles"])
+        if output["verdict"] == "safe":
+            print("verdict     : SAFE")
+        else:
+            closure_count = (output["closure"].get("count", 0)
+                             if output["closure"].get("checked") else "?")
+            print("verdict     : %s (cycles=%d, closure=%s, outside=%d, "
+                  "opaque=%d)"
+                  % (output["verdict"].upper(), output["cycles"],
+                     closure_count, output["outside"], output["opaque"]))
         if output["uncovered"]:
             print("uncovered   : %s" % sorted(set(output["uncovered"])))
         if output.get("skipped"):

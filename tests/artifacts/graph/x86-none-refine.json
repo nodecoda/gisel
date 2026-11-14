@@ -39,7 +39,8 @@
    "uncovered": [
     "G_INTRINSIC",
     "G_INTRINSIC_W_SIDE_EFFECTS"
-   ]
+   ],
+   "verdict": "conditional"
   }
  ]
 }

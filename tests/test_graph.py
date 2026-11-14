@@ -406,5 +406,36 @@ class ConfigDependentMemory(unittest.TestCase):
         )
 
 
+class Verdict(unittest.TestCase):
+    """The verdict line is the one-line reading of cycles + closure."""
+
+    def build(self, text=FIXTURE, **kwargs):
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_source(directory, text)
+            doc = cases.document(source)
+            features = cases.derive_features(doc)
+            return graph.build(source, "none", features, **kwargs)
+
+    def test_closed_graph_is_safe(self):
+        report = self.build(CLOSED, check_closure=True)
+        self.assertEqual(report.public()["verdict"], "safe")
+
+    def test_open_closure_is_conditional_even_without_cycles(self):
+        report = self.build(OUTSIDE, check_closure=True)
+        public = report.public()
+        self.assertEqual(public["cycles"], 0)
+        self.assertEqual(public["verdict"], "conditional")
+
+    def test_cycle_is_unsafe(self):
+        report = self.build(inject_edge=True)
+        public = report.public()
+        self.assertGreaterEqual(public["cycles"], 1)
+        self.assertEqual(public["verdict"], "unsafe")
+
+    def test_skipped_closure_is_conditional(self):
+        report = self.build(CLOSED, check_closure=False)
+        self.assertEqual(report.public()["verdict"], "conditional")
+
+
 if __name__ == "__main__":
     unittest.main()

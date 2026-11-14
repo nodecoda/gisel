@@ -445,3 +445,22 @@ done
 - **未覆盖**：RISC-V 其余 7 个配置、AArch64 其余 8 个配置没有逐一复测。
   `rv64gc` / `baseline` 是主配置，足以判断量级；全配置表应在需要时另立测量，
   不能拿一个配置冒充全部。
+
+## 10 `verdict`（2026-11-14，r17）
+
+`gisel graph` 的每份报告新增 `verdict` 字段和同名文本行，把 `cycles`、
+`closure`、`outside`、`opaque` 合成一句话：
+
+- `unsafe`：有环；
+- `safe`：无环、闭包已检查且通过、`outside=0`、`opaque=0`；
+- `conditional`：其余（没查闭包、闭包失败，或存在 `outside`/`opaque`）。
+
+它只加字段，不改退出码。签字口径是 `cycles=0` 且 `closure.count=0`
+（`--refine`），并同时读 `outside`/`opaque`；四项全零时 `verdict=safe`，
+真实 target 通常因 `outside`/`opaque` 非零显示 `conditional`——这不是失败，
+而是把未覆盖边界写在结论旁边。5 个 PR golden 与 10 个 nightly golden 已按
+新字段重录，字节比较仍然覆盖全部字段。
+
+全配置矩阵（AArch64 9 个、RISC-V 8 个）的数字在
+[docs/REPORT-graph-configs.md](REPORT-graph-configs.md)；那张表是测量记录，
+PR 门仍只锁 5 个配置。

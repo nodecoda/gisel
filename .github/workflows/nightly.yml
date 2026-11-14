@@ -21,3 +21,11 @@ jobs:
         run: bash tools/check-nightly-graphs.sh
       - name: all nine case files are byte-identical
         run: bash tools/check-cases-golden.sh
+      - name: collect diagnostics on failure
+        if: failure()
+        run: python3 -m gisel doctor --json > "$RUNNER_TEMP/gisel-doctor.json" || true
+      - uses: actions/upload-artifact@v7
+        if: failure()
+        with:
+          name: nightly-diagnostics
+          path: ${{ runner.temp }}/gisel-doctor.json

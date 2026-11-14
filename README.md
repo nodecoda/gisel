@@ -120,7 +120,10 @@ closure audit is **on by default**: if a class member lands outside the
 enumerated domain or in a different successor class, the command exits 1 and
 `cycles=0` is a statement about the partition that was checked, not a proof
 about the whole domain.  `--refine` splits the offending classes; for X86 C1
-that raises rc to 0 (`docs/REPORT-graph.md` §3).
+that raises rc to 0 (`docs/REPORT-graph.md` §3).  Every report also carries
+`verdict`: `safe` needs no cycles, a closed partition, and zero
+`outside`/`opaque`; a real target normally reads `conditional` with those
+counts on the same line, which is the honest boundary, not a failure.
 
 ## Architecture
 

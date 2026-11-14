@@ -23,5 +23,6 @@
 | AArch64 题面是 12,559 条 | `python3 -m gisel cases tests/corpus/AArch64LegalizerInfo.gisel --features tests/cases/features.json --axes tests/cases/aarch64-mem-orderings.axes.json --out /tmp/a64.jsonl` | `cases=12559` | `nightly` |
 | RISC-V 题面是 6,086 条 | `python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel --features tests/cases/riscv-features.json --out /tmp/rv.jsonl` | `cases=6086` | `nightly` |
 | SPIR-V 图在 200k 状态处确定性停止 | `python3 -m gisel graph tests/corpus/SPIRVLegalizerInfo.gisel --features tests/cases/spirv-features.json --config spirv64-kernel --refine --max-states 200000 --json` | rc=2；error=state_limit；outcome=unsupported_scale | local（约 15 秒） |
-| 四个 graph golden 未被 `--max-states` 改变 | `bash tools/check-graph-golden.sh` | rc=0；4 个配置字节一致 | `golden` |
+| 五个 graph golden 未被 `--max-states` 改变 | `bash tools/check-graph-golden.sh` | rc=0；5 个配置字节一致 | `golden` |
+| 已知限制集中在一页 | `test -f docs/KNOWN-LIMITATIONS.md` | rc=0 | local |
 | X86 domain 是 91,340 条 | `python3 -m gisel domain tests/corpus/X86LegalizerInfo.gisel --features tests/cases/x86-features.json --out /tmp/x86-domain.jsonl` | `points=91340` | local（约 2 秒） |

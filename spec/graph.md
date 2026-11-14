@@ -102,7 +102,7 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 
 边标签包含 action、type index 和 `(ruleset_index, rule_index)`。DFS 使用三色
 标记，文本和 JSON 都输出 `config`、`states`、`edges`、`outcomes`、`terminal`、
-`opaque`、`outside`、`shape`、`cycles`。`outcomes` 始终包含 `moves`、`no-rule`、
+`opaque`、`outside`、`shape`、`cycles`、`verdict`。`outcomes` 始终包含 `moves`、`no-rule`、
 `terminal`、`opaque`、`outside`、`stuck` 六个键，零值也显式打印，避免读者把
 “没有这个字段”误读成“没有发生”。最多打印 5 条环，每条最多 6 个节点。
 
@@ -120,6 +120,7 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 | `opaque` / `outside` | int | 上面两个计数的便捷副本 |
 | `shape` | int | 因没有 MIR-legal 成员组合而没有建状态的类元组数（不是规则缺口，是 MIR 形状约束） |
 | `cycles` | int | 找到的环数 |
+| `verdict` | string | `safe` / `conditional` / `unsafe`，见下 |
 | `cycle_samples` | array | 最多 5 条，每条最多 6 个节点 |
 | `classes` | int | 参与建图的类总数 |
 | `classes_before` | int | 只有 `--refine` 时出现：细化前的类总数 |
@@ -130,6 +131,20 @@ memory type 可以是一个配置相关的 `select` 节点（例如 RISC-V 的
 | `oracle` | object | 只有传 `--oracle` 时出现 |
 
 文本输出和 JSON 是同一份数据；顶层 `reports` 包装是唯一的形态差异。
+
+## verdict
+
+`verdict` 是把 `cycles`、`closure`、`outside`、`opaque` 合成一句话的只读字段，
+不改变退出码，也不改变任何计数：
+
+| 值 | 条件 |
+|---|---|
+| `unsafe` | `cycles > 0` |
+| `safe` | `cycles == 0` 且闭包已检查且 `closure.ok` 且 `outside == 0` 且 `opaque == 0` |
+| `conditional` | 其余：没查闭包、闭包失败，或存在 `outside` / `opaque` |
+
+`conditional` 不是“没事”，是“在当前有限域和分区上没找到环，但结论有前提”。
+`--inject-edge` 必然给 `unsafe`；`--no-check-closure` 必然给 `conditional`。
 
 ## 负控和闭包
 
@@ -189,8 +204,10 @@ Mips 不声明任何 float 类型，于是每个 `f16 -> f32` 都被误记成域
 refine 两份 `rc=0`、`closure.count=0`、`cycles=0`。`tools/check-graph-golden.sh`
 同时比较字节、rc 和 `closure.count == sum(closure.kinds)`；rc=2 一律失败。
 
-因此“0 环”的签字写法只有一种：`--refine`、`closure.count=0`、`outside`
-单独报告。默认分区的 `cycles=0` 只是代表点商图上的条件结论。语义改动与
+因此“0 环”的签字写法是：`cycles=0` 且 `closure.count=0`（`--refine`），
+并同时打印 `outside`/`opaque`。四项全零时 `verdict=safe`；真实 target 通常
+因 `outside`/`opaque` 非零显示 `conditional`，这不是失败，而是把未覆盖边界
+写在结论旁边。默认分区的 `cycles=0` 只是代表点商图上的条件结论。语义改动与
 golden 重录必须分两笔提交；重录不能把 rc=1 的默认口径改成 rc=0，也不能把
 rc=0 的 refine 口径改成 rc=1。
 
