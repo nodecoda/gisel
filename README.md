@@ -299,6 +299,7 @@ docs/ALGORITHM-cases.md  case generation as a bounded quotient (article source)
 docs/REPORT-cases.md    case generation: evidence, rejected options
 docs/REPORT-coverage.md coverage evidence for the case set
 docs/REPORT-graph.md    quotient-graph evidence and the cycle history
+docs/REPORT-closure-why.md  why the unrefined partition is not closed
 docs/DESIGN-graph.md    graph design record
 docs/REQUIREMENTS-ab.md  workbench: the differential-testing requirement
 docs/REPORT-ab.md       workbench: end-to-end A/B (not a gisel feature)

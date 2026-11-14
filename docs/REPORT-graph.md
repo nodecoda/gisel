@@ -19,6 +19,10 @@ x86/none、riscv/rv64gc 与 wasm32 的 `--json` 输出已经逐字节冻结在
 `tests/artifacts/graph/`，`tools/check-graph-golden.sh` 重跑五条命令并同时
 比较 rc、`closure.count` 与字节。命令都在仓库根目录执行。
 
+默认分区（不 `--refine`）的闭包缺口逐条归因在
+[docs/REPORT-closure-why.md](REPORT-closure-why.md)：修掉代表点被边界探针劫持
+之后，剩余违例全部是 `--refine` 能拆的真实分区缺口。
+
 ```sh
 python3 -m gisel graph SOURCE --emit=core \
   [--features FEATURES] [--config CONFIG] [--json] \
@@ -36,7 +40,7 @@ python3 -m gisel graph SOURCE --emit=core \
 
 | 口径 | 命令 | rc | closure | 用途 |
 |---|---|---:|---:|---|
-| 默认 | 不带 `--refine` | 1 | 272 / 2,864 | 记录“代表点商图上 0 环，但分区不是同余”的覆盖缺口 |
+| 默认 | 不带 `--refine` | 1 | 272 / 1,607 | 记录“代表点商图上 0 环，但分区不是同余”的覆盖缺口 |
 | 签字 | `--refine` | 0 | 0 | `cycles=0` 且后继是状态上的函数 |
 
 `--refine` 不把所有变异都拉回域内：`outside` 仍然计数（x86 2,240；
@@ -186,17 +190,19 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| rv64gc | 521,903 | 28,925 | 28,925 | 414,504 | 46,162 | 29,114 | 3,198 | 30,313 | 8,005 | 0 |
+| rv64gc | 521,903 | 29,022 | 29,022 | 414,504 | 46,196 | 29,114 | 3,067 | 30,313 | 8,005 | 0 |
 
 `uncovered = ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']`
 （imm 轴或 variadic 槽数未给定）。
 
-闭包：`count=2,864`（`partition 610` / `outside 2,254`），rc=1。
-其中 2,208 条集中在 `G_CTLZ_ZERO_POISON` / `G_CTTZ_ZERO_POISON`：规则
-`widen(slot(1), same_as(0))` 是跨槽变异，旧 refine 只看“写回本槽”的变异，
-拆不开这个类。
+闭包：`count=1,607`（`partition 984` / `outside 623`），rc=1（2026-11-14
+`b83dad8` 重选代表点之后；修前是 2,864 = 610 + 2,254）。其中 1,580 条集中在
+`G_CTLZ_ZERO_POISON` / `G_CTTZ_ZERO_POISON`：规则
+`widen(slot(1), same_as(0))` 是跨槽变异，refine 只看“写回本槽”的变异时
+拆不开这个类，但按被写入槽的具体目标类型拆可以。逐条归因见
+[docs/REPORT-closure-why.md](REPORT-closure-why.md)。
 
-2026-11-11 在 `dad5a61` 重跑：`--check-closure` 仍是 `count=2,864`
+2026-11-11 在 `dad5a61` 重跑：`--check-closure` 当时是 `count=2,864`
 （`partition 610` / `outside 2,254`），rc=1；把 refine 扩到跨槽目标后，
 `--refine` 得到 **`count=0`，rc=0**，classes 8,005 → 8,054（+49），
 states 522,996，edges 29,356，cycles 0。
@@ -204,7 +210,7 @@ states 522,996，edges 29,356，cycles 0。
 2026-11-13 在 `6671815` 复测：该 commit 让规则里的 `p0:*` 按配置解析成
 `p0:64`（不再当“任意宽度”），所以上面这张表和 refined 数字一起变了：
 states 521,899 → 521,903，classes 8,001 → 8,005，`Legal` 590 → 400，
-`Lower` 44,987 → 44,443，`no-rule` 413,778 → 414,504；closure 仍是
+`Lower` 44,987 → 44,443，`no-rule` 413,778 → 414,504；closure 当时仍是
 `count=2,864`，refine 后仍是 `count=0`。变化集中在指针槽：rv64gc 的
 `p0:32` 状态不再被 `p0:*` 规则误判为 legal。五个 graph golden 已按这次
 输出重录，`tests/artifacts/graph/SHA256` 同步。
@@ -301,13 +307,14 @@ cycles        147 ->         0
 | Mips | 5 | 22,968 | **0** | 0 | 0 | — | 0 |
 | PowerPC | 1 | 7,402 | **0** | 0 | 0 | — | 0 |
 | M68k | 1 | 1,232 | **0** | 0 | 0 | — | 0 |
-| WebAssembly | 4 | 26,818 | 302 | 168 | 134 | **0**（1,945→2,013 类） | 0 |
+| WebAssembly | 4 | 26,818 | 272 | 168 | 104 | **0**（1,945→2,013 类） | 0 |
 | SPIR-V | 6 | >200,000（limit） | 未覆盖（`state_limit`） | — | — | — | 2 |
 
-WebAssembly 的 302 条残余：12 条显式 `i128`（轴里只有 `i8`/`i16`/`i32`/`i64`），
-其余是 `G_FCOPYSIGN` 等类里“代表点在域外、成员在域内”的跨域混合。把 refine
-扩到跨槽目标后，**`--refine` 得到 `count=0`，rc=0**；classes 1,945 → 2,013
-（+68），states 27,096，edges 18,869。
+WebAssembly 当前是 272 条残余（2026-11-14 的 repick 修复前是 302）：211 条是
+`G_FCOPYSIGN` 的跨槽 `same_as(0)` 类，其余是宽度类；逐条归因见
+[docs/REPORT-closure-why.md](REPORT-closure-why.md)。把 refine 扩到跨槽目标后，
+**`--refine` 得到 `count=0`，rc=0**；classes 1,945 → 2,013（+68），states 27,096，
+edges 18,869。
 
 SPIR-V 的单个配置 `spirv64-kernel` 在 200,000 states 上限处停住：
 `G_FLDEXP` 达到 200,001 个状态，`--max-states 200000` 在 15 s 内返回
@@ -428,7 +435,7 @@ done
 | X86 | C1 | 26.2 s | 112 MB | 68,656 | 26,285 | 4,020 | 0 | 277 |
 | X86 | C2 | 29.3 s | 112 MB | 68,588 | 25,885 | 4,067 | 0 | 265 |
 | X86 | C3 | 24.4 s | 113 MB | 68,667 | 27,740 | 4,031 | 0 | 272 |
-| RISC-V | rv64gc | 244.9 s | 620 MB | 521,903 | 28,925 | 8,005 | 0 | 2,864 |
+| RISC-V | rv64gc | 244.9 s | 620 MB | 521,903 | 29,022 | 8,005 | 0 | 1,607 |
 
 结论与边界：
 
