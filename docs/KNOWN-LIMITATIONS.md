@@ -38,7 +38,7 @@
 
 ## 发布
 
-11. `gisel 0.3.1`、`gisel-anchor 0.2.0`、`gisel-ab 0.9.0` 已在 PyPI（2026-11-14）。
+11. `gisel 0.3.2`、`gisel-anchor 0.2.0`、`gisel-ab 0.9.1` 已在 PyPI（2026-11-14）。
     安装以 PyPI 页为准。`scripts/install.sh` 默认装 PyPI 最新版，`--from-git`
     才按 `gisel-ab/RELEASE.json` 的 cohort pin 装 commit。
 12. 镜像只证明“装好了能跑”（构建时 `doctor`、workflow 里 `demo` + `suite check`）；
