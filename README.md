@@ -82,8 +82,8 @@ The generated `.inc` is the C++ chain, one call per rule:
   const LLT I64 = LLT::scalar(64);
 
   getActionDefinitionsBuilder(G_ADD)
-      .legalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == I32); })
-      .legalIf([=](const LegalityQuery &Query) { return (Is64Bit) && ((Query.Types[0] == I64)); })
+      .legalFor({I32})
+      .legalFor(Is64Bit, {I64})
       .widenScalarToNextPow2(0, 32)
       .scalarize(0);
 ```

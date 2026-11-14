@@ -21,14 +21,24 @@ gisel 只有两个功能：把 `.gisel` 文件变成规则产物
 [docs/GLOSSARY-zh.md](docs/GLOSSARY-zh.md)。
 
 ```sh
-# 九份语料随 wheel 一起安装（gisel/data），所以装完就能用 --corpus。
-python3 -m pip install gisel    # PyPI 安装；或者：python3 -m gisel（不安装）
+# 一条命令装好，不需要 checkout：pipx -> uv tool -> venv，哪个在就用哪个
+curl -fsSL https://raw.githubusercontent.com/nodecoda/gisel/main/scripts/install.sh | sh
+
+gisel doctor                    # 这个安装能干活吗？
 gisel demo                      # 一条命令跑完 lint -> inc -> cases -> graph，约 25 秒
-gisel gen   tests/corpus/X86LegalizerInfo.gisel --emit=inc --out x86.inc
-gisel check tests/corpus/X86LegalizerInfo.gisel --emit=inc --against x86.inc
-gisel lint  tests/corpus/X86LegalizerInfo.gisel   # 静态检查，不需要 LLVM
-gisel cases tests/corpus/X86LegalizerInfo.gisel --out x86.cases.jsonl \
-            --features tests/cases/x86-features.json   # 等价类 / 边界 / 域外
+gisel cases --corpus x86 --out x86.cases.jsonl    # 3014 条无答案查询
+gisel gen   --corpus x86 --emit=inc --out x86.inc   # C++ builder 链
+gisel check --corpus x86 --emit=inc --against x86.inc   # 还是最新的吗？
+gisel lint  --corpus x86    # 静态检查，不需要 LLVM
+```
+
+九份语料随 wheel 一起安装（`gisel/data`），所以装完就能用 `--corpus NAME`，
+有没有 checkout 都一样。
+
+或者，宿主机上完全没有 Python：
+
+```sh
+docker run --rm ghcr.io/nodecoda/gisel:latest gisel demo
 ```
 
 ## 五分钟上手
@@ -66,11 +76,16 @@ python3 -m gisel check /tmp/demo/hello.gisel --emit=inc --against /tmp/demo/hell
   const LLT I64 = LLT::scalar(64);
 
   getActionDefinitionsBuilder(G_ADD)
-      .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == I32); })
-      .coreLegalIf([=](const LegalityQuery &Query) { return (Is64Bit) && ((Query.Types[0] == I64)); })
-      .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
+      .legalFor({I32})
+      .legalFor(Is64Bit, {I64})
+      .widenScalarToNextPow2(0, 32)
       .scalarize(0);
 ```
+
+每个调用都是上游 `LegalizeRuleSet` 的公共 builder：`.inc` 对未经修改的上游
+`LegalizerInfo.h` 就能编译，替换某个 target 的手写规则不需要打头文件补丁。
+`gisel-ab/scripts/inc/check-pin-header.sh` 把三份产物都对纯 pin 树编译一遍，
+并自测 `core*` 名字会被拒绝。
 
 `--emit=check` 和 `--emit=core` 从同一份源文件给出另外两种形状。C++ `.inc`
 就是产品；`check` 和 `core` 是它的检查形式。
