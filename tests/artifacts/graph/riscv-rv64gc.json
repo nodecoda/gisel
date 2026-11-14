@@ -4,61 +4,22 @@
    "classes": 8005,
    "closure": {
     "checked": true,
-    "count": 2864,
+    "count": 1607,
     "kinds": {
-     "outside": 2254,
-     "partition": 610
+     "outside": 623,
+     "partition": 984
     },
     "ok": false,
     "violations": [
      {
       "kind": "outside",
       "member": [
-       "s7"
+       "s3"
       ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_ADD[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s24"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_ADD[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s33"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_ADD[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s63"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_ADD[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
+      "mutation": "s4",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
       "state": "G_ADD[7]"
      },
      {
@@ -73,51 +34,12 @@
      {
       "kind": "outside",
       "member": [
-       "s7"
+       "s3"
       ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_AND[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s24"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_AND[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s33"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_AND[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s63"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_AND[7]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
+      "mutation": "s4",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
       "state": "G_AND[7]"
      },
      {
@@ -131,51 +53,12 @@
      {
       "kind": "outside",
       "member": [
-       "s7"
+       "s3"
       ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT[4]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s24"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT[4]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s33"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT[4]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s63"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT[4]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
+      "mutation": "s4",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
       "state": "G_CONSTANT[4]"
      },
      {
@@ -190,47 +73,179 @@
      {
       "kind": "outside",
       "member": [
-       "s7"
+       "s3"
       ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
+      "mutation": "s4",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
       "state": "G_CONSTANT_FOLD_BARRIER[9]"
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_CONSTANT_FOLD_BARRIER[9]",
+      "targets": [
+       "G_CONSTANT_FOLD_BARRIER[15]",
+       "G_CONSTANT_FOLD_BARRIER[6]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_CTLZ_ZERO_POISON[1,0]",
+      "targets": [
+       "G_CTLZ_ZERO_POISON[1,42]",
+       "G_CTLZ_ZERO_POISON[1,46]",
+       "G_CTLZ_ZERO_POISON[1,53]",
+       "G_CTLZ_ZERO_POISON[1,54]"
+      ]
      },
      {
       "kind": "outside",
       "member": [
-       "s24"
+       "s3",
+       "nxv1s1"
+      ],
+      "mutation": "nxv1s3",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "outside",
+      "member": [
+       "s7",
+       "nxv1s1"
+      ],
+      "mutation": "nxv1s7",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "nxv16s8",
+       "nxv1s1"
       ],
       "outcome": "moves",
       "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT_FOLD_BARRIER[9]"
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "nxv1s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "nxv2s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "nxv32s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "nxv4s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "nxv64s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "nxv8s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "v16s8",
+       "nxv1s1"
+      ],
+      "outcome": "moves",
+      "reason": "different outcome",
+      "representative": "terminal",
+      "state": "G_CTLZ_ZERO_POISON[1,10]"
      }
     ]
    },
    "config": "rv64gc",
    "cycle_samples": [],
    "cycles": 0,
-   "edges": 28925,
+   "edges": 29022,
    "injected_edge": null,
    "opaque": 29114,
    "outcomes": {
-    "moves": 28925,
+    "moves": 29022,
     "no-rule": 414504,
     "opaque": 29114,
-    "outside": 3198,
+    "outside": 3067,
     "stuck": 0,
-    "terminal": 46162
+    "terminal": 46196
    },
-   "outside": 3198,
+   "outside": 3067,
    "shape": 30313,
    "states": 521903,
    "terminal": {
     "Custom": 92,
     "Legal": 400,
     "Libcall": 531,
-    "Lower": 44443,
+    "Lower": 44477,
     "Unsupported": 696
    },
    "uncovered": [

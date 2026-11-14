@@ -1,8 +1,8 @@
 {
   "schema": 1,
-  "note": "Non-refined closure counts that the byte goldens do not cover.  AArch64 is opt-in (GS_SLOW=1) because the unrefined run takes ~9 minutes; wasm32 runs in the normal suite.",
+  "note": "Non-refined closure counts that the byte goldens do not cover.  AArch64 is opt-in (GS_SLOW=1) because the unrefined run takes ~100 s and 1.1M states; wasm32 runs in the normal suite.  The counts are post-repick: an `outside` state now means every member leaves the enumerated domain.",
   "counts": {
-    "aarch64-baseline": 2671,
-    "wasm32": 302
+    "aarch64-baseline": 1985,
+    "wasm32": 272
   }
 }

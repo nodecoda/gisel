@@ -4,9 +4,9 @@
    "classes": 1945,
    "closure": {
     "checked": true,
-    "count": 302,
+    "count": 272,
     "kinds": {
-     "outside": 134,
+     "outside": 104,
      "partition": 168
     },
     "ok": false,
@@ -33,41 +33,12 @@
      {
       "kind": "outside",
       "member": [
-       "s7"
+       "s3"
       ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_ADD[5]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s24"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_ADD[5]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "i31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_ADD[5]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
+      "mutation": "s4",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
       "state": "G_ADD[5]"
      },
      {
@@ -100,41 +71,12 @@
      {
       "kind": "outside",
       "member": [
-       "s7"
+       "s3"
       ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_AND[5]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s24"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_AND[5]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "i31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_AND[5]"
-     },
-     {
-      "kind": "outside",
-      "member": [
-       "s31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
+      "mutation": "s4",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
       "state": "G_AND[5]"
      },
      {
@@ -167,60 +109,117 @@
      {
       "kind": "outside",
       "member": [
-       "s7"
+       "s3"
       ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
+      "mutation": "s4",
+      "outcome": "outside",
+      "reason": "outside",
+      "representative": "moves",
       "state": "G_CONSTANT[5]"
      },
      {
-      "kind": "outside",
-      "member": [
-       "s24"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT[5]"
+      "reason": "multiple target classes",
+      "state": "G_CONSTANT[5]",
+      "targets": [
+       "G_CONSTANT[2]",
+       "G_CONSTANT[6]"
+      ]
      },
      {
-      "kind": "outside",
-      "member": [
-       "i31"
-      ],
-      "outcome": "moves",
-      "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT[5]"
+      "reason": "multiple target classes",
+      "state": "G_FABS[1]",
+      "targets": [
+       "G_FABS[0]",
+       "G_FABS[2]"
+      ]
      },
      {
-      "kind": "outside",
+      "reason": "multiple target classes",
+      "state": "G_FADD[1]",
+      "targets": [
+       "G_FADD[0]",
+       "G_FADD[2]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_FCEIL[1]",
+      "targets": [
+       "G_FCEIL[0]",
+       "G_FCEIL[2]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_FCONSTANT[1]",
+      "targets": [
+       "G_FCONSTANT[0]",
+       "G_FCONSTANT[2]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_FCOPYSIGN[2,0]",
+      "targets": [
+       "G_FCOPYSIGN[2,15]",
+       "G_FCOPYSIGN[2,20]",
+       "G_FCOPYSIGN[2,21]",
+       "G_FCOPYSIGN[2,22]",
+       "G_FCOPYSIGN[2,23]",
+       "G_FCOPYSIGN[2,24]"
+      ]
+     },
+     {
+      "reason": "multiple target classes",
+      "state": "G_FCOPYSIGN[2,14]",
+      "targets": [
+       "G_FCOPYSIGN[2,15]",
+       "G_FCOPYSIGN[2,20]",
+       "G_FCOPYSIGN[2,21]",
+       "G_FCOPYSIGN[2,22]",
+       "G_FCOPYSIGN[2,23]",
+       "G_FCOPYSIGN[2,24]"
+      ]
+     },
+     {
+      "kind": "partition",
       "member": [
-       "s31"
+       "f128",
+       "s128"
       ],
-      "outcome": "moves",
+      "outcome": "no-rule",
       "reason": "different outcome",
-      "representative": "outside",
-      "state": "G_CONSTANT[5]"
+      "representative": "moves",
+      "state": "G_FCOPYSIGN[2,15]"
+     },
+     {
+      "kind": "partition",
+      "member": [
+       "p0:128",
+       "s128"
+      ],
+      "outcome": "no-rule",
+      "reason": "different outcome",
+      "representative": "moves",
+      "state": "G_FCOPYSIGN[2,15]"
      }
     ]
    },
    "config": "wasm32",
    "cycle_samples": [],
    "cycles": 0,
-   "edges": 18683,
+   "edges": 18700,
    "injected_edge": null,
    "opaque": 715,
    "outcomes": {
-    "moves": 18683,
-    "no-rule": 5559,
+    "moves": 18700,
+    "no-rule": 5565,
     "opaque": 715,
-    "outside": 1074,
+    "outside": 1051,
     "stuck": 0,
     "terminal": 787
    },
-   "outside": 1074,
+   "outside": 1051,
    "shape": 2510,
    "states": 26818,
    "terminal": {
