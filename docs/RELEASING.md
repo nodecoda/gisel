@@ -10,6 +10,7 @@ required.
 |---|---|---|
 | 0.2.0 | on PyPI | https://pypi.org/project/gisel/0.2.0/ — wheel + sdist, plus the GitHub release |
 | 0.3.0 | on PyPI | https://pypi.org/project/gisel/0.3.0/ — adds `graph`, `eval --answers`, `feature NAME` predicates, `lint imm`, the product-surface pin, **the nine corpora inside the wheel** (`gisel/data/corpus`, `gisel/data/cases`), `--corpus NAME` on every verb that reads a `.gisel` file, and `doctor` |
+| 0.3.1 | on PyPI | https://pypi.org/project/gisel/0.3.1/ — adds `demo` (lint → `gen --emit=inc` → `cases` → refined `graph` on the bundled x86 corpus, ~25 s) and the first-screen install path: `scripts/install.sh` (pipx / uv tool / venv), `install.yml` on a machine with no checkout, and the GHCR image. No rule, corpus or artifact changed |
 
 Infrastructure, done once (2026-11-06):
 
@@ -119,8 +120,8 @@ transcribed targets (`X86`, `AArch64`, `RISC-V`), plus `SHA256`.
 
 The wheel ships one surface; check it before tagging:
 
-- `gisel --help` lists exactly `gen check cases domain lint eval graph`
-  (`tests/test_cli.py::Commands`), and every verb answers `--help`.
+- `gisel --help` lists exactly `gen check cases domain lint eval graph doctor
+  demo` (`tests/test_cli.py::Commands`), and every verb answers `--help`.
 - `gisel diff` is rejected: that command lives in `gisel-ab/diff.py`.
 - The three exit codes mean the same thing everywhere (`spec/cli.md` §2):
   `0` yes, `1` no, `2` could not start.
@@ -132,6 +133,27 @@ The wheel ships one surface; check it before tagging:
   `gisel.egg-info` wins the `importlib.metadata` lookup and the check silently
   inspects the build tree instead of the installed wheel (`ci.yml` `cd`s to
   `$RUNNER_TEMP` for this reason).
+
+## 3.6. Install surfaces (script, CI, image)
+
+Three things let a new machine use the tools without a checkout.  They are
+product surface: a release that changes `gisel --help` changes them too.
+
+| surface | file | what it promises |
+|---|---|---|
+| `scripts/install.sh` | piped into `sh`; `pipx` → `uv tool` → `venv`, `--prefix DIR` forces the venv, `--from-git` installs the commits pinned in `gisel-ab/RELEASE.json` | three binaries + `gisel doctor` pass |
+| `install.yml` | fresh ubuntu, **no checkout**, `curl` the script at the pushed SHA; matrix `auto` / `uv` / `venv` | `doctor`, `demo`, `cases --corpus x86`, `gisel-ab suite check --target m68k` |
+| `container.yml` + `Dockerfile` | builds `gisel` from the checkout, companions from PyPI; tags `ghcr.io/nodecoda/gisel:<version>` and `:latest` | `gisel doctor` at build, `demo` + `suite check` on the pushed image |
+
+Two things to bump when the companions release: the `ANCHOR_VERSION` /
+`AB_VERSION` build args in `Dockerfile` (defaults are the versions this repo's
+cohort was tested with), and nothing else — the script reads PyPI "latest" on
+purpose, and `--from-git` reads the pins.
+
+`v*` tags run `container.yml` as well as `publish.yml`, so a release ships the
+wheel and the image from the same commit.  GHCR creates the package **private**
+on its first push; flip it to public once in the package settings, otherwise
+`docker run ghcr.io/nodecoda/gisel` needs a login.
 
 ## 4. Tag and let CI publish
 
@@ -154,9 +176,10 @@ python -m venv /tmp/after && /tmp/after/bin/pip install "gisel==$version"
 /tmp/after/bin/gisel --version
 ```
 
-Known boundary: the wheel ships the opcode tables but **not** `tests/`; the
-corpus and frozen artifacts are repository-only.  Examples in the README
-assume a checkout.
+Known boundary: the wheel ships the opcode tables **and the nine corpora**
+(`gisel/data/corpus`, `gisel/data/cases`), so `--corpus NAME` works with no
+checkout; the frozen artifacts under `tests/artifacts` stay repository-only,
+and the evidence commands in `docs/LOOP.md` assume a checkout.
 
 ## 4 三仓 cohort
 
