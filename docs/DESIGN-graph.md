@@ -7,7 +7,7 @@
 `gisel graph SOURCE --emit=core [--features FEATURES] [--config CONFIG]`
 读取 `SOURCE`，在内存中生成 schema 0.4 core document，交给现有
 `gisel.eval.Evaluator` 求值。`--emit` 只接受 `core`，用于明确图的输入是正常形；
-命令不读取 `.inc`、`.td`，也不调用 LLVM。
+命令只读 `.gisel` 和配置，不读取 `.inc`，也不调用 LLVM。
 
 `--features` 复用 `cases`/`domain` 的 JSON truth table。未指定时复用
 `cases.derive_features` 的默认配置；指定 `--config` 后只跑该行，否则每个配置

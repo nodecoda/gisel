@@ -1,6 +1,5 @@
 # Pressure test: M68k and WebAssembly
 
-> 历史说明：本报告写作时 `.td` 与 `table` 渲染器仍存在；它们已在 `docs/REPORT-no-td.md` 和 `spec/m3-scope.md` 中移除。
 > 这是工作台报告：`gisel-anchor/scripts/import-cxx.py` 是工作台工具，不是 gisel 的功能；边界见 `docs/SCOPE.md`。
 
 状态: 证据记录（2026-11-06，2026-11-09 追补）。语料:
@@ -10,8 +9,8 @@
 
 ## 1 结论
 
-- LLVM 里实现了 GlobalISel legalizer 的 target 共 **7 个**（见 §2）。其中 AArch64 /
-  X86 已有 `.td`+`.gisel`（1075 条），其余 5 个没有。
+- LLVM 里实现了 GlobalISel legalizer 的 target 共 **7 个**（见 §2）。其中 X86 /
+  AArch64 已有 `.gisel` 语料（1075 条），其余 5 个当时没有。
 - 取最小的 M68k（52 行）和中等且换了一组 API 的 WebAssembly（234 行）各压一遍：
   - **M68k: 13/13 条可表达，0 缺口。**
   - **WebAssembly: 109/109 条可表达，且已转正。** 第一轮压出 1 条缺口
@@ -24,21 +23,18 @@
 
 ## 2 盘点：实现了 GlobalISel legalizer 的 target
 
-> 这一节是 2026-11-08 的现场记录，只扫了 `*/GISel/*LegalizerInfo.cpp`，漏掉了
-> `ARM/ARMLegalizerInfo.cpp`、`Mips/MipsLegalizerInfo.cpp` 和 AMDGPU；当前盘点以
-> `docs/REPORT-amdgpu.md` §1 为准（11 个构造函数，9 个已收）。
+盘点 `llvm/lib/Target/*/GISel/*LegalizerInfo.cpp`；全量清单以
+`docs/CORPORA.md` 为准（11 个构造函数，9 个已收）。
 
-`llvm/lib/Target/*/GISel/*LegalizerInfo.cpp`：
-
-| target | 行数 | 现状 |
+| target | 行数 | 语料 |
 |---|---:|---|
-| BPF | 20 | 构造函数为空，没有任何规则 |
-| M68k | 52 | 本次压测（13 条） |
-| PowerPC | 91 | `legalForCartesianProduct`、`bitcastIf`、自定义谓词 lambda（`PPCLegalizerInfo.cpp:22`） |
-| WebAssembly | 234 | 本次压测（108 条） |
-| X86 | 492 | 已迁移（332 条） |
-| RISCV | 1917 | 未迁移；已有 `immInSet`/`immIs`（`RISCVLegalizerInfo.cpp:185-189`） |
-| AArch64 | 2902 | 已迁移（743 条 + 3 个 `imm_idx`） |
+| BPF | 20 | 构造函数为空，没有规则 |
+| M68k | 52 | `M68kLegalizerInfo.gisel`（13 条） |
+| PowerPC | 91 | `PowerPCLegalizerInfo.gisel`；`legalForCartesianProduct`、`bitcastIf`、自定义谓词 lambda（`PPCLegalizerInfo.cpp:22`） |
+| WebAssembly | 234 | `WebAssemblyLegalizerInfo.gisel`（109 条） |
+| X86 | 492 | `X86LegalizerInfo.gisel`（328 条） |
+| RISCV | 1917 | `RISCVLegalizerInfo.gisel`（402 条；`immInSet`/`immIs`，`RISCVLegalizerInfo.cpp:185-189`） |
+| AArch64 | 2902 | `AArch64LegalizerInfo.gisel`（741 条 + 3 个 `imm_idx`） |
 
 ## 3 M68k
 
@@ -76,7 +72,7 @@ Builder.legalIf(all(typeInSet(0, {i32, i64}),
 
 第一轮压测时这条写不出来：`in(slot(0), [8, 16])` 报 `expected a type, got INT 8`。
 core IR 的 sort 表只有 `Type/Int/Bool/MemDesc/Kind/Ordering/String`，观察子里没有
-`Imm`（`LegalizerCore.td:27`），所以**这不是介质税，是语言缺一条轴**。
+`Imm`，所以**这不是介质税，是语言缺一条轴**。
 
 现在写作：
 
@@ -103,14 +99,14 @@ legal (feature("Subtarget.hasSignExt()") and in(slot(0), [Wasm_i32, Wasm_i64])
 
 | C++ | core IR | 结论 | 成本 |
 |---|---|---|---|
-| `immInSet(i, S)` / `immIs(i, v)` | `imm(i)` + Int 集合 | **已补**（D-20261107-80）：`imm(i)` 观察子（SortInt）+ `in` 接受 Int 集合，`domain.imms` 填下标；5 个后端 + eval 全覆盖 | 已完成；LLVM 侧 `.td` 还差 `CoreImm`，只影响「生成的 .td 再喂 llvm-tblgen」 |
+| `immInSet(i, S)` / `immIs(i, v)` | `imm(i)` + Int 集合 | **已补**（D-20261107-80）：`imm(i)` 观察子（SortInt）+ `in` 接受 Int 集合，`domain.imms` 填下标；5 个后端 + eval 全覆盖 | 已完成 |
 | `LLT::floatIEEE(n)` | 无（只认 `float32()`） | **已消除**：转录器 `_llt_float_ieee()` 归一到 `float32()/float64()/float128()` | 0 |
 | `LLT::integer(<任意 C++ 表达式>)` | 只能整数字面量 | 保留：`select` 已覆盖「按特征选类型」；按特征选**整数**（bit 数）目前无人用 | 0（无用到） |
 | `lowerIfMemSizeNotByteSizePow2()` | 可合成 | 不需要改；C++ 侧已验证编译（`TypeSize` 有隐式 `operator uint64_t`，`TypeSize.h:384`） | 0 |
 | `scalarSameSizeAs` | `same_as(n)` | 不需要改 | 0 |
-| 集合字面量只能在 dag 末尾 | 文法里就是「只能是 `in*` 的最后一个实参」 | 保留，但已经变成文法规则而不是 TableGen 报错 | 0 |
-| `def not` 撞名 | 面上是前缀运算符 `not(...)`，`.td` 出 `(CoreNot ...)` | 已消除 | 0 |
-| `Target.td` include 顺序 | 语料两行 include，`s32`/`v2s64` 由 target 前缀消解（`Wasm_s32`） | 已消除 | 0 |
+| 集合字面量只能在 dag 末尾 | 文法里就是「只能是 `in*` 的最后一个实参」 | 保留，但已经是文法规则而不是后端报错 | 0 |
+| `def not` 撞名 | 面上是前缀运算符 `not(...)`，与保留字不冲突 | 已消除 | 0 |
+| target 前缀消解 | 语料里的 `s32`/`v2s64` 由 target 前缀区分（`Wasm_s32`） | 已消除 | 0 |
 | `dag` 参数只收 dag（`CoreWidenPow2OrMinSize`） | `widen(slot, pow2_min(n))` 一种拼写 | 已消除（前端出两条规则而不是一个 dag 重载） | 0 |
 
 ## 6 验证
@@ -147,15 +143,15 @@ status=2                      # 反例证明片段真的被编译
 5 个点：i32/8 合法、i32/16 合法、i32/32 落到 lower、i64/32 合法、i64/8 合法，
 `cases=5 disagreements=0 errors=0`。
 
-## 7 对迁移顺序的意义
+## 7 对导入顺序的意义
 
 - 两个新 target 都没有要求新的语法糖：5 处差异全是既有构造子/既有 shim 的新组合。
   说明 1075 条语料推出来的词汇表对「别的 target 怎么写」是够用的。
-- 唯一的缺口落在 **imm 轴**，而它恰好是 core IR 从 `.td` 迁过来时被丢掉的一列
-  （`(Opcode, Types, MMODescs, Imms)` 里的最后一列）。**已补**（D-20261107-80），
-  RISCV 迁移的前置条件不再缺这一块。
+- 唯一的缺口落在 **imm 轴**，也就是 core IR 的 `(Opcode, Types, MMODescs, Imms)`
+  里此前没有建模的一列。**已补**（D-20261107-80），
+  RISCV 导入的前置条件不再缺这一块。
 
-## 8 转正后的端到端证据（2026-11-09）
+## 8 端到端证据（2026-11-09）
 
 ```
 $ python3 ../gisel-anchor/scripts/import-cxx.py WebAssembly \

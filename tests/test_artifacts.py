@@ -218,7 +218,7 @@ class GoldenCoreJson(unittest.TestCase):
                     for opcode in rs["opcodes"]:
                         for t in mine["domain"]["types"]:
                             # the domain is Core IR spelling (p0:64), not
-                            # LLT::print (p0) -- spec/m4-scope.md §1.
+                            # LLT::print (p0).
                             types = [E.parse_core_llt(t)] * arity
                             mems = [E.MemDesc(types[0], E.size_in_bits(types[0])[0])]
                             answers = []

@@ -110,25 +110,16 @@ does not cover every rule
   守卫永假，17 条被更早的规则盖住，18 条只在查询集没采样的 mem×类型组合里可满足。
   第 18 条不是“上游就是死的”，是 `cases` 的 mem 交叉采样缺口，已明写。
 - 见证只保证“问到了这条规则”，不保证“问全了这条规则的每个类型字面量”。
-  被删掉的 `-gen-legalizer-table-points` 给的是后者。要补回来，得在同一份语料上
-  做“每条规则 × 每个字面量”的展开，作为 `cases` 的第二个出口。
+  后者需要在同一份语料上做“每条规则 × 每个字面量”的展开，作为 `cases` 的
+  第二个出口。
 - 语料与 C++ 的逐字节一致只覆盖 `TARGETS` 里钉住的九个构造函数；新 target
   是新工具/新条目，不是新 flag（importer 的文档头已经这么写）。
 
-## 7 第一次跑出来的东西：一条真分歧
+## 7 一个反例：`sizeIs` 与 `elementTypeIs`
 
-新的见证集第一次跑端到端（X86，3,276 个去重 key）时，`disagree = 1`：
-
-```text
-C1  G_UITOFP  (s32, v4s32)   official = Custom   ours(gisel) = Unsupported
-```
-
-这里的 `official` 是本分支 `.td` 渲染出来的构造函数，不是上游手写 C++；见 §8.4。
-
-两边的规则都在这儿：
+X86 的查询里出现过一次 `G_UITOFP (s32, v4s32)` 的判读分歧。手写上游的规则是：
 
 ```cpp
-// 手写上游 X86LegalizerInfo.cpp
 .customIf([=](const Query &Q) {
   return !HasAVX512 && (HasSSE1 && typeIs(0, s32)(Q)) &&
          scalarNarrowerThan(1, Is64Bit ? 64 : 32)(Q);
@@ -136,30 +127,12 @@ C1  G_UITOFP  (s32, v4s32)   official = Custom   ours(gisel) = Unsupported
 ```
 
 `scalarNarrowerThan` 的实现是 `QueryTy.isScalar() && QueryTy.getSizeInBits() < Size`。
-`v4s32` 不是标量，所以这条规则**不命中**，继续往下走全是标量守卫的
-`clampScalar` / `widenScalarToNextPow2`，也都不命中 → `Unsupported`。
+`v4s32` 不是标量，这条规则**不命中**，继续往下走全是标量守卫的 `clampScalar` /
+`widenScalarToNextPow2`，也都不命中 → `Unsupported`。
 
-而 `.td` 把它转写成了：
-
-```tablegen
-CoreCustom<(CoreAll (CoreNot HasAVX512), ..., (CoreLt (BitsOf (Slot 1)), ...))>
-```
-
-丢了 `isScalar` 守卫，而且 `BitsOf` 在向量上读的是元素位宽（32），于是
-`32 < 64` 成立 → `Custom`。
-
-也就是说：**gisel 是对的，`.td` 那条转写是错的**。这条分歧正好是「有界商」理论
-里那条不变量（`sizeIs` 读总位宽、`elementTypeIs` 读元素位宽）的一个现成反例。
-
-旧的分母（来自 `-gen-legalizer-table-points`）没抓到它：那套点的类型元组里，
-这个组合没有作为任何规则的见证出现。新的见证集让它变成了 `disagree = 1`。
-
-结论：`.td` 路径不仅多余，而且已经和手写代码不一致。这也解释了为什么它该被删。
-
-2026-11-09 更新：`.td` 渲染链已经整个删除（emitter、`LegalizerInfo.td`、
-`X86/AArch64` 的 `.td`、64 个 TableGen 测试），X86 的官方一侧换回 pin 的
-手写 `X86LegalizerInfo.cpp` 后，这条 `G_UITOFP` 差异**消失**——新的一组
-3,282 条查询里没有它。第 7 节在这里保留的是"为什么这条链该删"，不是当前结果。
+任何把「元素位宽 32 < 64」当成命中的转写都会答 `Custom`。这正是 `sizeIs`（总位宽）
+与 `elementTypeIs`（元素位宽）不能互换的现成反例，也就是 `spec/graph.md` 不变量
+第 5 条。X86 的官方一侧就是 pin 的手写构造函数，当前查询集里两侧一致（§8.4）。
 
 ## 8 第二、第三个 target 的端到端（2026-11-09）
 
@@ -262,11 +235,10 @@ ill-formed=15582 (G_CONCAT_VECTORS 3435, G_FPTOSI_SAT 7951,
 提交上游前必须先搜重；语料 pin 的 sha 已随之指向打过补丁的源文件，规则内容未变
 （重新导入逐字节相同）。
 
-### 8.4 X86：把对手换成 pin 的手写构造函数
+### 8.4 X86：对手是 pin 的手写构造函数
 
-`.td` 渲染链已经删干净（`-gen-legalizer`、`LegalizerInfo.td`、两个 target 的
-`.td`、64 个 TableGen 测试、`X86LegalizerTable`）。X86 的构建树文件恢复成
-pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`（sha256 `79f2376…`）。
+X86 的构建树文件是 pin `9bfc850b9940` 的手写 `X86LegalizerInfo.cpp`
+（sha256 `79f2376…`）。
 `gisel-ab/run-x86-end-to-end.sh` 的做法：
 
 1. restore → `ninja libLLVMX86CodeGen` → 这是**现网**，跑一遍查询；

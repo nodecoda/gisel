@@ -1,7 +1,5 @@
 # RISCV：为什么它不是「再抄一遍」，以及抄的代价
 
-> 历史说明：本报告写作时 `.td` 与 `table` 渲染器仍存在；它们已在 `docs/REPORT-no-td.md` 和 `spec/m3-scope.md` 中移除。
-> 文中的 19,512 / 9,632 / 5,632 点答案表已于 2026-11-10 删除，只作历史数字，不再是对拍证据。
 > 这是工作台报告：`tools/import-cxx.py` 是工作台工具，不是 gisel 的功能；边界见 `docs/SCOPE.md`。
 
 状态: 评估（2026-11-07）。工具: `tools/import-inventory.py`（本文件里所有数字都由它产出）。
@@ -94,7 +92,6 @@ legal (not feature("Subtarget.enableUnalignedScalarMem()")
 2. 真正的语义 oracle 还是 `gisel eval`：RISCV 需要一份 `dump_riscv_ref`
    （照 `tests/x86-oracle` 的做法，参考实现要复制构造函数并桩掉 `RISCVSubtarget`）。
    没有这一步，导入器只能证明「编译得过」，不能证明「答案一样」。
-3. 在那之前不动 LLVM 树：RISCV 的 `.td` 目前不存在，`--emit=td` 的输出没有消费者。
 
 ## 6 顺带记录
 
@@ -140,8 +137,7 @@ TOTAL                                 340    402
 | **编译** | `g++ -std=c++17 -fsyntax-only` + 未修改的 `LegalizerInfo.h` | OK |
 | core | `gisel gen --emit=core ...` | 96 rule sets / 402 rules |
 | check | `gisel gen --emit=check ...` | 402 rules |
-| 冻结自基线 | `tests/artifacts/riscv.{inc,check.json,table.inc,core.json}` | 与 `gen` 逐字节一致（core modulo `origin`） |
-| td | `gisel gen --emit=td ...` | 96 defs，无重名；`imm` 规则需 `CoreImm`（§8） |
+| 冻结自基线 | `tests/artifacts/riscv.{inc,check.json,core.json}` | 与 `gen` 逐字节一致（core modulo `origin`） |
 
 编译门用的桩：一个 `FakeST` 提供构造里出现的 21 个 `ST.x()`，`XLen = 64`，
 `STI` 绑定到 `ST`；`.inc` 作为一个 `LegalizerInfo` 派生类的成员函数体插入。
@@ -156,7 +152,7 @@ TOTAL                                 340    402
 2. 具名链续写 `A.method()`：`extend` 吃的是 `.method()`，不是 `A.method()`。
 3. 同一 opcode 多次 `getActionDefinitionsBuilder`（`G_CTLZ` 在 if/else 两侧各一次）
    → 保留两个 ruleset（C++ 语义就是两张表按序匹配），但名字必须唯一
-   （`R_G_CTLZ` / `R_G_CTLZ_2`），否则 `--emit=td` 出重复 def。
+   （`R_G_CTLZ` / `R_G_CTLZ_2`），否则两个 ruleset 同名。
 4. 谓词首参：`legalFor(pred, {...})`、`minScalar(pred, 0, sXLen)` 的门就是这个
    谓词；`clampScalar` 的**固定 3 参**不能按"首参不是数字"来猜（`LitTyIdx` 会中招）。
 5. `typeIsLegal*Vec` 三个静态 helper：按 `static LegalityPredicate` 模板内联，
@@ -168,9 +164,7 @@ TOTAL                                 340    402
 
 ### 7.2 仍然欠的两件事
 
-1. **`CoreImm`**：`.td` 里 `G_SEXT_INREG` 那条用到 `(Imm 0)`，LLVM 的
-   `LegalizerCore.td` 还没有这个记录。RISCV 没有 `.td` 消费者，故仍未做。
-2. **语义 oracle**：已补齐，见 §8。
+1. **语义 oracle**：已补齐，见 §8。
 
 ## 8 语义 oracle（2026-11-07）
 
@@ -179,7 +173,7 @@ TOTAL                                 340    402
 导出 19512 行答案表。`gisel eval` 用我们的 core JSON 复算：**19512 / 0 分歧 / 0 error**
 （`tests/test_artifacts.py::EvaluatorCorpus::test_riscv_cases_agree`）。
 
-对拍抓到的两个真偏差（都不在 RISCV 的 .td 里，而在求值器对 LLVM 运行时的建模）：
+对拍抓到的两个真偏差（都不在规则翻译里，而在求值器对 LLVM 运行时的建模）：
 
 | 偏差 | 触发 | 修正 |
 |---|---|---|
@@ -187,38 +181,3 @@ TOTAL                                 340    402
 | memdesc 只比已知最小位宽 | `<vscale x 4 x s8>` 对 `mem s32 align 32` 被判 Legal（应 Custom），18 条 | 按 `TypePairAndMemDesc::isCompatible` 比 `TypeSize`（含 scalable 标志） |
 
 654 → 18 → 0。AArch64 9632、X86 5632 在修正前后都是 0 分歧。
-
-## 9 `.td` 回读（2026-11-07）
-
-把 `--emit=td` 的产物真的交给 `llvm-tblgen`：AArch64（743 core rules）与 X86（332）
-当场通过，RISCV 不行。逐个错误解下去，缺的是 core IR 的**回读**词汇，不是 RISCV 的
-规则：
-
-| 错误 | 缺的东西 |
-|---|---|
-| `Variable not defined: 'Imm'` | `LegalizerCore.td` 没有 `Imm` 节点（`imm(i)` 只有前端和 C++ 后端有） |
-| `a type set names LegalizeNamedType defs` | `[8, 16]` 是整型集合，checker 一律当类型集合 |
-| `Pow2Min operand must be an integer literal` | `(Pow2Min (CoreSelect Is64Bit 64 32))` 是常量 select，checker 只收字面量 |
-
-四处改动（含 JSON 的 `{"kind":"imm","index":N}` 与 `Query.Immediates[N]`）已在
-`llvm-dev/patches/core-ir-riscv-gaps.diff` 里验证：用重链的 `llvm-tblgen` 跑，
-`-gen-legalizer-check` 给出 **96 表 / 402 规则**，`-gen-legalizer-core` 的 JSON 复算
-**19512 / 0 / 0**；AArch64/X86 的 `.inc` 逐字节不变。树本轮冻结，补丁没落。
-
-**已决**：上游要求"一 opcode 一表"（`legalizer-info-duplicate.td` 固化了这条），
-而 RISCV 的构造函数对 `G_CTLZ` 写了两条链。选择在 gisel 侧规范化，不动上游那条
-诊断：按 opcode 拼接（`dsl.canonicalize_rulesets`），序列相同的仍在共享。
-RISCV 从 **96 表 / 402 条** 变成 **91 表 / 413 条**（只复制一次 Zbb 链，不是 738），
-复算仍 19512 / 0 / 0；X86 没有重复 opcode，是恒等变换（63/328 不变）；AArch64 有 3 个重复 opcode，规范化后 117→114 张表、741→743 条 core 规则，golden 逐字节不变。
-
-规范化后的 `.td` 交给打了 `llvm-dev/patches/core-ir-riscv-gaps.diff` 的 tblgen：
-
-```
--gen-legalizer-check  91 rule sets / 413 rules / 413 core rules
--gen-legalizer        413 rules，.inc 用未修改的 LegalizerInfo.h 编过（0 error）
--gen-legalizer-core   JSON → gisel eval 19512 / 0 / 0
-```
-
-gisel 侧另外修了一个真 bug：`Core*If` 的 guard 参数是 `dag`，而 td 后端把
-`hasFeature` 叶渲染成裸 record（RISCV 27 处），产物是 `expected type dag`。
-现在 dag 位置写 `(Feature "...")`，`LegalizeSelectType` 的条件仍用 record。

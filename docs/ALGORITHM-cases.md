@@ -291,10 +291,10 @@ f16, f32, f64, bf16`。它们保证「规则什么字面量都没写」时也能
 
 字面量和邻居都排在域类型前面，所以产品超限时**先丢域类型**。这一点是硬约束，
 不是排序偏好：突变规则（`widen` / `clamp_min` / `scalarize` …）只能被「合法集合
-之外的某个值」触发，而这个值就是某个字面量的邻居。曾经的实现把截断长度取成
-`max(cap, len(literals))`，于是一个槽位的字面量一旦达到 `cap`，邻居就被整批
-裁掉，AArch64 有 406 条规则因此**永远没有见证**——对拍照样报 0 分歧，因为根本
-没问。修复后的对照数字见 `docs/REPORT-coverage.md`。
+之外的某个值」触发，而这个值就是某个字面量的邻居。把截断长度取成
+`max(cap, len(literals))` 就会在一个槽位的字面量达到 `cap` 时把邻居整批裁掉：
+AArch64 会有 406 条规则**永远没有见证**——对拍照样报 0 分歧，因为根本没问。
+对照数字见 `docs/REPORT-coverage.md`。
 
 `--strict-coverage` 把「无见证的规则数」变成退出码 1，让这件事不能再沉默。
 
@@ -626,9 +626,8 @@ python3 -m gisel cases tests/corpus/RISCVLegalizerInfo.gisel \
 | AArch64 | 9 | 12,559 | 5,191 | 6,290 | 1,078 | 743 | 575 | 38 | 130 | 4m15s |
 | RISC-V | 8 | 6,086 | 2,242 | 2,996 | 848 | 413 | 355 | 12 | 46 | 2m15s |
 
-早期基于冻结 dump 的交集对拍（`x86_ref_dump.jsonl` 等）已于 2026-11-10
-删除；那些数字只属于历史快照，不再作为证据。现在的 G 侧证据是
-`gisel-ab/EVIDENCE.json` 里的 `G/*` 与 `D/x86`，由 `gisel-ab/verify-evidence.sh` 校验。
+G 侧证据是 `gisel-ab/EVIDENCE.json` 里的 `G/*` 与 `D/x86`，由
+`gisel-ab/verify-evidence.sh` 校验。
 
 复杂度上界很粗：`O(configs × Π_slots |B_slot| × rules)`。真正的约束是
 `|B| ≤ 20,000`、每槽 16 个候选、boundary 每条规则 24 条，所以时间是

@@ -6,13 +6,9 @@
 
 ## 上游到底把规则写在哪
 
-上游 LLVM main 里**没有** legalizer 的 `.td`，`llvm-tblgen` 也没有
-`-gen-legalizer`。所有 target 的合法化规则都写在 `*LegalizerInfo.cpp` 的构造
-函数里（`getActionDefinitionsBuilder(...)` 链）：X86、AArch64、RISC-V 都一样。
-
-我们的 LLVM 分支曾经加过一个中间格式（`include/llvm/Target/LegalizerInfo.td`
-+ `utils/TableGen/LegalizerInfoEmitter.cpp` + `-gen-legalizer*`）。**这条链路
-已经不走**：语料直接从手写 C++ 构造函数转录。
+所有 target 的合法化规则都写在 `*LegalizerInfo.cpp` 的构造函数里
+（`getActionDefinitionsBuilder(...)` 链）：X86、AArch64、RISC-V 都一样。
+语料直接从这些手写 C++ 构造函数转录。
 
 ## 链路
 
@@ -150,21 +146,16 @@ C++ 里有名字的沿用，匿名的按语义命名，单 feature 条件直接�
 3. **生成器回归（自基线）**：`tests/artifacts/` 是 gisel 自己的冻结输出，用来
    抓语料/生成器漂移。它**不是**“与上游逐字节一致”的证据。
 
-`tests/cases/*_ref_dump.jsonl` 及其 `EvaluatorCorpus` 门禁已于 2026-11-10
-删除。那批“参考实现 → 冻结答案 → 用 gisel 复算”的表是 table 时代的取巧，
-方向是反的；现在只认 `c++ → gisel`，证据只保留上面三层。
+只认 `c++ → gisel`；证据只保留上面三层。
 
-## 撤掉的工具
+## 工具
 
-`.td` bootstrap reader 和 `--emit=td` 都已删除，原因与保留项见
-`docs/REPORT-no-td.md`。`import-cxx.py` 已迁到独立仓库 `gisel-anchor/scripts/import-cxx.py`（`docs/SCOPE.md` §7），
+`import-cxx.py` 位于独立仓库 `gisel-anchor/scripts/import-cxx.py`（`docs/SCOPE.md` §7），
 只负责把目标端 C++ 转成 `.gisel`；它不是 gisel 的运行时依赖。gisel 里只留一个
-release 的转发 shim。
+转发 shim。
 
 `tools/refresh-oracle.sh` 直接调 `gisel gen --emit={inc,core,check}` 刷新
-`tests/artifacts/`。它不再碰 `llvm-tblgen -gen-legalizer*`，因为那套后端和它读的
-`.td` 已经删除；冻结产物是 gisel 自己的输出（漂移基线），不是第二个实现。
-`docs/REPORT-cxx-corpus.md` 记录这次切换。
+`tests/artifacts/`。冻结产物是 gisel 自己的输出（漂移基线），不是第二个实现。
 
 语料是冻结输入：改规则等于改语料，必须重新过产物门（`tests/test_artifacts.py`、
 `tests/artifacts/SHA256`）。

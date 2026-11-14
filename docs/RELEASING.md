@@ -91,8 +91,8 @@ assert not any(n.endswith('data/generic_opcodes.json') for n in names), names
 leaked = [n for n in names if n.startswith(('tools/', 'tests/', 'docs/'))]
 assert not leaked, leaked
 assert any(n.endswith('licenses/LICENSE') for n in names), names
-# The product surface 0.2.0 predates: cases/domain/graph, and the .td path
-# must stay out (it was removed from the source tree, not just unwired).
+# The wheel carries the product surface only: no tests, docs or workbench
+# modules.
 for want in ('gisel/cases.py', 'gisel/domain.py', 'gisel/graph.py'):
     assert any(n.endswith(want) for n in names), (want, names)
 for gone in ('gisel/td.py', 'gisel/backend/table.py'):

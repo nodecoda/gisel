@@ -39,12 +39,12 @@
 ## 发布
 
 11. `gisel 0.3.1`、`gisel-anchor 0.2.0`、`gisel-ab 0.9.0` 已在 PyPI（2026-11-14）。
-    更早的文档里“从 GitHub 装”的写法已删除；如果看到旧缓存，按 PyPI 页为准。
-    `scripts/install.sh` 默认装 PyPI 最新版，`--from-git` 才按
-    `gisel-ab/RELEASE.json` 的 cohort pin 装 commit。
+    安装以 PyPI 页为准。`scripts/install.sh` 默认装 PyPI 最新版，`--from-git`
+    才按 `gisel-ab/RELEASE.json` 的 cohort pin 装 commit。
 12. 镜像只证明“装好了能跑”（构建时 `doctor`、workflow 里 `demo` + `suite check`）；
     它不跑 LLVM、不含 `llc`，也不是对拍环境。
-12. AMDGPU 按约定不接；不在任何 target 表里。
+13. AMDGPU 按约定不接；不在任何 target 表里。
+14. `lint` 的 `TARGET_SORTS` 与 `.inc` 的 shim 表仍是两份；合表属于后续重构。
 
 ## 不打算做
 

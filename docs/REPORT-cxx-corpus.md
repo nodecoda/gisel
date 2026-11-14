@@ -1,7 +1,7 @@
 # 语料链路：从手写 C++ 直接转录（专用一次性工具）
 
 状态：完成。三份主语料（X86 / AArch64 / RISC-V）现在都从上游手写
-`*LegalizerInfo.cpp` 构造函数直接转录成 `.gisel`；中间那层 `.td` 不再参与。
+`*LegalizerInfo.cpp` 构造函数直接转录成 `.gisel`。
 后续已扩展到九份语料（ARM / Mips / PowerPC / M68k / WebAssembly / SPIR-V），
 当前清单和计数以 `docs/CORPORA.md` 为准。
 
@@ -28,16 +28,10 @@ upstream *LegalizerInfo.cpp（getActionDefinitionsBuilder 链）
 AArch64 的 importer `TARGETS` 断言 744 条 builder call；3 条只改类型集合、
 不生成独立规则，所以 `gisel lint` 解析到 741 条。
 
-## 2 为什么删掉中间的 `.td`
+## 2 输入只有一份
 
-上游 LLVM main 没有 legalizer 的 `.td`，`llvm-tblgen` 也没有
-`-gen-legalizer`。规则只写在 C++ 构造函数里。我们曾在 LLVM 分支上加过
-`.td` + emitter，让 gisel 读 `.td`；那等于维护**第二份规则陈述**：上游改
-C++，我们改 `.td`，再让 gisel 读 `.td`，任何一层走神都会静默漂移，而且
-A/B 还要多一轮“`.td` vs C++”的对拍。
-
-现在只有一份输入：C++ 构造函数。`.td` 后端（`--emit=td`、`gisel bootstrap`、
-`gisel/td.py`）已在 `REPORT-no-td.md` 里退役。
+上游 LLVM 没有 legalizer 的 TableGen emitter，规则只写在 C++ 构造函数里。
+importer 读的就是这一份输入。
 
 ## 3 为什么是专用工具，不是通用 C++ 导入器
 
@@ -131,12 +125,10 @@ feature 起名 `A_ST_hasNEON`。这些名字语义没错，但读起来像机器
   不一定是最新 upstream；换修订就要连 A/B 的官方侧一起重建。
 - M68k 已转正（见 §9），WebAssembly 已转正（见 §10），PowerPC 已转正（见 §11），
   ARM 已转正（见 §12）。
-- LLVM 研究分支上残留的 `.td` / `-gen-legalizer*` 代码不在本仓库清理范围；
-  gisel 这边已经不再读它。
 
 ## 8 追补：`widenScalarOrElt…` 曾被压成标量拼写（2026-11-08）
 
-A/B 归因（`docs/REPORT-ab.md` §4.2）发现 16 条 `G_SITOFP` / `G_FPTOSI`
+A/B 归因（`gisel-ab/docs/REPORT-ab.md` §4.2）发现 16 条 `G_SITOFP` / `G_FPTOSI`
 差异：上游 `widenScalarOrEltToNextPow2OrMinSize(1)` 会把 `v2i63` 的元素
 widen 到 64，我们生成的 inc 不动，随后另一条 `changeElementSize(0, 63)`
 造出 `f63`，在断言构建里直接 `UNREACHABLE`。

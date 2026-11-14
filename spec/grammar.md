@@ -136,8 +136,7 @@ sort 都是 `(Int, Int) -> Int`。它们只表达上游 helper 里的整数算�
 数。要保留源类型的 lane 数（**包括 scalable 标志**）必须写
 `elt_type_to(<type>, T)`，它生成 `changeElementType`，与上游
 `LLT::vector(X.getElementCount(), T)` 逐字等价。`vec_of(num_elems(X), T)` 会把
-`nxv2p0` 变成 `v2s64`（位宽减半），AArch64 `G_SHUFFLE_VECTOR` 的指针向量
-bitcast 曾经因此让 `mutationIsSane` 断言；导入器现在把
+`nxv2p0` 变成 `v2s64`（位宽减半），会让 `mutationIsSane` 断言失败。导入器把
 `LLT::vector(X.getElementCount(), T)` 一律导成 `elt_type_to`。
 
 ## 5 谓词
@@ -208,9 +207,8 @@ memrow  := "mem_desc" "(" type "," type "," type "," INT ")"
 块内的规则已经没有逐条 guard，此时按无 guard 拼写（RISC-V
 `G_CTLZ`/`G_CTPOP`）——上游在那个分支里写的就是 `scalarSameSizeAs`。
 `domain.imms` 是谓词里出现过的 `imm(i)` 的**下标**集合（升序去重），
-和 `domain.types` 并列；LLVM 侧的同名字段目前恒为 `[]`（`LegalizerInfoEmitter.cpp:4933`）。三处重拼
-（记录名→LLT、指针通配符、`select` 类型）见 `gisel/backend/core_json.py:1-15`
-与 `spec/m4-scope.md`。
+和 `domain.types` 并列。三处重拼（记录名→LLT、指针通配符、`select` 类型）
+见 `gisel/backend/core_json.py:1-15`。
 
 ## 7 静态诊断（`gisel lint`）
 

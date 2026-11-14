@@ -72,12 +72,12 @@ python3 -m gisel check /tmp/demo/hello.gisel --emit=inc --against /tmp/demo/hell
       .scalarize(0);
 ```
 
-`--emit=check` 和 `--emit=core` 从同一份源文件给出另外两种形状。没有
-`.td` 后端，也没有 table 后端：C++ `.inc` 就是产品。
+`--emit=check` 和 `--emit=core` 从同一份源文件给出另外两种形状。C++ `.inc`
+就是产品；`check` 和 `core` 是它的检查形式。
 
 ## 命令
 
-八个命令，一个产品面；`spec/cli.md` 是规范契约。
+九个命令，一个产品面；`spec/cli.md` 是规范契约。
 
 | 命令 | 做什么 |
 |---|---|
@@ -132,8 +132,7 @@ gisel graph tests/corpus/AArch64LegalizerInfo.gisel --emit=core \
 `NameTable` 计算声明名，`core`/`check` 从不看这些名字。
 `ast.canonicalize_rulesets` 是发射前唯一的 AST 变换；它的存在是为了让生成的
 C++ 和冻结的 core JSON 保持“一个 opcode 一张表”，不是因为语言禁止一个
-opcode 有多张表。AST 迁移记录在 `docs/REPORT-ast.md`；`.td` 渲染器的移除
-记录在 `docs/REPORT-no-td.md`。
+opcode 有多张表。
 
 测试用例也从同一个模型派生，不是手写的：`gisel cases` 为每个等价类
 （规则区域）生成一个代表点，为答案真正翻转的地方生成边界
@@ -148,34 +147,20 @@ opcode 有多张表。AST 迁移记录在 `docs/REPORT-ast.md`；`.td` 渲染器
 target 的双向对拍都已闭合：`gisel-ab/docs/EVIDENCE-WP2.md` 用 gisel 自己的题面
 提问（确认上游没有漏掉 gisel 的规则），`gisel-ab/docs/EVIDENCE-U.md` 用 oracle
 的题面提问（确认 gisel 没有漏掉上游规则）。这套工作台有自己的报告
-`docs/REPORT-ab.md`；边界见 `docs/SCOPE.md`。
+`gisel-ab/docs/REPORT-ab.md`；边界见 `docs/SCOPE.md`。
 
-它不做什么：不生成 `.td`（这个后端已经移除）；`import-cxx` 对任何翻译
-不了的语句直接拒绝，而不是猜；九份语料中没有一份是独立手写的第二份规则
-陈述——它们都是我们用自己的工具，从 LLVM 手写 C++ 构造函数里提取出来，
-作为自证准备的。所有语料都直接从手写 `.cpp` 构造函数到 `.gisel`
-（`gisel-anchor/scripts/import-cxx.py`）；项目曾在中间加过的 `.td` 已经
-不再使用。`docs/CORPORA.md` 逐份说明语料来自哪个上游文件、带哪些经过审查的
+它不做什么：`import-cxx` 对任何翻译不了的语句直接拒绝，而不是猜；九份
+语料中没有一份是独立手写的第二份规则陈述——它们都是我们用自己的工具，从
+LLVM 手写 C++ 构造函数里提取出来，作为自证准备的。所有语料都直接从手写
+`.cpp` 构造函数到 `.gisel`（`gisel-anchor/scripts/import-cxx.py`）。
+`docs/CORPORA.md` 逐份说明语料来自哪个上游文件、带哪些经过审查的
 偏离，以及冻结产物能证明什么、不能证明什么（三套产物都是自基线；规则保真
 来自 import-cxx --check 和端到端 A/B）。
 
 ## 状态
 
-| 里程碑 | 后端 | 门禁 | 状态 |
-|---|---|---|---|
-| M1 | `--emit=inc` | 自基线 + 端到端 A/B（早期标准：与 `-gen-legalizer` 逐字节一致） | 完成 |
-| M2 | `--emit=check` | 自基线计数（早期标准：`-gen-legalizer-check` 的 JSON） | 完成 |
-| M3 | ~~`--emit=table`~~ | 2026-11-09 移除：table 方向已放弃，`inc` 才是产品 | 已移除 |
-| M4 | `--emit=core`、`eval` | core JSON（忽略 `origin` 字段）；求值器能回答任意查询文件 | 完成 |
-| v0.2 | `lint` | 57 种节点，九份语料 0 error | 完成 |
-| v0.3 | `imm` 轴 | M68k 13/13、WebAssembly 109/109 从 C++ 转录 | 完成 |
-| v0.4 | RISCV 语料（工作台导入） | 340 条 builder 调用 → 402 条规则，0 拒绝，`.inc` 可编译 | 完成 |
-| v0.5 | `cases` | 等价类 / 边界 / 域外；X86 3,019 条，AArch64 12,559 条 | 完成 |
-| v0.6 | 更多 A/B target | M68k 35、WebAssembly 886、PowerPC 94、ARM 1,614、Mips 1,656、SPIRV 5,136 条查询；每个 target `disagree = 0` | 完成 |
-
-M1–M3 行里的 `-gen-legalizer*` 是本项目在 LLVM 研究分支上加的 TableGen
-后端（`utils/TableGen/LegalizerInfoEmitter.cpp`），不是上游 main 的功能；
-完整链路见 `docs/CORPORA.md`。
+当前结论、命令和门禁见 `docs/CLAIMS.md`；分层证据见 `docs/CORPORA.md` 和
+`gisel-ab/docs/EVIDENCE-*.md`。
 
 迁移和对拍工具属于**工作台**，不是 gisel 的功能
 （`docs/SCOPE.md`）：`gisel-anchor/scripts/import-inventory.py` 估算接入
@@ -183,14 +168,14 @@ M1–M3 行里的 `-gen-legalizer*` 是本项目在 LLVM 研究分支上加的 T
 `.gisel`（遇到任何翻译不了的语句就退出 1，绝不静默丢规则），`gisel-ab/` 比较两个
 实现。`import-cxx` 是面向钉住版本构造函数的专用一次性转录器，不是通用 C++
 解析器：`--all --check` 会重新转录并和入库语料逐字节比对，规则数漂移会
-直接报错。证据在 `docs/REPORT-riscv.md` 和 `docs/REPORT-ab.md`。转录器已在
-2026 年 11 月迁到同级 `gisel-anchor` checkout；`tools/import-cxx.py` 只是
-保留一个 release 的转发 shim，不是实现。
+直接报错。证据在 `docs/REPORT-riscv.md` 和 `gisel-ab/docs/REPORT-ab.md`。
+转录器位于同级 `gisel-anchor` checkout；`tools/import-cxx.py` 只是转发
+shim，不是实现。
 
 `tests/artifacts/` 保存九份冻结的 C++/JSON 产物及其 `SHA256`：
-X86、AArch64、RISC-V 各三份。上游 LLVM main 没有 legalizer 的 `.td`，也没有
-`-gen-legalizer`；规则写死在手写的 `*LegalizerInfo.cpp` 构造函数里，语料就是
-从那里转录的。因此这些产物是 gisel 自己的冻结输出——一个漂移基线，不是对
+X86、AArch64、RISC-V 各三份。上游 LLVM 的 legalizer 规则写在手写的
+`*LegalizerInfo.cpp` 构造函数里，语料就是从那里转录的。因此这些产物是
+gisel 自己的冻结输出——一个漂移基线，不是对
 第二个实现的逐字节 oracle。规则保真在另外两层检查：
 `gisel-anchor import --check` 重新转录钉住的 C++，必须逐字节复现入库的
 `.gisel`；`gisel-ab/` 构建官方 legalizer 和带我们 `.inc` 的 legalizer，喂同一份
@@ -253,7 +238,6 @@ gisel/domain.py         opcode 槽位笛卡尔枚举（另一套题面）
 gisel/graph.py          (opcode, 类型类, mem, imm) 上的商图
 gisel/data/opcode-slots.json   283 条 opcode 的 arity/槽位快照
 gisel/data/contract-shapes.jsonc / contract-aarch64.jsonc  形状表
-spec/m1-coverage.md     语料的 shim 覆盖率（25 个三元组，0 未覆盖）
 spec/cli.md             命令面、退出码、保证（规范性）
 spec/grammar.md         .gisel 语法和 AST（规范性）
 spec/axes.md            轴/profile 格式及其兼容性钉子
@@ -265,17 +249,12 @@ spec/graph.md           商图的状态、后继和出口
 spec/semantics.md       一条规则是什么意思（以及求值器做什么）
 docs/CORPORA.md         每份语料的来源、偏离和证据分层
 docs/LOOP.md            钉版本 -> 出题 -> 对拍 -> 归因
-docs/REPORT-ast.md      AST 迁移：移除项、否决方案、边界
-docs/REPORT-no-td.md    .td 渲染器移除及剩余冻结文本
 docs/REPORT-cxx-corpus.md  C++ -> .gisel 转录（工作台工具）
 docs/ALGORITHM-cases.md  作为有界商的用例生成（文章底稿）
 docs/REPORT-cases.md    用例生成：证据、否决方案
 docs/REPORT-coverage.md 用例集的覆盖证据
 docs/REPORT-graph.md    商图证据和环的历史
 docs/DESIGN-graph.md    graph 设计记录
-docs/REQUIREMENTS-ab.md  工作台：差分测试需求
-docs/REPORT-ab.md       工作台：端到端 A/B（不是 gisel 功能）
-docs/PLAN-architecture.md  Phase 1-2 清理计划（决策、PR 顺序）
 docs/PLAN-internal-authority.md  fork 内部权威：双向题面、负控、oracle 保全
 docs/PROPOSAL-host-escape.md  被否决的宿主逃逸点提案（AMDGPU）
 docs/SCOPE.md           gisel 是什么，什么只是“用 gisel 做的事”

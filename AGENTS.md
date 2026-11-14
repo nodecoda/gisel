@@ -71,4 +71,4 @@ python3 ../gisel-anchor/scripts/import-cxx.py --all \
   `eval:`、`docs:`。
 - gisel 本体只有两个功能：规则转译、用例生成。对拍、双 runner、归因属于
   工作台，界线见 `docs/SCOPE.md`；不要把工作台能力写进产品 CLI 或产品报告。
-- 不复活 `.td` 后端，不动已冻结语料，除非该次变更已获批准。
+- 不新增 `.td` 后端，不动已冻结语料，除非该次变更已获批准。

@@ -110,8 +110,8 @@ key 固定为：
 - `p0:*` 没有按 config 自动解析。`cases` 保留通配，`domain` 使用单一
   `--pointer-width`；两者对 32/64 位混合 config 都不完整，指针点目前大量
   落在 `uncovered`。
-- `mem` 的答案侧 join 历史上只看二元组；本轮已把读入口统一到
-  `gisel/answers.py` 的归一化，但没有重跑带 mem 的全量 A/B。
+- `mem` 的答案侧 join 读入口统一在 `gisel/answers.py` 的归一化；带 mem 的
+  全量 A/B 尚未重跑。
 
 ## 6 最小校验
 

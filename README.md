@@ -89,8 +89,8 @@ The generated `.inc` is the C++ chain, one call per rule:
 ```
 
 `--emit=check` and `--emit=core` give the other two shapes from the same
-source.  There is no `.td` backend and no table backend: the C++ `.inc` is the
-product.
+source.  The C++ `.inc` is the product; `check` and `core` are its inspection
+forms.
 
 ## Commands
 
@@ -149,8 +149,6 @@ the C++ renderer computes declaration names at its exit through `NameTable`,
 and `core`/`check` never see them.  `ast.canonicalize_rulesets` is the
 one AST transform before emission; it exists to keep the emitted C++ and the
 frozen core JSON at one table per opcode, not because the language forbids it.
-`docs/REPORT-ast.md` records the AST migration; `docs/REPORT-no-td.md` records
-the removal of the `.td` renderer.
 
 Test cases are derived from that same model, not written by hand:
 `gisel cases` emits one representative per equivalence class (rule region),
@@ -167,53 +165,40 @@ and compares the two answer streams.  Both directions are closed for X86,
 AArch64 and RISC-V: `gisel-ab/docs/EVIDENCE-WP2.md` asks gisel's own questions
 (no rule is missing upstream), `gisel-ab/docs/EVIDENCE-U.md` asks the oracle's
 questions (no upstream rule is missing in gisel).  That workbench has its own
-report, `docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
+report, `gisel-ab/docs/REPORT-ab.md`; `docs/SCOPE.md` is the boundary.
 
-What it does not do: it does not generate the `.td` (that backend was
-removed), `import-cxx` refuses any statement it cannot translate rather than
-guessing, and none of the nine corpora is an independent hand-written second
-statement -- they were extracted from LLVM's hand-written C++ constructors
-with our own tooling as a preparation for self-proof.  All of them go straight
-from the hand-written `.cpp` constructor to `.gisel`
-(`gisel-anchor/scripts/import-cxx.py`); the `.td` this project once added in between is no
-longer used.  `docs/CORPORA.md` says, per corpus, which upstream file it was
-extracted from, which reviewed deviations it carries, and what its frozen
-artifacts can and cannot prove (all three are self-baselines; rule fidelity
-comes from import-cxx --check and the end-to-end A/B).
+What it does not do: `import-cxx` refuses any statement it cannot translate
+rather than guessing, and none of the nine corpora is an independent
+hand-written second statement -- they were extracted from LLVM's hand-written
+C++ constructors with our own tooling as a preparation for self-proof.  All of
+them go straight from the hand-written `.cpp` constructor to `.gisel`
+(`gisel-anchor/scripts/import-cxx.py`).  `docs/CORPORA.md` says, per corpus,
+which upstream file it was extracted from, which reviewed deviations it
+carries, and what its frozen artifacts can and cannot prove (all three are
+self-baselines; rule fidelity comes from import-cxx --check and the end-to-end
+A/B).
 
 ## Status
 
-| milestone | backend | gate | state |
-|---|---|---|---|
-| M1 | `--emit=inc` | self-baseline + end-to-end A/B (was: byte-identical to `-gen-legalizer`) | done |
-| M2 | `--emit=check` | self-baseline counters (was: the `-gen-legalizer-check` JSON) | done |
-| M3 | ~~`--emit=table`~~ | removed 2026-11-09: the table direction is gone, `inc` is the product | dropped |
-| M4 | `--emit=core`, `eval` | core JSON (modulo `origin`); evaluator answers any question file | done |
-| v0.2 | `lint` | 57 node kinds, 0 errors on all nine corpora | done |
-| v0.3 | `imm` axis | M68k 13/13, WebAssembly 109/109 transcribed from C++ | done |
-| v0.4 | RISCV corpus (workbench import) | 340 builder calls → 402 rules, 0 refused, `.inc` compiles | done |
-| v0.5 | `cases` | equivalence/boundary/outside; X86 3,014 cases, AArch64 12,559 cases | done |
-| v0.6 | more A/B targets | M68k 35, WebAssembly 886, PowerPC 94, ARM 1,614, Mips 1,656, SPIRV 5,136 queries; `disagree = 0` on each | done |
-
-`-gen-legalizer*` in the M1–M3 rows is this project's TableGen backend
-(`utils/TableGen/LegalizerInfoEmitter.cpp` on the LLVM research branch), not an
-upstream-main feature; `docs/CORPORA.md` has the full chain.
+The current claims, their commands and their gates are `docs/CLAIMS.md`; the
+per-layer evidence is `docs/CORPORA.md` and `gisel-ab/docs/EVIDENCE-*.md`.
 
 Migration and A/B tooling is **workbench**, not a gisel function
 (`docs/SCOPE.md`): `gisel-anchor/scripts/import-inventory.py` prices a target,
-`gisel-anchor/scripts/import-cxx.py` turns a constructor into `.gisel` (refusing, exit 1,
-any statement it cannot translate), and `gisel-ab/` compares two
-implementations.  `import-cxx` is a one-shot transcriber for the pinned
-constructors, not a general C++ parser: `--all --check` re-transcribes them
-and diffs the checked-in corpora, and a rule-count drift fails loudly.  The evidence lives in `docs/REPORT-riscv.md` and
-`docs/REPORT-ab.md`.  The transcriber moved to the sibling `gisel-anchor`
-checkout in November 2026; `tools/import-cxx.py` is a one-release forwarding
-shim, not an implementation.
+`gisel-anchor/scripts/import-cxx.py` turns a constructor into `.gisel`
+(refusing, exit 1, any statement it cannot translate), and `gisel-ab/`
+compares two implementations.  `import-cxx` is a one-shot transcriber for the
+pinned constructors, not a general C++ parser: `--all --check` re-transcribes
+them and diffs the checked-in corpora, and a rule-count drift fails loudly.
+The evidence lives in `docs/REPORT-riscv.md` and
+`gisel-ab/docs/REPORT-ab.md`.  The transcriber lives in the sibling
+`gisel-anchor` checkout; `tools/import-cxx.py` is a forwarding shim, not an
+implementation.
 
 `tests/artifacts/` holds the nine frozen C++/JSON artifacts and their
-`SHA256`: three each for X86, AArch64 and RISC-V.  Upstream LLVM main has no
-legalizer `.td` and no `-gen-legalizer`; the rules live in hand-written
-`*LegalizerInfo.cpp` constructors, and the corpora are transcribed from those.
+`SHA256`: three each for X86, AArch64 and RISC-V.  Upstream LLVM's legalizer
+rules live in hand-written `*LegalizerInfo.cpp` constructors, and the corpora
+are transcribed from those.
 The artifacts are therefore gisel's own frozen output — a drift baseline, not
 a byte oracle against a second implementation.  Rule fidelity is checked on
 two other layers: `gisel-anchor import --check` re-transcribes the pinned C++
@@ -280,7 +265,6 @@ gisel/domain.py         opcode-slot cartesian enumeration (the other question se
 gisel/graph.py          quotient graph over (opcode, type classes, mem, imm)
 gisel/data/opcode-slots.json   283-opcode arity/slot snapshot
 gisel/data/contract-shapes.jsonc / contract-aarch64.jsonc  shape tables
-spec/m1-coverage.md     shim coverage of the corpus (25 triples, 0 uncovered)
 spec/cli.md             the command surface, exit codes, guarantees (normative)
 spec/grammar.md         the .gisel grammar and AST, normative
 spec/axes.md            the axis/profile format and its compatibility pin
@@ -292,8 +276,6 @@ spec/graph.md           the quotient-graph state, successor and outcomes
 spec/semantics.md       what a rule means (and what the evaluator does)
 docs/CORPORA.md         per-corpus source, deviations, and evidence layers
 docs/LOOP.md            pin -> questions -> A/B -> attribution
-docs/REPORT-ast.md      the AST migration: removals, rejected options, boundaries
-docs/REPORT-no-td.md    the .td renderer removal and the remaining frozen text
 docs/REPORT-cxx-corpus.md  C++ -> .gisel transcription (workbench tool)
 docs/ALGORITHM-cases.md  case generation as a bounded quotient (article source)
 docs/REPORT-cases.md    case generation: evidence, rejected options
@@ -301,9 +283,6 @@ docs/REPORT-coverage.md coverage evidence for the case set
 docs/REPORT-graph.md    quotient-graph evidence and the cycle history
 docs/REPORT-closure-why.md  why the unrefined partition is not closed
 docs/DESIGN-graph.md    graph design record
-docs/REQUIREMENTS-ab.md  workbench: the differential-testing requirement
-docs/REPORT-ab.md       workbench: end-to-end A/B (not a gisel feature)
-docs/PLAN-architecture.md  the Phase 1-2 cleanup plan (decisions, PR order)
 docs/PLAN-internal-authority.md  fork 内部权威：双向题面、负控、oracle 保全
 docs/PROPOSAL-host-escape.md  rejected host-escape proposal (AMDGPU)
 docs/SCOPE.md           what gisel is, what only uses it

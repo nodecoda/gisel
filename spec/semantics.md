@@ -89,18 +89,16 @@ except 落成**更窄的谓词**（命名 `pred` 或内联 `and not ...`）。�
 
 语义差分不是 gisel 的功能，而是工作台（`gisel-ab/`）的事：把生成的 `.inc`
 编进 target，和原手写 C++ 构造函数各构建一份，喂同一份 `gisel cases` 生成的
-无答案查询，比较 `getAction()` 的答案流。结果见 `docs/REPORT-ab.md`。
+无答案查询，比较 `getAction()` 的答案流。结果见 `gisel-ab/docs/REPORT-ab.md`。
 
-`tests/cases/*_ref_dump.jsonl` 及其 `EvaluatorCorpus` 门禁已于 2026-11-10
-删除。那批“参考实现 → 冻结答案 → 用 gisel 复算”的表是 table 时代的取巧，
-方向是反的；现在只认 `c++ → gisel`。转录保真由
-`gisel-anchor/scripts/import-cxx.py --check` 保证，规则保真由端到端 A/B 保证。
+只认 `c++ → gisel`：转录保真由 `gisel-anchor/scripts/import-cxx.py --check`
+保证，规则保真由端到端 A/B 保证。
 
-历史表曾经暴露过四类 schema 形状 bug（`{"kind":"nary","op":"all_of"}`、
+求值器单测锁住四类 schema 形状：`{"kind":"nary","op":"all_of"}`、
 `{"kind":"not","arg":...}` 的 DAG 拼法、集合元素里的 `select` 类型、
-`p0:*` 通配指针）；修正后由求值器单测锁住，不依赖答案表。
+`p0:*` 通配指针。
 
-那批表还暴露了两条求值器与真实 LLT 的偏差，修正本身同样由单测锁住：
+求值器对真实 LLT 的建模有两条容易错的边界，同样由单测锁住：
 
 - **extended-kind 开关**。`LLT::float16()`、`LLT::integer(32)`、bfloat16 只有
   在 `LLT::getUseExtended()` 打开时才是独立 kind；该开关由 target machine 设置，

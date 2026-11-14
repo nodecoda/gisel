@@ -33,7 +33,7 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 
 | 工具 | 做什么 | 用 gisel 的哪个出口 |
 |---|---|---|
-| `gisel-anchor`（`import/`） | 转录钉住的 legalizer C++ 构造函数 → `.gisel` | 目标端：产出 gisel 的输入；已迁出本仓库 |
+| `gisel-anchor`（`import/`） | 转录钉住的 legalizer C++ 构造函数 → `.gisel` | 目标端：产出 gisel 的输入 |
 | `tools/refresh-oracle.sh` | 用 `gisel gen` 刷新 `tests/artifacts/` | `gen --emit={inc,core,check}` |
 | `gisel-ab`（独立仓库） | 双 runner 构建、跑查询、对拍、归因 | `gen --emit=inc` + `cases` |
 | `gisel-ab/diff.py` | 对拍：比较两个答案文件，出行/JSON 报告和退出码 | 读答案文件用 `gisel.jsonl`；比较与退出码在本文件 |
@@ -47,19 +47,18 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 物理边界：`pyproject.toml` 只打包 `gisel*`，`tools/` 和 `docs/` 不随 wheel
 发布。工作台脚本是仓库内的开发工具，不是产品面。
 
-这些工作台工具已按 §7 的三分法迁出；gisel 仓库只保留 importer 的转发 shim、
+工作台工具按 §7 的三分法放在独立仓库；gisel 仓库只保留 importer 的转发 shim、
 刷新冻结产物的脚本和覆盖率/契约这类读 gisel 输出的辅助工具。
 
 语料的来源同样按这条分：`tests/corpus/` 是**输入**，由工作台工具从上游手写的
-`*LegalizerInfo.cpp` 规则转出后冻结。历史上 X86/AArch64 曾中途经过本项目引入的
-`.td`（`llvm-dev/tools/gisel_td.py`，已删除）；现在只有 C++ → `.gisel` 一条路。
+`*LegalizerInfo.cpp` 规则转出后冻结。输入只有 C++ → `.gisel` 一条路。
 每份语料的来源和它能证明什么见 `docs/CORPORA.md`。
 
 ## 3 判定规则
 
 新东西放哪边，只看两个问题：
 
-1. **输入是什么？** `.gisel` 或 `.core.json` → 本体；LLVM 源码、`.td`、
+1. **输入是什么？** `.gisel` 或 `.core.json` → 本体；LLVM 源码、
    llvm-tblgen 输出、编译出的 runner → 工作台。
 2. **跑不跑外部程序？** 只读文件、纯 Python → 本体；起 `llvm-tblgen`、`g++`、
    `llc`，或者比较两个实现的答案 → 工作台。
@@ -68,16 +67,16 @@ gisel 只有**两个**功能，都只读 `.gisel`（以及它自己吐出的 `.c
 `A/B` 字样的，是**工作台报告**，标题和开头必须写明，不能当成 gisel 的能力
 宣传。
 
-## 4 已经发生过的越界（如实记录）
+## 4 边界示例
 
-| 位置 | 越界形态 | 处置 |
-|---|---|---|
-| `docs/REPORT-cases.md` §6–§7 | 对拍结果住在用例生成报告里，读起来像 gisel 的能力 | 已整体搬到 `docs/REPORT-ab.md`，并在文首写明是工作台报告 |
-| `gisel diff` | 对拍动词住在产品 CLI 里，和两个功能并列 | 已移出：命令和比较逻辑都在 `gisel-ab/diff.py`；`gisel/answers.py` 只留读取器，供 `cases --queries` 用；`gisel` 不再有 `diff` 子命令 |
-| `tools/import-cxx.py` 放在 gisel 仓库 | 容易被当成 gisel 的功能 | 已迁到 `gisel-anchor/scripts/import-cxx.py`；gisel 只留一个 release 的转发 shim |
-| `cases --against <llvm dump>` | 看起来像运行时依赖 LLVM | 它读的是冻结在 `tests/` 的 oracle，不是运行时依赖 |
-| `eval --answers` | 为对拍加的出口 | 属于求值器本身（答案就是它的输出），归本体 |
-| `gisel/answers.py` | 曾经是 `gisel/diff.py` 连同 CLI 一起 | 只留答案文件读取器；比较和命令都在工作台，依赖方向保持“工具 → 库” |
+- `gisel` 没有 `diff` 子命令：比较和退出码在 `gisel-ab/diff.py`；`gisel/answers.py`
+  只读取答案文件，供 `cases --queries` 用。
+- `tools/import-cxx.py` 是转发 shim；实体在
+  `gisel-anchor/scripts/import-cxx.py`。
+- `cases --against` 读的是冻结在 `tests/` 的 oracle，不是运行时依赖 LLVM。
+- `eval --answers` 属于求值器本身——答案就是它的输出。
+- `gisel-ab/docs/REPORT-ab.md` 是工作台报告，标题和开头写明；对拍结论不算
+  gisel 的能力。
 
 ## 5 一句话
 
@@ -100,9 +99,9 @@ gisel 只负责“规则文本 ↔ 规则产物 / 查询”。**证明两条规�
 `opaque` 是谓词洞，变异侧没有第三个口。新增或改变逃逸口同样属于本节的审批
 范围。仓库根 `AGENTS.md` 是这条规则的执行面。
 
-## 7 三分法：gisel / gisel-anchor / gisel-ab（2026-11-10）
+## 7 三分法：gisel / gisel-anchor / gisel-ab
 
-工作台正在从本仓库拆成两个独立项目。拆完之后，本仓库只有 gisel 本体。
+本仓库只有 gisel 本体；另外两个是独立项目。
 
 | 项目 | 位置 | 做什么 | 不做 |
 |---|---|---|---|
@@ -112,14 +111,6 @@ gisel 只负责“规则文本 ↔ 规则产物 / 查询”。**证明两条规�
 
 依赖方向：`gisel-anchor → gisel`、`gisel-ab → gisel`；反向禁止。两个新项目只调
 gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
-
-迁移状态：
-
-| WP | 内容 | 状态 |
-|---|---|---|
-| WP0 | 边界与契约（本表 + 两个新仓库的 `SCOPE.md`/`CONTRACTS.md`） | 完成 |
-| WP1 | `tools/import-cxx.py`、importer 测试、`PIN.json` → gisel-anchor | 完成 |
-| WP2 | `gisel-ab/*`、`tests/test_ab.py` → gisel-ab | 完成 |
 
 双向证据（2026-11-10，九个 target）：
 
@@ -131,6 +122,6 @@ gisel CLI，不 import `gisel` 内部；gisel 的 CI 不依赖 LLVM 构建。
 两条都成立是“gisel 可作为内部权威”的前提，G 与 U 两个方向现在都覆盖九个
 target；AMDGPU 明确不接。
 
-迁移已完成；`tools/` 只剩 gisel 侧脚本与 importer 转发 shim。query/answer 格式的 canonical 规范仍是
+`tools/` 只有 gisel 侧脚本与 importer 转发 shim。query/answer 格式的 canonical 规范仍是
 本仓库 `spec/cases-format.md`；两个新项目的 `CONTRACTS.md` 只能引用它，不能
 单方面扩展字段。

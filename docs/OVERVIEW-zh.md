@@ -82,8 +82,7 @@ tests/corpus/*.gisel   （冻结，随仓库分发）
 - 输入是 **commit**，不是工作区：`git show <pin>:<path>`，本地补丁污染不了语料。
 - importer 对无意义的谓词名、`select` 做重命名，**语义不变**；拒绝数进契约，漂移
   就 rc=1。
-- 历史上 X86/AArch64 曾借道本项目引入的 `.td` reader，那是残留物，已删除。现在没有
-  `.td`、没有 table 中间格式，也不需要 `llvm-tblgen`。
+- 输入只有 commit 里的手写 C++ 构造函数；importer 不依赖 `llvm-tblgen`。
 
 代价必须说清楚：importer 不保证零漂移。所以才有第 4 节——对拍证明的不是「翻译
 完美」，而是「翻译出来的规则和上游行为一致」。
@@ -228,8 +227,8 @@ answered_equal = agree - unanswerable
 - 上游缺陷单独记账：`gisel-anchor/docs/UPSTREAM-ISSUES.json`。
 
 **纪律**：「0 diff」「0 环」「已覆盖」必须带命令和输入指纹。`graph` 的 0 环尤其
-如此——早期版本的 6 个「自然环」是商类没把 shim guard 算进签名造成的假阳性，
-所以 0 环是相对于当前类划分的结论，不是绝对真理。
+如此——商类必须把 shim guard 算进签名，否则 `widen` 会看起来回到自己；0 环是
+相对于当前类划分的结论，不是绝对真理。
 
 ## 6 这套东西证明了什么，没证明什么
 

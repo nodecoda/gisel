@@ -20,8 +20,8 @@ gisel 只有这九个命令。新增一个命令等于新增一块产品面，�
 | `demo` | 一条命令跑完 lint → gen → cases → graph | 可选 `--corpus NAME`（默认 `x86`）、`--out DIR`（默认 `gisel-demo`）、`--config NAME` | 产物写进 `--out`；stdout 逐阶段打印命令、该命令的真实输出与产物路径 |
 
 `--emit` 的三个值对应三类产物，后缀只是约定：`inc`（C++ 链）、`check`
-（JSON）、`core`（schema-0.4 JSON）。`table`（C++ 表）已于 2026-11-09 移除，
-见 `spec/m3-scope.md`。
+（JSON）、`core`（schema-0.4 JSON）。`inc` 是产品，`check`/`core` 是它的
+检查形式。
 
 `check` 比较的是**产物形**，不是源文件的 builder 边界：`--emit=check` 与
 `--emit=core` 在生成前先做 `canonicalize_rulesets`（同一 opcode 的多条

@@ -30,8 +30,8 @@ python3 -m gisel graph SOURCE --emit=core \
   [--oracle ORACLE] [--progress]
 ```
 
-图直接从 `.gisel` 生成 schema 0.4 core 文档再交给 evaluator；不读原型的
-`x86.tables.json`，不生成 MIR，不调用 `llc`/TableGen/LLVM。规范见
+图直接从 `.gisel` 生成 schema 0.4 core 文档再交给 evaluator；不生成 MIR，
+不调用 `llc`/TableGen/LLVM。规范见
 `spec/graph.md`，设计记录见 `docs/DESIGN-graph.md`。2026-11-12 起闭包审计
 **默认开启**（`--no-check-closure` 关闭），所以下文中未写 `--refine` 的
 `rc=1` 都是默认行为，而不是额外选项造成的。
@@ -152,28 +152,19 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
   `s256` / `v128s8` 补进轴只会把 `outside` 改记成 `partition`（同一个类仍然
   落到多个目标类），所以让闭包成立的手段是 `--refine`，不是补一个类型字面量。
 
-另一类曾被记成 outside 的 41 条 `f8` 是**伪查询**，已修：`G_FCMP` 的 type0 是
-比较结果，只能是整数；旧轴把 `f16` 放进 slot 0，于是 `clampScalar(0, s8, s8)`
-把它窄成 `f8`。`analysis.type_shape_ok` 现在拒绝浮点结果（`G_ICMP` 同样拒绝
-指针/浮点结果），所以 X86 的 outside 从 86 降到 45，states 从 66,877 降到
-65,275，edges 从 24,943 降到 24,282（当时快照；现为 §2 的 68,656 / 26,285）。
+`G_FCMP` 的 type0 是比较结果，只能是整数；`analysis.type_shape_ok` 拒绝浮点
+结果（`G_ICMP` 同样拒绝指针/浮点结果），所以 `f16` 不会被 `clampScalar(0, s8,
+s8)` 窄成 `f8` 伪查询。X86 当前的 outside 是 45（§2）。
 
-`--check-closure` 的语义在 2026-11-10 改过（见 `spec/graph.md` §负控和闭包）：
-它现在审计**每个非 opaque 状态的全部成员**，不再只审计有出边的代表点；域外
-判定统一到 `graph.Domain.successor`。因此本表与 2026-11-08 的“3,465 条
-multiple target classes”不可直接比较——旧数字按状态计，新数字只计混合类。
+`--check-closure` 审计**每个非 opaque 状态的全部成员**（`spec/graph.md`
+§负控和闭包），域外判定统一到 `graph.Domain.successor`；表中的 closure 只计
+混合类。
 
 **`cycles=0` 的前提**：不带 `--refine` 时只在代表点商图上成立；带 `--refine`
 时闭包成立，0 环是完整结论。`--refine` 改变第 2 篇的“原子”定义，所以默认
 关闭，由调用者显式选择。闭包审计本身自 2026-11-12 起默认开启：未 refine 的
 四个大 target 默认 `rc=1`，读者要么带 `--refine` 拿完整结论，要么显式写
 `--no-check-closure` 承担“0 环只是条件结论”。
-
-## 3b X86 C1 的 oracle 对齐（已删除）
-
-`tests/cases/x86_ref_dump.jsonl` 已于 2026-11-10 删除，基于它的 oracle 对齐
-不再是证据。`--oracle` 机制保留，接受任意 runner 写出的答案文件；仓库测试用
-临时构造的小型答案集覆盖它。原 1,408 点的数字只属于历史快照，不再重跑。
 
 ## 4 RISC-V：配置相关的内存类型
 
@@ -321,37 +312,11 @@ SPIR-V 的单个配置 `spirv64-kernel` 在 200,000 states 上限处停住：
 `state_limit` / `unsupported_scale` / rc=2。它没有闭包数字，也不能拿别的
 target 的数字代替。
 
-## 7 2026-11-10 的更正：`outside` 曾经用错有限域
+## 7 `outside` 的有限域
 
-老实现里有两个类型宇宙：
-
-- 图的候选轴来自 `cases._candidates`，固定带一组哨兵（`s32`/`s64`/`s128`/
-  `f16`/`f32`/`f64`/`s3`/`s7`…），所以这些值会成为状态成员；
-- `outside` 的判定却用 `domain_axes`，只认 `.gisel` 里声明过的类型。
-
-于是“已经作为状态枚举出来的值”被当成域外：Mips / ARM 的语料一条 float 类型
-都没声明，`f16 -> f32` 明明是轴里两个有类的值，却被记成 `outside`；X86 C1、
-RISC-V、AArch64 同样丢掉了大量真实边。
-
-修法（`799968c`）：有限域 = 轴实际携带的值集（声明类型 ∪ 规则字面量与切点 ∪
-稳定哨兵；`--axes` explicit 模式仍是 profile 的值集）。`Domain.successor` 的
-两个条件不变，只是 (a) 从“`.gisel` 声明过”改成“本次图枚举过”。
-
-效果（2026-11-10 快照；当前主表数字已按 `dad5a61` 更新，见 §2/§4/§5）：
-
-| target | closure（修前） | closure（修后） | edges |
-|---|---:|---:|---|
-| X86 C1 | 321 (P228/O93) | 277 (P232/O45) | 23,874 → 24,282 |
-| AArch64 baseline | 2,629 (P178/O2,451) | 2,671 (P178/O2,493) | 189,983 → 197,779 |
-| RISC-V rv64gc | 4,139 (P378/O3,761) | 2,864 (P610/O2,254) | 37,841 → 38,165 |
-| ARM | 67 (O67) | **0** | — |
-| Mips | 67 (O67) | **0** | — |
-| PowerPC | 11 (O11) | **0** | — |
-| M68k | 12 (O12) | **0** | — |
-| WebAssembly | 357 (P133/O224) | 302 (P168/O134) | — |
-
-四个小 target 的违例全部消失，说明那 157 条是记账错误，不是规则缺口。X86 /
-AArch64 在 `--refine` 下闭包成立。
+有限域 = 轴实际携带的值集（声明类型 ∪ 规则字面量与切点 ∪ 稳定哨兵；`--axes`
+explicit 模式仍是 profile 的值集）。`Domain.successor` 只问两件事：目标在有限
+域内，并且仍落在同一个 opcode 的类型槽形状里。
 
 剩下的 `outside` 不是同一种东西，抽样（每个 target 的 JSON 最多保留 20 条
 样例）可以分开：
@@ -370,23 +335,20 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
 可签字写法统一为：`--refine`（闭包默认开启，也可显式写 `--check-closure
 --refine`），并带上各报告的类数增量。
 
-## 8 历史更正：6 个自环是假环
+## 8 类签名必须包含 shim guard
 
-首版在 X86 上报告 `cycles=6`，全部是自环：
+`widen(slot(0), pow2_min(32))` 的显式谓词是 `true`；真正区分 `s3`/`s32` 的
+guard 是 shim 里的 `is_scalar && !is_pow2(size)`，不在谓词 DAG 里。如果类签名
+只收集显式谓词，`s3` 和 `s32` 就同类，`widen -> s32` 看起来回到自己：
 
 | opcode | ruleset | 代表类型 | 边 |
 |---|---|---|---|
 | `G_UMIN`/`G_UMAX`/`G_SMIN`/`G_SMAX` | `X86_UMIN` | `s3` | `WidenScalar -> s32` |
 | `G_INTRINSIC_ROUNDEVEN`/`G_INTRINSIC_TRUNC` | `X86_INTRINSIC_ROUNDEVEN` | `s3` | `WidenScalar -> s32` |
 
-原因：类签名只收集显式谓词，而这两条规则写成 `widen(slot(0), pow2_min(32))`，
-显式谓词是 `true`；真正区分 `s3`/`s32` 的 guard 是 shim 里的
-`is_scalar && !is_pow2(size)`，不在谓词 DAG 里。`s3` 和 `s32` 因此同类，
-`widen -> s32` 看起来回到自己。LLVM 的 `widenScalarToNextPow2` 本身带
-`sizeNotPow2` 谓词，真实语义是 `s3 -> s32 -> Lower/Libcall`，终止。
-
-修复方式：把每条变异规则的隐式 shim guard 并入类签名（`eval.rule_matches`，
-`evaluate()` 签名不变）。6 个自环全部消失。
+LLVM 的 `widenScalarToNextPow2` 本身带 `sizeNotPow2` 谓词，真实语义是
+`s3 -> s32 -> Lower/Libcall`，终止。所以每条变异规则的隐式 shim guard 都要
+并入类签名（`eval.rule_matches`，`evaluate()` 签名不变）。
 
 ## 9 未覆盖
 
@@ -412,10 +374,9 @@ target 在 `--refine` 下全部 `closure.count=0`、`cycles=0`**。所以“0 �
   在 200,000 states 上限处停住（`G_FLDEXP`，15 s，rc=2）。钉进去只会得到
   一个确定性的 `unsupported_scale`，不是覆盖；它仍需要单独的剪枝工作。
 
-## 2026-11-14 实测（替换旧数字）
+## 2026-11-14 实测
 
-旧文档里的 68 s / 15 min 来自旧快照，不再引用。下面的数字在同一台机器上
-重新跑过，命令原样可复制；机器为 4 vCPU / 16 GB，Python 3.10.12。
+下面的数字在同一台机器上重新跑过，命令原样可复制；机器为 4 vCPU / 16 GB，Python 3.10.12。
 
 ```sh
 # X86：四个配置，默认分区（不 --refine）
