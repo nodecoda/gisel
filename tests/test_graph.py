@@ -406,6 +406,29 @@ class ConfigDependentMemory(unittest.TestCase):
         )
 
 
+class Jobs(unittest.TestCase):
+    """`--jobs` must not change one byte of the report."""
+
+    def build(self, jobs, text=OUTSIDE):
+        with tempfile.TemporaryDirectory() as directory:
+            source = write_source(directory, text)
+            doc = cases.document(source)
+            features = cases.derive_features(doc)
+            return graph.build(source, "none", features, check_closure=True,
+                               jobs=jobs)
+
+    def test_parallel_matches_serial(self):
+        serial = self.build(1)
+        saved = graph._JOBS_MIN_STATES
+        graph._JOBS_MIN_STATES = 0
+        try:
+            parallel = self.build(2)
+        finally:
+            graph._JOBS_MIN_STATES = saved
+        self.assertEqual(serial.public(), parallel.public())
+        self.assertEqual(dict(serial.edges), dict(parallel.edges))
+
+
 class Verdict(unittest.TestCase):
     """The verdict line is the one-line reading of cycles + closure."""
 

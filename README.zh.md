@@ -110,6 +110,8 @@ gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
   --inject-edge                 # 负控：必须报出一个 2-环
 gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
   --no-check-closure            # 跳过审计（cycles=0 因此失去前提）
+gisel graph tests/corpus/AArch64LegalizerInfo.gisel --emit=core \
+  --features tests/cases/features.json --config baseline --refine --jobs 8
 ```
 
 `spec/graph.md` 是契约，`docs/REPORT-graph.md` 是证据。闭包审计**默认开启**：

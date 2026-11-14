@@ -2,8 +2,10 @@
 
 `docs/SCOPE.md` says what belongs to gisel and what belongs to the workbench;
 `spec/cli.md` §3 says a gisel run never starts another program, opens no
-socket and reads no file it was not given.  These tests keep both statements
-true while the package grows.
+socket and reads no file it was not given.  `graph --jobs N` forks internal
+workers for two pure state passes; that is the one allowed use of
+`multiprocessing`, and it executes nothing external.  These tests keep both
+statements true while the package grows.
 """
 
 import ast
@@ -21,6 +23,9 @@ FORBIDDEN_IMPORTS = {
     "asyncio", "ftplib", "http", "imaplib", "multiprocessing",
     "smtplib", "socket", "subprocess", "telnetlib", "urllib",
 }
+# `graph --jobs` forks workers; it is not an external program and its output
+# is byte-identical.  Keep the exception to one file and one module.
+ALLOWED_IMPORTS = {("gisel/graph.py", "multiprocessing")}
 FORBIDDEN_CALLS = {
     "os.system", "os.popen",
     "os.execv", "os.execl", "os.execvp", "os.spawnv", "os.spawnl",
@@ -54,9 +59,11 @@ class NoExternalSideEffects(unittest.TestCase):
                     names = [(node.module or "").split(".")[0]]
                 else:
                     continue
+                rel = path.relative_to(ROOT)
                 for name in names:
-                    if name in FORBIDDEN_IMPORTS:
-                        found.append(f"{path.relative_to(ROOT)}:{node.lineno} {name}")
+                    if (name in FORBIDDEN_IMPORTS
+                            and (str(rel), name) not in ALLOWED_IMPORTS):
+                        found.append(f"{rel}:{node.lineno} {name}")
         self.assertEqual(found, [], "gisel must stay pure Python over files")
 
     def test_no_process_call(self):

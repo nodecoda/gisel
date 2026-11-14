@@ -439,12 +439,15 @@ done
 - **`cycles=0` 不等于 `rc=0`**：上表默认分区都有 closure 违例（`outside` +
   `partition`），进程返回 1。读“无环”时必须同时读 closure 计数。这条口径
   已写进 `spec/graph.md` 与 `README`。
-- **AArch64** 没有单独重跑：cohort verify 的 `check-nightly-graphs.sh` gate
-  以 `--refine` 跑 baseline，墙钟 578.1 s，gate 通过（闭包成立）。这是当前
-  唯一可信的 AArch64 数字；不要引用旧的 15 分钟。
-- **未覆盖**：RISC-V 其余 7 个配置、AArch64 其余 8 个配置没有逐一复测。
-  `rv64gc` / `baseline` 是主配置，足以判断量级；全配置表应在需要时另立测量，
-  不能拿一个配置冒充全部。
+- **AArch64**：`check-nightly-graphs.sh` 以 `--refine` 跑 baseline，墙钟
+  578.1 s；r17 的矩阵把 9 个配置全跑了一遍（`REPORT-graph-configs.md`），
+  单配置 572–587 s、1.37 GB，states 约 1.105M。
+- **`--jobs`（r19）**：同一台机器、同一组配置，AArch64 baseline 从 576 s
+  降到 **69.9 s**（8 workers），RISC-V rv64gc 从 245 s 降到 **35.4 s**；
+  两次输出都与串行 JSON 逐字节相同。并行只覆盖状态求值与 closure 审计，
+  类划分和 `--max-states` 仍在父进程。
+- **全配置已覆盖**：AArch64 9 个、RISC-V 8 个配置都有数；imm 轴/ordering
+  轴仍未全配置跑，见 `KNOWN-LIMITATIONS.md`。
 
 ## 10 `verdict`（2026-11-14，r17）
 

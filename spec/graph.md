@@ -28,6 +28,20 @@ opcode 的类型槽数量和 pointer 槽来自 `gisel/data/opcode-slots.json`；
 opcode（精确或家族前缀），输出多一行 `skipped`。schema 与未覆盖项见
 `spec/axes.md`。
 
+## 并行（`--jobs N`）
+
+`--jobs N` 只并行“状态求值”和“闭包审计”两段，默认 `1`（串行）。两段都是
+对 `states` 的纯读 + 每个状态一个结果，所以适合 fork 出去；类划分和状态枚举
+仍在父进程完成，`--max-states` 的触发点和计数不变。
+
+- 输出与 `--jobs 1` **逐字节相同**；golden 与 `cmp` 是验收手段。
+- 结果按 `states` 的插入顺序和 `sorted(states, key=_node_text)` 的切片顺序
+  合并，闭包样本的前 20 条与串行完全一致。
+- 依赖 `fork` 启动方式；没有 `fork` 的平台自动退回串行，并在 stderr 说明。
+- 少于 5,000 个状态时不启动 worker（启动成本大于收益）。
+- 实测（r19）：AArch64 `baseline --refine` 576 s → 69.9 s（8 workers），
+  RISC-V `rv64gc --refine` 245 s → 35.4 s（8 workers），JSON 与串行相同。
+
 ## 状态和类
 
 状态按“类”的笛卡尔积枚举：每个类型槽的候选是 `inspect_ruleset` 给出的切点

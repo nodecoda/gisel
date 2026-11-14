@@ -11,6 +11,7 @@ import argparse
 import collections
 import itertools
 import json
+import multiprocessing
 import sys
 import time
 from dataclasses import dataclass
@@ -32,6 +33,99 @@ TERMINAL = TERMINAL_ACTIONS
 # outside points that the case generator deliberately trims.
 GRAPH_CANDIDATE_CAP = 64
 _CLOSURE_SAMPLE_LIMIT = 20
+# Below this many states, starting workers costs more than the pass.
+_JOBS_MIN_STATES = 5000
+
+# Forked workers inherit this mapping through copy-on-write; tasks carry only
+# a (start, end) pair, so the million-state dict is never pickled.
+_WORKER = {}
+
+
+def _chunks(total, pieces):
+    size = max(1, (total + pieces - 1) // pieces)
+    return [(start, min(start + size, total))
+            for start in range(0, total, size)]
+
+
+def _fork_context():
+    try:
+        return multiprocessing.get_context("fork")
+    except ValueError:
+        return None
+
+
+def _make_pool(jobs):
+    context = _fork_context()
+    if context is None:
+        return None
+    return context.Pool(processes=jobs)
+
+
+def _successor_chunk(bounds):
+    start, end = bounds
+    keys = _WORKER["keys"]
+    states = _WORKER["states"]
+    evaluate = _WORKER["evaluate_one"]
+    return start, [evaluate(states[key]) for key in keys[start:end]]
+
+
+def _closure_chunk(bounds):
+    start, end = bounds
+    ordered = _WORKER["ordered"]
+    states = _WORKER["states"]
+    audit = _WORKER["audit_one"]
+    entries = []
+    for key in ordered[start:end]:
+        state = states[key]
+        if state["outcome"] == "opaque":
+            continue
+        entries.extend(audit(state))
+    return entries
+
+
+def _empty_closure(checked=True):
+    return {"checked": bool(checked), "ok": True, "violations": [],
+            "count": 0, "kinds": {"partition": 0, "outside": 0}}
+
+
+def _record_closure(closure, entry, limit):
+    closure["count"] += 1
+    closure["ok"] = False
+    kind = entry.get("kind", "partition")
+    closure["kinds"][kind] += 1
+    if len(closure["violations"]) < limit:
+        closure["violations"].append(entry)
+
+
+def _merge_closure(closure, entries):
+    for entry in entries:
+        _record_closure(closure, entry, _CLOSURE_SAMPLE_LIMIT)
+
+
+def _classify(evaluator, config, extended, domain, opcode, member_types,
+              member_mem, member_imm):
+    """(outcome, target_key, action, rule, detail) for one class member."""
+    try:
+        action, type_idx, new_type, rule = E.evaluate_with_rule(
+            evaluator, config, opcode, list(member_types),
+            _mem_desc(member_mem, extended), member_imm or ())
+    except Exception as exc:
+        return ("opaque", None, None, None,
+                {"reason": "opaque", "detail": str(exc)})
+    if rule is None:
+        return "no-rule", None, action, rule, None
+    if action in TERMINAL:
+        return "terminal", None, action, rule, None
+    if type_idx >= len(member_types) or new_type == member_types[type_idx]:
+        return "stuck", None, action, rule, None
+    target_key = domain.successor(
+        opcode, member_types, member_mem, member_imm, type_idx, new_type)
+    if target_key is None:
+        return "outside", None, action, rule, {
+            "reason": "outside",
+            "mutation": _type_text(new_type),
+        }
+    return "moves", target_key, action, rule, None
 # Representative choice inside a class, not the candidate sentinel list:
 # prefer the odd/lane-3 shapes so a class is addressed by its most specific
 # member.  The candidate list itself lives in `analysis`.
@@ -51,6 +145,31 @@ class GraphError(ValueError):
 def _json_key(value):
     return json.dumps(value, sort_keys=True, separators=(",", ":"),
                       default=str)
+
+
+def _hashable(value):
+    """A hashable twin of a signature, without JSON encoding per member.
+
+    Class signatures are lists of ``True``/``False``/``None``/strings and a
+    few short nested lists.  Grouping them used to call ``json.dumps`` once
+    per axis member (millions of calls on AArch64); the JSON text is only
+    needed once per *class* for ordering and output.
+    """
+    if isinstance(value, list):
+        return tuple(_hashable(item) for item in value)
+    if isinstance(value, tuple):
+        return tuple(_hashable(item) for item in value)
+    if isinstance(value, dict):
+        return tuple(sorted((key, _hashable(item))
+                            for key, item in value.items()))
+    return value
+
+
+def _signature_groups(signatures):
+    groups = collections.defaultdict(list)
+    for value, signature in signatures.items():
+        groups[_hashable(signature)].append(value)
+    return groups
 
 
 def _type_text(t):
@@ -273,14 +392,12 @@ def _make_classes(values, axis, atoms, rules, axes, mem_values,
                     evaluator, config, rule, tuple(types), base_mems))
         signatures[value] = tuple(signature)
 
-    groups = collections.defaultdict(list)
-    for value, signature in signatures.items():
-        groups[_json_key(signature)].append(value)
+    groups = _signature_groups(signatures)
     class_of, members, ordered = {}, {}, []
-    for cid, key in enumerate(sorted(groups)):
+    for cid, key in enumerate(sorted(groups, key=_json_key)):
         group = sorted(groups[key], key=_representative_key)
         members[cid] = group
-        ordered.append((cid, group, json.loads(key)))
+        ordered.append((cid, group, json.loads(_json_key(key))))
         for value in group:
             class_of[value] = cid
     return AxisClasses(list(values), class_of, members,
@@ -300,14 +417,12 @@ def _make_mem_classes(mem_values, atoms, axes, evaluator, config):
                 signature.append(_atom_value(evaluator, atom, tuple(baseline),
                                               value, config))
         signatures[value] = tuple(signature)
-    groups = collections.defaultdict(list)
-    for value, signature in signatures.items():
-        groups[_json_key(signature)].append(value)
+    groups = _signature_groups(signatures)
     class_of, members, ordered = {}, {}, []
-    for cid, key in enumerate(sorted(groups)):
+    for cid, key in enumerate(sorted(groups, key=_json_key)):
         group = sorted(groups[key], key=lambda x: (x[0], x[1]))
         members[cid] = group
-        ordered.append((cid, group, json.loads(key)))
+        ordered.append((cid, group, json.loads(_json_key(key))))
         for value in group:
             class_of[value] = cid
     return AxisClasses(list(mem_values), class_of, members,
@@ -331,14 +446,12 @@ def _make_imm_classes(values, atoms, evaluator, config):
                 signature.append(_atom_value(evaluator, atom, (), None,
                                               config, value))
         signatures[value] = tuple(signature)
-    groups = collections.defaultdict(list)
-    for value, signature in signatures.items():
-        groups[_json_key(signature)].append(value)
+    groups = _signature_groups(signatures)
     class_of, members, ordered = {}, {}, []
-    for cid, key in enumerate(sorted(groups)):
+    for cid, key in enumerate(sorted(groups, key=_json_key)):
         group = sorted(groups[key])
         members[cid] = group
-        ordered.append((cid, group, json.loads(key)))
+        ordered.append((cid, group, json.loads(_json_key(key))))
         for value in group:
             class_of[value] = cid
     return AxisClasses(list(values), class_of, members,
@@ -593,7 +706,7 @@ def _state_key(opcode, type_classes, mem_class, imm_class=None):
 def build(source, config, features, *, pointer_width=64, slots=None,
           inject_edge=False, check_closure=False, extra_types=(),
           extra_mems=(), arity_overrides=None, progress=False,
-          axis_profile=None, refine=False, max_states=None):
+          axis_profile=None, refine=False, max_states=None, jobs=1):
     """Build one configuration's graph and return a :class:`Report`."""
     doc = AN.document(source)
     evaluator = E.Evaluator(doc, features)
@@ -753,134 +866,146 @@ def build(source, config, features, *, pointer_width=64, slots=None,
     # A sentinel that the axes carry is a state like any other; calling its
     # successors "outside" was a bookkeeping bug, not a coverage gap.
     domain = Domain(frozenset(set(declared) | universe), class_tables)
-    for key, state in states.items():
-        opcode = key[0]
-        types, mem, imm = state["types"], state["mem"], state["imm"]
-        # Re-find the ruleset atoms for this opcode.  Canonical gisel files
-        # have one ruleset per opcode; the fallback keeps duplicate-opcode
-        # fixtures safe by taking the union of their atoms.
+
+    # The successor pass and the closure audit both walk `states`, which is
+    # the expensive half of a large target (AArch64: 29 s to enumerate, 467 s
+    # to evaluate, 80 s to audit).  Both are pure reads plus a per-state
+    # result, so `--jobs` forks workers that inherit the dict and return only
+    # the compact result.  `jobs=1` keeps the original in-process loops; the
+    # two paths must produce byte-identical JSON.
+    atoms_by_opcode = {}
+    for opcode in {key[0] for key in states}:
         rses = [rs for rs in doc["rulesets"] if opcode in rs["opcodes"]]
-        atoms = []
+        merged = []
         seen = set()
         for rs in rses:
             for atom in AN.atoms(rs):
-                k = _json_key(atom)
-                if k not in seen:
-                    seen.add(k); atoms.append(atom)
-        if _opaque(evaluator, atoms, types, mem, config, imm):
-            state["outcome"] = "opaque"
-            continue
+                marker = _json_key(atom)
+                if marker not in seen:
+                    seen.add(marker); merged.append(atom)
+        atoms_by_opcode[opcode] = merged
+
+    def evaluate_one(state):
+        opcode = state["key"][0]
+        types, mem, imm = state["types"], state["mem"], state["imm"]
+        if _opaque(evaluator, atoms_by_opcode[opcode], types, mem, config, imm):
+            return ("opaque", None, 0, None, None)
         try:
             action, type_idx, new_type, rule = E.evaluate_with_rule(
                 evaluator, config, opcode, list(types), _mem_desc(mem, extended),
                 imm or ())
         except (E.EvalError, IndexError, KeyError, TypeError, ValueError,
                 ZeroDivisionError, AssertionError):
-            state["outcome"] = "opaque"
-            continue
-        state.update({"action": action, "type_idx": type_idx, "rule": rule})
+            return ("opaque", None, 0, None, None)
         if rule is None:
-            state["outcome"] = "no-rule"
-            continue
+            return ("no-rule", action, type_idx, rule, None)
         if action in TERMINAL:
-            state["outcome"] = "terminal"
-            continue
+            return ("terminal", action, type_idx, rule, None)
         if type_idx >= len(types) or new_type == types[type_idx]:
-            state["outcome"] = "stuck"
-            continue
+            return ("stuck", action, type_idx, rule, None)
         target_key = domain.successor(opcode, types, mem, imm, type_idx,
                                       new_type)
         if target_key is None:
-            state["outcome"] = "outside"
-            continue
-        state["outcome"] = "moves"
-        edges[key].append((target_key, {
-            "action": action, "type_idx": type_idx, "rule": rule,
-        }))
+            return ("outside", action, type_idx, rule, None)
+        return ("moves", action, type_idx, rule, target_key)
 
-    closure = {"checked": bool(check_closure), "ok": True,
-               "violations": [], "count": 0,
-               "kinds": {"partition": 0, "outside": 0}}
-    if check_closure:
-        limit = _CLOSURE_SAMPLE_LIMIT
+    def apply_one(key, state, result):
+        outcome, action, type_idx, rule, target_key = result
+        state.update({"outcome": outcome, "action": action,
+                      "type_idx": type_idx, "rule": rule})
+        if outcome == "moves":
+            edges[key].append((target_key, {
+                "action": action, "type_idx": type_idx, "rule": rule,
+            }))
 
-        def record(entry):
-            closure["count"] += 1
-            closure["ok"] = False
-            kind = entry.get("kind", "partition")
-            closure["kinds"][kind] += 1
-            if len(closure["violations"]) < limit:
-                closure["violations"].append(entry)
-
-        def classify(member_types, member_mem, member_imm):
-            """(outcome, target_key, action, rule, detail) for one member."""
-            try:
-                action, type_idx, new_type, rule = E.evaluate_with_rule(
-                    evaluator, config, key[0], list(member_types),
-                    _mem_desc(member_mem, extended), member_imm or ())
-            except Exception as exc:
-                return ("opaque", None, None, None,
-                        {"reason": "opaque", "detail": str(exc)})
-            if rule is None:
-                return "no-rule", None, action, rule, None
-            if action in TERMINAL:
-                return "terminal", None, action, rule, None
-            if type_idx >= len(member_types) or new_type == member_types[type_idx]:
-                return "stuck", None, action, rule, None
-            target_key = domain.successor(
-                key[0], member_types, member_mem, member_imm, type_idx,
-                new_type)
-            if target_key is None:
-                return "outside", None, action, rule, {
-                    "reason": "outside",
-                    "mutation": _type_text(new_type),
+    def audit_one(state):
+        key = state["key"]
+        targets = set()
+        entries = []
+        for types, mem, imm in _state_members(state):
+            outcome, target_key, action, rule, detail = _classify(
+                evaluator, config, extended, domain, key[0], types, mem, imm)
+            member = [_type_text(x) for x in types]
+            if outcome != state["outcome"]:
+                entry = {
+                    "state": _node_text(key), "member": member,
+                    "reason": "different outcome",
+                    "outcome": outcome,
+                    "representative": state["outcome"],
+                    "kind": ("outside" if "outside" in (outcome,
+                                                        state["outcome"])
+                             else "partition"),
                 }
-            return "moves", target_key, action, rule, None
-
-        # Audit concrete members of *every* class, not just the representative
-        # of a moving one.  A representative that is terminal (or outside, or
-        # unruly) used to hide a member that moves: the class-level "successor
-        # is a function" claim was never checked for those classes.
-        for key in sorted(states, key=_node_text):
-            state = states[key]
-            if state["outcome"] == "opaque":
-                continue
-            targets = set()
-            for types, mem, imm in _state_members(state):
-                outcome, target_key, action, rule, detail = classify(
-                    types, mem, imm)
-                member = [_type_text(x) for x in types]
-                if outcome != state["outcome"]:
-                    entry = {
-                        "state": _node_text(key), "member": member,
-                        "reason": "different outcome",
-                        "outcome": outcome,
-                        "representative": state["outcome"],
-                        # Either direction of an outside/moving mix is a
-                        # coverage gap; anything else is a partition error.
-                        "kind": ("outside" if "outside" in (outcome,
-                                                            state["outcome"])
-                                 else "partition"),
-                    }
-                    entry.update(detail or {})
-                    record(entry)
-                elif action != state["action"] or rule != state["rule"]:
-                    record({
-                        "state": _node_text(key), "member": member,
-                        "reason": "different rule",
-                        "action": action, "rule": rule,
-                        "representative_action": state["action"],
-                        "representative_rule": state["rule"],
-                    })
-                if outcome == "moves":
-                    targets.add(target_key)
-            if len(targets) > 1:
-                record({
-                    "state": _node_text(key),
-                    "reason": "multiple target classes",
-                    "targets": [_node_text(x) for x in sorted(targets,
-                                                              key=_node_text)],
+                entry.update(detail or {})
+                entries.append(entry)
+            elif action != state["action"] or rule != state["rule"]:
+                entries.append({
+                    "state": _node_text(key), "member": member,
+                    "reason": "different rule",
+                    "action": action, "rule": rule,
+                    "representative_action": state["action"],
+                    "representative_rule": state["rule"],
                 })
+            if outcome == "moves":
+                targets.add(target_key)
+        if len(targets) > 1:
+            entries.append({
+                "state": _node_text(key),
+                "reason": "multiple target classes",
+                "targets": [_node_text(x) for x in sorted(targets,
+                                                          key=_node_text)],
+            })
+        return entries
+
+    workers = None
+    if jobs > 1 and len(states) >= _JOBS_MIN_STATES:
+        _WORKER.clear()
+        _WORKER.update({
+            "states": states,
+            "keys": list(states),
+            "evaluator": evaluator,
+            "config": config,
+            "extended": extended,
+            "domain": domain,
+            "evaluate_one": evaluate_one,
+            "audit_one": audit_one,
+        })
+        # Fork after the mapping is populated: children inherit it.
+        workers = _make_pool(jobs)
+        if workers is None:
+            print("gisel graph: --jobs needs a fork start method; running "
+                  "serially", file=sys.stderr)
+    if workers is not None:
+        try:
+            keys = _WORKER["keys"]
+            bounds = _chunks(len(keys), max(jobs * 4, 1))
+            with workers as pool:
+                for start, results in pool.imap_unordered(
+                        _successor_chunk, bounds):
+                    for offset, result in enumerate(results):
+                        key = keys[start + offset]
+                        apply_one(key, states[key], result)
+            closure = _empty_closure(check_closure)
+            if check_closure:
+                ordered = sorted(states, key=_node_text)
+                _WORKER["ordered"] = ordered
+                bounds = _chunks(len(ordered), max(jobs * 4, 1))
+                with _make_pool(jobs) as pool:
+                    for entries in pool.imap(_closure_chunk, bounds):
+                        _merge_closure(closure, entries)
+        finally:
+            _WORKER.clear()
+    else:
+        for key, state in states.items():
+            apply_one(key, state, evaluate_one(state))
+        closure = _empty_closure(check_closure)
+        if check_closure:
+            for key in sorted(states, key=_node_text):
+                state = states[key]
+                if state["outcome"] == "opaque":
+                    continue
+                for entry in audit_one(state):
+                    _record_closure(closure, entry, _CLOSURE_SAMPLE_LIMIT)
 
     injected = None
     if inject_edge:
@@ -1064,6 +1189,9 @@ def main(argv=None):
                              "scale guard; default: no limit)")
     parser.add_argument("--progress", action="store_true",
                         help="print per-ruleset progress on stderr")
+    parser.add_argument("--jobs", type=int, default=1,
+                        help="evaluate states in N forked workers (default 1; "
+                             "output is byte-identical)")
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args(argv)
     from . import corpus as corpora
@@ -1113,7 +1241,8 @@ def main(argv=None):
                            arity_overrides=oracle_arities,
                            progress=args.progress or sys.stderr.isatty(),
                            axis_profile=axis_profile,
-                           max_states=args.max_states)
+                           max_states=args.max_states,
+                           jobs=args.jobs)
             if args.oracle:
                 evaluator = E.Evaluator(doc, features)
                 report.oracle = oracle_check(report, args.oracle, evaluator,

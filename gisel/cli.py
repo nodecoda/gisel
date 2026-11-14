@@ -257,6 +257,8 @@ def main(argv=None):
     gr.add_argument("--refine", action="store_true")
     gr.add_argument("--max-states", type=int, default=None)
     gr.add_argument("--progress", action="store_true")
+    gr.add_argument("--jobs", type=int, default=1,
+                    help="evaluate states in N forked workers (default 1)")
     gr.add_argument("--json", action="store_true")
 
     doc = sub.add_parser("doctor",

@@ -113,6 +113,8 @@ gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
   --inject-edge                 # negative control: must report a 2-cycle
 gisel graph tests/corpus/X86LegalizerInfo.gisel --emit=core --config none \
   --no-check-closure            # skip the audit (cycles=0 loses its premise)
+gisel graph tests/corpus/AArch64LegalizerInfo.gisel --emit=core \
+  --features tests/cases/features.json --config baseline --refine --jobs 8
 ```
 
 `spec/graph.md` is the contract, `docs/REPORT-graph.md` the evidence.  The
