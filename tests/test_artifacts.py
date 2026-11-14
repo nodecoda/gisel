@@ -645,7 +645,7 @@ class ScalableVectorElementType(unittest.TestCase):
     def test_inc_spells_change_element_type(self):
         text = (TESTS / "artifacts" / "aarch64.inc").read_text()
         pointer_bitcasts = [line for line in text.splitlines()
-                            if "coreBitcastToType" in line
+                            if "bitcastIf" in line
                             and "isPointerVector()" in line]
         self.assertEqual(len(pointer_bitcasts), 1, pointer_bitcasts)
         self.assertIn("changeElementType(", pointer_bitcasts[0])

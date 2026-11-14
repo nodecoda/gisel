@@ -22,20 +22,20 @@ class Action:
     terminal: bool
     target_sorts: frozenset = frozenset()
     for_spelling: str | None = None     # declarative `xxxFor` form
-    covering_shim: str | None = None    # shim that marks every index covered
+    covering_shim: str | None = None    # builder that marks every index covered
 
 
 ACTIONS = (
     Action("Legal", "legal", True,
-           for_spelling="legalFor", covering_shim="coreLegalIf"),
+           for_spelling="legalFor", covering_shim="legalIf"),
     Action("Lower", "lower", True,
-           for_spelling="lowerFor", covering_shim="coreLowerIf"),
+           for_spelling="lowerFor", covering_shim="lowerIf"),
     Action("Libcall", "libcall", True,
-           for_spelling="libcallFor", covering_shim="coreLibcallIf"),
+           for_spelling="libcallFor", covering_shim="libcallIf"),
     Action("Custom", "custom", True,
-           for_spelling="customFor", covering_shim="coreCustomIf"),
+           for_spelling="customFor", covering_shim="customIf"),
     Action("Unsupported", "unsupported", True,
-           for_spelling="unsupportedFor", covering_shim="coreUnsupportedIf"),
+           for_spelling="unsupportedFor", covering_shim="unsupportedIf"),
     Action("WidenScalar", "widen", False,
            target_sorts=frozenset({"Type", "Int"})),
     Action("NarrowScalar", "narrow", False,

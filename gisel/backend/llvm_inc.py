@@ -9,12 +9,16 @@ target's LegalizerInfo consumes:
   emitTypes                 :412
   emitArg / emitArgList     :753 / :840
   emitRuleSet               :853
-  CoreShimTable             :2747
   CoreCxxEmitter            :2974   (value :2983, boolean :2984)
   emitCoreRule              :3689
 
 The AST is the only input: rule type positions are structured LLT values and
-the C++ spelling (declaration names, guards, shims) is computed here.
+the C++ spelling (declaration names, guards, builders) is computed here.
+
+The legacy emitter called a private table of `core*` shims that only existed in
+a local LegalizerInfo.h patch.  This backend spells every rule with the public
+`LegalizeRuleSet` API instead, so the `.inc` compiles against an unmodified
+upstream header; `gisel-ab/scripts/inc/check-pin-header.sh` is the gate.
 
 Ported logic keeps the LLVM license header and names its source commit.
 """
@@ -53,70 +57,115 @@ def _mentions(text, name):
 
 
 class Shim:
-    """One row of ``CoreShimTable`` (LegalizerInfoEmitter.cpp:2747)."""
+    """How one core rule spells itself with the *public* ``LegalizeRuleSet``.
 
-    __slots__ = ("method", "takes_type_idx", "unguarded", "type_payload",
-                 "has_payload")
+    ``form`` selects the rendering strategy (see ``_shim_call``); ``builder``
+    names the upstream method for the forms that forward to one.  The table is
+    also ``lint``'s answer to "can this rule be emitted at all": a shape that is
+    missing here is reported as unspellable rather than silently dropped.
 
-    def __init__(self, method, payload, takes_type_idx=True, unguarded="",
-                 type_payload=False):
-        self.method = method
+    Nothing a ``Shim`` renders may name a symbol that is absent from the pinned
+    upstream ``LegalizerInfo.h``; ``tests/test_inc_compiles.py`` proves that by
+    compiling the artifacts against a pristine header.
+    """
+
+    __slots__ = ("form", "builder", "takes_type_idx", "unguarded",
+                 "type_payload", "has_payload")
+
+    def __init__(self, form, builder="", payload=0, takes_type_idx=True,
+                 unguarded="", type_payload=False):
+        self.form = form
+        self.builder = builder
         self.takes_type_idx = takes_type_idx
         self.unguarded = unguarded
         self.type_payload = type_payload
-        # `payload` is the C++ column of the table: 0 means "the call stops at
-        # the type index", 1 means "one more argument follows".
+        # `payload` is the C++ column of the core table: 0 means "the call
+        # stops at the type index", 1 means "one more argument follows".
         self.has_payload = bool(payload)
 
 
-# (operator, observation form, target form) -> how the C++ chain spells it.
+# (operator, observation form, target form) -> public spelling.
 # The observation form is coreObservationForm(): ElemOf is spelled "elem".
+#
+# Forms:
+#   pow2           widen a scalar to the next power of two
+#   pow2_orel      widen a scalar or vector element to the next power of two
+#   pow2_min       widen to the next power of two or at least MinSize
+#   multiple_scalar / multiple_orel
+#                  widen a scalar / scalar-or-element to a size multiple
+#   min_scalar / max_scalar / min_orel / max_orel
+#                  clamp the scalar / scalar-or-element size
+#   vector_min     widen elements until the vector reaches a bit size
+#   more_pow2      pad the lane count to the next power of two
+#   fewer_ty       assign a whole vector type (no public builder: `actionIf`)
+#   fewer_count    fewer elements to an exact count
+#   same_as        match another slot's scalar size
+#   to             assign a whole type through a free-form builder
+#   bitcast        `bitcastIf`
+#   terminal       `xxxIf` / the declarative no-argument form
+#   scalarize      `scalarizeIf` / `scalarize`
 SHIM_TABLE = {
-    ("widen", "slot", "pow2"): Shim("coreWidenScalarToNextPow2", 0),
-    ("widen", "slot", "pow2Min"): Shim("coreWidenScalarToNextPow2", 1),
-    ("widen", "slot", "multipleOf"): Shim("coreWidenScalarToNextMultipleOf", 1),
-    ("widen", "slot", "ty"): Shim("coreMinScalar", 1),
-    ("widen", "slot", "sameAs"): Shim("coreMinScalarSameAs", 1),
-    ("widen", "elem", "pow2"): Shim("coreWidenScalarOrEltToNextPow2", 0),
-    ("widen", "elem", "pow2Min"): Shim("coreWidenScalarOrEltToNextPow2", 1),
-    ("widen", "elem", "multipleOf"): Shim("coreWidenScalarOrEltToNextMultipleOf", 1),
-    ("widen", "elem", "ty"): Shim("coreMinScalarOrElt", 1),
-    ("widen", "elem", "sameAs"): Shim("coreMinScalarSameAs", 1),
-    ("widen", "elem", "minVectorSize"): Shim("coreWidenVectorEltsToVectorMinSize", 1),
-    ("widen", "scalar", "pow2"): Shim("coreWidenScalarOrEltToNextPow2", 0),
-    ("widen", "scalar", "pow2Min"): Shim("coreWidenScalarOrEltToNextPow2", 1),
-    ("widen", "scalar", "multipleOf"): Shim("coreWidenScalarOrEltToNextMultipleOf", 1),
-    ("widen", "scalar", "ty"): Shim("coreMinScalarOrElt", 1),
-    ("widen", "scalar", "sameAs"): Shim("coreMinScalarSameAs", 1),
-    ("widen", "scalar", "select"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
-    ("widen", "scalar", "int"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
-    ("widen", "scalar", "replace"): Shim("coreWidenTo", 1, type_payload=True),
-    ("widen", "slot", "select"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
-    ("widen", "slot", "int"): Shim("coreWidenScalarOrEltToNextPow2OrMinSize", 1),
-    ("narrow", "slot", "ty"): Shim("coreMaxScalar", 1),
-    ("narrow", "slot", "sameAs"): Shim("coreMaxScalarSameAs", 1),
-    ("narrow", "elem", "ty"): Shim("coreMaxScalarOrElt", 1),
-    ("more", "slot", "pow2"): Shim("coreMoreElementsToNextPow2", 0),
-    ("fewer", "slot", "ty"): Shim("coreFewerElementsToType", 1),
-    ("fewer", "slot", "int"): Shim("fewerElementsIf", 1),
-    ("bitcast", "slot", "ty"): Shim("coreBitcastTo", 1),
-    ("widen", "slot", "replace"): Shim("coreWidenTo", 1, type_payload=True),
-    ("narrow", "slot", "replace"): Shim("coreNarrowTo", 1, type_payload=True),
-    ("more", "slot", "replace"): Shim("coreMoreTo", 1, type_payload=True),
-    ("fewer", "slot", "replace"): Shim("coreFewerTo", 1, type_payload=True),
-    ("bitcast", "slot", "replace"): Shim("coreBitcastToType", 1, type_payload=True),
-    ("legal", "", ""): Shim("coreLegalIf", 0, takes_type_idx=False,
+    ("widen", "slot", "pow2"): Shim("pow2", payload=0),
+    ("widen", "slot", "pow2Min"): Shim("pow2", payload=1),
+    ("widen", "slot", "multipleOf"): Shim("multiple_scalar", payload=1),
+    ("widen", "slot", "ty"): Shim("min_scalar", "minScalar", 1,
+                                   unguarded="minScalar"),
+    ("widen", "slot", "sameAs"): Shim("same_as", payload=1),
+    ("widen", "elem", "pow2"): Shim("pow2_orel", payload=0),
+    ("widen", "elem", "pow2Min"): Shim("pow2_orel", payload=1),
+    ("widen", "elem", "multipleOf"): Shim("multiple_orel", payload=1),
+    ("widen", "elem", "ty"): Shim("min_orel", "minScalarOrElt", 1,
+                                  unguarded="minScalarOrElt"),
+    ("widen", "elem", "sameAs"): Shim("same_as", payload=1),
+    ("widen", "elem", "minVectorSize"): Shim(
+        "vector_min", "widenVectorEltsToVectorMinSize", 1,
+        unguarded="widenVectorEltsToVectorMinSize"),
+    ("widen", "scalar", "pow2"): Shim("pow2_orel", payload=0),
+    ("widen", "scalar", "pow2Min"): Shim("pow2_orel", payload=1),
+    ("widen", "scalar", "multipleOf"): Shim("multiple_orel", payload=1),
+    ("widen", "scalar", "ty"): Shim("min_orel", "minScalarOrElt", 1,
+                                    unguarded="minScalarOrElt"),
+    ("widen", "scalar", "sameAs"): Shim("same_as", payload=1),
+    ("widen", "scalar", "select"): Shim("pow2_min", payload=1),
+    ("widen", "scalar", "int"): Shim("pow2_min", payload=1),
+    ("widen", "scalar", "replace"): Shim("to", "widenScalarIf", 1,
+                                         type_payload=True),
+    ("widen", "slot", "select"): Shim("pow2_min", payload=1),
+    ("widen", "slot", "int"): Shim("pow2_min", payload=1),
+    ("narrow", "slot", "ty"): Shim("max_scalar", "maxScalar", 1,
+                                   unguarded="maxScalar"),
+    ("narrow", "slot", "sameAs"): Shim("same_as", payload=1),
+    ("narrow", "elem", "ty"): Shim("max_orel", "maxScalarOrElt", 1,
+                                   unguarded="maxScalarOrElt"),
+    ("more", "slot", "pow2"): Shim("more_pow2", payload=0),
+    ("fewer", "slot", "ty"): Shim("fewer_ty", payload=1),
+    ("fewer", "slot", "int"): Shim("fewer_count", payload=1),
+    ("bitcast", "slot", "ty"): Shim("bitcast", "bitcastIf", 1),
+    ("widen", "slot", "replace"): Shim("to", "widenScalarIf", 1,
+                                       type_payload=True),
+    ("narrow", "slot", "replace"): Shim("to", "narrowScalarIf", 1,
+                                        type_payload=True),
+    ("more", "slot", "replace"): Shim("to", "moreElementsIf", 1,
+                                      type_payload=True),
+    ("fewer", "slot", "replace"): Shim("to", "fewerElementsIf", 1,
+                                       type_payload=True),
+    ("bitcast", "slot", "replace"): Shim("bitcast", "bitcastIf", 1,
+                                         type_payload=True),
+    ("legal", "", ""): Shim("terminal", "legalIf", 0, takes_type_idx=False,
                             unguarded="alwaysLegal"),
-    ("custom", "", ""): Shim("coreCustomIf", 0, takes_type_idx=False,
+    ("custom", "", ""): Shim("terminal", "customIf", 0, takes_type_idx=False,
                              unguarded="custom"),
-    ("lower", "", ""): Shim("coreLowerIf", 0, takes_type_idx=False,
+    ("lower", "", ""): Shim("terminal", "lowerIf", 0, takes_type_idx=False,
                             unguarded="lower"),
-    ("unsupported", "", ""): Shim("coreUnsupportedIf", 0, takes_type_idx=False,
+    ("unsupported", "", ""): Shim("terminal", "unsupportedIf", 0,
+                                  takes_type_idx=False,
                                   unguarded="unsupported"),
-    ("libcall", "", ""): Shim("coreLibcallIf", 0, takes_type_idx=False,
+    ("libcall", "", ""): Shim("terminal", "libcallIf", 0, takes_type_idx=False,
                               unguarded="libcall"),
-    ("scalarize", "slot", ""): Shim("coreScalarizeIf", 0, unguarded="scalarize"),
+    ("scalarize", "slot", ""): Shim("scalarize", payload=0,
+                                    unguarded="scalarize"),
 }
+
 
 # Terminal actions that also have a declarative `xxxFor(Types)` form.  The
 # `.gisel` text cannot tell `legalFor({...})` from `legalIf(typeInSet(0,...))`
@@ -135,13 +184,14 @@ FOR_OVERLOADS = {
     "unsupportedFor": {(1, False)},
 }
 
-# Shims whose implementation calls `markAllIdxsAsCovered()`; a rule spelled
-# with one of these covers every type and imm index, whatever its predicate
-# says.  The rest record coverage through `typeIdx(i)`.
+# Terminal builders whose implementation calls `markAllIdxsAsCovered()`; a rule
+# spelled with one of these covers every type and imm index, whatever its
+# predicate says.  The rest record coverage through `typeIdx(i)`.
 ALL_COVERING_SHIMS = {a.covering_shim for a in ACTIONS if a.covering_shim}
 
 # terminal action op -> its declarative `xxxFor` spelling.
 FOR_ACTION = {a.op: a.for_spelling for a in ACTIONS if a.for_spelling}
+
 
 # coreObservationForm(): only the forms the corpora use, plus the identity.
 ONSERVATION_FORM = {"elemOf": "elem", "scalarOf": "scalar"}
@@ -166,10 +216,10 @@ def shim_forms(rule):
 
 
 def shim_for(rule):
-    """The C++ shim this rule needs, or None when the product cannot spell it.
+    """The public spelling this rule needs, or None when it has none.
 
-    `lint` calls this too: a rule the `.inc` emitter rejects must not pass
-    lint as clean.  Before this the two disagreed (`narrow(slot(0), 32)`:
+    `lint` calls this too: a rule the `.inc` emitter rejects must not pass lint
+    as clean.  Before this the two disagreed (`narrow(slot(0), 32)`:
     lint rc=0, `--emit=inc` rc=2).
     """
     return SHIM_TABLE.get((_rule_field(rule, "op"),) + shim_forms(rule))
@@ -832,27 +882,15 @@ class IncEmitter:
 
         guard = r["predicate"]
         unguarded = guard.get("kind") == "leaf" and guard.get("name") == "true"
-        if shim.method == "fewerElementsIf":
-            # FewerElements to an exact element count has no `core` helper, but
-            # `fewerElementsIf` is public and takes the mutation directly, so
-            # the generated `.inc` needs no addition to LLVM's headers.
-            pred = ("[](const LegalityQuery &) { return true; }" if unguarded
-                    else "[=](const LegalityQuery &Query) { return %s; }"
-                         % self.boolean(guard))
-            return ("      .fewerElementsIf(%s, "
-                    "LegalizeMutations::changeElementCountTo(%d, "
-                    "ElementCount::getFixed(%s)))"
-                    % (pred, r["type_idx"], self._payload(r, shim)),
-                    ("types", {r["type_idx"]}))
-        if shim.method in ("coreMinScalarSameAs", "coreMaxScalarSameAs"):
+        if shim.form == "same_as":
             # `same_as` has two upstream spellings.  The guarded form goes
             # through `*EltSameAsIf` (which calls `widenScalarIf` /
             # `narrowScalarIf` and marks every index covered); the unguarded
             # form goes through `*ScalarSameAs` and records only the two
             # indices it names.  The target's `legalizer-info-validation.mir`
-            # pins the difference, so spell the upstream call, not the shim.
-            payload = self._payload(r, shim)
-            widen = shim.method == "coreMinScalarSameAs"
+            # pins the difference, so spell the upstream call, not a shim.
+            payload = self._payload(r, shim.type_payload)
+            widen = r["op"] == "widen"
             # `guarded` is the spelled `when ...` clause, even when the
             # predicate is the literal `true`: upstream's
             # `minScalarEltSameAsIf(always, ...)` and `minScalarSameAs(...)`
@@ -876,30 +914,160 @@ class IncEmitter:
                         ("types", covered))
             method = ("minScalarEltSameAsIf" if widen
                       else "maxScalarEltSameAsIf")
-            pred = ("[=](const LegalityQuery &Query) { return %s; }"
-                    % self.boolean(guard))
             return ("      .%s(%s, %d, %s)"
-                    % (method, pred, r["type_idx"], payload), ("all",))
-        if unguarded and shim.unguarded:
-            cov = ("all",) if shim.method in ALL_COVERING_SHIMS else (
-                "types", {r["type_idx"]})
-            return ("      .%s(%s)" % (
-                shim.unguarded, r["type_idx"] if shim.takes_type_idx else ""),
-                cov)
+                    % (method, self._guard_lambda(guard, unguarded),
+                       r["type_idx"], payload), ("all",))
+        return self._shim_call(r, shim, guard, unguarded)
 
-        args = []
+    def _guard_lambda(self, guard, unguarded):
         if unguarded:
-            args.append("[](const LegalityQuery &) { return true; }")
-        else:
-            args.append("[=](const LegalityQuery &Query) { return %s; }"
-                        % self.boolean(guard))
-        if shim.takes_type_idx:
-            args.append(str(r["type_idx"]))
-        if shim.has_payload:
-            args.append(self._payload(r, shim))
-        cov = ("all",) if shim.method in ALL_COVERING_SHIMS else (
-            "types", {r["type_idx"]})
-        return "      .%s(%s)" % (shim.method, ", ".join(args)), cov
+            return "[](const LegalityQuery &) { return true; }"
+        return "[=](const LegalityQuery &Query) { return %s; }" % self.boolean(
+            guard)
+
+    def _shim_call(self, r, shim, guard, unguarded):
+        """Spell one rule with public builders; returns (text, coverage).
+
+        Coverage is our own bookkeeping, not C++: it mirrors the core shim the
+        rule used to call so the hoisting fixed point does not move.  Where the
+        public spelling is more conservative than the core shim (a guarded
+        widen, say) the emitted rule marks more indices covered than our model
+        does, which can only suppress a debug assertion, never add one.
+        """
+        i = r.get("type_idx")
+        payload = self._payload(r, shim.type_payload) if shim.has_payload else ""
+        expr = "true" if unguarded else self.boolean(guard)
+        lam = self._guard_lambda(guard, unguarded)
+        cov = ("all",) if shim.builder in ALL_COVERING_SHIMS else (
+            "types", {i})
+
+        def conjunct(check):
+            """`<guard> && <check>` as one predicate lambda, guard first."""
+            if unguarded:
+                return "[=](const LegalityQuery &Query) { return %s; }" % check
+            return ("[=](const LegalityQuery &Query) { return (%s) && %s; }"
+                    % (expr, check))
+
+        form = shim.form
+        if form == "terminal":
+            if unguarded and shim.unguarded:
+                return "      .%s()" % shim.unguarded, cov
+            return "      .%s(%s)" % (shim.builder, lam), cov
+        if form == "to":
+            return "      .%s(%s, %s)" % (shim.builder, lam, payload), cov
+        if form == "bitcast":
+            if shim.type_payload:
+                # The payload already is the mutation lambda.
+                return "      .bitcastIf(%s, %s)" % (lam, payload), cov
+            return ("      .bitcastIf(%s, LegalizeMutations::changeElementTo("
+                    "%d, %s))" % (lam, i, payload), cov)
+        if form == "scalarize":
+            if unguarded and shim.unguarded:
+                return "      .scalarize(%d)" % i, cov
+            return "      .scalarizeIf(%s, %d)" % (lam, i), cov
+        if form == "fewer_count":
+            return ("      .fewerElementsIf(%s, "
+                    "LegalizeMutations::changeElementCountTo(%d, "
+                    "ElementCount::getFixed(%s)))"
+                    % (lam, i, payload), cov)
+        if form == "fewer_ty":
+            # `P && T.isVector() && T.getSizeInBits() > Ty.getSizeInBits()`,
+            # assigning Ty whole.  No public builder spells this.
+            check = ("const LLT T = Query.Types[%d]; return (%s) && "
+                     "T.isVector() && T.getSizeInBits().getKnownMinValue() > "
+                     "%s.getSizeInBits().getKnownMinValue();"
+                     % (i, expr, payload))
+            return ("      .actionIf(LegalizeAction::FewerElements, "
+                    "[=](const LegalityQuery &Query) { %s }, "
+                    "LegalizeMutations::changeElementTo(%d, %s))"
+                    % (check, i, payload), cov)
+        if form == "pow2":
+            if unguarded:
+                minarg = ", %s" % payload if payload else ""
+                return ("      .widenScalarToNextPow2(%d%s)" % (i, minarg),
+                        cov)
+            return ("      .widenScalarIf(%s, "
+                    "LegalizeMutations::widenScalarOrEltToNextPow2(%d%s))"
+                    % (conjunct("LegalityPredicates::sizeNotPow2(%d)(Query)"
+                               % i), i, ", %s" % payload if payload else ""),
+                    cov)
+        if form == "pow2_orel":
+            if unguarded:
+                minarg = ", %s" % payload if payload else ""
+                return ("      .widenScalarOrEltToNextPow2(%d%s)"
+                        % (i, minarg), cov)
+            return ("      .widenScalarIf(%s, "
+                    "LegalizeMutations::widenScalarOrEltToNextPow2(%d%s))"
+                    % (conjunct(
+                        "LegalityPredicates::scalarOrEltSizeNotPow2(%d)(Query)"
+                        % i), i, ", %s" % payload if payload else ""), cov)
+        if form == "pow2_min":
+            mutation = ("LegalizeMutations::widenScalarOrEltToNextPow2(%d, %s)"
+                        % (i, payload))
+            if unguarded:
+                return ("      .widenScalarOrEltToNextPow2OrMinSize(%d, %s)"
+                        % (i, payload), cov)
+            check = ("LegalityPredicates::any("
+                     "LegalityPredicates::scalarOrEltNarrowerThan(%d, %s), "
+                     "LegalityPredicates::scalarOrEltSizeNotPow2(%d))(Query)"
+                     % (i, payload, i))
+            return "      .widenScalarIf(%s, %s)" % (conjunct(check), mutation), cov
+        if form == "multiple_scalar":
+            if unguarded:
+                return ("      .widenScalarToNextMultipleOf(%d, %s)"
+                        % (i, payload), cov)
+            check = ("LegalityPredicates::sizeNotMultipleOf(%d, %s)(Query)"
+                     % (i, payload))
+            return ("      .widenScalarIf(%s, "
+                    "LegalizeMutations::widenScalarOrEltToNextMultipleOf("
+                    "%d, %s))" % (conjunct(check), i, payload), cov)
+        if form == "multiple_orel":
+            check = "Query.Types[%d].getScalarSizeInBits() %% %s != 0" % (
+                i, payload)
+            return ("      .actionIf(LegalizeAction::WidenScalar, %s, "
+                    "LegalizeMutations::widenScalarOrEltToNextMultipleOf("
+                    "%d, %s))" % (conjunct(check), i, payload), cov)
+        if form == "vector_min":
+            if unguarded:
+                return ("      .widenVectorEltsToVectorMinSize(%d, %s)"
+                        % (i, payload), cov)
+            mutation = (
+                "[=](const LegalityQuery &Query) { const LLT VecTy = "
+                "Query.Types[%d]; unsigned NumElts = VecTy.getNumElements(); "
+                "unsigned MinSize = %s / NumElts; LLT NewTy = "
+                "LLT::fixed_vector(NumElts, "
+                "VecTy.getElementType().changeElementSize(MinSize)); "
+                "return std::make_pair(%d, NewTy); }" % (i, payload, i))
+            check = ("const LLT VecTy = Query.Types[%d]; return (%s) && "
+                     "VecTy.isFixedVector() && "
+                     "VecTy.getSizeInBits().getKnownMinValue() < %s;"
+                     % (i, expr, payload))
+            return ("      .actionIf(LegalizeAction::WidenScalar, "
+                    "[=](const LegalityQuery &Query) { %s }, %s)"
+                    % (check, mutation), cov)
+        if form == "more_pow2":
+            if unguarded:
+                return "      .moreElementsToNextPow2(%d)" % i, cov
+            check = "LegalityPredicates::numElementsNotPow2(%d)(Query)" % i
+            return ("      .moreElementsIf(%s, "
+                    "LegalizeMutations::moreElementsToNextPow2(%d))"
+                    % (conjunct(check), i), cov)
+        if form in ("min_scalar", "max_scalar", "min_orel", "max_orel"):
+            if unguarded and shim.unguarded:
+                return "      .%s(%d, %s)" % (shim.unguarded, i, payload), cov
+            method = {"min_scalar": "minScalarIf",
+                      "max_scalar": "maxScalarIf",
+                      "min_orel": "minScalarOrEltIf",
+                      "max_orel": "narrowScalarIf"}[form]
+            if form != "max_orel":
+                return "      .%s(%s, %d, %s)" % (method, lam, i, payload), cov
+            # No `maxScalarOrEltIf` upstream: compose it from `narrowScalarIf`.
+            check = ("LegalityPredicates::scalarOrEltWiderThan(%d, "
+                     "%s.getScalarSizeInBits())(Query)" % (i, payload))
+            return ("      .narrowScalarIf(%s, "
+                    "LegalizeMutations::changeElementSizeTo(%d, %s))"
+                    % (conjunct(check), i, payload), cov)
+        raise ValueError("unknown shim form %r" % form)
 
     def _for_cov(self, r):
         """Coverage a `xxxFor(...)` call records: the indices it names.
@@ -946,8 +1114,9 @@ class IncEmitter:
 
         (and the `more` / `<` mirror for `clamp_min`).  Upstream spells that
         `clampMaxNumElements(i, T, N)`, which records coverage for *one* type
-        index; the generic `coreFewerTo` shim marks every index covered and
-        makes `legalizer-info-validation.mir` report a user-defined predicate.
+        index; the generic `fewer(slot, replace(...))` spelling marks every
+        index covered and makes `legalizer-info-validation.mir` report a
+        user-defined predicate.
         """
         source = r.get("source_op")
         if source in ("clamp_min", "clamp_max"):
@@ -1161,13 +1330,13 @@ class IncEmitter:
         gate, nslots, rows = shape
         if gate is not None or nslots != 1:
             return None
-        mutation = self._payload(r, Shim("coreWidenTo", 1, type_payload=True))
+        mutation = self._payload(r, type_payload=True)
         return "widenScalarFor(%s, %s)" % (
             self._set_text(nslots, rows), mutation)
 
-    def _payload(self, r, shim):
+    def _payload(self, r, type_payload=False):
         to = r["to"]
-        if shim.type_payload:
+        if type_payload:
             return ("[=](const LegalityQuery &Query) { return std::make_pair(%d, %s); }"
                     % (r["type_idx"], self.value(to["args"][0])))
         if to.get("kind") == "int":

@@ -82,11 +82,17 @@ The generated `.inc` is the C++ chain, one call per rule:
   const LLT I64 = LLT::scalar(64);
 
   getActionDefinitionsBuilder(G_ADD)
-      .coreLegalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == I32); })
-      .coreLegalIf([=](const LegalityQuery &Query) { return (Is64Bit) && ((Query.Types[0] == I64)); })
-      .coreWidenScalarToNextPow2([](const LegalityQuery &) { return true; }, 0, 32)
+      .legalIf([=](const LegalityQuery &Query) { return (Query.Types[0] == I32); })
+      .legalIf([=](const LegalityQuery &Query) { return (Is64Bit) && ((Query.Types[0] == I64)); })
+      .widenScalarToNextPow2(0, 32)
       .scalarize(0);
 ```
+
+Every call is a public `LegalizeRuleSet` builder: the `.inc` compiles against an
+unmodified upstream `LegalizerInfo.h`, so replacing a target's hand-written
+rules needs no header patch.  `gisel-ab/scripts/inc/check-pin-header.sh` compiles
+all three artifacts against a pin-only tree and self-tests that a `core*` name
+is rejected.
 
 `--emit=check` and `--emit=core` give the other two shapes from the same
 source.  The C++ `.inc` is the product; `check` and `core` are its inspection

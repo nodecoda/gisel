@@ -57,6 +57,8 @@ AArch64 12,559/12,559、RISC-V 6,086/6,086 全部 agree（题面为 2026-11-11
 `builds/explore`，与 pin 的三条偏离（AArch64 `numElements()` 硬化、
 `memSizeInBytesNotPow2` 的可伸缩读取、`core*` builder）逐条登记在
 `official_base.deviations` 里；详见 `gisel-ab/docs/OFFICIAL-BASE.md`。
+其中 `core*` 那一项是历史基线的一部分：生成的 `.inc` 已经不再调用它们，
+`gisel-ab/scripts/inc/check-pin-header.sh` 对纯 pin 头编译三份产物来守住这条。
 
 2026-11-11 之前这里只查祖先关系，于是 fork 上未声明的改动（AArch64 的
 `numElements()` 断言硬化）混进了官方侧而检查仍报 ok：祖先检查只能证明“pin 和

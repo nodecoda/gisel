@@ -45,6 +45,14 @@
     它不跑 LLVM、不含 `llc`，也不是对拍环境。
 13. AMDGPU 按约定不接；不在任何 target 表里。
 14. `lint` 的 `TARGET_SORTS` 与 `.inc` 的 shim 表仍是两份；合表属于后续重构。
+15. `.inc` 只写上游公共 builder，但“覆盖率”与旧的 `core*` shim 不完全等价：
+    `widen(slot(i), pow2…)` 这类带 guard 的规则在上游没有“带谓词的
+    `widenScalarToNextPow2`”，发射改用 `widenScalarIf`，它会把**所有**类型下标
+    标成 covered（更保守，只会少报断言，不会多报）。带 guard 的 `min/maxScalar`
+    改用上游 `*ScalarIf`，它按上游文档先算尺寸、再求 guard（旧 shim 是 guard 先）；
+    当前这些 guard 都是同槽类型比较或编译期 feature，顺序不可观测。
+    当前三份语料：X86/RISC-V 0 条，AArch64 只有 1 条 `moreElementsIf`。`gisel-ab/scripts/inc/check-pin-header.sh`
+    负责“名字都在上游头里”；覆盖率的差异见 `docs/REPORT-coverage.md`。
 
 ## 不打算做
 

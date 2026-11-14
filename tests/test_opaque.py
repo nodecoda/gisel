@@ -48,7 +48,7 @@ class OpaquePredicate(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
         text = out.read_text()
         self.assertIn(
-            '.coreLegalIf([=](const LegalityQuery &Query) '
+            '.legalIf([=](const LegalityQuery &Query) '
             '{ return (isLoadStoreLegal(ST, Query)); })', text)
 
     def test_core_lists_the_escape(self):
