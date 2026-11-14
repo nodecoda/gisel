@@ -1,0 +1,81 @@
+name: install
+
+# The install path is a product surface: a fresh machine, no checkout, no
+# environment variables.  This workflow is that machine.  It cannot run on a
+# pull_request from a fork (raw.githubusercontent only serves pushed commits),
+# so it runs on push to the branch that carries install.sh.
+on:
+  push:
+    paths:
+      - scripts/install.sh
+      - .github/workflows/install.yml
+      - gisel/**
+      - pyproject.toml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  install:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        # auto = whatever the image has (pipx on ubuntu-latest, uv if not);
+        # the two explicit modes prove the fallbacks work, not just the happy
+        # path the runner happens to provide.
+        mode: ["auto", "uv", "venv"]
+    steps:
+      - name: install from the pushed script, without a checkout
+        env:
+          MODE: ${{ matrix.mode }}
+        run: |
+          set -eu
+          url="https://raw.githubusercontent.com/${GITHUB_REPOSITORY}/${GITHUB_SHA}/scripts/install.sh"
+          curl -fsSL "$url" -o /tmp/install.sh
+          case "$MODE" in
+            auto)
+              sh /tmp/install.sh
+              ;;
+            uv)
+              curl -LsSf https://astral.sh/uv/install.sh | sh
+              export PATH="$HOME/.local/bin:$PATH"
+              sh /tmp/install.sh
+              ;;
+            venv)
+              sh /tmp/install.sh --prefix "$RUNNER_TEMP/gisel"
+              ;;
+          esac
+          for dir in "$RUNNER_TEMP/gisel/bin" "$HOME/.local/bin"; do
+            if [ -d "$dir" ]; then
+              printf '%s\n' "$dir" >> "$GITHUB_PATH"
+            fi
+          done
+
+      - name: the three tools answer
+        run: |
+          set -eu
+          gisel --version
+          gisel-anchor --version
+          gisel-ab --version
+
+      - name: the install can do its job
+        run: |
+          set -eu
+          gisel doctor
+          # First command a reader runs: every stage on a bundled corpus.
+          gisel demo --corpus m68k --out "$RUNNER_TEMP/demo"
+          test -s "$RUNNER_TEMP/demo/m68k.inc"
+
+      - name: the bundled corpora work from the wheel
+        run: |
+          set -eu
+          gisel cases --corpus x86 --out "$RUNNER_TEMP/x86.cases.jsonl"
+          test "$(wc -l < "$RUNNER_TEMP/x86.cases.jsonl")" -gt 1000
+
+      - name: the workbench answers from the wheel, no checkout
+        run: |
+          set -eu
+          env -u GISEL_SRC gisel-ab suite check --target m68k
