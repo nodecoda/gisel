@@ -87,10 +87,16 @@ python3 -m gisel graph tests/corpus/X86LegalizerInfo.gisel \
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles | closure |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| C0 | 68,667 | 27,935 | 27,935 | 30,504 | 6,856 | 1,177 | 2,195 | 11,945 | 4,031 | 0 | 272 |
-| C1 | 68,656 | 26,285 | 26,285 | 31,190 | 7,657 | 1,181 | 2,343 | 11,945 | 4,020 | 0 | 277 |
-| C2 | 68,588 | 25,885 | 25,885 | 31,055 | 8,120 | 1,181 | 2,347 | 11,945 | 4,067 | 0 | 265 |
-| C3 | 68,667 | 27,740 | 27,740 | 30,518 | 7,037 | 1,177 | 2,195 | 11,945 | 4,031 | 0 | 272 |
+| C0 | 68,667 | 27,935 | 27,935 | 30,549 | 6,856 | 1,132 | 2,195 | 11,945 | 4,031 | 0 | 272 |
+| C1 | 68,656 | 26,285 | 26,285 | 31,232 | 7,657 | 1,139 | 2,343 | 11,945 | 4,020 | 0 | 277 |
+| C2 | 68,588 | 25,885 | 25,885 | 31,097 | 8,120 | 1,139 | 2,347 | 11,945 | 4,067 | 0 | 265 |
+| C3 | 68,667 | 27,740 | 27,740 | 30,563 | 7,037 | 1,132 | 2,195 | 11,945 | 4,031 | 0 | 272 |
+
+表的数字是 2026-11-15 的复测值（gisel `a87cd7f`）：守卫在比较数字前把
+`p0:*` 按配置解析成具体指针宽度，于是原先因 `*` 参与整数比较而记成 `opaque` 的
+状态第一次有了答案。`opaque` 1177/1181/1181/1177 → 1132/1139/1139/1132，
+差额全部落到 `no-rule`；`states`/`edges`/`terminal`/`outside` 不变，
+`tests/artifacts/graph/x86-none.json` 已按这次输出重录。
 
 C0 行与冻结的 `tests/artifacts/graph/x86-none.json` 逐字段一致（`--config none`
 与 C0 是同一个有限域；字节 SHA-256 见 `tests/artifacts/SHA256`，由
@@ -182,7 +188,12 @@ python3 -m gisel graph tests/corpus/RISCVLegalizerInfo.gisel \
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| rv64gc | 521,903 | 29,022 | 29,022 | 414,504 | 46,196 | 29,114 | 3,067 | 30,313 | 8,005 | 0 |
+| rv64gc | 521,903 | 29,034 | 29,034 | 414,504 | 46,248 | 29,050 | 3,067 | 30,313 | 8,005 | 0 |
+
+2026-11-15 复测（gisel `a87cd7f`）：同一条指针守卫修复让 rv64gc 的
+`opaque` 29,114 → 29,050，`edges`/`moves` 29,022 → 29,034，`terminal`
+46,196 → 46,248（`Lower` 44,477 → 44,529）；`no-rule`/`outside`/`classes`
+不变，golden 已重录。
 
 `uncovered = ['G_SEXT_INREG', 'G_INTRINSIC', 'G_INTRINSIC_W_SIDE_EFFECTS']`
 （imm 轴或 variadic 槽数未给定）。
@@ -218,7 +229,13 @@ python3 -m gisel graph tests/corpus/AArch64LegalizerInfo.gisel \
 
 | config | states | edges | moves | no-rule | terminal | opaque | outside | shape | classes | cycles |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
-| baseline | 1,104,645 | 188,035 | 188,035 | 424,556 | 274,504 | 204,751 | 12,799 | 54,910 | 15,193 | **0** |
+| baseline | 1,104,640 | 188,302 | 188,302 | 426,046 | 274,504 | 203,186 | 12,602 | 54,910 | 15,188 | **0** |
+
+2026-11-15 复测（gisel `a87cd7f`）：同一条指针守卫修复让 `opaque`
+204,751 → 203,186、`no-rule` 424,556 → 426,046、`edges` 188,035 → 188,302、
+`states`/`classes` 各减 5，`terminal` 不变；上一版行的 `edges`/`outside`
+（188,035 / 12,799）本来就比 `dad5a61` 旧 197 条，这次一并对齐到
+`outside=12,602`。`cycles` 与 `closure.count=1,985` 不变。
 
 `uncovered = ['G_SEXTLOAD', 'G_LOAD', 'G_STORE', 'G_INDEXED_LOAD',
 'G_INDEXED_SEXTLOAD', 'G_INDEXED_ZEXTLOAD', 'G_INTRINSIC',

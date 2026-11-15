@@ -227,16 +227,16 @@
    "config": "rv64gc",
    "cycle_samples": [],
    "cycles": 0,
-   "edges": 29022,
+   "edges": 29034,
    "injected_edge": null,
-   "opaque": 29114,
+   "opaque": 29050,
    "outcomes": {
-    "moves": 29022,
+    "moves": 29034,
     "no-rule": 414504,
-    "opaque": 29114,
+    "opaque": 29050,
     "outside": 3067,
     "stuck": 0,
-    "terminal": 46196
+    "terminal": 46248
    },
    "outside": 3067,
    "shape": 30313,
@@ -245,7 +245,7 @@
     "Custom": 92,
     "Legal": 400,
     "Libcall": 531,
-    "Lower": 44477,
+    "Lower": 44529,
     "Unsupported": 696
    },
    "uncovered": [

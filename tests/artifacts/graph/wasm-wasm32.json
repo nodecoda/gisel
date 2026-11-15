@@ -210,21 +210,21 @@
    "cycles": 0,
    "edges": 18700,
    "injected_edge": null,
-   "opaque": 715,
+   "opaque": 680,
    "outcomes": {
     "moves": 18700,
-    "no-rule": 5565,
-    "opaque": 715,
+    "no-rule": 5592,
+    "opaque": 680,
     "outside": 1051,
     "stuck": 0,
-    "terminal": 787
+    "terminal": 795
    },
    "outside": 1051,
    "shape": 2510,
    "states": 26818,
    "terminal": {
     "Legal": 613,
-    "Lower": 174
+    "Lower": 182
    },
    "uncovered": [
     "G_SEXT_INREG"

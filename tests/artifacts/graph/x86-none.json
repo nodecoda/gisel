@@ -198,11 +198,11 @@
    "cycles": 0,
    "edges": 27935,
    "injected_edge": null,
-   "opaque": 1177,
+   "opaque": 1132,
    "outcomes": {
     "moves": 27935,
-    "no-rule": 30504,
-    "opaque": 1177,
+    "no-rule": 30549,
+    "opaque": 1132,
     "outside": 2195,
     "stuck": 0,
     "terminal": 6856
