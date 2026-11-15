@@ -32,6 +32,16 @@ POINTER_BITS = (16, 32, 64, 128)
 # `f80` cannot even be constructed, so asking it would only abort the runner.
 FLOAT_BITS = (16, 32, 64, 128)
 
+class ShapeError(ValueError):
+    """A helper that needs a vector or a pointer was handed another LLT.
+
+    The evaluator turns this into an ``unanswerable`` row: a rule that assumes
+    a slot's shape is a fact about the rule, not a licence to abort the run.
+    The C++ side compiles these asserts out, so the two sides stay comparable
+    only if neither treats the shape as a precondition of the process.
+    """
+
+
 KIND_ORDER = {"scalar": 0, "integer": 0, "float": 0, "bf16": 0,
               "vector": 1, "pointer": 2, "invalid": 3}
 
@@ -246,12 +256,14 @@ def get_scalar_type(t):
 
 
 def get_element_type(t):
-    assert is_vector(t)
+    if not is_vector(t):
+        raise ShapeError("element type of %r, which is not a vector" % (t,))
     return t[3]
 
 
 def get_address_space(t):
-    assert t[0] == "pointer" or (is_vector(t) and t[3][0] == "pointer")
+    if not (t[0] == "pointer" or (is_vector(t) and t[3][0] == "pointer")):
+        raise ShapeError("address space of %r, which is not a pointer" % (t,))
     if is_vector(t):
         return t[3][2]
     return t[1]
@@ -266,7 +278,8 @@ def change_element_type(t, new_elt):
 
 def change_element_size(t, new_size):
     """changeElementSize: invalid for pointers, keeps vector lanes."""
-    assert t[0] != "pointer" and not is_pointer_vector(t)
+    if t[0] == "pointer" or is_pointer_vector(t):
+        raise ShapeError("changeElementSize on pointer %r" % (t,))
     if is_vector(t):
         return ("vector", t[1], t[2], change_element_size(t[3], new_size))
     if is_integer(t):
@@ -286,8 +299,17 @@ def scalar_or_vector(lanes, scalable, elem):
 
 
 def change_element_count_div(t, n):
-    """divLanes: element count / n, keeping the scalable flag."""
-    assert is_vector(t)
+    """divLanes: element count / n, keeping the scalable flag.
+
+    C++ spells this `LLT::divide(n)`, which asserts that the count is a
+    multiple of `n`.  An inexact divide is a mutation the compiled legalizer
+    cannot perform, so it is refused here instead of being rounded down into
+    a lane count no IR contains (`nxv1s65` / 2 would become `nxv0s65`).
+    """
+    if not is_vector(t):
+        raise ShapeError("divLanes on %r, which is not a vector" % (t,))
+    if t[1] % n:
+        raise ShapeError("divLanes %d of %r is not exact" % (n, t))
     return scalar_or_vector(t[1] // n, t[2], t[3])
 
 

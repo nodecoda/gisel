@@ -54,6 +54,7 @@ from .llt import (
     size_in_bits,
     size_in_bytes,
     num_elems,
+    ShapeError,
     get_scalar_type,
     get_element_type,
     get_address_space,
@@ -374,6 +375,19 @@ class Evaluator:
         return row.get("LLT::getUseExtended()", DEFAULT_EXTENDED)
 
     # -- value nodes -------------------------------------------------------
+    @staticmethod
+    def _shape(helper, value):
+        """Run a vector/pointer helper, reporting a wrong shape as an answer.
+
+        A rule may read `elemOf(slot(i))` without checking that slot `i` is a
+        vector, because in the declared domain it always is.  A query from
+        outside that domain must come back `unanswerable`, not kill the run.
+        """
+        try:
+            return helper(value)
+        except ShapeError as exc:
+            raise EvalError("shape", str(exc)) from exc
+
     def value(self, node, types, mems, config, imms=()):
         if not nodes.known(node, "value"):
             raise EvalError("unknown_value", "value node %r" % (node.get("kind"),))
@@ -390,11 +404,14 @@ class Evaluator:
         if k == "memSlot":
             return mems[a[0]["value"]]
         if k == "elemOf":
-            return get_element_type(self.value(a[0], types, mems, config, imms))
+            return self._shape(get_element_type,
+                               self.value(a[0], types, mems, config, imms))
         if k == "scalarOf":
-            return get_scalar_type(self.value(a[0], types, mems, config, imms))
+            return self._shape(get_scalar_type,
+                               self.value(a[0], types, mems, config, imms))
         if k == "numElems":
-            return num_elems(self.value(a[0], types, mems, config, imms))
+            return self._shape(num_elems,
+                               self.value(a[0], types, mems, config, imms))
         if k == "bitsOf":
             return scalar_size(self.value(a[0], types, mems, config, imms))
         if k == "sizeOf":
@@ -408,7 +425,8 @@ class Evaluator:
         if k == "alignOf":
             return self.value(a[0], types, mems, config, imms).align
         if k == "addrSpace":
-            return get_address_space(self.value(a[0], types, mems, config, imms))
+            return self._shape(get_address_space,
+                               self.value(a[0], types, mems, config, imms))
         if k == "memTy":
             return self.value(a[0], types, mems, config, imms).memory_ty
         if k == "memOrdering":
@@ -707,8 +725,61 @@ def _slot_of(on_node):
     raise EvalError("bad_on", "observation is not a slot/elemOf")
 
 
+class _GuardSizes:
+    """The two sizes a shim guard compares, resolved lazily.
+
+    A query keeps a configuration-dependent pointer as ``p0:*``, so
+    ``scalar_size``/``size_in_bits`` return ``*`` for it.  The compiled
+    legalizer never sees that spelling: its runner builds a concrete
+    ``LLT::pointer`` before it reads a rule.  The width is resolved the same
+    way the runners do -- a width the feature table names wins, then
+    ``Subtarget.is64Bit()``, then the LP64 default -- and only when a guard
+    actually compares a number.  A branch that short-circuits on ``is_scalar``
+    never asks, so a pointer slot keeps skipping those rules as it did before.
+    """
+
+    def __init__(self, t, ev, config):
+        self.type = t
+        self.ev = ev
+        self.config = config
+        self._concrete = None
+
+    def _resolved(self):
+        if self._concrete is None:
+            width = config_pointer_width(self.ev.features.table, self.config)
+            if width is None:
+                row = self.ev.features.table.get(self.config) or {}
+                is64 = row.get("Subtarget.is64Bit()")
+                width = (64 if is64 else 32) if isinstance(is64, bool) else 64
+            self._concrete = resolve_pointer_width(self.type, width)
+        return self._concrete
+
+    @property
+    def scalar(self):
+        value = scalar_size(self.type)
+        if isinstance(value, int):
+            return value
+        return scalar_size(self._resolved())
+
+    @property
+    def total(self):
+        value, _ = size_in_bits(self.type)
+        if isinstance(value, int):
+            return value
+        return size_in_bits(self._resolved())[0]
+
+
 def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
                            imms=()):
+    try:
+        return _shim_guard_and_newtype(op, on_node, to_node, types, mems, ev,
+                                       config, imms)
+    except ShapeError as exc:
+        raise EvalError("shape", str(exc)) from exc
+
+
+def _shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
+                            imms=()):
     """Return (implicit_guard, new_type) for a matched rule.
 
     `new_type` is an LLT tuple; ("invalid",) means "not mutated".  When the
@@ -737,8 +808,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
         to_form = to_node["kind"]
 
     t = types[idx]
-    ssz = scalar_size(t)
-    size, _ = size_in_bits(t)
+    sizes = _GuardSizes(t, ev, config)
 
     # Whole-type mutation: the target is the rule's own type expression.
     if to_form == "replace":
@@ -747,43 +817,43 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
     if op == "widen":
         if on_form == "slot" and to_form in ("select", "int"):
             minsz = ev.int_value(to_node, types, mems, config, imms)
-            guard = (ssz < minsz) or (not is_pow2_32(ssz))
+            guard = (sizes.scalar < minsz) or (not is_pow2_32(sizes.scalar))
             if not guard:
                 return False, ("invalid",)
-            return True, change_element_size(t, max(pow2ceil(ssz), minsz))
+            return True, change_element_size(t, max(pow2ceil(sizes.scalar), minsz))
         if to_form == "pow2":
             if on_form == "slot":
-                guard = is_scalar(t) and not is_pow2_32(size)
+                guard = is_scalar(t) and not is_pow2_32(sizes.total)
             else:
-                guard = not is_pow2_32(ssz)
+                guard = not is_pow2_32(sizes.scalar)
             if not guard:
                 return False, ("invalid",)
-            return True, change_element_size(t, pow2ceil(ssz))
+            return True, change_element_size(t, pow2ceil(sizes.scalar))
         if to_form == "pow2Min":
             n = ev.int_value(to_node["args"][0], types, mems, config, imms)
             if on_form == "slot":
-                guard = is_scalar(t) and not is_pow2_32(size)
+                guard = is_scalar(t) and not is_pow2_32(sizes.total)
             else:
-                guard = not is_pow2_32(ssz)
+                guard = not is_pow2_32(sizes.scalar)
             if not guard:
                 return False, ("invalid",)
-            return True, change_element_size(t, max(pow2ceil(ssz), n))
+            return True, change_element_size(t, max(pow2ceil(sizes.scalar), n))
         if to_form == "multipleOf":
             n = ev.int_value(to_node["args"][0], types, mems, config, imms)
             if on_form == "slot":
-                guard = is_scalar(t) and (size % n != 0)
+                guard = is_scalar(t) and (sizes.total % n != 0)
             else:
-                guard = ssz % n != 0
+                guard = sizes.scalar % n != 0
             if not guard:
                 return False, ("invalid",)
-            return True, change_element_size(t, align_to(ssz, n))
+            return True, change_element_size(t, align_to(sizes.scalar, n))
         if to_form == "ty":
             target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             tsz = scalar_size(target)
             if on_form == "slot":
-                guard = is_scalar(t) and size < tsz
+                guard = is_scalar(t) and sizes.total < tsz
             else:
-                guard = ssz < tsz
+                guard = sizes.scalar < tsz
             if not guard:
                 return False, ("invalid",)
             return True, change_element_size(t, tsz)
@@ -793,13 +863,13 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
             if not isinstance(other, int):
                 raise EvalError("unknown_width",
                                 "same_as(%d) has no known scalar width" % k)
-            guard = other > ssz
+            guard = other > sizes.scalar
             if not guard:
                 return False, ("invalid",)
             return True, change_element_size(t, other)
         if to_form == "minVectorSize":
             n = to_node["args"][0]["value"]
-            if not (is_fixed_vector(t) and size < n):
+            if not (is_fixed_vector(t) and sizes.total < n):
                 return False, ("invalid",)
             num = num_elems(t)
             new_elt = change_element_size(get_element_type(t), n // num)
@@ -811,9 +881,9 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
             target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             tsz = scalar_size(target)
             if on_form == "slot":
-                guard = is_scalar(t) and size > tsz
+                guard = is_scalar(t) and sizes.total > tsz
             else:
-                guard = ssz > tsz
+                guard = sizes.scalar > tsz
             if not guard:
                 return False, ("invalid",)
             return True, change_element_size(t, tsz)
@@ -823,7 +893,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
             if not isinstance(other, int):
                 raise EvalError("unknown_width",
                                 "same_as(%d) has no known scalar width" % k)
-            guard = other < ssz
+            guard = other < sizes.scalar
             if not guard:
                 return False, ("invalid",)
             return True, change_element_size(t, other)
@@ -850,7 +920,7 @@ def shim_guard_and_newtype(op, on_node, to_node, types, mems, ev, config,
         if to_form == "ty":
             target = ev.llt_value(to_node["args"][0], types, mems, config, imms)
             tsize, _ = size_in_bits(target)
-            if not (is_vector(t) and size > tsize):
+            if not (is_vector(t) and sizes.total > tsize):
                 return False, ("invalid",)
             return True, change_element_type(t, target)
         raise EvalError("unknown_shim", "%s %s %s" % (op, on_form, to_form))
