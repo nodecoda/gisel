@@ -102,6 +102,9 @@ mutation，issue #237670，修复已合入）、合法 IR 触发断言（指针 
 #236651）、以及"无 POPCNT 时向量 `ctpop` 没有规则、release 下死循环"（#220802）。
 共 4 个 issue，2 个修复已合入。
 
+完整清单（12 个 PR、10 个 issue，含 LoongArch 与 TableGen）在
+[UPSTREAM-BLOG-zh.md](UPSTREAM-BLOG-zh.md)。
+
 ## 四、原理：三句话
 
 1. **为什么能穷举。** LLT 空间无限，但规则里的谓词只读有限的几个量
