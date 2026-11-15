@@ -2,6 +2,8 @@
 
 设计论证：[文章链接](https://zhuanlan.zhihu.com/p/2102431370098298974)
 
+一页简介：[docs/BRIEF-zh.md](docs/BRIEF-zh.md)
+
 [English](README.md) · 简体中文
 
 [![ci](https://github.com/nodecoda/gisel/actions/workflows/ci.yml/badge.svg)](https://github.com/nodecoda/gisel/actions/workflows/ci.yml)
